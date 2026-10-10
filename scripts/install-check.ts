@@ -37,8 +37,9 @@ CMD ["/sbin/init"]`,
     name: "debian",
     ready:
       'state=$(systemctl is-system-running --wait); [ "$state" = running ] || [ "$state" = degraded ]',
-    // systemd needs SYS_ADMIN to build a unit's mount namespace, which a server has (prototype).
+    // Privileged, so systemd can make its mounts under a host whose Docker AppArmor profile forbids them, as Ubuntu runners do.
     runFlags: [
+      "--privileged",
       "--cgroupns=host",
       "-v",
       "/sys/fs/cgroup:/sys/fs/cgroup:rw",
@@ -46,8 +47,6 @@ CMD ["/sbin/init"]`,
       "/run",
       "--tmpfs",
       "/run/lock",
-      "--cap-add",
-      "SYS_ADMIN",
     ],
     serverPid: "systemctl show -p MainPID --value raaqeb",
   },
@@ -243,6 +242,9 @@ try {
       process.stderr.write(
         `install:check: ${machine.name} failed: ${String(error)}\n`
       );
+      // The container's own output, for an init system that never came up.
+      const boot = await run(["docker", "logs", `${tag}-${machine.name}`]);
+      process.stderr.write(boot.output);
       const logs = await run([
         "docker",
         "exec",
