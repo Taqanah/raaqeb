@@ -1,0 +1,54 @@
+---
+title: Webhooks
+description: The JSON Raaqeb posts to a webhook channel for each notification type, and what a subscriber's webhook receives.
+---
+
+import { ApiWebhook } from "../../../docs/api/view.tsx";
+
+Raaqeb sends two kinds of webhook. A [webhook channel](/en/docs/notifications/webhook) receives operator notifications, signed with the Standard Webhooks scheme. A subscriber who subscribes to a status page with a webhook receives subscriber notifications in the body Atlassian Statuspage sends, unsigned.
+
+Every POST carries `webhook-id`, the same on each retry so a receiver can drop a duplicate, and `webhook-timestamp`. A receiver that answers anything but `2xx` gets the POST again 30 seconds, 2 minutes and 10 minutes later.
+
+## Webhook channel
+
+Each notification type is one body, told apart by its `type` field. The channel's page explains [how to verify the signature](/en/docs/notifications/webhook).
+
+### Monitor down
+
+<ApiWebhook name="monitor.down" />
+
+### Monitor recovered
+
+<ApiWebhook name="monitor.recovered" />
+
+### Degraded started
+
+<ApiWebhook name="monitor.degraded_started" />
+
+### Degraded ended
+
+<ApiWebhook name="monitor.degraded_ended" />
+
+### Reminder
+
+<ApiWebhook name="monitor.reminder" />
+
+### Certificate expiring
+
+<ApiWebhook name="monitor.certificate_expiring" />
+
+### Test
+
+<ApiWebhook name="channel.test" />
+
+## Subscriber webhook
+
+### Confirmation
+
+<ApiWebhook name="subscription.confirmation" />
+
+### Incident and maintenance events
+
+All seven events share one body; the event's name is in its `meta.event` field.
+
+<ApiWebhook name="incident.published" />

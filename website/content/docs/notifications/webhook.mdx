@@ -1,0 +1,165 @@
+---
+title: Webhook
+description: محتوى JSON الذي ترسله قناة Webhook، وكيف يوقّعه راقب وفق Standard Webhooks، وكيف تتحقق من التوقيع في المستقبل.
+---
+
+ترسل قناة Webhook كل إشعار بصيغة JSON إلى عنوان رابط تختاره، موقّعًا وفق مواصفة [Standard Webhooks](https://www.standardwebhooks.com/). استخدمها لتغذية خدمتك، أو أداة أتمتة، أو أي شيء يقبل طلب HTTP POST. المحتوى قيم آلية فقط ولا يُترجم أبدًا، لذا لا لغة لهذه القناة.
+
+## ما تحتاجه أولًا
+
+عنوان رابط `http` أو `https` يقبل طلب POST ويجيب برمز `2xx`. يمكن أن يكون على الإنترنت العام أو على شبكتك. يولّد راقب مفتاح التوقيع حين تحفظ القناة؛ انسخه من صفحة القناة إلى المستقبل.
+
+## الحقول
+
+| الحقل | المعنى | مطلوب | الافتراضي |
+| --- | --- | --- | --- |
+| **الاسم** | اسم القناة في لوحة الإدارة، 80 حرفًا على الأكثر. | نعم | لا يوجد |
+| **تطبيق على المراقبات الجديدة تلقائيًا** | تبدأ كل مراقبة جديدة وهذه القناة محددة فيها. | لا | مفعّل |
+| **عنوان الرابط** | حيث يرسل راقب. `http` أو `https`، و2048 حرفًا على الأكثر. من البيانات السرية: يُحفظ مُعمّى ولا يُعرض بعد الحفظ، إذ كثيرًا ما يحمل الرابط رمزًا. | نعم | لا يوجد |
+| **مفتاح التوقيع** | يولّده راقب: `whsec_` يتبعها ترميز base64 لـ 32 بايتًا عشوائيًا. يظهر في صفحة القناة بعد الحفظ. | يولّده راقب | لا يوجد |
+| **مفتاح توقيع جديد عند الحفظ** | يستبدل مفتاح التوقيع حين تحفظ. وبعد الحفظ لا يعود المستقبل قادرًا على التحقق بالمفتاح القديم. | لا | غير مفعّل |
+
+## الطلب
+
+كل محاولة طلب POST واحد:
+
+```http
+POST /hooks/raaqeb HTTP/1.1
+content-type: application/json
+user-agent: Raaqeb
+webhook-id: 0199a3c4-1b2e-7f40-8a6d-3c5e9b2d7a11
+webhook-timestamp: 1790362142
+webhook-signature: v1,ZQq6cK+z7eUi6D9zZWTUyqr1MZ/7a41TG2GEWUF7CAs=
+
+{"data":{"incidentUrl":"https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d","monitor":{"adminUrl":"https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d","checkType":"http","id":"0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d","name":"Main website","target":"https://example.com"},"reason":"timeout"},"timestamp":"2026-09-25T18:49:00.000Z","type":"monitor.down"}
+```
+
+| الترويسة | القيمة |
+| --- | --- |
+| `webhook-id` | معرّف الإشعار، وهو UUID. يبقى هو نفسه في كل إعادة محاولة للإشعار الواحد، فيستطيع المستقبل أن يتجاهل النسخة المكررة. |
+| `webhook-timestamp` | وقت هذه المحاولة بثواني Unix. لكل إعادة محاولة طابعها الزمني الخاص. |
+| `webhook-signature` | `v1,` ثم توقيع HMAC-SHA256 بترميز base64. |
+
+كل إجابة `2xx` نجاح، ولا يقرأ راقب محتواها. ولا يتتبّع راقب إعادة التوجيه: الإجابة `3xx` محاولة فاشلة، فلا يصل محتوى موقّع إلى عنوان آخر أبدًا.
+
+## المحتوى
+
+يتبع المحتوى غلاف Standard Webhooks: `type`، و`timestamp` (وقت وقوع الحدث بصيغة ISO 8601 بتوقيت UTC)، و`data`. وفي `data` لكل حدث مراقبة كائن `monitor`:
+
+| الحقل | المعنى |
+| --- | --- |
+| `id` | معرّف المراقبة. |
+| `name` | اسم المراقبة. |
+| `checkType` | `http` أو `tcp` أو `dns` أو `postgres` أو `mysql` أو `redis` أو `docker` أو `heartbeat`. |
+| `target` | عنوان الرابط، أو `host:port`، أو الاسم الذي يصل إليه الفحص؛ و`null` في مراقبة النبض. |
+| `adminUrl` | صفحة المراقبة في لوحة الإدارة. لا يوجد إن لم يحفظ التثبيت عنوانًا عامًا. |
+
+الأنواع وما يضيفه كل منها إلى `data`:
+
+| `type` | ما يُضاف إلى `data` |
+| --- | --- |
+| `monitor.down` | `reason`؛ و`incidentUrl`، صفحة الإدارة التي تفتح حادثة لهذه المراقبة، ولا يوجد دون عنوان عام. |
+| `monitor.reminder` | `reason`، العلة التي بدأ بها الانقطاع؛ و`downForMs`، المدة التي قضتها المراقبة متعطّلة حتى الآن. |
+| `monitor.recovered` | `downtimeMs`، مدة الانقطاع. |
+| `monitor.degraded_started` | `reason`. |
+| `monitor.degraded_ended` | لا شيء. |
+| `monitor.certificate_expiring` | `certificate`: فيه `daysLeft`، الأيام الكاملة المتبقية مقرّبة إلى الأدنى، و`notAfter`، لحظة انتهاء الصلاحية. |
+| `channel.test` | `channel`: فيه `id` القناة و`name`. ولا `monitor` فيه. |
+
+`reason` رمز علة مثل `timeout` أو `dns_failed` أو `connection_refused` أو `unexpected_status` أو `assertion_failed` أو `slow` أو `heartbeat_late`. وهذا إشعار تعافٍ:
+
+```json
+{
+  "data": {
+    "downtimeMs": 754000,
+    "monitor": {
+      "adminUrl": "https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d",
+      "checkType": "http",
+      "id": "0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d",
+      "name": "Main website",
+      "target": "https://example.com"
+    }
+  },
+  "timestamp": "2026-09-25T19:01:34.000Z",
+  "type": "monitor.recovered"
+}
+```
+
+المحتوى عقد عام: تُضاف إليه أنواع وحقول، ولا يتغيّر ما فيه. والمخطط الكامل، بكل رموز العلة، في [مرجع الواجهة البرمجية](/docs/api).
+
+## التوقيع
+
+يوقّع راقب كل محاولة كما تصف Standard Webhooks:
+
+1. خذ مفتاح التوقيع، واحذف البادئة `whsec_`، وفكّ ترميز base64 عن الباقي. هذه الـ 32 بايتًا هي مفتاح HMAC.
+2. ابنِ المحتوى الموقّع: قيمة `webhook-id`، ثم نقطة، ثم قيمة `webhook-timestamp`، ثم نقطة، ثم المحتوى كما وصل تمامًا: `id.timestamp.body`.
+3. احسب HMAC-SHA256 للمحتوى الموقّع بالمفتاح، ورمّز الناتج بـ base64.
+4. أرسله في `webhook-signature: v1,<signature>`.
+
+للتحقق، احسب التوقيع نفسه من بايتات المحتوى الخام، قبل أي تحليل لـ JSON، وقارنه في وقت ثابت. ارفض الطلب الذي يبعد فيه `webhook-timestamp` كثيرًا عن ساعتك؛ تقترح Standard Webhooks خمس دقائق. وتأخذ مكتبات Standard Webhooks المفتاح كما يعرضه راقب، بالبادئة `whsec_`. ومن دون مكتبة:
+
+```ts title="verify.ts"
+const toBytes = (base64: string) =>
+  Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+
+/** Whether a request carries a valid Raaqeb signature. `body` is the raw request body. */
+export async function verify(
+  secret: string,
+  headers: Headers,
+  body: string,
+  toleranceSeconds = 300
+): Promise<boolean> {
+  const id = headers.get("webhook-id");
+  const timestamp = headers.get("webhook-timestamp");
+  const signatures = headers.get("webhook-signature");
+  if (!(id && timestamp && signatures)) {
+    return false;
+  }
+  if (!(Math.abs(Date.now() / 1000 - Number(timestamp)) <= toleranceSeconds)) {
+    return false;
+  }
+  const key = await crypto.subtle.importKey(
+    "raw",
+    toBytes(secret.slice("whsec_".length)),
+    { hash: "SHA-256", name: "HMAC" },
+    false,
+    ["verify"]
+  );
+  const signed = new TextEncoder().encode(`${id}.${timestamp}.${body}`);
+  // The header may list several signatures separated by spaces; Raaqeb sends one.
+  for (const entry of signatures.split(" ")) {
+    const [version, signature] = entry.split(",");
+    if (
+      version === "v1" &&
+      signature &&
+      (await crypto.subtle.verify("HMAC", key, toBytes(signature), signed))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+```
+
+تعمل هذه الشفرة على Bun وDeno وNode.js 20 وما بعده وCloudflare Workers. وتقارن `crypto.subtle.verify` في وقت ثابت. ولاختبار المستقبل، وُقّع الطلب في أعلى هذه الصفحة بالمفتاح `whsec_AQgPFh0kKzI5QEdOVVxjanF4f4aNlJuiqbC3vsXM09o=`؛ ويجتاز التحقق إن أغفلت التحقق من الطابع الزمني.
+
+لاستبدال المفتاح، فعّل **مفتاح توقيع جديد عند الحفظ**، واحفظ، وأعطِ المفتاح الجديد للمستقبل. يتوقف المفتاح القديم عن العمل فورًا، فحدّث المستقبل بعد الحفظ مباشرة.
+
+<Callout>روابط Webhook التي يسجّلها الزوار في صفحة الحالة للاشتراك أمر مختلف: تحمل `webhook-id` و`webhook-timestamp` بلا توقيع، وتستخدم محتوى Statuspage. انظر [الاشتراكات](/docs/status-pages/subscriptions).</Callout>
+
+## حالات الفشل والحدود
+
+تنتهي مهلة المحاولة الواحدة بعد 10 ثوانٍ. وتُعاد المحاولة الفاشلة بعد 30 ثانية، ثم دقيقتين، ثم 10 دقائق، بقيمة `webhook-id` نفسها. انظر [الطابور وإعادة المحاولة](/docs/notifications#the-queue-and-retries).
+
+| رمز العلة | النص | السبب المعتاد |
+| --- | --- | --- |
+| `unexpected_status` | رمز حالة غير متوقع | أجاب المستقبل بما هو خارج `2xx`، أو أعاد التوجيه. يعرض **المرصود** رمز الحالة، و**نص الخطأ** بداية محتوى الإجابة. |
+| `timeout` | انتهت مهلة الانتظار | لم تصل إجابة خلال 10 ثوانٍ. |
+| `dns_failed` | تعذّر العثور على عنوان المضيف | لم يُعثر على عنوان لمضيف الرابط. |
+| `connection_refused` | رُفض الاتصال | لا شيء يستمع على مضيف الرابط ومنفذه. |
+| `connection_failed` | تعذّر الاتصال | قُطع الاتصال أو تعذّر الوصول إلى المضيف. |
+| `certificate_expired` | انتهت صلاحية الشهادة | انتهت صلاحية شهادة المستقبل. |
+| `certificate_invalid` | الشهادة غير صالحة | الشهادة موقّعة ذاتيًا، أو صادرة لاسم آخر، أو يتعذّر التحقق منها. |
+| `unknown` | خطأ غير معروف | أي شيء آخر. يذكر **نص الخطأ** ما حدث. |
+
+يُحذف عنوان الرابط من كل نص خطأ مسجّل. ولا ترويسات مخصّصة للطلب؛ فبالتوقيع يعرف المستقبل أن طلب POST جاء من تثبيتك.

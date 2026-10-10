@@ -1,0 +1,22 @@
+---
+title: For AI assistants
+description: The docs as Markdown for an AI assistant to read, in llms.txt, llms-full.txt and a Markdown copy of every page.
+---
+
+An AI assistant reads Markdown more easily than the website's pages, so the website serves the docs as Markdown in three forms:
+
+| Address | What it holds |
+| --- | --- |
+| `/llms.txt` | The docs' index in the [llmstxt.org](https://llmstxt.org) format: every page's title, address and description, in Arabic and then English. |
+| `/llms-full.txt` | The text of every docs page in one file, in Arabic and then English. |
+| `<page>.md` | One page as Markdown: add `.md` to its address, such as `/en/docs/get-started.md`. |
+
+The **Copy Markdown** button under each page's title copies the same text, to paste into a chat.
+
+Give the assistant the index so it picks the pages it needs, or the whole file when it has room for it:
+
+```sh
+curl https://raaqeb.dev/llms.txt
+```
+
+For an install's own API, every install serves its OpenAPI document at `GET /api/openapi.json`; see [API](/en/docs/api).

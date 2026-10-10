@@ -1,0 +1,16 @@
+---
+title: Health and the document
+description: The health endpoint a supervisor or load balancer polls, and the OpenAPI document these pages are drawn from.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+## Health
+
+`raaqeb health`, the container image's health check and the installer all ask this. See [health, restarts and logs](/en/docs/operate/health-and-logs) for what happens when it fails.
+
+<ApiOperation path="/health" />
+
+## The OpenAPI document
+
+<ApiOperation path="/api/openapi.json" />

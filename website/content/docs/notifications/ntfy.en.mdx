@@ -1,0 +1,78 @@
+---
+title: ntfy
+description: How to pick an ntfy topic, what an ntfy channel publishes, and how a refused publish shows in Raaqeb.
+---
+
+An ntfy channel publishes each notification to a topic on an [ntfy](https://ntfy.sh) server, so it reaches every phone or browser subscribed to that topic. The message is text in the channel language, with a title, a priority and buttons that open the monitor.
+
+## What you need first
+
+A topic name, and a server.
+
+1. Pick a topic name: Latin letters, digits, dashes and underscores, at most 64 characters. On the public server anyone who knows the name can read the topic, so pick one that is hard to guess, such as `raaqeb-alerts-x7k2p9`.
+2. In the ntfy app, subscribe to that topic on the same server.
+3. If your own ntfy server requires a login, create an access token for a user that may publish to the topic, for example with `ntfy token add <user>`.
+
+## Fields
+
+| Field | Meaning | Required | Default |
+| --- | --- | --- | --- |
+| **Name** | What the admin area calls the channel, at most 80 characters. | Yes | None |
+| **Channel language** | The language of the title and message. | No | **The install language** |
+| **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
+| **Server** | The ntfy server's address alone, with no path and no topic. | Yes | `https://ntfy.sh` |
+| **Topic** | The topic your apps subscribe to. Shown while you type it, then stored encrypted with the install key and never shown after saving, since on a public server the name is its only protection. | Yes | None |
+| **Access token** | Optional, for a server that requires a login. Sent as `Authorization: Bearer`. A secret: stored encrypted and never shown after saving. | No | None |
+
+The server must be the root of an ntfy server. One behind a reverse proxy under a path, such as `https://raaqeb.dev/ntfy`, cannot be used. Once an access token is stored it cannot be emptied from the form; delete the channel and add it again to send without one.
+
+## The message
+
+Raaqeb publishes this JSON to the server's root, here `https://ntfy.sh/`:
+
+```json
+{
+  "message": "The monitor is down.\n\nMonitor: Main website\nTarget: https://example.com\nReason: Timed out\nTime: Sep 25, 2026, 18:49 (UTC)",
+  "priority": 4,
+  "title": "Main website is down",
+  "topic": "raaqeb-alerts-x7k2p9",
+  "click": "https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d",
+  "actions": [
+    {
+      "action": "view",
+      "label": "Open the monitor",
+      "url": "https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d"
+    },
+    {
+      "action": "view",
+      "label": "Open an incident",
+      "url": "https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d"
+    }
+  ]
+}
+```
+
+- **Title**: the subject, such as `Main website is down`.
+- **Message**: the sentence and the label and value lines, without the link lines. See [What a notification says](/en/docs/notifications#what-a-notification-says).
+- **Click**: tapping the notification opens the monitor in the admin area.
+- **Buttons**: **Open the monitor**, and on a down notification **Open an incident**.
+- **Priority**: `4` (high) for down and its reminder, `3` (default) for everything else. The priorities cannot be changed.
+
+The click action and buttons need a stored public address; without one they are left out. A test notification has no click action.
+
+## Failures and limits
+
+ntfy takes at most 4095 bytes in a message and 1024 bytes in a title. A longer one is cut and ends in `…`. One attempt gives up after 10 seconds, and a failed attempt is retried 30 seconds, 2 minutes and 10 minutes later. The public server's rate limit answers `429`, which retries on the same schedule.
+
+| Reason code | Text | Typical cause |
+| --- | --- | --- |
+| `unexpected_status` | Unexpected status code | The server refused the publish. **Observed** shows the status and **Error text** the server's answer: `401` or `403` for a missing or wrong access token, `429` for a rate limit. |
+| `timeout` | Timed out | No answer within 10 seconds. |
+| `dns_failed` | DNS lookup failed | The server's host does not resolve. |
+| `connection_refused` | Connection refused | Nothing listens at the server's host and port. |
+| `connection_failed` | Connection failed | The connection was reset or the host was unreachable. |
+| `certificate_expired` | Certificate expired | The server's certificate has expired. |
+| `certificate_invalid` | Certificate invalid | The certificate is self-signed, for another name, or cannot be verified. |
+| `unknown` | Unknown error | Anything else. **Error text** says what happened. |
+
+The topic and access token are removed from every recorded error text.

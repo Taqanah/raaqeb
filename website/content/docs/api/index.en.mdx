@@ -1,0 +1,38 @@
+---
+title: API
+description: What Raaqeb answers without a sign-in, what it sends, and where each install serves the OpenAPI document these pages are drawn from.
+---
+
+Raaqeb's public API is the set of addresses that a job, a reverse proxy, a status page's visitors and a subscriber's systems reach without signing in, and the webhooks Raaqeb sends. There is no management API: monitors, status pages, incidents and settings are managed in the admin area alone.
+
+## Addresses
+
+Every path is relative to the install's [public address](/en/docs/get-started#onboarding), so `/health` on an install at `https://status.example.com` is `https://status.example.com/health`. A status page's summary, badge and feed also answer at the page's own addresses: under `/status/{slug}`, and at the root of its custom domain or of the bare host when it is the default page.
+
+## Authentication
+
+None. What stands in for a credential is a token in the path, where the reference says so: a heartbeat monitor's token in `/api/heartbeat/{token}`, and a subscription's token in its confirm and unsubscribe links. Anyone holding the token can use it, so keep it as you would a password. A status page that is not published answers `404` to everyone but the signed-in operator.
+
+A [webhook channel](/en/docs/notifications/webhook) signs each POST with the Standard Webhooks scheme, so your receiver can tell it came from your install. A subscriber's webhook is not signed.
+
+## The OpenAPI document
+
+Every install serves the OpenAPI 3.1 document of its public API at `GET /api/openapi.json`. Its schemas are JSON Schema 2020-12, made from the same schemas the routes answer with, and these pages are drawn from it when the website is built, so they match the release they were built from. Point a client generator or an agent at the document; it also carries what the outlines below leave out, such as patterns and number bounds.
+
+## Reading the reference
+
+Each entry starts with its methods and paths. Methods and paths that answer alike share one entry. A body is shown as an outline in TypeScript's notation:
+
+- `name?: string` the field may be missing.
+- `"ok" | "stale"` one of these values; `string | null` a string or `null`.
+- `string[]` a list.
+- `{ [key in "ar" | "en"]?: string }` text per locale, keyed by the locales it is written in.
+- `// date-time` the string's format, after its field.
+
+## Sections
+
+- [Heartbeats](/en/docs/api/heartbeats): the address a job calls to record a heartbeat.
+- [Status pages](/en/docs/api/status-pages): each view's JSON document, a page's images, its Statuspage-compatible summary, badge and feed, and the reverse proxy's question about a custom domain.
+- [Subscriptions](/en/docs/api/subscriptions): confirming and leaving a subscription.
+- [Webhooks](/en/docs/api/webhooks): what a webhook channel and a subscriber's webhook receive.
+- [Health and the document](/en/docs/api/health): the health endpoint and the OpenAPI document itself.

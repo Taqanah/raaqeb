@@ -1,0 +1,4873 @@
+msgid ""
+msgstr ""
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. js-lingui-explicit-id
+msgid "app_name"
+msgstr "Raaqeb"
+
+#. js-lingui-explicit-id
+msgid "app_close"
+msgstr "Close"
+
+#. js-lingui-explicit-id
+msgid "app_toasts"
+msgstr "Notifications"
+
+#. js-lingui-explicit-id
+msgid "app_cancel"
+msgstr "Cancel"
+
+#. js-lingui-explicit-id
+msgid "app_optional"
+msgstr "Optional"
+
+#. js-lingui-explicit-id
+msgid "app_save"
+msgstr "Save"
+
+#. js-lingui-explicit-id
+msgid "app_search"
+msgstr "Search"
+
+#. js-lingui-explicit-id
+msgid "app_delete"
+msgstr "Delete"
+
+#. js-lingui-explicit-id
+msgid "app_form_invalid"
+msgstr "Correct the marked fields."
+
+#. js-lingui-explicit-id
+msgid "setting_theme"
+msgstr "Theme"
+
+#. js-lingui-explicit-id
+msgid "setting_theme_system"
+msgstr "System"
+
+#. js-lingui-explicit-id
+msgid "setting_theme_light"
+msgstr "Light"
+
+#. js-lingui-explicit-id
+msgid "setting_theme_dark"
+msgstr "Dark"
+
+#. js-lingui-explicit-id
+msgid "setting_font_size"
+msgstr "Font size"
+
+#. js-lingui-explicit-id
+msgid "setting_font_size_small"
+msgstr "Small"
+
+#. js-lingui-explicit-id
+msgid "setting_font_size_medium"
+msgstr "Medium"
+
+#. js-lingui-explicit-id
+msgid "setting_font_size_large"
+msgstr "Large"
+
+#. js-lingui-explicit-id
+msgid "setting_density"
+msgstr "Density"
+
+#. js-lingui-explicit-id
+msgid "setting_density_compact"
+msgstr "Compact"
+
+#. js-lingui-explicit-id
+msgid "setting_density_comfortable"
+msgstr "Comfortable"
+
+#. js-lingui-explicit-id
+msgid "setting_density_spacious"
+msgstr "Spacious"
+
+#. js-lingui-explicit-id
+msgid "setting_radius"
+msgstr "Corner radius"
+
+#. js-lingui-explicit-id
+msgid "setting_radius_none"
+msgstr "None"
+
+#. js-lingui-explicit-id
+msgid "setting_radius_medium"
+msgstr "Medium"
+
+#. js-lingui-explicit-id
+msgid "setting_radius_large"
+msgstr "Large"
+
+#. js-lingui-explicit-id
+msgid "monitor_degraded"
+msgstr "Degraded"
+
+#. js-lingui-explicit-id
+msgid "monitor_paused"
+msgstr "Paused"
+
+#. js-lingui-explicit-id
+msgid "monitor_waiting_first_check"
+msgstr "Waiting for first check"
+
+#. js-lingui-explicit-id
+msgid "monitor_waiting_first_heartbeat"
+msgstr "Waiting for first heartbeat"
+
+#. js-lingui-explicit-id
+msgid "monitor_outage"
+msgstr "Outage"
+
+#. js-lingui-explicit-id
+msgid "maintenance_window"
+msgstr "Maintenance window"
+
+#. js-lingui-explicit-id
+msgid "auth_sign_in_title"
+msgstr "Sign in"
+
+#. js-lingui-explicit-id
+msgid "auth_email"
+msgstr "Email"
+
+#. js-lingui-explicit-id
+msgid "auth_password"
+msgstr "Password"
+
+#. js-lingui-explicit-id
+msgid "auth_sign_in"
+msgstr "Sign in"
+
+#. js-lingui-explicit-id
+msgid "auth_signing_in"
+msgstr "Signing in…"
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_password"
+msgstr "Forgot password?"
+
+#. js-lingui-explicit-id
+msgid "auth_invalid_credentials"
+msgstr "The email or password is not right."
+
+#. js-lingui-explicit-id
+msgid "auth_rate_limited"
+msgstr "Too many attempts. Wait a moment and try again."
+
+#. js-lingui-explicit-id
+msgid "auth_unavailable"
+msgstr "The server could not be reached. Try again."
+
+#. js-lingui-explicit-id
+msgid "auth_sign_out"
+msgstr "Sign out"
+
+#. js-lingui-explicit-id
+msgid "auth_sign_out_question"
+msgstr "Sign out of Raaqeb?"
+
+#. js-lingui-explicit-id
+msgid "auth_signing_out"
+msgstr "Signing out…"
+
+#. js-lingui-explicit-id
+msgid "app_language"
+msgstr "Language"
+
+#. js-lingui-explicit-id
+msgid "auth_origin_refused"
+msgstr "This address is not the install's public address. Open Raaqeb at its public address."
+
+#. js-lingui-explicit-id
+msgid "auth_origin_set_address"
+msgstr "If Raaqeb should be opened at this address, run this command on the server to make it the public address:"
+
+#. js-lingui-explicit-id
+msgid "onboarding_language_title"
+msgstr "Language"
+
+#. js-lingui-explicit-id
+msgid "onboarding_language_lead"
+msgstr "Choose the install language. It can be changed later in settings."
+
+#. js-lingui-explicit-id
+msgid "onboarding_step"
+msgstr "Step {current} of {total}"
+
+#. js-lingui-explicit-id
+msgid "onboarding_continue"
+msgstr "Continue"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_title"
+msgstr "Database"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_lead"
+msgstr "Where Raaqeb keeps its data. Chosen once."
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_sqlite"
+msgstr "SQLite on this server"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_sqlite_note"
+msgstr "The default: one file in the data directory."
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_postgres"
+msgstr "A Postgres server"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_postgres_note"
+msgstr "A server you run, or Neon or Supabase. Needs a connection address."
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_url"
+msgstr "Connection URL"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_url_hint"
+msgstr "Neon, Supabase and PlanetScale URLs work as plain Postgres URLs."
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_test"
+msgstr "Test the connection"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_testing"
+msgstr "Testing…"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_url_line"
+msgstr "For the compose file, this line keeps the choice after the container is recreated:"
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_empty"
+msgstr "An empty database. Raaqeb creates its tables in it when you continue."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_raaqeb"
+msgstr "A Raaqeb database at version {version}. It is adopted and migrated forward when you continue; back it up first."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_foreign"
+msgstr "It holds tables that are not Raaqeb's. Raaqeb creates and touches only its own."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_unrecorded"
+msgstr "It holds Raaqeb table names with no migration record; refused. Restore a backup Raaqeb made, or choose an empty database."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_newer"
+msgstr "A Raaqeb database newer than this raaqeb; refused. Upgrade raaqeb instead."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_foreign_record"
+msgstr "It holds another application's migration record; refused. Raaqeb cannot share it."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_refused"
+msgstr "Could not connect: the server refused the connection."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_timeout"
+msgstr "Could not connect: the connection timed out."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_authentication"
+msgstr "Could not connect: the user name or password was refused."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_tls"
+msgstr "Could not connect: TLS failed."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_database"
+msgstr "Could not connect: the database does not exist."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_malformed"
+msgstr "Not a Postgres URL. It must be a complete URL starting with postgres://."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_unknown"
+msgstr "Could not connect: an unexpected error."
+
+#. js-lingui-explicit-id
+msgid "onboarding_choose_refused"
+msgstr "The database was not accepted. See the test result."
+
+#. js-lingui-explicit-id
+msgid "onboarding_choose_open_failed"
+msgstr "The database opened but migrating it or writing config.json failed. See the server log."
+
+#. js-lingui-explicit-id
+msgid "onboarding_choose_already_chosen"
+msgstr "A database is already chosen."
+
+#. js-lingui-explicit-id
+msgid "onboarding_choose_invalid"
+msgstr "Not a postgres:// URL."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unavailable"
+msgstr "The server did not answer. Try again."
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_title"
+msgstr "Operator account"
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_lead"
+msgstr "The email and password for sign-in. No verification is sent."
+
+#. js-lingui-explicit-id
+msgid "onboarding_public_address"
+msgstr "Public address"
+
+#. js-lingui-explicit-id
+msgid "onboarding_public_address_hint"
+msgstr "The address visitors and the operator reach this install at. Changeable in settings."
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_create"
+msgstr "Create the account and continue"
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_creating"
+msgstr "Creating…"
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_already_exists"
+msgstr "An operator account already exists. Sign in."
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_no_database"
+msgstr "Choose the database first."
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_invalid"
+msgstr "Check the email, the password and the public address."
+
+#. js-lingui-explicit-id
+msgid "onboarding_address_elsewhere"
+msgstr "This page is open at an address other than the public address you entered. Sign-in will only work when Raaqeb is opened at the public address."
+
+#. js-lingui-explicit-id
+msgid "onboarding_address_confirm"
+msgstr "I confirm Raaqeb will be opened at the public address I entered."
+
+#. js-lingui-explicit-id
+msgid "monitor_list_title"
+msgstr "Monitors"
+
+#. js-lingui-explicit-id
+msgid "monitor_empty_title"
+msgstr "No monitors yet"
+
+#. js-lingui-explicit-id
+msgid "monitor_empty_description"
+msgstr "Add the first monitor. To restore an earlier export, import is on the settings page."
+
+#. js-lingui-explicit-id
+msgid "monitor_add"
+msgstr "Add monitor"
+
+#. js-lingui-explicit-id
+msgid "monitor_import_link"
+msgstr "Import in settings"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_title"
+msgstr "Getting started"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_monitor"
+msgstr "Add a monitor"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_link"
+msgstr "Add a component and link the monitor"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_published"
+msgstr "Create a status page and publish it"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_channel"
+msgstr "Add a notification channel"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_done"
+msgstr "Done"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_dismiss"
+msgstr "Dismiss getting started"
+
+#. js-lingui-explicit-id
+msgid "app_nav_monitoring"
+msgstr "Monitoring"
+
+#. js-lingui-explicit-id
+msgid "app_nav_status"
+msgstr "Public status"
+
+#. js-lingui-explicit-id
+msgid "app_nav_install"
+msgstr "Install"
+
+#. js-lingui-explicit-id
+msgid "app_nav_actions"
+msgstr "Actions"
+
+#. js-lingui-explicit-id
+msgid "app_navigation"
+msgstr "Navigation"
+
+#. js-lingui-explicit-id
+msgid "app_loading"
+msgstr "Loading"
+
+#. js-lingui-explicit-id
+msgid "app_error_title"
+msgstr "This page could not be shown"
+
+#. js-lingui-explicit-id
+msgid "app_error_description"
+msgstr "Something failed while loading this page. Try again in a moment."
+
+#. js-lingui-explicit-id
+msgid "app_try_again"
+msgstr "Try again"
+
+#. js-lingui-explicit-id
+msgid "app_sidebar_toggle"
+msgstr "Sidebar"
+
+#. js-lingui-explicit-id
+msgid "page_list_title"
+msgstr "Status pages"
+
+#. js-lingui-explicit-id
+msgid "incident_list_title"
+msgstr "Incidents"
+
+#. js-lingui-explicit-id
+msgid "maintenance_list_title"
+msgstr "Maintenance windows"
+
+#. js-lingui-explicit-id
+msgid "channel_list_title"
+msgstr "Notification channels"
+
+#. js-lingui-explicit-id
+msgid "channel_type_webhook"
+msgstr "Webhook"
+
+#. js-lingui-explicit-id
+msgid "channel_field_url"
+msgstr "URL"
+
+#. js-lingui-explicit-id
+msgid "channel_field_url_hint"
+msgstr "Receives a POST with a signed JSON body. Stored encrypted and never shown after saving."
+
+#. js-lingui-explicit-id
+msgid "channel_field_signing_secret"
+msgstr "Signing secret"
+
+#. js-lingui-explicit-id
+msgid "channel_field_signing_secret_hint"
+msgstr "Raaqeb generates it; the receiver checks each request's signature with it."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_name"
+msgstr "Give the channel a name, at most 80 characters."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_required"
+msgstr "This field is required."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_url"
+msgstr "Enter an address that starts with http or https."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_text"
+msgstr "This value is not valid."
+
+#. js-lingui-explicit-id
+msgid "channel_add"
+msgstr "Add channel"
+
+#. js-lingui-explicit-id
+msgid "channel_new_title"
+msgstr "New channel"
+
+#. js-lingui-explicit-id
+msgid "channel_empty_title"
+msgstr "No notification channels yet"
+
+#. js-lingui-explicit-id
+msgid "channel_empty_description"
+msgstr "Add a channel so your monitors' notifications reach your team."
+
+#. js-lingui-explicit-id
+msgid "channel_column_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "channel_column_type"
+msgstr "Type"
+
+#. js-lingui-explicit-id
+msgid "channel_column_destination"
+msgstr "Destination"
+
+#. js-lingui-explicit-id
+msgid "channel_column_language"
+msgstr "Channel language"
+
+#. js-lingui-explicit-id
+msgid "channel_column_last_send"
+msgstr "Last notification"
+
+#. js-lingui-explicit-id
+msgid "channel_applies_badge"
+msgstr "On new monitors"
+
+#. js-lingui-explicit-id
+msgid "channel_never_sent"
+msgstr "Nothing sent"
+
+#. js-lingui-explicit-id
+msgid "channel_section_details"
+msgstr "Channel"
+
+#. js-lingui-explicit-id
+msgid "channel_field_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "channel_field_type"
+msgstr "Type"
+
+#. js-lingui-explicit-id
+msgid "channel_field_locale"
+msgstr "Channel language"
+
+#. js-lingui-explicit-id
+msgid "channel_locale_install"
+msgstr "The install language"
+
+#. js-lingui-explicit-id
+msgid "channel_locale_none"
+msgstr "This channel sends data in no language"
+
+#. js-lingui-explicit-id
+msgid "channel_field_applies_to_new"
+msgstr "Apply to new monitors by default"
+
+#. js-lingui-explicit-id
+msgid "channel_field_applies_to_new_hint"
+msgstr "Every new monitor starts with this channel selected."
+
+#. js-lingui-explicit-id
+msgid "channel_field_kept"
+msgstr "Stored. Leave it empty to keep it."
+
+#. js-lingui-explicit-id
+msgid "channel_field_renew"
+msgstr "A new signing secret on save"
+
+#. js-lingui-explicit-id
+msgid "channel_field_renew_hint"
+msgstr "After saving, the receiver stops verifying with the old secret."
+
+#. js-lingui-explicit-id
+msgid "channel_secret_after_save"
+msgstr "Shown here once saved."
+
+#. js-lingui-explicit-id
+msgid "channel_secrets_unreadable"
+msgstr "The install key cannot open this channel's secrets. Type them again and save."
+
+#. js-lingui-explicit-id
+msgid "channel_saved"
+msgstr "Channel saved."
+
+#. js-lingui-explicit-id
+msgid "channel_created"
+msgstr "Channel added."
+
+#. js-lingui-explicit-id
+msgid "channel_saving"
+msgstr "Saving…"
+
+#. js-lingui-explicit-id
+msgid "channel_unavailable"
+msgstr "The action could not be done because the database did not answer. Try again."
+
+#. js-lingui-explicit-id
+msgid "channel_not_found"
+msgstr "This channel no longer exists."
+
+#. js-lingui-explicit-id
+msgid "channel_corrupt"
+msgstr "The channels cannot be shown: a stored channel does not fit this version. The channel's id:"
+
+#. js-lingui-explicit-id
+msgid "channel_delete"
+msgstr "Delete channel"
+
+#. js-lingui-explicit-id
+msgid "channel_delete_title"
+msgstr "Delete this channel?"
+
+#. js-lingui-explicit-id
+msgid "channel_delete_description"
+msgstr "It is removed from every monitor that uses it, and its recent notifications are deleted. Deleting cannot be undone."
+
+#. js-lingui-explicit-id
+msgid "channel_section_test"
+msgstr "Send test"
+
+#. js-lingui-explicit-id
+msgid "channel_send_test"
+msgstr "Send test"
+
+#. js-lingui-explicit-id
+msgid "channel_send_test_hint"
+msgstr "Sends one test notification now with the saved settings, without retries."
+
+#. js-lingui-explicit-id
+msgid "channel_sending"
+msgstr "Sending…"
+
+#. js-lingui-explicit-id
+msgid "channel_recent_title"
+msgstr "Recent notifications"
+
+#. js-lingui-explicit-id
+msgid "channel_recent_empty"
+msgstr "Nothing sent yet."
+
+#. js-lingui-explicit-id
+msgid "channel_preview_title"
+msgstr "Notification preview"
+
+#. js-lingui-explicit-id
+msgid "channel_preview_hint"
+msgstr "What this channel receives of each notification, with example values: the monitor, its times and durations are made up. Nothing is sent from here."
+
+#. js-lingui-explicit-id
+msgid "channel_preview_sample"
+msgstr "Example"
+
+#. js-lingui-explicit-id
+msgid "channel_preview_monitor"
+msgstr "Main website"
+
+#. js-lingui-explicit-id
+msgid "channel_preview_reminder"
+msgstr "Reminder"
+
+#. js-lingui-explicit-id
+msgid "channel_send_sent"
+msgstr "Sent"
+
+#. js-lingui-explicit-id
+msgid "channel_send_pending"
+msgstr "Waiting to retry"
+
+#. js-lingui-explicit-id
+msgid "channel_send_queued"
+msgstr "Waiting to send"
+
+#. js-lingui-explicit-id
+msgid "channel_send_failed"
+msgstr "Failed"
+
+#. js-lingui-explicit-id
+msgid "channel_send_test_kind"
+msgstr "Test"
+
+#. js-lingui-explicit-id
+msgid "channel_send_attempts"
+msgstr "{count, plural, one {# attempt} other {# attempts}}"
+
+#. js-lingui-explicit-id
+msgid "channel_send_next"
+msgstr "Next attempt: {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_channels"
+msgstr "Notification channels"
+
+#. js-lingui-explicit-id
+msgid "monitor_channels_hint"
+msgstr "This monitor's notifications go to the selected channels."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_notifications"
+msgstr "Notifications"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_events"
+msgstr "Events that notify"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_down"
+msgstr "Down"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_recovered"
+msgstr "Recovered"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_degraded_started"
+msgstr "Degraded started"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_degraded_ended"
+msgstr "Degraded ended"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_certificate_expiring"
+msgstr "Certificate expiring"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_degraded_hint"
+msgstr "Sent once a degraded threshold is set in the schedule."
+
+#. js-lingui-explicit-id
+msgid "monitor_event_certificate_hint"
+msgstr "At {days} before expiry, then one day before."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_reminder"
+msgstr "Remind while down"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_reminder_hint"
+msgstr "Repeats the down notification while the monitor stays down."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_reminder_every"
+msgstr "Repeat every"
+
+#. js-lingui-explicit-id
+msgid "monitor_reminder_needs_down"
+msgstr "Needs the down event on."
+
+#. js-lingui-explicit-id
+msgid "monitor_channels_empty"
+msgstr "No notification channels yet."
+
+#. js-lingui-explicit-id
+msgid "setting_title"
+msgstr "Settings"
+
+#. js-lingui-explicit-id
+msgid "app_palette_title"
+msgstr "Command palette"
+
+#. js-lingui-explicit-id
+msgid "app_palette_placeholder"
+msgstr "Search pages, monitors and actions"
+
+#. js-lingui-explicit-id
+msgid "app_palette_empty"
+msgstr "No results"
+
+#. js-lingui-explicit-id
+msgid "app_palette_search_monitors"
+msgstr "Search monitors for “{query}”"
+
+#. js-lingui-explicit-id
+msgid "app_shortcuts"
+msgstr "Keyboard shortcuts"
+
+#. js-lingui-explicit-id
+msgid "app_shortcuts_lead"
+msgstr "Shortcuts bind to key positions, so they work on any keyboard layout."
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_palette"
+msgstr "Open the command palette"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_sidebar"
+msgstr "Show or hide the sidebar"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_save"
+msgstr "Save the form you are working in"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_new_monitor"
+msgstr "Add a monitor from the monitors list"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_search"
+msgstr "Focus search"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_shortcuts"
+msgstr "Show this sheet"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_close"
+msgstr "Close what is open"
+
+#. js-lingui-explicit-id
+msgid "app_release_banner"
+msgstr "A new Raaqeb release is out:"
+
+#. js-lingui-explicit-id
+msgid "app_release_notes"
+msgstr "Release notes"
+
+#. js-lingui-explicit-id
+msgid "app_saved"
+msgstr "Saved"
+
+#. js-lingui-explicit-id
+msgid "app_key_ctrl"
+msgstr "Ctrl"
+
+#. js-lingui-explicit-id
+msgid "app_key_esc"
+msgstr "Esc"
+
+#. js-lingui-explicit-id
+msgid "app_unsaved"
+msgstr "Unsaved changes"
+
+#. js-lingui-explicit-id
+msgid "app_no_changes"
+msgstr "No changes to save"
+
+#. js-lingui-explicit-id
+msgid "app_nothing_to_save"
+msgstr "Nothing to save yet"
+
+#. js-lingui-explicit-id
+msgid "app_saving"
+msgstr "Saving"
+
+#. js-lingui-explicit-id
+msgid "app_managed_by_environment"
+msgstr "Managed by environment"
+
+#. js-lingui-explicit-id
+msgid "app_managed_by_environment_hint"
+msgstr "Set by an environment variable at boot; not edited here."
+
+#. js-lingui-explicit-id
+msgid "setting_general"
+msgstr "General"
+
+#. js-lingui-explicit-id
+msgid "setting_appearance"
+msgstr "Appearance"
+
+#. js-lingui-explicit-id
+msgid "setting_account"
+msgstr "Account"
+
+#. js-lingui-explicit-id
+msgid "setting_install_language"
+msgstr "Install language"
+
+#. js-lingui-explicit-id
+msgid "setting_time_zone"
+msgstr "Time zone"
+
+#. js-lingui-explicit-id
+msgid "setting_time_zone_host"
+msgstr "The host's zone:"
+
+#. js-lingui-explicit-id
+msgid "setting_zone_search"
+msgstr "Search a city or a region, such as Riyadh"
+
+#. js-lingui-explicit-id
+msgid "setting_zone_empty"
+msgstr "No zone matches the search."
+
+#. js-lingui-explicit-id
+msgid "setting_zone_suggested"
+msgstr "Suggested"
+
+#. js-lingui-explicit-id
+msgid "setting_zone_all"
+msgstr "Every zone"
+
+#. js-lingui-explicit-id
+msgid "setting_time_now"
+msgstr "Now: {time}"
+
+#. js-lingui-explicit-id
+msgid "setting_clock"
+msgstr "Clock format"
+
+#. js-lingui-explicit-id
+msgid "setting_clock_12h"
+msgstr "12-hour"
+
+#. js-lingui-explicit-id
+msgid "setting_clock_24h"
+msgstr "24-hour"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar"
+msgstr "Calendar"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar_gregorian"
+msgstr "Gregorian"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar_hijri"
+msgstr "Hijri"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar_hijri_gregorian"
+msgstr "Hijri and Gregorian"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar_hint"
+msgstr "Changes how dates read in the admin, on status pages and in notifications; feeds and exports stay Gregorian. Hijri follows the Umm al-Qura calendar."
+
+#. js-lingui-explicit-id
+msgid "setting_public_address"
+msgstr "Public address"
+
+#. js-lingui-explicit-id
+msgid "setting_public_address_hint"
+msgstr "The URL visitors and the operator reach the install at; reset links and the sign-in origin check use it."
+
+#. js-lingui-explicit-id
+msgid "setting_trusted_proxies"
+msgstr "Trusted proxies"
+
+#. js-lingui-explicit-id
+msgid "setting_trusted_proxies_hint"
+msgstr "The IP addresses or CIDR ranges of the reverse proxy in front of Raaqeb, separated by commas. An address listed here sets the visitor's address and the scheme, so list only that proxy. For example:"
+
+#. js-lingui-explicit-id
+msgid "setting_trusted_proxies_invalid"
+msgstr "Each trusted proxy must be an IP address or a CIDR range."
+
+#. js-lingui-explicit-id
+msgid "setting_release_check"
+msgstr "Daily release check"
+
+#. js-lingui-explicit-id
+msgid "setting_release_check_hint"
+msgstr "Once a day the server asks GitHub for a newer release and shows a banner in the admin area; it never updates itself."
+
+#. js-lingui-explicit-id
+msgid "setting_database"
+msgstr "Database backend"
+
+#. js-lingui-explicit-id
+msgid "setting_database_sqlite"
+msgstr "SQLite on this server"
+
+#. js-lingui-explicit-id
+msgid "setting_database_postgres"
+msgstr "Postgres"
+
+#. js-lingui-explicit-id
+msgid "setting_database_hint"
+msgstr "Chosen at onboarding. To move to the other backend: export, then import into a new install."
+
+#. js-lingui-explicit-id
+msgid "setting_operator_language"
+msgstr "Operator language"
+
+#. js-lingui-explicit-id
+msgid "setting_follow_install"
+msgstr "As the install"
+
+#. js-lingui-explicit-id
+msgid "setting_overrides_lead"
+msgstr "Your own choices for your screens. \"As the install\" follows the install's settings."
+
+#. js-lingui-explicit-id
+msgid "setting_overrides_title"
+msgstr "Preferences"
+
+#. js-lingui-explicit-id
+msgid "setting_email_change"
+msgstr "Change email"
+
+#. js-lingui-explicit-id
+msgid "setting_email_new"
+msgstr "New email"
+
+#. js-lingui-explicit-id
+msgid "setting_email_same"
+msgstr "That is the current address."
+
+#. js-lingui-explicit-id
+msgid "setting_password_change"
+msgstr "Change password"
+
+#. js-lingui-explicit-id
+msgid "setting_password_current"
+msgstr "Current password"
+
+#. js-lingui-explicit-id
+msgid "setting_password_new"
+msgstr "New password"
+
+#. js-lingui-explicit-id
+msgid "setting_password_wrong"
+msgstr "The current password is wrong."
+
+#. js-lingui-explicit-id
+msgid "setting_password_note"
+msgstr "Changing the password ends every other session."
+
+#. js-lingui-explicit-id
+msgid "setting_invalid"
+msgstr "Check the values entered."
+
+#. js-lingui-explicit-id
+msgid "setting_unavailable"
+msgstr "Could not save; the database is not answering."
+
+#. js-lingui-explicit-id
+msgid "setting_storage"
+msgstr "Storage"
+
+#. js-lingui-explicit-id
+msgid "setting_retention_days"
+msgstr "Retention"
+
+#. js-lingui-explicit-id
+msgid "setting_retention_hint"
+msgstr "Days of check history a monitor without its own retention keeps: raw checks for up to 30 days, hourly rollups for up to 90, daily rollups beyond. A shorter retention deletes the older history at the next nightly job."
+
+#. js-lingui-explicit-id
+msgid "setting_retention_invalid"
+msgstr "Enter a whole number of days from 1 to 3650."
+
+#. js-lingui-explicit-id
+msgid "setting_size_budget"
+msgstr "Size budget"
+
+#. js-lingui-explicit-id
+msgid "setting_unit_megabytes"
+msgstr "MB"
+
+#. js-lingui-explicit-id
+msgid "setting_size_budget_hint"
+msgstr "Leave it empty for no limit. Over it, Raaqeb deletes the oldest history before the next check is recorded: raw days first, then hourly rollups, then daily ones. Outages, incidents, certificate records and settings are never deleted."
+
+#. js-lingui-explicit-id
+msgid "setting_size_budget_invalid"
+msgstr "Enter a whole number of megabytes from 64 to 1048576 (1 TB), or leave it empty."
+
+#. js-lingui-explicit-id
+msgid "setting_used_size"
+msgstr "Used now: {size}"
+
+#. js-lingui-explicit-id
+msgid "setting_free_disk"
+msgstr "Free disk: {size}"
+
+#. js-lingui-explicit-id
+msgid "setting_reserve_note"
+msgstr "Raaqeb keeps {size} of this disk free, with or without a budget, by deleting the oldest history first. With nothing left to delete, it stops recording checks until there is room."
+
+#. js-lingui-explicit-id
+msgid "setting_reserve_low"
+msgstr "Free disk is under the reserve: Raaqeb is deleting the oldest history and may stop recording checks."
+
+#. js-lingui-explicit-id
+msgid "setting_postgres_unlimited"
+msgstr "Postgres does not tell Raaqeb how much disk is free, so without a size budget Raaqeb keeps everything its retention allows. Set a budget to bound the size of Raaqeb's own tables."
+
+#. js-lingui-explicit-id
+msgid "monitor_search_placeholder"
+msgstr "Search by name or target"
+
+#. js-lingui-explicit-id
+msgid "monitor_filter_group"
+msgstr "Group"
+
+#. js-lingui-explicit-id
+msgid "monitor_filter_all_groups"
+msgstr "All groups"
+
+#. js-lingui-explicit-id
+msgid "monitor_filter_tag"
+msgstr "Tag"
+
+#. js-lingui-explicit-id
+msgid "monitor_filter_all_tags"
+msgstr "All tags"
+
+#. js-lingui-explicit-id
+msgid "monitor_sort"
+msgstr "Sort"
+
+#. js-lingui-explicit-id
+msgid "monitor_sort_name"
+msgstr "By name"
+
+#. js-lingui-explicit-id
+msgid "monitor_sort_newest"
+msgstr "Newest first"
+
+#. js-lingui-explicit-id
+msgid "monitor_no_matches"
+msgstr "No monitors match the filters"
+
+#. js-lingui-explicit-id
+msgid "monitor_no_matches_hint"
+msgstr "Change the search, the group or the tag, or clear the filters."
+
+#. js-lingui-explicit-id
+msgid "monitor_clear_filters"
+msgstr "Clear filters"
+
+#. js-lingui-explicit-id
+msgid "monitor_select_all"
+msgstr "Select all"
+
+#. js-lingui-explicit-id
+msgid "monitor_select_one"
+msgstr "Select {name}"
+
+#. js-lingui-explicit-id
+msgid "monitor_selected"
+msgstr "Selected: {count}"
+
+#. js-lingui-explicit-id
+msgid "monitor_actions"
+msgstr "Actions"
+
+#. js-lingui-explicit-id
+msgid "monitor_edit"
+msgstr "Edit"
+
+#. js-lingui-explicit-id
+msgid "monitor_duplicate"
+msgstr "Duplicate"
+
+#. js-lingui-explicit-id
+msgid "monitor_copy_name"
+msgstr "Copy of {name}"
+
+#. js-lingui-explicit-id
+msgid "monitor_copy_credentials"
+msgstr "Authentication and request headers were not copied; type them again."
+
+#. js-lingui-explicit-id
+msgid "monitor_copy_connection_url"
+msgstr "The connection URL was not copied; type it again."
+
+#. js-lingui-explicit-id
+msgid "monitor_pause"
+msgstr "Pause"
+
+#. js-lingui-explicit-id
+msgid "monitor_acknowledge"
+msgstr "Acknowledge"
+
+#. js-lingui-explicit-id
+msgid "monitor_resume"
+msgstr "Resume"
+
+#. js-lingui-explicit-id
+msgid "monitor_delete_title"
+msgstr "Delete the selected monitors?"
+
+#. js-lingui-explicit-id
+msgid "monitor_delete_description"
+msgstr "{count, plural, one {# monitor} other {# monitors}} and the check history will be deleted. This cannot be undone."
+
+#. js-lingui-explicit-id
+msgid "monitor_unavailable"
+msgstr "The action could not be done because the database did not answer. Try again."
+
+#. js-lingui-explicit-id
+msgid "monitor_type_http"
+msgstr "HTTP"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_tcp"
+msgstr "TCP"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_dns"
+msgstr "DNS"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_postgres"
+msgstr "Postgres"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_mysql"
+msgstr "MySQL"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_redis"
+msgstr "Redis"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_database"
+msgstr "Database"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_docker"
+msgstr "Docker"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_heartbeat"
+msgstr "Heartbeat"
+
+#. js-lingui-explicit-id
+msgid "monitor_column_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "monitor_column_organization"
+msgstr "Group and tags"
+
+#. js-lingui-explicit-id
+msgid "monitor_column_state"
+msgstr "State"
+
+#. js-lingui-explicit-id
+msgid "monitor_delete_one_title"
+msgstr "Delete this monitor?"
+
+#. js-lingui-explicit-id
+msgid "monitor_delete_one_description"
+msgstr "This monitor and its check history will be deleted. This cannot be undone."
+
+#. js-lingui-explicit-id
+msgid "monitor_corrupt"
+msgstr "The list cannot be shown: a stored monitor's settings do not fit this version. The monitor's id:"
+
+#. js-lingui-explicit-id
+msgid "reason_ok"
+msgstr "Check passed"
+
+#. js-lingui-explicit-id
+msgid "reason_timeout"
+msgstr "Timed out"
+
+#. js-lingui-explicit-id
+msgid "reason_dns_failed"
+msgstr "DNS lookup failed"
+
+#. js-lingui-explicit-id
+msgid "reason_connection_refused"
+msgstr "Connection refused"
+
+#. js-lingui-explicit-id
+msgid "reason_connection_failed"
+msgstr "Connection failed"
+
+#. js-lingui-explicit-id
+msgid "reason_certificate_expired"
+msgstr "Certificate expired"
+
+#. js-lingui-explicit-id
+msgid "reason_certificate_invalid"
+msgstr "Certificate invalid"
+
+#. js-lingui-explicit-id
+msgid "reason_unexpected_status"
+msgstr "Unexpected status code"
+
+#. js-lingui-explicit-id
+msgid "reason_assertion_failed"
+msgstr "An assertion failed"
+
+#. js-lingui-explicit-id
+msgid "reason_slow"
+msgstr "Slow response"
+
+#. js-lingui-explicit-id
+msgid "reason_too_many_redirects"
+msgstr "Too many redirects"
+
+#. js-lingui-explicit-id
+msgid "reason_heartbeat_late"
+msgstr "Heartbeat late"
+
+#. js-lingui-explicit-id
+msgid "reason_unknown"
+msgstr "Unknown error"
+
+#. js-lingui-explicit-id
+msgid "reason_dns_mismatch"
+msgstr "The DNS answer did not match"
+
+#. js-lingui-explicit-id
+msgid "reason_auth_failed"
+msgstr "The server refused the sign-in"
+
+#. js-lingui-explicit-id
+msgid "reason_query_failed"
+msgstr "The server refused the query"
+
+#. js-lingui-explicit-id
+msgid "reason_container_not_found"
+msgstr "No container has this name"
+
+#. js-lingui-explicit-id
+msgid "reason_container_not_running"
+msgstr "The container is not running"
+
+#. js-lingui-explicit-id
+msgid "reason_container_restarting"
+msgstr "Docker is restarting the container"
+
+#. js-lingui-explicit-id
+msgid "reason_container_paused"
+msgstr "The container is paused"
+
+#. js-lingui-explicit-id
+msgid "reason_container_dead"
+msgstr "The container is dead"
+
+#. js-lingui-explicit-id
+msgid "reason_container_unhealthy"
+msgstr "The container's health check reports it unhealthy"
+
+#. js-lingui-explicit-id
+msgid "reason_tls_required"
+msgstr "The server signs in only over an encrypted connection; add ?sslmode=require to the URL"
+
+#. js-lingui-explicit-id
+msgid "monitor_status_up"
+msgstr "Up"
+
+#. js-lingui-explicit-id
+msgid "monitor_status_down"
+msgstr "Down"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_required"
+msgstr "This field is required."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_too_long"
+msgstr "Use at most {max} characters."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_whole_number"
+msgstr "Enter a whole number."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_range"
+msgstr "Enter a value from {min} to {max}."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_period"
+msgstr "Enter a period from 20 seconds to 30 days."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_grace"
+msgstr "Enter a period above zero and no longer than 30 days."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_cron"
+msgstr "Cron cannot read this expression: five fields or a nickname such as @daily."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_url"
+msgstr "Enter a full address starting with http or https."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_url_credentials"
+msgstr "Put the user name and password under authentication, not in the address."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_connection_url_postgres"
+msgstr "Enter a full URL starting with postgres or postgresql that names the host."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_connection_url_mysql"
+msgstr "Enter a full URL starting with mysql or mariadb that names the host."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_connection_url_redis"
+msgstr "Enter a full URL starting with redis or rediss that names the host."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_docker_endpoint"
+msgstr "Enter a path starting with /, or an http or https URL with no user name, password or query."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_container"
+msgstr "Write the name as Docker does: a letter or digit, then letters, digits, _, . or -, with no leading slash."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_host"
+msgstr "Enter a host name or an IP address."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_dns_name"
+msgstr "Enter a domain name of Latin letters, digits, dashes and underscores, such as example.com or _dmarc.example.com."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_status_codes"
+msgstr "Use codes such as 200, 2xx or 200-299, separated by commas."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_pattern"
+msgstr "This pattern is not a valid regular expression."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_json_path"
+msgstr "This path is not valid: keys separated by dots, with indexes in square brackets, such as data.items[0].status."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_resolver"
+msgstr "Enter an IP address, with an optional port."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_header_name"
+msgstr "A header name is Latin letters, digits and dashes, with no spaces."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_header_value"
+msgstr "A header value is one line of Latin characters."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_header_duplicate"
+msgstr "This header is already set."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_user"
+msgstr "A user name cannot contain a colon (:)."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_too_many"
+msgstr "At most {max}."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_invalid"
+msgstr "This value is not valid."
+
+#. js-lingui-explicit-id
+msgid "monitor_new_title"
+msgstr "New monitor"
+
+#. js-lingui-explicit-id
+msgid "monitor_created"
+msgstr "Monitor added."
+
+#. js-lingui-explicit-id
+msgid "monitor_saved"
+msgstr "Monitor saved."
+
+#. js-lingui-explicit-id
+msgid "monitor_edit_title"
+msgstr "Edit monitor"
+
+#. js-lingui-explicit-id
+msgid "monitor_form_corrupt"
+msgstr "The form cannot open: this monitor's stored settings do not fit this version. The monitor's id:"
+
+#. js-lingui-explicit-id
+msgid "monitor_save_not_found"
+msgstr "This monitor no longer exists."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_basics"
+msgstr "Monitor"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_basics_hint"
+msgstr "The name, the check type and what it checks."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_description"
+msgstr "Description"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_check_type"
+msgstr "Check type"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_method"
+msgstr "Method"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_url"
+msgstr "URL"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_database_type"
+msgstr "Database type"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_connection_url"
+msgstr "Connection URL"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_connection_url_hint"
+msgstr "It holds the password, so Raaqeb stores it encrypted and never shows it again."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_connection_url_mysql_hint"
+msgstr "With MySQL 8's default sign-in, Raaqeb signs in only over an encrypted connection, so add ?sslmode=require to the URL."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_query"
+msgstr "Query"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_command"
+msgstr "Command"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_query_hint"
+msgstr "Optional. Raaqeb runs it as written, so keep it read-only and sign in as a user that can only read."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_answer_expected_hint"
+msgstr "Optional. The check is up when the first value of the answer equals this text: the first column of the first row, or the Redis reply."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_docker_endpoint"
+msgstr "Docker endpoint"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_docker_endpoint_hint"
+msgstr "A Unix socket's path such as /var/run/docker.sock, or the http or https URL of a Docker Engine API, such as a read-only socket proxy. Podman's compatible socket works too."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_container"
+msgstr "Container name"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_container_hint"
+msgstr "Raaqeb follows the name, so the check survives the container being recreated, as compose does."
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_list"
+msgstr "List the daemon's containers"
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_listing"
+msgstr "Listing containers…"
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_choose"
+msgstr "Choose a container"
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_empty"
+msgstr "The daemon has no containers."
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_failed"
+msgstr "The containers could not be listed; type the name instead."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_host"
+msgstr "Host"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_host_hint"
+msgstr "A host name, an IPv4 address or an IPv6 address. Write an IPv6 address without square brackets."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_port"
+msgstr "Port"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_dns_name"
+msgstr "Domain name"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_record_type"
+msgstr "Record type"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_expected"
+msgstr "Expected value"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_expected_hint"
+msgstr "Leave it empty to accept any answer."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_resolver"
+msgstr "DNS resolver"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_resolver_hint"
+msgstr "Leave it empty to use the system's resolver."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_schedule"
+msgstr "Schedule"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_schedule_hint"
+msgstr "How often the check runs, how long it waits and how often it retries."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_interval"
+msgstr "Interval"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_timeout"
+msgstr "Timeout"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_retries"
+msgstr "Retries before down"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_degraded"
+msgstr "Degraded threshold"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_degraded_hint"
+msgstr "A check slower than this succeeds and shows as degraded; unlike the response-time assertion, it never fails the check. Leave it empty to turn it off."
+
+#. js-lingui-explicit-id
+msgid "monitor_unit_seconds"
+msgstr "seconds"
+
+#. js-lingui-explicit-id
+msgid "monitor_unit_ms"
+msgstr "ms"
+
+#. js-lingui-explicit-id
+msgid "monitor_unit_days"
+msgstr "days"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_success_rule"
+msgstr "Success rules"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_success_rule_hint"
+msgstr "A check is up when every assertion passes, in order."
+
+#. js-lingui-explicit-id
+msgid "monitor_add_assertion"
+msgstr "Add assertion"
+
+#. js-lingui-explicit-id
+msgid "monitor_remove_assertion"
+msgstr "Remove assertion"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_kind"
+msgstr "Assertion kind"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_status"
+msgstr "Status code in"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_body_contains"
+msgstr "Body contains"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_body_not_contains"
+msgstr "Body does not contain"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_json_equals"
+msgstr "JSON value equals"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_json_matches"
+msgstr "JSON value matches"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_header_equals"
+msgstr "Header equals"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_response_time_under"
+msgstr "Response time under"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_codes"
+msgstr "Status codes"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_text"
+msgstr "Text"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_path"
+msgstr "Path, such as data.status"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_value"
+msgstr "Value"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_pattern"
+msgstr "Pattern"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_header"
+msgstr "Header name"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_request"
+msgstr "Request"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_request_hint"
+msgstr "What each attempt sends."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_body"
+msgstr "Request body"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_body_hint"
+msgstr "GET and HEAD send no body."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_follow_redirects"
+msgstr "Follow redirects"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_ignore_tls"
+msgstr "Ignore TLS errors"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_ignore_tls_hint"
+msgstr "Accepts expired and self-signed certificates."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_auth"
+msgstr "Authentication"
+
+#. js-lingui-explicit-id
+msgid "monitor_auth_none"
+msgstr "None"
+
+#. js-lingui-explicit-id
+msgid "monitor_auth_basic"
+msgstr "User name and password"
+
+#. js-lingui-explicit-id
+msgid "monitor_auth_bearer"
+msgstr "Bearer token"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_user"
+msgstr "User name"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_password"
+msgstr "Password"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_token"
+msgstr "Token"
+
+#. js-lingui-explicit-id
+msgid "monitor_secret_kept"
+msgstr "Saved; leave it empty to keep it"
+
+#. js-lingui-explicit-id
+msgid "monitor_url_kept"
+msgstr "Saved; leave it empty to keep it"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_headers"
+msgstr "Request headers"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_headers_hint"
+msgstr "Stored encrypted with the authentication; their values are never shown after saving."
+
+#. js-lingui-explicit-id
+msgid "monitor_add_header"
+msgstr "Add header"
+
+#. js-lingui-explicit-id
+msgid "monitor_remove_header"
+msgstr "Remove header"
+
+#. js-lingui-explicit-id
+msgid "monitor_header_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "monitor_header_value"
+msgstr "Value"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_capture"
+msgstr "Certificate and capture"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tls_expiry"
+msgstr "Warn before the certificate expires"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tls_expiry_days"
+msgstr "Before it expires"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tls_expiry_hint"
+msgstr "For https addresses only."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_capture_mode"
+msgstr "Capture mode"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_capture_mode_hint"
+msgstr "The response headers and the first 4 KB of the body, never the credentials."
+
+#. js-lingui-explicit-id
+msgid "monitor_capture_off"
+msgstr "Off"
+
+#. js-lingui-explicit-id
+msgid "monitor_capture_on_failure"
+msgstr "On failure"
+
+#. js-lingui-explicit-id
+msgid "monitor_capture_always"
+msgstr "Always"
+
+#. js-lingui-explicit-id
+msgid "monitor_capture_cost"
+msgstr "About {size} a day for this monitor."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_organization"
+msgstr "Organization and retention"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_group"
+msgstr "Group"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tags"
+msgstr "Tags"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tags_hint"
+msgstr "Separate them with commas."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_retention"
+msgstr "Retention"
+
+#. js-lingui-explicit-id
+msgid "monitor_retention_default"
+msgstr "The install default ({days})"
+
+#. js-lingui-explicit-id
+msgid "monitor_retention_custom"
+msgstr "Its own"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_heartbeat"
+msgstr "Heartbeat schedule"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_heartbeat_hint"
+msgstr "When your job calls its URL. A heartbeat later than the grace period marks the monitor down."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_schedule_kind"
+msgstr "Schedule by"
+
+#. js-lingui-explicit-id
+msgid "monitor_schedule_every"
+msgstr "A fixed period"
+
+#. js-lingui-explicit-id
+msgid "monitor_schedule_cron"
+msgstr "A cron expression"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_every"
+msgstr "One heartbeat every"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_unit"
+msgstr "Unit"
+
+#. js-lingui-explicit-id
+msgid "monitor_duration_seconds"
+msgstr "seconds"
+
+#. js-lingui-explicit-id
+msgid "monitor_duration_minutes"
+msgstr "minutes"
+
+#. js-lingui-explicit-id
+msgid "monitor_duration_hours"
+msgstr "hours"
+
+#. js-lingui-explicit-id
+msgid "monitor_duration_days"
+msgstr "days"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_cron"
+msgstr "Cron expression"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_cron_hint"
+msgstr "Five fields or a nickname such as @daily, read in the install time zone."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_grace"
+msgstr "Grace period"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_grace_hint"
+msgstr "Left empty, it is a fifth of the period."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_title"
+msgstr "Heartbeat URL"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_hint"
+msgstr "Your job calls this URL each time it runs, with GET, HEAD or POST."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_after_save"
+msgstr "The URL appears once the monitor is saved."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_command"
+msgstr "For example, at the end of the job:"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_last"
+msgstr "Last heartbeat"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_source"
+msgstr "Source address"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_none"
+msgstr "No heartbeat has arrived yet."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_renew"
+msgstr "A new URL on save"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_renew_hint"
+msgstr "The current URL stops working when you save."
+
+#. js-lingui-explicit-id
+msgid "monitor_test_title"
+msgstr "Test now"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_hint"
+msgstr "Runs one check of the form as it stands; nothing is saved or recorded."
+
+#. js-lingui-explicit-id
+msgid "monitor_test_run"
+msgstr "Test now"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_running"
+msgstr "Checking…"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_unavailable"
+msgstr "The test could not run: the server did not answer."
+
+#. js-lingui-explicit-id
+msgid "monitor_test_response_time"
+msgstr "Response time"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_status_code"
+msgstr "Status code"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_bytes"
+msgstr "Body size"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_address"
+msgstr "Connected to"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_records"
+msgstr "Answered records"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_answer"
+msgstr "Answer"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_expected"
+msgstr "Expected"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_observed"
+msgstr "Observed"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_target"
+msgstr "Target"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_error"
+msgstr "Error text"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_headers"
+msgstr "Response headers"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_body"
+msgstr "First 4 KB of the body"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_redacted"
+msgstr "Redacted"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_passed"
+msgstr "Passed"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_failed"
+msgstr "Failed"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_unreached"
+msgstr "Not evaluated"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_ms"
+msgstr "Time"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_token"
+msgstr "A token is one line of Latin characters."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_number"
+msgstr "Enter a number."
+
+#. js-lingui-explicit-id
+msgid "monitor_check_now"
+msgstr "Check now"
+
+#. js-lingui-explicit-id
+msgid "monitor_checking"
+msgstr "Checking…"
+
+#. js-lingui-explicit-id
+msgid "monitor_every"
+msgstr "Every {interval}"
+
+#. js-lingui-explicit-id
+msgid "monitor_last_check"
+msgstr "Last check: {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_no_checks"
+msgstr "No checks yet."
+
+#. js-lingui-explicit-id
+msgid "monitor_uptime_window"
+msgstr "Uptime, last {window}"
+
+#. js-lingui-explicit-id
+msgid "monitor_no_data"
+msgstr "No data"
+
+#. js-lingui-explicit-id
+msgid "monitor_downtime"
+msgstr "Downtime"
+
+#. js-lingui-explicit-id
+msgid "monitor_observed_time"
+msgstr "Observed time"
+
+#. js-lingui-explicit-id
+msgid "monitor_days_title"
+msgstr "Daily uptime"
+
+#. js-lingui-explicit-id
+msgid "monitor_day_show_on_chart"
+msgstr "Show on the chart"
+
+#. js-lingui-explicit-id
+msgid "monitor_response_time"
+msgstr "Response time"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_range"
+msgstr "Range shown"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_average"
+msgstr "Average"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_min"
+msgstr "Lowest"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_max"
+msgstr "Highest"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_empty"
+msgstr "No checks in this range."
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_all_down"
+msgstr "Every check in this range failed."
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_label"
+msgstr "Response-time chart"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_down"
+msgstr "Down check"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_zoom_out"
+msgstr "Zoom out"
+
+#. js-lingui-explicit-id
+msgid "monitor_recent_checks"
+msgstr "Recent checks"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_time"
+msgstr "Time"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_result"
+msgstr "Result"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_reason"
+msgstr "Reason"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_attempts"
+msgstr "Attempts"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_attempts_count"
+msgstr "{count, plural, one {# attempt} other {# attempts}}"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_open"
+msgstr "Details"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_close"
+msgstr "Hide"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_nothing_kept"
+msgstr "Nothing was kept with this check."
+
+#. js-lingui-explicit-id
+msgid "monitor_check_corrupt"
+msgstr "This check's record cannot be read: it does not fit this version."
+
+#. js-lingui-explicit-id
+msgid "monitor_outages_title"
+msgstr "Outages"
+
+#. js-lingui-explicit-id
+msgid "monitor_outages_count"
+msgstr "{count, plural, one {# outage} other {# outages}} in the last 90 days"
+
+#. js-lingui-explicit-id
+msgid "monitor_outages_newest"
+msgstr "Showing the newest {shown}."
+
+#. js-lingui-explicit-id
+msgid "monitor_outage_detected"
+msgstr "Detected at"
+
+#. js-lingui-explicit-id
+msgid "monitor_outage_duration"
+msgstr "Duration"
+
+#. js-lingui-explicit-id
+msgid "monitor_outage_ongoing"
+msgstr "Ongoing for {duration}"
+
+#. js-lingui-explicit-id
+msgid "monitor_outage_acknowledged"
+msgstr "Acknowledged {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_title"
+msgstr "Certificate record"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_subject"
+msgstr "Subject"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_issuer"
+msgstr "Issuer"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_valid_from"
+msgstr "Valid from"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_valid_to"
+msgstr "Valid until"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_names"
+msgstr "Names"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_fingerprint"
+msgstr "Fingerprint"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_last_seen"
+msgstr "Last read"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_expiring"
+msgstr "Expiring soon"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_expired"
+msgstr "Expired"
+
+#. js-lingui-explicit-id
+msgid "monitor_detail_corrupt"
+msgstr "The monitor cannot be shown: a stored record of it does not fit this version. The monitor's id:"
+
+#. js-lingui-explicit-id
+msgid "monitor_detail_unavailable"
+msgstr "This cannot be shown because the database did not answer. Try again."
+
+#. js-lingui-explicit-id
+msgid "channel_type_email"
+msgstr "Email"
+
+#. js-lingui-explicit-id
+msgid "channel_field_from"
+msgstr "Sender"
+
+#. js-lingui-explicit-id
+msgid "channel_field_from_hint"
+msgstr "An address, optionally after a name: Raaqeb <alerts@raaqeb.dev>"
+
+#. js-lingui-explicit-id
+msgid "channel_refused_from"
+msgstr "Enter a valid address, optionally after a name with the address in angle brackets."
+
+#. js-lingui-explicit-id
+msgid "channel_field_to"
+msgstr "Recipients"
+
+#. js-lingui-explicit-id
+msgid "channel_field_to_hint"
+msgstr "One or more addresses separated by commas, up to 10."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_to"
+msgstr "Enter from 1 to 10 valid addresses separated by commas."
+
+#. js-lingui-explicit-id
+msgid "channel_field_host"
+msgstr "SMTP server"
+
+#. js-lingui-explicit-id
+msgid "channel_refused_host"
+msgstr "Enter a host name or an IP address, without a scheme or a port."
+
+#. js-lingui-explicit-id
+msgid "channel_field_security"
+msgstr "Connection security"
+
+#. js-lingui-explicit-id
+msgid "channel_security_starttls"
+msgstr "STARTTLS"
+
+#. js-lingui-explicit-id
+msgid "channel_security_starttls_hint"
+msgstr "The connection starts plain and turns to TLS before any user name and password are sent."
+
+#. js-lingui-explicit-id
+msgid "channel_security_tls"
+msgstr "TLS"
+
+#. js-lingui-explicit-id
+msgid "channel_security_tls_hint"
+msgstr "The connection is encrypted from its first byte."
+
+#. js-lingui-explicit-id
+msgid "channel_security_none"
+msgstr "None"
+
+#. js-lingui-explicit-id
+msgid "channel_security_none_hint"
+msgstr "Without security no user name or password is sent; it is for a relay on the same host or network."
+
+#. js-lingui-explicit-id
+msgid "channel_field_port"
+msgstr "Port"
+
+#. js-lingui-explicit-id
+msgid "channel_field_port_hint"
+msgstr "587 for STARTTLS, 465 for TLS, 25 without security."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_port"
+msgstr "Enter a port from 1 to 65535."
+
+#. js-lingui-explicit-id
+msgid "channel_field_username"
+msgstr "User name"
+
+#. js-lingui-explicit-id
+msgid "channel_field_username_hint"
+msgstr "Leave it empty if the server asks for no sign-in."
+
+#. js-lingui-explicit-id
+msgid "channel_field_password"
+msgstr "Password"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_down"
+msgstr "{monitor} is down"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_recovered"
+msgstr "{monitor} is up again"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_degraded_started"
+msgstr "{monitor} is degraded"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_degraded_ended"
+msgstr "{monitor} is no longer degraded"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_certificate_expiring"
+msgstr "{monitor}: the certificate expires soon"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_test"
+msgstr "Test message from Raaqeb"
+
+#. js-lingui-explicit-id
+msgid "channel_text_down"
+msgstr "The monitor is down."
+
+#. js-lingui-explicit-id
+msgid "channel_text_recovered"
+msgstr "The monitor is up again."
+
+#. js-lingui-explicit-id
+msgid "channel_text_degraded_started"
+msgstr "The monitor is degraded."
+
+#. js-lingui-explicit-id
+msgid "channel_text_degraded_ended"
+msgstr "The monitor is no longer degraded."
+
+#. js-lingui-explicit-id
+msgid "channel_text_certificate_expiring"
+msgstr "The monitor's certificate expires soon."
+
+#. js-lingui-explicit-id
+msgid "channel_text_test"
+msgstr "This is a test message from Raaqeb. Its arrival means the channel works."
+
+#. js-lingui-explicit-id
+msgid "channel_line_monitor"
+msgstr "Monitor: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_target"
+msgstr "Target: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_reason"
+msgstr "Reason: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_downtime"
+msgstr "Downtime: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_time_left"
+msgstr "Time left: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_expires_at"
+msgstr "Expires: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_time"
+msgstr "Time: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_link"
+msgstr "Link: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_channel"
+msgstr "Channel: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_reminder"
+msgstr "{monitor} is still down"
+
+#. js-lingui-explicit-id
+msgid "channel_text_reminder"
+msgstr "The monitor is still down."
+
+#. js-lingui-explicit-id
+msgid "channel_line_down_for"
+msgstr "Down for: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_open_incident"
+msgstr "Open an incident: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_link_monitor"
+msgstr "Open the monitor"
+
+#. js-lingui-explicit-id
+msgid "channel_link_open_incident"
+msgstr "Open an incident"
+
+#. js-lingui-explicit-id
+msgid "channel_type_slack"
+msgstr "Slack"
+
+#. js-lingui-explicit-id
+msgid "channel_type_discord"
+msgstr "Discord"
+
+#. js-lingui-explicit-id
+msgid "channel_type_telegram"
+msgstr "Telegram"
+
+#. js-lingui-explicit-id
+msgid "channel_type_ntfy"
+msgstr "ntfy"
+
+#. js-lingui-explicit-id
+msgid "channel_type_webhook_lead"
+msgstr "Posts signed JSON to an address you set."
+
+#. js-lingui-explicit-id
+msgid "channel_type_email_lead"
+msgstr "Sends mail through an SMTP server you set."
+
+#. js-lingui-explicit-id
+msgid "channel_type_slack_lead"
+msgstr "To a channel through an incoming webhook."
+
+#. js-lingui-explicit-id
+msgid "channel_type_discord_lead"
+msgstr "To a channel through a server webhook."
+
+#. js-lingui-explicit-id
+msgid "channel_type_telegram_lead"
+msgstr "To a chat or group through a bot."
+
+#. js-lingui-explicit-id
+msgid "channel_type_ntfy_lead"
+msgstr "A phone notification through an ntfy topic."
+
+#. js-lingui-explicit-id
+msgid "channel_field_slack_url_hint"
+msgstr "The incoming webhook URL from Slack, usually starting with https://hooks.slack.com. Stored encrypted and never shown after saving."
+
+#. js-lingui-explicit-id
+msgid "channel_field_discord_url_hint"
+msgstr "The webhook URL from the Discord channel's settings, usually starting with https://discord.com/api/webhooks. Stored encrypted and never shown after saving."
+
+#. js-lingui-explicit-id
+msgid "channel_field_bot_token"
+msgstr "Bot token"
+
+#. js-lingui-explicit-id
+msgid "channel_field_bot_token_hint"
+msgstr "@BotFather gives it to you when you create the bot. Stored encrypted and never shown after saving."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_bot_token"
+msgstr "Enter the token exactly as @BotFather gave it: the bot's number, a colon, then a long code."
+
+#. js-lingui-explicit-id
+msgid "channel_field_chat_id"
+msgstr "Chat ID"
+
+#. js-lingui-explicit-id
+msgid "channel_field_chat_id_hint"
+msgstr "The chat's number, negative for a group, or a public channel's name such as @raaqeb_alerts. Add the bot to the chat first."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_chat_id"
+msgstr "Enter a number, or a channel name that starts with @."
+
+#. js-lingui-explicit-id
+msgid "channel_field_server"
+msgstr "Server"
+
+#. js-lingui-explicit-id
+msgid "channel_field_server_hint"
+msgstr "The ntfy server's address. The public server is https://ntfy.sh."
+
+#. js-lingui-explicit-id
+msgid "channel_field_topic"
+msgstr "Topic"
+
+#. js-lingui-explicit-id
+msgid "channel_field_topic_hint"
+msgstr "The topic your apps subscribe to. On the public server anyone who knows it can read it, so pick a name that is hard to guess. Stored encrypted and never shown after saving."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_topic"
+msgstr "Use only Latin letters, digits, dashes and underscores, at most 64 characters."
+
+#. js-lingui-explicit-id
+msgid "channel_field_access_token"
+msgstr "Access token"
+
+#. js-lingui-explicit-id
+msgid "channel_field_access_token_hint"
+msgstr "Optional, for a server that requires a login. Stored encrypted and never shown after saving."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_server"
+msgstr "Enter the server's address alone, without the topic, such as https://ntfy.sh."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_access_token"
+msgstr "Enter the token as the server gave it, with no spaces."
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_title"
+msgstr "Password recovery"
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_intro"
+msgstr "Enter the operator account's email and a reset link will be sent to it."
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_submit"
+msgstr "Send the link"
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_sent"
+msgstr "If that is the operator account's email, a link valid for one hour was sent to it."
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_no_mail"
+msgstr "If no email arrives within a few minutes, the email channel may not be working. Run this command on the server to print a link without email:"
+
+#. js-lingui-explicit-id
+msgid "auth_no_email_title"
+msgstr "This install has no email"
+
+#. js-lingui-explicit-id
+msgid "auth_no_email_intro"
+msgstr "There is no email channel, so no reset link can be sent. Run this command on the server:"
+
+#. js-lingui-explicit-id
+msgid "auth_no_email_prints"
+msgstr "The command prints a link to open in the browser to set a new password."
+
+#. js-lingui-explicit-id
+msgid "auth_back_to_sign_in"
+msgstr "Back to sign-in"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_title"
+msgstr "Set a new password"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_new_password"
+msgstr "New password"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_submit"
+msgstr "Save the password"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_done"
+msgstr "The password was changed. Sign in with it."
+
+#. js-lingui-explicit-id
+msgid "auth_reset_invalid_link"
+msgstr "This link is not valid or has expired. Ask for a new one."
+
+#. js-lingui-explicit-id
+msgid "auth_code_title"
+msgstr "Second step"
+
+#. js-lingui-explicit-id
+msgid "auth_code_intro"
+msgstr "A six-digit one-time code was sent to your account's email."
+
+#. js-lingui-explicit-id
+msgid "auth_code_label"
+msgstr "One-time code"
+
+#. js-lingui-explicit-id
+msgid "auth_code_trust"
+msgstr "Trust this browser for 30 days"
+
+#. js-lingui-explicit-id
+msgid "auth_code_submit"
+msgstr "Confirm"
+
+#. js-lingui-explicit-id
+msgid "auth_code_resend"
+msgstr "Send a new code"
+
+#. js-lingui-explicit-id
+msgid "auth_code_resent"
+msgstr "A new code was sent."
+
+#. js-lingui-explicit-id
+msgid "auth_code_wrong"
+msgstr "The code is not right."
+
+#. js-lingui-explicit-id
+msgid "auth_code_no_attempts"
+msgstr "No attempts left. Ask for a new code."
+
+#. js-lingui-explicit-id
+msgid "auth_code_expired"
+msgstr "The code has expired. Ask for a new one."
+
+#. js-lingui-explicit-id
+msgid "auth_code_not_sent"
+msgstr "The code could not be sent. Try again."
+
+#. js-lingui-explicit-id
+msgid "auth_mail_reset_subject"
+msgstr "Raaqeb: password reset link"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_reset_sentence"
+msgstr "Open this link to set a new password. It is valid for one hour."
+
+#. js-lingui-explicit-id
+msgid "auth_mail_code_subject"
+msgstr "Raaqeb: your one-time code"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_code_sentence"
+msgstr "This is your one-time code for sign-in. It is valid for five minutes."
+
+#. js-lingui-explicit-id
+msgid "auth_mail_test_subject"
+msgstr "Raaqeb: test message"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_test_sentence"
+msgstr "This is a test message from Raaqeb. Receiving it means sign-in email works."
+
+#. js-lingui-explicit-id
+msgid "setting_sign_in"
+msgstr "Sign-in"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_title"
+msgstr "Sign-in email"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_intro"
+msgstr "The channel that sends the reset link and the one-time code to the operator account's email, and every message to the status pages' subscribers:"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_channel"
+msgstr "Email channel"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_none"
+msgstr "There is no email channel yet. Add one on the channels page."
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_test"
+msgstr "Send a test message"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_test_sent"
+msgstr "The channel accepted the message. Check your email."
+
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_title"
+msgstr "Second step"
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_intro"
+msgstr "After the password, sign-in asks for a code from the authenticator app or one sent by email. Emailed codes can be switched on once a test message went through, so you are not locked out."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_on"
+msgstr "The second step is on."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_off"
+msgstr "The second step is off."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_needs_test"
+msgstr "It opens once a test message arrives through the sign-in mail channel above, or set up an authenticator app below."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_enable"
+msgstr "Turn on with emailed codes"
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_disable"
+msgstr "Turn the second step off"
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_not_tested"
+msgstr "No test message has gone through this channel yet."
+
+#. js-lingui-explicit-id
+msgid "auth_sending"
+msgstr "Sending…"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_note"
+msgstr "At least 8 characters. Saving it ends every session."
+
+#. js-lingui-explicit-id
+msgid "auth_reset_ask_new"
+msgstr "Ask for a new link"
+
+#. js-lingui-explicit-id
+msgid "component_list_title"
+msgstr "Components"
+
+#. js-lingui-explicit-id
+msgid "component_level_operational"
+msgstr "Operational"
+
+#. js-lingui-explicit-id
+msgid "component_level_under_maintenance"
+msgstr "Under maintenance"
+
+#. js-lingui-explicit-id
+msgid "component_level_degraded_performance"
+msgstr "Degraded performance"
+
+#. js-lingui-explicit-id
+msgid "component_level_partial_outage"
+msgstr "Partial outage"
+
+#. js-lingui-explicit-id
+msgid "component_level_major_outage"
+msgstr "Major outage"
+
+#. js-lingui-explicit-id
+msgid "component_add"
+msgstr "Add component"
+
+#. js-lingui-explicit-id
+msgid "component_empty_title"
+msgstr "No components yet"
+
+#. js-lingui-explicit-id
+msgid "component_empty_description"
+msgstr "A component is what status pages show visitors. Link it to monitors to derive its status from them, or set its status by hand."
+
+#. js-lingui-explicit-id
+msgid "component_column_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "component_column_status"
+msgstr "Status"
+
+#. js-lingui-explicit-id
+msgid "component_column_monitors"
+msgstr "Monitors"
+
+#. js-lingui-explicit-id
+msgid "component_column_pages"
+msgstr "Pages"
+
+#. js-lingui-explicit-id
+msgid "component_column_uptime"
+msgstr "Uptime over 90 days"
+
+#. js-lingui-explicit-id
+msgid "component_set_by_hand"
+msgstr "Set by hand"
+
+#. js-lingui-explicit-id
+msgid "component_no_data"
+msgstr "No data"
+
+#. js-lingui-explicit-id
+msgid "component_unavailable"
+msgstr "The components could not be read. Try again shortly."
+
+#. js-lingui-explicit-id
+msgid "component_corrupt"
+msgstr "A stored record this version cannot read:"
+
+#. js-lingui-explicit-id
+msgid "component_new_title"
+msgstr "New component"
+
+#. js-lingui-explicit-id
+msgid "component_section_details"
+msgstr "Component"
+
+#. js-lingui-explicit-id
+msgid "component_field_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "component_field_description"
+msgstr "Description"
+
+#. js-lingui-explicit-id
+msgid "component_field_description_hint"
+msgstr "A line visitors read beside the name. Optional."
+
+#. js-lingui-explicit-id
+msgid "component_section_monitors"
+msgstr "Linked monitors"
+
+#. js-lingui-explicit-id
+msgid "component_section_monitors_hint"
+msgstr "The component's status is derived from its linked monitors that are not paused: all down is a major outage, some down a partial outage, any degraded is degraded performance."
+
+#. js-lingui-explicit-id
+msgid "component_monitors_none"
+msgstr "The install has no monitors yet."
+
+#. js-lingui-explicit-id
+msgid "component_monitors_filter"
+msgstr "Filter monitors"
+
+#. js-lingui-explicit-id
+msgid "component_monitors_no_match"
+msgstr "No monitor matches the filter."
+
+#. js-lingui-explicit-id
+msgid "component_section_status"
+msgstr "Status set by hand"
+
+#. js-lingui-explicit-id
+msgid "component_status_hand_hint"
+msgstr "This status shows while the component has no linked monitors."
+
+#. js-lingui-explicit-id
+msgid "component_status_derived_hint"
+msgstr "The component has linked monitors, so its status is derived from them and is not set by hand."
+
+#. js-lingui-explicit-id
+msgid "component_status_now"
+msgstr "Status now"
+
+#. js-lingui-explicit-id
+msgid "component_shown_on"
+msgstr "Status pages that show it"
+
+#. js-lingui-explicit-id
+msgid "component_shown_on_none"
+msgstr "No status page shows it yet."
+
+#. js-lingui-explicit-id
+msgid "component_saving"
+msgstr "Saving…"
+
+#. js-lingui-explicit-id
+msgid "component_saved"
+msgstr "Component saved."
+
+#. js-lingui-explicit-id
+msgid "component_created"
+msgstr "Component added."
+
+#. js-lingui-explicit-id
+msgid "component_not_found"
+msgstr "This component was not found."
+
+#. js-lingui-explicit-id
+msgid "component_delete"
+msgstr "Delete component"
+
+#. js-lingui-explicit-id
+msgid "component_delete_title"
+msgstr "Delete this component?"
+
+#. js-lingui-explicit-id
+msgid "component_delete_description"
+msgstr "It disappears from every status page that shows it, and its monitors stay as they are. Deleting cannot be undone."
+
+#. js-lingui-explicit-id
+msgid "component_refused_name"
+msgstr "Type a name of up to 100 characters."
+
+#. js-lingui-explicit-id
+msgid "component_refused_description"
+msgstr "A description of up to 500 characters."
+
+#. js-lingui-explicit-id
+msgid "component_missing_name"
+msgstr "Write the name in the install language."
+
+#. js-lingui-explicit-id
+msgid "component_missing_description"
+msgstr "Write the description in the install language."
+
+#. js-lingui-explicit-id
+msgid "page_add"
+msgstr "Add status page"
+
+#. js-lingui-explicit-id
+msgid "page_empty_title"
+msgstr "No status pages yet"
+
+#. js-lingui-explicit-id
+msgid "page_empty_description"
+msgstr "A status page is what your visitors see: the components you choose, in your order, and their status now."
+
+#. js-lingui-explicit-id
+msgid "page_column_title"
+msgstr "Page"
+
+#. js-lingui-explicit-id
+msgid "page_column_path"
+msgstr "Path"
+
+#. js-lingui-explicit-id
+msgid "page_column_language"
+msgstr "Language"
+
+#. js-lingui-explicit-id
+msgid "page_column_level"
+msgstr "Status"
+
+#. js-lingui-explicit-id
+msgid "page_column_components"
+msgstr "Components"
+
+#. js-lingui-explicit-id
+msgid "page_default_badge"
+msgstr "Default"
+
+#. js-lingui-explicit-id
+msgid "page_unpublished_badge"
+msgstr "Unpublished"
+
+#. js-lingui-explicit-id
+msgid "page_unavailable"
+msgstr "The status pages could not be read. Try again shortly."
+
+#. js-lingui-explicit-id
+msgid "page_corrupt"
+msgstr "A stored record this version cannot read:"
+
+#. js-lingui-explicit-id
+msgid "page_new_title"
+msgstr "New status page"
+
+#. js-lingui-explicit-id
+msgid "page_field_title"
+msgstr "Title"
+
+#. js-lingui-explicit-id
+msgid "page_field_title_hint"
+msgstr "Shown at the top of the page and in the browser tab."
+
+#. js-lingui-explicit-id
+msgid "page_field_slug"
+msgstr "Slug"
+
+#. js-lingui-explicit-id
+msgid "page_field_slug_hint"
+msgstr "Lower-case Latin letters, digits and dashes, up to 63."
+
+#. js-lingui-explicit-id
+msgid "page_served_at"
+msgstr "Served at"
+
+#. js-lingui-explicit-id
+msgid "page_field_locale"
+msgstr "Page language"
+
+#. js-lingui-explicit-id
+msgid "page_field_locale_hint"
+msgstr "The page's interface language at its plain address; the other language has an address with its prefix. The page's own text needs this language; each language's address shows the text written in it, or this language's when there is none."
+
+#. js-lingui-explicit-id
+msgid "page_field_published"
+msgstr "Published"
+
+#. js-lingui-explicit-id
+msgid "page_field_published_hint"
+msgstr "Visitors find nothing at an unpublished page; you see it while signed in."
+
+#. js-lingui-explicit-id
+msgid "page_create"
+msgstr "Create page"
+
+#. js-lingui-explicit-id
+msgid "page_creating"
+msgstr "Creating…"
+
+#. js-lingui-explicit-id
+msgid "page_section_page"
+msgstr "Page"
+
+#. js-lingui-explicit-id
+msgid "page_field_default"
+msgstr "Default page"
+
+#. js-lingui-explicit-id
+msgid "page_field_default_hint"
+msgstr "Served at the public address itself, with no path. Only one page is the default."
+
+#. js-lingui-explicit-id
+msgid "page_field_domain"
+msgstr "Custom domain"
+
+#. js-lingui-explicit-id
+msgid "page_field_domain_hint"
+msgstr "Point this name at your reverse proxy and Raaqeb serves the page on it. Optional."
+
+#. js-lingui-explicit-id
+msgid "page_section_components"
+msgstr "Components"
+
+#. js-lingui-explicit-id
+msgid "page_section_components_hint"
+msgstr "What visitors see, in order, in groups one level deep."
+
+#. js-lingui-explicit-id
+msgid "page_components_empty"
+msgstr "No components on the page yet."
+
+#. js-lingui-explicit-id
+msgid "page_add_component"
+msgstr "Add a component…"
+
+#. js-lingui-explicit-id
+msgid "page_add_group"
+msgstr "Add group"
+
+#. js-lingui-explicit-id
+msgid "page_group_name"
+msgstr "Group name"
+
+#. js-lingui-explicit-id
+msgid "page_group_new"
+msgstr "New group"
+
+#. js-lingui-explicit-id
+msgid "page_move_up"
+msgstr "Move up"
+
+#. js-lingui-explicit-id
+msgid "page_move_down"
+msgstr "Move down"
+
+#. js-lingui-explicit-id
+msgid "page_move_to"
+msgstr "Move to"
+
+#. js-lingui-explicit-id
+msgid "page_top_level"
+msgstr "Outside groups"
+
+#. js-lingui-explicit-id
+msgid "page_remove_component"
+msgstr "Remove from page"
+
+#. js-lingui-explicit-id
+msgid "page_remove_group"
+msgstr "Remove group"
+
+#. js-lingui-explicit-id
+msgid "page_remove_group_hint"
+msgstr "Its components stay on the page, outside groups."
+
+#. js-lingui-explicit-id
+msgid "page_group_empty"
+msgstr "An empty group is not shown to visitors."
+
+#. js-lingui-explicit-id
+msgid "page_all_placed"
+msgstr "Every component is on the page."
+
+#. js-lingui-explicit-id
+msgid "page_no_components"
+msgstr "The install has no components yet."
+
+#. js-lingui-explicit-id
+msgid "page_level_now"
+msgstr "Page status now"
+
+#. js-lingui-explicit-id
+msgid "page_section_appearance"
+msgstr "Appearance"
+
+#. js-lingui-explicit-id
+msgid "page_field_logo"
+msgstr "Logo"
+
+#. js-lingui-explicit-id
+msgid "page_field_favicon"
+msgstr "Favicon"
+
+#. js-lingui-explicit-id
+msgid "page_field_cover"
+msgstr "Cover image"
+
+#. js-lingui-explicit-id
+msgid "page_field_cover_hint"
+msgstr "Shown when the page's link is shared."
+
+#. js-lingui-explicit-id
+msgid "page_image_types"
+msgstr "PNG, JPEG, WebP or SVG, up to {size}."
+
+#. js-lingui-explicit-id
+msgid "page_image_types_favicon"
+msgstr "ICO, PNG, JPEG, WebP or SVG, up to {size}."
+
+#. js-lingui-explicit-id
+msgid "page_image_choose"
+msgstr "Choose image"
+
+#. js-lingui-explicit-id
+msgid "page_image_replace"
+msgstr "Replace"
+
+#. js-lingui-explicit-id
+msgid "page_image_remove"
+msgstr "Remove"
+
+#. js-lingui-explicit-id
+msgid "page_image_none"
+msgstr "No image."
+
+#. js-lingui-explicit-id
+msgid "page_image_uploading"
+msgstr "Uploading…"
+
+#. js-lingui-explicit-id
+msgid "page_image_invalid"
+msgstr "This file is not an accepted image."
+
+#. js-lingui-explicit-id
+msgid "page_image_too_large"
+msgstr "The file is larger than the limit."
+
+#. js-lingui-explicit-id
+msgid "page_image_unavailable"
+msgstr "The image could not be saved. Try again shortly."
+
+#. js-lingui-explicit-id
+msgid "page_field_theme"
+msgstr "Default theme"
+
+#. js-lingui-explicit-id
+msgid "page_field_theme_hint"
+msgstr "For a visitor whose browser holds no choice of its own."
+
+#. js-lingui-explicit-id
+msgid "page_field_brand"
+msgstr "Brand colour"
+
+#. js-lingui-explicit-id
+msgid "page_field_brand_hint"
+msgstr "For links and buttons on the page."
+
+#. js-lingui-explicit-id
+msgid "page_colour_reset"
+msgstr "Default colour"
+
+#. js-lingui-explicit-id
+msgid "page_colour_default"
+msgstr "Default"
+
+#. js-lingui-explicit-id
+msgid "page_field_status_colours"
+msgstr "Status colours"
+
+#. js-lingui-explicit-id
+msgid "page_field_labels"
+msgstr "Status names"
+
+#. js-lingui-explicit-id
+msgid "page_field_labels_hint"
+msgstr "Changes only what visitors read; the machine values stay the same. Leave one empty for its default name."
+
+#. js-lingui-explicit-id
+msgid "page_field_labels_language_hint"
+msgstr "Each language shows the names written in it; a language left empty shows the default names."
+
+#. js-lingui-explicit-id
+msgid "page_section_content"
+msgstr "Content"
+
+#. js-lingui-explicit-id
+msgid "page_field_description"
+msgstr "Description"
+
+#. js-lingui-explicit-id
+msgid "page_field_description_hint"
+msgstr "Shown under the title, in search results and when the link is shared. Optional."
+
+#. js-lingui-explicit-id
+msgid "page_field_bars"
+msgstr "Day bar"
+
+#. js-lingui-explicit-id
+msgid "page_field_bars_hint"
+msgstr "One cell a day, coloured by the component's uptime that day."
+
+#. js-lingui-explicit-id
+msgid "page_field_bar_days"
+msgstr "Bar length"
+
+#. js-lingui-explicit-id
+msgid "page_field_percentages"
+msgstr "Show percentages"
+
+#. js-lingui-explicit-id
+msgid "page_field_subscriptions"
+msgstr "Subscription channels"
+
+#. js-lingui-explicit-id
+msgid "page_field_subscriptions_hint"
+msgstr "Email is offered only when an email channel exists."
+
+#. js-lingui-explicit-id
+msgid "page_field_footer"
+msgstr "Footer links"
+
+#. js-lingui-explicit-id
+msgid "page_footer_label"
+msgstr "Label"
+
+#. js-lingui-explicit-id
+msgid "page_footer_url"
+msgstr "Link"
+
+#. js-lingui-explicit-id
+msgid "page_footer_add"
+msgstr "Add link"
+
+#. js-lingui-explicit-id
+msgid "page_footer_remove"
+msgstr "Remove link"
+
+#. js-lingui-explicit-id
+msgid "page_field_contact"
+msgstr "Contact link"
+
+#. js-lingui-explicit-id
+msgid "page_field_contact_hint"
+msgstr "An https or mailto link. Optional."
+
+#. js-lingui-explicit-id
+msgid "page_field_noindex"
+msgstr "Hide from search engines"
+
+#. js-lingui-explicit-id
+msgid "page_field_powered_by"
+msgstr "Show \"Powered by Raaqeb\""
+
+#. js-lingui-explicit-id
+msgid "page_section_css"
+msgstr "Custom CSS"
+
+#. js-lingui-explicit-id
+msgid "page_field_css_hint"
+msgstr "Added after the public page's own styles, up to 64 KB. Optional."
+
+#. js-lingui-explicit-id
+msgid "page_refused_title"
+msgstr "Type a title of up to 100 characters."
+
+#. js-lingui-explicit-id
+msgid "page_refused_slug"
+msgstr "Lower-case Latin letters, digits and dashes, up to 63, with no dash at either end."
+
+#. js-lingui-explicit-id
+msgid "page_refused_slug_taken"
+msgstr "Another page uses this slug."
+
+#. js-lingui-explicit-id
+msgid "page_refused_domain"
+msgstr "Type a domain name only, with no scheme, path or port."
+
+#. js-lingui-explicit-id
+msgid "page_refused_domain_taken"
+msgstr "Another page uses this domain."
+
+#. js-lingui-explicit-id
+msgid "page_refused_domain_public"
+msgstr "This is the public address's own domain, which serves the admin and the default page."
+
+#. js-lingui-explicit-id
+msgid "page_refused_group"
+msgstr "Type a group name of up to 100 characters."
+
+#. js-lingui-explicit-id
+msgid "page_refused_label"
+msgstr "Up to 40 characters."
+
+#. js-lingui-explicit-id
+msgid "page_refused_description"
+msgstr "A description of up to 500 characters."
+
+#. js-lingui-explicit-id
+msgid "page_refused_footer_label"
+msgstr "Type a label of up to 40 characters."
+
+#. js-lingui-explicit-id
+msgid "page_refused_link"
+msgstr "An https, http or mailto link."
+
+#. js-lingui-explicit-id
+msgid "page_refused_css"
+msgstr "Up to 64 KB, with nothing that closes the style tag."
+
+#. js-lingui-explicit-id
+msgid "page_saving"
+msgstr "Saving…"
+
+#. js-lingui-explicit-id
+msgid "page_saved"
+msgstr "Page saved."
+
+#. js-lingui-explicit-id
+msgid "page_created"
+msgstr "Status page created."
+
+#. js-lingui-explicit-id
+msgid "page_not_found"
+msgstr "This status page was not found."
+
+#. js-lingui-explicit-id
+msgid "page_delete"
+msgstr "Delete page"
+
+#. js-lingui-explicit-id
+msgid "page_delete_title"
+msgstr "Delete this status page?"
+
+#. js-lingui-explicit-id
+msgid "page_delete_description"
+msgstr "Visitors can no longer open it, and its groups and images are deleted. The components stay. Deleting cannot be undone."
+
+#. js-lingui-explicit-id
+msgid "setting_address_is_page_domain"
+msgstr "A status page is served on this domain. Choose another address, or take the custom domain off the page."
+
+#. js-lingui-explicit-id
+msgid "incident_impact_none"
+msgstr "No impact"
+
+#. js-lingui-explicit-id
+msgid "incident_impact_minor"
+msgstr "Minor"
+
+#. js-lingui-explicit-id
+msgid "incident_impact_major"
+msgstr "Major"
+
+#. js-lingui-explicit-id
+msgid "incident_impact_critical"
+msgstr "Critical"
+
+#. js-lingui-explicit-id
+msgid "incident_stage_investigating"
+msgstr "Investigating"
+
+#. js-lingui-explicit-id
+msgid "incident_stage_identified"
+msgstr "Identified"
+
+#. js-lingui-explicit-id
+msgid "incident_stage_monitoring"
+msgstr "Monitoring"
+
+#. js-lingui-explicit-id
+msgid "incident_stage_resolved"
+msgstr "Resolved"
+
+#. js-lingui-explicit-id
+msgid "incident_add"
+msgstr "New incident"
+
+#. js-lingui-explicit-id
+msgid "incident_new_title"
+msgstr "New incident"
+
+#. js-lingui-explicit-id
+msgid "incident_column_title"
+msgstr "Incident"
+
+#. js-lingui-explicit-id
+msgid "incident_column_impact"
+msgstr "Impact"
+
+#. js-lingui-explicit-id
+msgid "incident_column_stage"
+msgstr "Stage"
+
+#. js-lingui-explicit-id
+msgid "incident_column_components"
+msgstr "Affected components"
+
+#. js-lingui-explicit-id
+msgid "incident_column_started"
+msgstr "Started"
+
+#. js-lingui-explicit-id
+msgid "incident_column_duration"
+msgstr "Duration"
+
+#. js-lingui-explicit-id
+msgid "incident_open_for"
+msgstr "Open for {duration}"
+
+#. js-lingui-explicit-id
+msgid "incident_lasted"
+msgstr "Lasted {duration}"
+
+
+
+#. js-lingui-explicit-id
+msgid "incident_empty_title"
+msgstr "No incidents"
+
+#. js-lingui-explicit-id
+msgid "incident_empty_description"
+msgstr "Write an incident when a problem affects a component visitors see. It shows on every status page that shows an affected component."
+
+#. js-lingui-explicit-id
+msgid "incident_needs_component"
+msgstr "An incident names the components it affects, and there are none yet. Add a component first."
+
+#. js-lingui-explicit-id
+msgid "incident_unavailable"
+msgstr "The incidents could not be read or saved. Try again."
+
+#. js-lingui-explicit-id
+msgid "incident_corrupt"
+msgstr "A stored incident this version cannot read:"
+
+#. js-lingui-explicit-id
+msgid "incident_not_found"
+msgstr "This incident no longer exists."
+
+#. js-lingui-explicit-id
+msgid "incident_affects_none"
+msgstr "It affects no component since its components were deleted."
+
+#. js-lingui-explicit-id
+msgid "incident_section_details"
+msgstr "The incident"
+
+#. js-lingui-explicit-id
+msgid "incident_field_title"
+msgstr "Title"
+
+#. js-lingui-explicit-id
+msgid "incident_field_title_hint"
+msgstr "Visitors read it at the top of the incident card."
+
+#. js-lingui-explicit-id
+msgid "incident_field_impact"
+msgstr "Impact level"
+
+#. js-lingui-explicit-id
+msgid "incident_field_impact_hint"
+msgstr "It leads the incident card and the subscriber email. The page banner follows the components' status, not the impact."
+
+#. js-lingui-explicit-id
+msgid "incident_field_stage"
+msgstr "Stage"
+
+#. js-lingui-explicit-id
+msgid "incident_field_message"
+msgstr "Update"
+
+#. js-lingui-explicit-id
+msgid "incident_field_message_hint"
+msgstr "Plain text, no formatting. Each paragraph takes its own language's direction."
+
+#. js-lingui-explicit-id
+msgid "incident_section_components"
+msgstr "Affected components"
+
+#. js-lingui-explicit-id
+msgid "incident_section_components_hint"
+msgstr "The status this incident sets on each component. A component linked to monitors shows the worse of theirs and this one."
+
+
+
+#. js-lingui-explicit-id
+msgid "incident_components_none"
+msgstr "No components yet. Create them on the components page first."
+
+
+#. js-lingui-explicit-id
+msgid "incident_component_linked"
+msgstr "Linked to monitors"
+
+#. js-lingui-explicit-id
+msgid "incident_component_now"
+msgstr "Now: "
+
+#. js-lingui-explicit-id
+msgid "incident_prefilled"
+msgstr "Opened from the monitor's down notification: the components linked to it are chosen at their status now."
+
+#. js-lingui-explicit-id
+msgid "incident_prefilled_unlinked"
+msgstr "Opened from the monitor's down notification, and no component is linked to it. Choose the affected components."
+
+#. js-lingui-explicit-id
+msgid "incident_create"
+msgstr "Publish the incident"
+
+#. js-lingui-explicit-id
+msgid "incident_creating"
+msgstr "Publishing…"
+
+#. js-lingui-explicit-id
+msgid "incident_refused_title"
+msgstr "Write a title of up to 200 characters."
+
+#. js-lingui-explicit-id
+msgid "incident_refused_message"
+msgstr "Write a text of up to 5,000 characters."
+
+#. js-lingui-explicit-id
+msgid "incident_missing_title"
+msgstr "Write the title in the install language."
+
+#. js-lingui-explicit-id
+msgid "incident_missing_message"
+msgstr "Write the text in the install language."
+
+#. js-lingui-explicit-id
+msgid "incident_refused_components"
+msgstr "Choose at least one affected component."
+
+#. js-lingui-explicit-id
+msgid "incident_refused_resolved"
+msgstr "This incident is resolved and takes no more updates."
+
+#. js-lingui-explicit-id
+msgid "incident_section_edit"
+msgstr "Title and impact"
+
+#. js-lingui-explicit-id
+msgid "incident_saved"
+msgstr "Saved."
+
+#. js-lingui-explicit-id
+msgid "incident_created"
+msgstr "Incident published."
+
+#. js-lingui-explicit-id
+msgid "incident_saving"
+msgstr "Saving…"
+
+#. js-lingui-explicit-id
+msgid "incident_section_update"
+msgstr "New update"
+
+#. js-lingui-explicit-id
+msgid "incident_post"
+msgstr "Post the update"
+
+#. js-lingui-explicit-id
+msgid "incident_posting"
+msgstr "Posting…"
+
+#. js-lingui-explicit-id
+msgid "incident_posted"
+msgstr "The update is posted."
+
+#. js-lingui-explicit-id
+msgid "incident_resolve_keep"
+msgstr "Keep the status this incident set on components set by hand"
+
+#. js-lingui-explicit-id
+msgid "incident_resolve_hint"
+msgstr "Each component set by hand returns to the status it had before the incident unless you keep the status this incident set. A component linked to monitors follows its monitors."
+
+#. js-lingui-explicit-id
+msgid "incident_section_timeline"
+msgstr "Updates"
+
+#. js-lingui-explicit-id
+msgid "incident_fix"
+msgstr "Fix the text"
+
+#. js-lingui-explicit-id
+msgid "incident_fix_save"
+msgstr "Save the text"
+
+#. js-lingui-explicit-id
+msgid "incident_fix_hint"
+msgstr "Only the text changes. The time, the stage and the statuses stay."
+
+#. js-lingui-explicit-id
+msgid "incident_resolved_note"
+msgstr "This incident is resolved and takes no more updates. If the problem returns, open a new incident."
+
+#. js-lingui-explicit-id
+msgid "incident_delete"
+msgstr "Delete the incident"
+
+#. js-lingui-explicit-id
+msgid "incident_delete_title"
+msgstr "Delete this incident?"
+
+#. js-lingui-explicit-id
+msgid "incident_delete_description"
+msgstr "The incident and all its updates leave every status page, and its time leaves the components' bars and uptime. You cannot undo a delete."
+
+#. js-lingui-explicit-id
+msgid "component_incidents_setting"
+msgstr "Open incidents that set its status"
+
+#. js-lingui-explicit-id
+msgid "incident_refused_changed"
+msgstr "The incident or its components changed since you opened the page, which now shows them. Check your update and post it again."
+
+#. js-lingui-explicit-id
+msgid "maintenance_stage_scheduled"
+msgstr "Scheduled"
+
+#. js-lingui-explicit-id
+msgid "maintenance_stage_in_progress"
+msgstr "In progress"
+
+#. js-lingui-explicit-id
+msgid "maintenance_stage_completed"
+msgstr "Completed"
+
+#. js-lingui-explicit-id
+msgid "maintenance_add"
+msgstr "New maintenance window"
+
+#. js-lingui-explicit-id
+msgid "maintenance_new_title"
+msgstr "New maintenance window"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_title"
+msgstr "Maintenance window"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_stage"
+msgstr "Stage"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_components"
+msgstr "Affected components"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_starts"
+msgstr "Starts"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_ends"
+msgstr "Ends"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_duration"
+msgstr "Duration"
+
+#. js-lingui-explicit-id
+msgid "maintenance_empty_title"
+msgstr "No maintenance windows"
+
+#. js-lingui-explicit-id
+msgid "maintenance_empty_description"
+msgstr "Schedule a maintenance window before planned work. Its components show under maintenance for its whole length, the monitors linked to them send no notification, and its time does not count in uptime."
+
+#. js-lingui-explicit-id
+msgid "maintenance_needs_component"
+msgstr "A maintenance window names the components it covers, and there are none yet. Add a component first."
+
+#. js-lingui-explicit-id
+msgid "maintenance_unavailable"
+msgstr "The maintenance windows could not be read or saved. Try again."
+
+#. js-lingui-explicit-id
+msgid "maintenance_corrupt"
+msgstr "A stored maintenance window this version cannot read:"
+
+#. js-lingui-explicit-id
+msgid "maintenance_not_found"
+msgstr "This maintenance window no longer exists."
+
+#. js-lingui-explicit-id
+msgid "maintenance_affects_none"
+msgstr "It affects no component since its components were deleted."
+
+#. js-lingui-explicit-id
+msgid "maintenance_section_details"
+msgstr "The maintenance window"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_title"
+msgstr "Title"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_title_hint"
+msgstr "Visitors read it at the top of the maintenance card."
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_message"
+msgstr "Description"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_message_hint"
+msgstr "Plain text, no formatting, which visitors read. Each paragraph takes its own language's direction."
+
+#. js-lingui-explicit-id
+msgid "maintenance_section_times"
+msgstr "Times"
+
+#. js-lingui-explicit-id
+msgid "maintenance_times_hint"
+msgstr "Times are to the minute, in your time zone. A start in the current minute means now."
+
+#. js-lingui-explicit-id
+msgid "maintenance_times_zone"
+msgstr "Time zone"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_starts"
+msgstr "Starts"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_ends"
+msgstr "Ends"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_day"
+msgstr "Day"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_month"
+msgstr "Month"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_year"
+msgstr "Year"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_hour"
+msgstr "Hour"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_minute"
+msgstr "Minute"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_period"
+msgstr "AM or PM"
+
+#. js-lingui-explicit-id
+msgid "maintenance_section_components"
+msgstr "Affected components"
+
+#. js-lingui-explicit-id
+msgid "maintenance_section_components_hint"
+msgstr "They show under maintenance for its whole length, and every monitor linked to one of them sends no notification until it ends."
+
+#. js-lingui-explicit-id
+msgid "maintenance_components_none"
+msgstr "No components yet. Create them on the components page first."
+
+#. js-lingui-explicit-id
+msgid "maintenance_create"
+msgstr "Schedule the window"
+
+#. js-lingui-explicit-id
+msgid "maintenance_creating"
+msgstr "Scheduling…"
+
+#. js-lingui-explicit-id
+msgid "maintenance_saving"
+msgstr "Saving…"
+
+#. js-lingui-explicit-id
+msgid "maintenance_saved"
+msgstr "Saved."
+
+#. js-lingui-explicit-id
+msgid "maintenance_created"
+msgstr "Maintenance window scheduled."
+
+#. js-lingui-explicit-id
+msgid "maintenance_locked_started"
+msgstr "The window has started, so its start and components no longer change. Edit its text and its end, or end it now."
+
+#. js-lingui-explicit-id
+msgid "maintenance_locked_completed"
+msgstr "The window has completed, so only its title and description change."
+
+#. js-lingui-explicit-id
+msgid "maintenance_end_now"
+msgstr "End it now"
+
+#. js-lingui-explicit-id
+msgid "maintenance_end_now_title"
+msgstr "End the maintenance window now?"
+
+#. js-lingui-explicit-id
+msgid "maintenance_end_now_description"
+msgstr "The components return to their status and the monitors notify again. Each monitor still down sends its down notification as the window ends."
+
+#. js-lingui-explicit-id
+msgid "maintenance_cancel"
+msgstr "Cancel the maintenance window"
+
+#. js-lingui-explicit-id
+msgid "maintenance_cancel_title"
+msgstr "Cancel this maintenance window?"
+
+#. js-lingui-explicit-id
+msgid "maintenance_cancel_description"
+msgstr "It is deleted before it starts and leaves every status page. You cannot undo a cancel."
+
+#. js-lingui-explicit-id
+msgid "maintenance_keep"
+msgstr "Keep it"
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_title"
+msgstr "Write a title of up to 200 characters."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_message"
+msgstr "Write a description of up to 5,000 characters."
+
+#. js-lingui-explicit-id
+msgid "maintenance_missing_title"
+msgstr "Write the title in the install language."
+
+#. js-lingui-explicit-id
+msgid "maintenance_missing_message"
+msgstr "Write the description in the install language."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_components"
+msgstr "Choose at least one affected component."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_time"
+msgstr "Enter a date and a time."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_start_past"
+msgstr "This start has passed. Choose now or a later time."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_end_order"
+msgstr "Put the end at least a minute after the start."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_end_past"
+msgstr "This end has passed. Choose now or a later time."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_changed"
+msgstr "The window started or ended since you opened the page, which now shows it. Check your edit and save it again."
+
+#. js-lingui-explicit-id
+msgid "component_maintenance_setting"
+msgstr "Maintenance windows in progress that put it under maintenance"
+
+#. js-lingui-explicit-id
+msgid "monitor_under_maintenance"
+msgstr "Under maintenance"
+
+#. js-lingui-explicit-id
+msgid "public_banner_operational"
+msgstr "All components operational"
+
+#. js-lingui-explicit-id
+msgid "public_banner_under_maintenance"
+msgstr "Maintenance in progress on some components"
+
+#. js-lingui-explicit-id
+msgid "public_banner_degraded_performance"
+msgstr "Degraded performance on some components"
+
+#. js-lingui-explicit-id
+msgid "public_banner_partial_outage"
+msgstr "Partial outage on some components"
+
+#. js-lingui-explicit-id
+msgid "public_banner_major_outage"
+msgstr "Major outage on some components"
+
+#. js-lingui-explicit-id
+msgid "public_preview_banner"
+msgstr "Not published: only you see this page, while signed in."
+
+#. js-lingui-explicit-id
+msgid "public_impact"
+msgstr "Impact: {impact}"
+
+#. js-lingui-explicit-id
+msgid "public_affected"
+msgstr "Affected components"
+
+#. js-lingui-explicit-id
+msgid "public_affects"
+msgstr "Affects {components}"
+
+#. js-lingui-explicit-id
+msgid "public_latest_update"
+msgstr "Latest update"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance_starts"
+msgstr "Starts"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance_ends"
+msgstr "Ends"
+
+#. js-lingui-explicit-id
+msgid "public_components"
+msgstr "Components"
+
+#. js-lingui-explicit-id
+msgid "public_group_size"
+msgstr "{count, plural, one {# component} other {# components}}"
+
+#. js-lingui-explicit-id
+msgid "public_no_components"
+msgstr "This page shows no components yet"
+
+#. js-lingui-explicit-id
+msgid "public_uptime"
+msgstr "{uptime} uptime"
+
+#. js-lingui-explicit-id
+msgid "public_bar"
+msgstr "Daily uptime"
+
+#. js-lingui-explicit-id
+msgid "public_day_downtime"
+msgstr "Downtime: {duration}"
+
+#. js-lingui-explicit-id
+msgid "public_day_no_data"
+msgstr "No data for this day"
+
+#. js-lingui-explicit-id
+msgid "public_day_no_downtime"
+msgstr "No downtime recorded on this day"
+
+#. js-lingui-explicit-id
+msgid "public_day_response"
+msgstr "Average response time: {duration}"
+
+#. js-lingui-explicit-id
+msgid "public_day_cell"
+msgstr "{date}, {status}"
+
+#. js-lingui-explicit-id
+msgid "public_incident"
+msgstr "Incident"
+
+#. js-lingui-explicit-id
+msgid "public_day_month"
+msgstr "View this month"
+
+#. js-lingui-explicit-id
+msgid "public_day_close"
+msgstr "Close"
+
+#. js-lingui-explicit-id
+msgid "public_powered_by"
+msgstr "Powered by Raaqeb"
+
+#. js-lingui-explicit-id
+msgid "public_contact"
+msgstr "Contact us"
+
+#. js-lingui-explicit-id
+msgid "public_theme"
+msgstr "Page theme"
+
+#. js-lingui-explicit-id
+msgid "public_history"
+msgstr "History"
+
+#. js-lingui-explicit-id
+msgid "public_history_link"
+msgstr "View history"
+
+#. js-lingui-explicit-id
+msgid "public_history_empty"
+msgstr "No incidents or maintenance this month"
+
+#. js-lingui-explicit-id
+msgid "public_history_previous"
+msgstr "Previous month"
+
+#. js-lingui-explicit-id
+msgid "public_history_next"
+msgstr "Next month"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance"
+msgstr "Maintenance"
+
+#. js-lingui-explicit-id
+msgid "public_lasted"
+msgstr "Lasted {duration}"
+
+#. js-lingui-explicit-id
+msgid "public_started"
+msgstr "Started"
+
+#. js-lingui-explicit-id
+msgid "public_resolved"
+msgstr "Resolved"
+
+#. js-lingui-explicit-id
+msgid "public_duration"
+msgstr "Duration"
+
+#. js-lingui-explicit-id
+msgid "public_view_nav"
+msgstr "Where you are on the page"
+
+#. js-lingui-explicit-id
+msgid "public_updates"
+msgstr "Updates"
+
+#. js-lingui-explicit-id
+msgid "public_current_status"
+msgstr "Current status"
+
+#. js-lingui-explicit-id
+msgid "public_not_found"
+msgstr "Nothing on this page matches this address"
+
+#. js-lingui-explicit-id
+msgid "public_unavailable"
+msgstr "This page could not be shown right now. Try again shortly"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance_started"
+msgstr "Started"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance_ended"
+msgstr "Ended"
+
+#. js-lingui-explicit-id
+msgid "subscription_confirm_subject"
+msgstr "Confirm your subscription to {page}"
+
+#. js-lingui-explicit-id
+msgid "subscription_confirm_sentence"
+msgstr "Open the link below and press the button on its page within 48 hours to confirm your subscription. If you did not ask for it, ignore this message."
+
+#. js-lingui-explicit-id
+msgid "subscription_confirm_webhook"
+msgstr "Open the confirmation link and press the button on its page within 48 hours to confirm this subscription. Nothing else is sent here until then."
+
+#. js-lingui-explicit-id
+msgid "subscription_subject_incident"
+msgstr "{impact}: {title}"
+
+#. js-lingui-explicit-id
+msgid "subscription_subject_maintenance"
+msgstr "Maintenance: {title}"
+
+#. js-lingui-explicit-id
+msgid "subscription_text_published"
+msgstr "A new incident on {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_updated"
+msgstr "An update on an incident on {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_resolved"
+msgstr "An incident on {page} is resolved."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_scheduled"
+msgstr "Maintenance is scheduled on {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_started"
+msgstr "Maintenance on {page} has started."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_completed"
+msgstr "Maintenance on {page} is complete."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_rescheduled"
+msgstr "The times of maintenance on {page} have changed."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_cancelled"
+msgstr "Scheduled maintenance on {page} is cancelled."
+
+#. js-lingui-explicit-id
+msgid "subscription_line_confirm"
+msgstr "Confirm: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_stage"
+msgstr "Status: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_components"
+msgstr "Affected: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_starts"
+msgstr "Starts: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_ends"
+msgstr "Ends: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_link"
+msgstr "Details: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_time"
+msgstr "Time: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_unsubscribe"
+msgstr "Unsubscribe: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_footer"
+msgstr "You get this email because you subscribed to updates from {page}."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_title"
+msgstr "Get updates"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_description"
+msgstr "Follow every incident and maintenance that touches this page."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_by"
+msgstr "Receive by"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_email"
+msgstr "Email"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_webhook"
+msgstr "Webhook"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_email_label"
+msgstr "Email address"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_webhook_label"
+msgstr "Webhook URL"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_submit"
+msgstr "Subscribe"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_sending"
+msgstr "Subscribing…"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_sent_email"
+msgstr "Check your email: open the link we sent and press the button on its page within 48 hours to confirm."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_sent_webhook"
+msgstr "We posted a confirmation link to your webhook. Open it and press the button on its page within 48 hours to confirm."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_invalid_email"
+msgstr "Enter an email address."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_invalid_webhook"
+msgstr "Enter an https URL with no user name or password."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_limited"
+msgstr "Too many sign-ups from here. Try again in a few minutes."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_unreachable"
+msgstr "Updates go only to https addresses on the public internet."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_not_offered"
+msgstr "This page no longer offers that. Reload the page."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_unavailable"
+msgstr "The subscription could not be saved. Try again shortly."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_noscript"
+msgstr "Subscribing needs JavaScript."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_feed"
+msgstr "Follow the feed instead"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_feed_choice"
+msgstr "Feed"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_feed_label"
+msgstr "Feed URL"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_feed_hint"
+msgstr "Add this link to a feed reader to see every incident and maintenance update there. No address, no confirmation."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_copy"
+msgstr "Copy"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_copied"
+msgstr "Copied"
+
+#. js-lingui-explicit-id
+msgid "public_subscription_title"
+msgstr "Your subscription"
+
+#. js-lingui-explicit-id
+msgid "public_subscription_pending"
+msgstr "Confirm your subscription to receive this page's incidents and maintenance."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_confirmed"
+msgstr "You are subscribed. Every incident and maintenance on this page reaches you."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_unsubscribed"
+msgstr "You are unsubscribed. Nothing more is sent to you from this page."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_expired"
+msgstr "This confirmation link has expired. Subscribe again from the page."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_confirm"
+msgstr "Confirm subscription"
+
+#. js-lingui-explicit-id
+msgid "public_subscription_unsubscribe"
+msgstr "Unsubscribe"
+
+#. js-lingui-explicit-id
+msgid "page_view"
+msgstr "View page"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers"
+msgstr "Subscribers"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_empty"
+msgstr "No one has subscribed to this page yet."
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_address"
+msgstr "Address"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_by"
+msgstr "By"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_state"
+msgstr "State"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_since"
+msgstr "Since"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_last"
+msgstr "Last message"
+
+#. js-lingui-explicit-id
+msgid "page_subscriber_pending"
+msgstr "Waiting for confirmation"
+
+#. js-lingui-explicit-id
+msgid "page_subscriber_confirmed"
+msgstr "Confirmed"
+
+#. js-lingui-explicit-id
+msgid "page_subscriber_unsubscribed"
+msgstr "Unsubscribed"
+
+#. js-lingui-explicit-id
+msgid "page_subscriber_expired"
+msgstr "Link expired"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_remove"
+msgstr "Remove"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_remove_title"
+msgstr "Remove this subscriber?"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_remove_description"
+msgstr "Nothing more is sent to this address from this page, and it is not told. It can subscribe again from the page."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_again"
+msgstr "Subscribe again on the page"
+
+#. js-lingui-explicit-id
+msgid "setting_export_import"
+msgstr "Export and import"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_check"
+msgstr "Setup check"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_intro"
+msgstr "Compares what the server sees with what the install is set up for, and says what is wrong and how to fix it. It changes nothing and contacts nothing."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_passed"
+msgstr "Passed"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_failed"
+msgstr "Needs a fix"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded"
+msgstr "Reverse proxy"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_direct"
+msgstr "This request reached Raaqeb directly, with no forwarded headers, from this address:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_trusted"
+msgstr "This request came through a trusted proxy:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_untrusted"
+msgstr "This request carries forwarded headers from an address that is not a trusted proxy, so Raaqeb ignores them: it takes every visitor to be this address, and the scheme and host from the connection rather than from the proxy."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_headers"
+msgstr "The forwarded headers on the request:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_fix_setting"
+msgstr "Add this address, or the range your proxy connects from, to the trusted proxies on the general settings page."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_match"
+msgstr "The public address is the address this browser has Raaqeb open at:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_mismatch"
+msgstr "The stored public address is not the address this browser has Raaqeb open at, so sign-in here will be refused once this session ends."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_missing"
+msgstr "No public address is stored, so reset links and subscribers' links have no address to be made from."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_stored"
+msgstr "Stored:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_browser"
+msgstr "This browser:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_fix"
+msgstr "If this browser is at the address you will keep, make it the public address on the general settings page. Otherwise open Raaqeb at the public address."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_email"
+msgstr "Email channel"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_email_present"
+msgstr "An email channel sends password reset links and second step codes."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_email_missing"
+msgstr "There is no email channel, so no password reset link can be sent and the second step cannot be turned on."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_email_fix"
+msgstr "Add an email channel under notification channels, then send a test message from the sign-in settings."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode"
+msgstr "Data directory permissions"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_private"
+msgstr "Only its owner can open the data directory:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_open_empty"
+msgstr "Other users on this server can open the data directory, but nothing secret is in it yet:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_open_secret"
+msgstr "Other users on this server can open the data directory, and it holds secrets:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_secret_config"
+msgstr "The install key Raaqeb generated, and the database URL onboarding chose."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_secret_sqlite"
+msgstr "The database: the sign-in data, the sessions and the channel secrets."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_fix"
+msgstr "Let only its owner open it, on the server or on the volume behind it, for example with:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume"
+msgstr "Data directory persistence"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_kept"
+msgstr "The data directory is on a mount of its own:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_lost"
+msgstr "The data directory is on the container's own filesystem, not on a volume. When the container is created again, on an upgrade or at every restart on some hosts, the install key is lost with every credential encrypted by it, and so is the SQLite database if it lives there."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_fix"
+msgstr "Mount a volume at this path in the container:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_memory"
+msgstr "The data directory lives in memory, on tmpfs or ramfs, so it is emptied when the server reboots, or when the container restarts if it is mounted there: the install key is lost with every credential encrypted by it, and so is the SQLite database if it lives there."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_memory_fix"
+msgstr "Move the data directory to a disk or a volume that lasts, and copy the data into it before the next restart. This is its path now:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_fix_boot"
+msgstr "The trusted proxies on this install are set at boot by the following, which the general settings page cannot change: add this address, or the range your proxy connects from, to it, then restart Raaqeb:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_fix_volume"
+msgstr "The data directory is a mounted volume, which chmod on the server does not reach. Set its owner and mode where the volume is made, so the user Raaqeb runs as owns it and nobody else can open it."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_anonymous"
+msgstr "The data directory is a volume Docker made without a name for Raaqeb's image. It is kept when the container restarts, but a new container, such as the one an upgrade makes by removing the container and running it again, gets a new empty one: the install key is lost with every credential encrypted by it, and so is the SQLite database if it lives there."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_anonymous_fix"
+msgstr "Run the container with a named volume at this path, and copy the data into it before the container is next made again, for example:"
+
+#. js-lingui-explicit-id
+msgid "setting_export"
+msgstr "Export"
+
+#. js-lingui-explicit-id
+msgid "setting_export_lead"
+msgstr "Download this install as one file: its monitors, channels, components, status pages, incidents, maintenance windows, subscriptions and settings, and its history when you want it. Another install can import it."
+
+#. js-lingui-explicit-id
+msgid "setting_export_mode_full"
+msgstr "Everything, with the check history"
+
+#. js-lingui-explicit-id
+msgid "setting_export_mode_configuration"
+msgstr "Everything but the check history"
+
+#. js-lingui-explicit-id
+msgid "setting_export_mode_full_note"
+msgstr "The configuration and every check and outage: a bigger file, a complete move."
+
+#. js-lingui-explicit-id
+msgid "setting_export_mode_configuration_note"
+msgstr "Everything but the check history: a small file."
+
+#. js-lingui-explicit-id
+msgid "setting_export_size"
+msgstr "Approximate size: {size}"
+
+#. js-lingui-explicit-id
+msgid "setting_export_size_reading"
+msgstr "Working out the size…"
+
+#. js-lingui-explicit-id
+msgid "setting_export_secrets_title"
+msgstr "The file holds secrets"
+
+#. js-lingui-explicit-id
+msgid "setting_export_secrets"
+msgstr "Every password, key and webhook address in it is in clear, so anyone who has the file can use them. Keep it as you keep a backup, and delete it once the move is done."
+
+#. js-lingui-explicit-id
+msgid "setting_export_download"
+msgstr "Download the export"
+
+#. js-lingui-explicit-id
+msgid "setting_export_busy"
+msgstr "An export is downloading; try again when it finishes."
+
+#. js-lingui-explicit-id
+msgid "setting_export_unavailable"
+msgstr "The database is not answering; try again shortly."
+
+#. js-lingui-explicit-id
+msgid "setting_export_unreadable"
+msgstr "The install key cannot open the stored credentials of a monitor, channel or subscription. Type them again on its page, then export again. Its id:"
+
+#. js-lingui-explicit-id
+msgid "setting_import"
+msgstr "Import"
+
+#. js-lingui-explicit-id
+msgid "setting_import_lead"
+msgstr "Load an export into this install. Import works only while the install has no monitors, status pages, components, incidents or maintenance windows. The file's settings replace this install's, except the public address and your own account and preferences."
+
+#. js-lingui-explicit-id
+msgid "setting_import_choose"
+msgstr "Choose a file"
+
+#. js-lingui-explicit-id
+msgid "setting_import_none"
+msgstr "No file chosen."
+
+#. js-lingui-explicit-id
+msgid "setting_import_file"
+msgstr "Export file"
+
+#. js-lingui-explicit-id
+msgid "setting_import_hint"
+msgstr "The file an export downloaded, from this install or another."
+
+#. js-lingui-explicit-id
+msgid "setting_import_submit"
+msgstr "Import the file"
+
+#. js-lingui-explicit-id
+msgid "setting_importing"
+msgstr "Importing…"
+
+#. js-lingui-explicit-id
+msgid "setting_import_done"
+msgstr "Imported. Monitors: {monitors}, status pages: {pages}, history records: {records}."
+
+#. js-lingui-explicit-id
+msgid "setting_import_not_empty"
+msgstr "This install already holds monitors, status pages, components, incidents or maintenance windows, and import works only into an empty one. Nothing was imported."
+
+#. js-lingui-explicit-id
+msgid "setting_import_invalid"
+msgstr "The file is not a Raaqeb export, or it is damaged. Nothing was imported."
+
+#. js-lingui-explicit-id
+msgid "setting_import_line"
+msgstr "(line {line})"
+
+#. js-lingui-explicit-id
+msgid "setting_import_version"
+msgstr "The file comes from another version of Raaqeb that this one cannot read. Nothing was imported."
+
+#. js-lingui-explicit-id
+msgid "setting_import_too_large"
+msgstr "The file is larger than an import takes (4 GB)."
+
+#. js-lingui-explicit-id
+msgid "setting_import_no_file"
+msgstr "Choose the export file first."
+
+#. js-lingui-explicit-id
+msgid "monitor_history_download"
+msgstr "Download the history"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_change"
+msgstr "Change"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_add_channel"
+msgstr "Add a notification channel"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_remove_channel"
+msgstr "Remove a notification channel"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_set_group"
+msgstr "Set the group"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_add_tag"
+msgstr "Add a tag"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_remove_tag"
+msgstr "Remove a tag"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_description"
+msgstr "{count, plural, one {Applies to one selected monitor} other {Applies to # selected monitors}}; a monitor it would not change is left as it is."
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_channel"
+msgstr "Notification channel"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_tag"
+msgstr "Tag"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_group_hint"
+msgstr "Leave it empty to take the monitors out of their group."
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_apply"
+msgstr "Apply"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_tag_comma"
+msgstr "One tag, without a comma."
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_channel_gone"
+msgstr "This channel no longer exists. Reload the page."
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_tags_full"
+msgstr "A selected monitor already carries {max} tags, the most a monitor may."
+
+#. js-lingui-explicit-id
+msgid "auth_code_app_intro"
+msgstr "Enter the six-digit code your authenticator app shows now."
+
+#. js-lingui-explicit-id
+msgid "auth_code_app_label"
+msgstr "Code from the app"
+
+#. js-lingui-explicit-id
+msgid "auth_code_backup_intro"
+msgstr "Enter one of your backup codes. Each one works once."
+
+#. js-lingui-explicit-id
+msgid "auth_code_backup_label"
+msgstr "Backup code"
+
+#. js-lingui-explicit-id
+msgid "auth_code_backup_wrong"
+msgstr "The backup code is wrong or was already used."
+
+#. js-lingui-explicit-id
+msgid "auth_code_use_app"
+msgstr "Use the authenticator app"
+
+#. js-lingui-explicit-id
+msgid "auth_code_use_backup"
+msgstr "Use a backup code"
+
+#. js-lingui-explicit-id
+msgid "auth_code_use_email"
+msgstr "Email me a code"
+
+#. js-lingui-explicit-id
+msgid "auth_code_start_over"
+msgstr "This sign-in has ended. Sign in again."
+
+#. js-lingui-explicit-id
+msgid "auth_code_sign_in_again"
+msgstr "Sign in again"
+
+#. js-lingui-explicit-id
+msgid "auth_code_locked"
+msgstr "Too many wrong codes. Wait 15 minutes and try again."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_title"
+msgstr "Authenticator app"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_intro"
+msgstr "An app on your phone that shows a new code every 30 seconds. It needs no email. Setting it up turns the second step on."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_off"
+msgstr "No authenticator app is set up."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_on"
+msgstr "The authenticator app is set up."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_set_up"
+msgstr "Set up the app"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_scan"
+msgstr "Scan this QR code with the app, or type the key below into it."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_qr"
+msgstr "QR code for the authenticator app"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_key"
+msgstr "Key"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_code"
+msgstr "The code the app shows"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_confirm"
+msgstr "Confirm and turn on"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_code_wrong"
+msgstr "The code is not right. Check that the phone's clock is set and try the next code."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_disable"
+msgstr "Turn the app off"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_title"
+msgstr "Backup codes"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_intro"
+msgstr "Each code signs you in once when the phone is not at hand. They are shown only now: download them or write them down, and keep them somewhere safe."
+
+#. js-lingui-explicit-id
+msgid "setting_backup_download"
+msgstr "Download"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_done"
+msgstr "I saved them"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_new"
+msgstr "New backup codes"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_new_note"
+msgstr "A new set replaces every code of the old one."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_off_note"
+msgstr "Turning it off also removes the authenticator app and its backup codes."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_off_keeps_email"
+msgstr "Turning the app off removes it and its backup codes; the second step stays on with emailed codes."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_off_ends_step"
+msgstr "Turning the app off removes it and its backup codes, and turns the second step off, since emailed codes are not ready."
+
+#. js-lingui-explicit-id
+msgid "auth_email_invalid"
+msgstr "Enter an email address."
+
+#. js-lingui-explicit-id
+msgid "auth_password_required"
+msgstr "Enter the password."
+
+#. js-lingui-explicit-id
+msgid "auth_password_length"
+msgstr "Use 8 to 128 characters."
+
+#. js-lingui-explicit-id
+msgid "setting_public_address_invalid"
+msgstr "Enter an address that starts with http or https and ends at the host or its port, with no path, like https://status.example.com."

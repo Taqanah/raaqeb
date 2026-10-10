@@ -1,0 +1,140 @@
+---
+title: Install
+description: Install Raaqeb with the installer script on Linux, macOS or Windows, with Docker or Docker Compose, on Fly.io, or as a bare binary.
+---
+
+Raaqeb ships as seven binaries and a Docker image. The binaries sit beside a `SHA256SUMS` file:
+
+- `raaqeb-linux-x64`, `raaqeb-linux-arm64`: glibc, for Debian, Ubuntu, Fedora and their kind;
+- `raaqeb-linux-x64-musl`, `raaqeb-linux-arm64-musl`: musl, for Alpine, which needs `apk add libstdc++ libgcc` first;
+- `raaqeb-darwin-arm64`: macOS 13 or later on Apple Silicon (no Intel Mac binary);
+- `raaqeb-windows-x64.exe`, `raaqeb-windows-arm64.exe`: Windows 10 version 1809 or later, Windows 11, and Windows Server 2019 or later.
+
+These are Bun's minimums, macOS 13 and Windows 10 version 1809 (`docs/installation.mdx` in Bun's docs); Windows Server 2019 is the server release of 1809.
+
+Each binary holds everything it serves: the pages, the migrations and the email client. Nothing else is installed beside it. None is signed by a publisher: the macOS binary carries the ad-hoc signature Apple Silicon needs to run it, and the Windows binaries carry none, so the first run of a browser download asks once (below).
+
+Releases are published at [github.com/Taqanah/raaqeb/releases](https://github.com/Taqanah/raaqeb/releases). Until the first one is, the installer finds no release, and you build from a checkout with Bun: `bun install`, then `bun run binaries` writes the binaries to `dist/bin`, and `bun run image` builds the image and loads it into Docker as `ghcr.io/taqanah/raaqeb:<version>`. Install from the `dist/bin` folder with `RAAQEB_DOWNLOAD_URL` (next section).
+
+Every install path ends at the onboarding page, which asks three questions: the language, the database and the operator account. Open Raaqeb at the address you mean to keep. The account screen stores that address as the public address, and sign-in works only there.
+
+## The installer script
+
+On a Linux server with systemd or OpenRC, or a Mac with Apple Silicon (next section), the installer does the whole install as root:
+
+```sh
+curl -fsSL https://raaqeb.dev/install.sh | sudo sh
+```
+
+The script installs the latest stable release. It asks `https://github.com/Taqanah/raaqeb/releases/latest` for the release it redirects to, not the GitHub API, so no rate limit applies, and downloads the binary and `SHA256SUMS` from that one release. Two variables change that:
+
+- `RAAQEB_VERSION` names the release to install, such as a pre-release, which is never the latest: `curl -fsSL https://raaqeb.dev/install.sh | sudo RAAQEB_VERSION=0.2.0-beta.1 sh`. It is also how you install an older version. The script stops if no such release exists.
+- `RAAQEB_DOWNLOAD_URL` is the folder holding the binaries, `SHA256SUMS` and `install.sh`, a mirror or a folder on the server, and wins over both. For a server with no route to GitHub, copy `dist/bin` and `deploy/install.sh` over and run `sudo RAAQEB_DOWNLOAD_URL=file:///root/bin sh install.sh` (a `file://` address needs curl).
+
+The script stops with a message when the network is down, when the repository has no release yet, and when `RAAQEB_VERSION` names none. Finding the latest release needs curl.
+
+The script:
+
+1. picks the binary for the machine: `x86_64` or `aarch64` from `uname -m`, musl when the system's own `ldd` says so;
+2. downloads it and `SHA256SUMS`, and refuses a binary whose checksum does not match;
+3. on Alpine, adds `libstdc++` and `libgcc`;
+4. installs `/usr/local/bin/raaqeb`;
+5. creates the `raaqeb` system user and group, and the data directory `/var/lib/raaqeb`, mode 0700, owned by that user;
+6. writes `/etc/raaqeb/raaqeb.env`, every line a comment, the first time only;
+7. writes the service and starts it: a hardened systemd unit at `/etc/systemd/system/raaqeb.service`, or an OpenRC script at `/etc/init.d/raaqeb` under `supervise-daemon`;
+8. waits up to five minutes for `/health` to answer (an upgrade migrates the database first), then prints the next step.
+
+Raaqeb then listens on `127.0.0.1:3000`, this server only. Either put a reverse proxy in front of it ([reverse proxy and TLS](/en/docs/operate/reverse-proxy)), or set `RAAQEB_HOST=0.0.0.0` in `/etc/raaqeb/raaqeb.env` and restart the service. To onboard before a proxy exists, reach it over SSH from your own machine with `ssh -L 3000:127.0.0.1:3000 <server>` and open `http://127.0.0.1:3000`. Onboarding then pre-fills that address as the public address, so type the address you will keep instead and confirm it.
+
+A server with neither systemd nor OpenRC gets the binary, the user and the folder, and the script prints how to start Raaqeb by hand.
+
+The systemd unit runs Raaqeb as `raaqeb` with `Restart=on-failure` and a sandbox: no new privileges and no capabilities, the whole file system read-only except `/var/lib/raaqeb`, a private `/tmp`, no devices, no kernel tunables, modules or logs, IPv4, IPv6 and Unix sockets only, and the system calls of an ordinary service. `systemctl cat raaqeb` shows it. Memory that is written and then run stays allowed, since Bun's JIT compiler needs it.
+
+## macOS
+
+On a Mac with Apple Silicon, the same command installs Raaqeb as a launchd daemon:
+
+```sh
+curl -fsSL https://raaqeb.dev/install.sh | sudo sh
+```
+
+`RAAQEB_VERSION` and `RAAQEB_DOWNLOAD_URL` work as above. On a Mac the script:
+
+1. refuses a Mac without Apple Silicon (a shell under Rosetta, which reads as `x86_64`, still gets the arm64 binary);
+2. downloads `raaqeb-darwin-arm64` and `SHA256SUMS`, and checks it with `shasum -a 256`;
+3. creates `_raaqeb`, a hidden user and group with no shell and no home, with the first id from 300 that is free, as macOS names its own daemons' accounts;
+4. creates the data directory `/usr/local/var/raaqeb`, mode 0700, owned by `_raaqeb`, and writes `/usr/local/etc/raaqeb/raaqeb.env` the first time only;
+5. installs `/usr/local/bin/raaqeb`, with any quarantine flag taken off;
+6. writes `/Library/LaunchDaemons/raaqeb.plist` and starts it with `launchctl bootstrap system`: Raaqeb runs as `_raaqeb` from boot, before anyone signs in, and launchd starts it again within seconds when it exits with a failure or is killed;
+7. waits for `/health` and prints the next step.
+
+Raaqeb listens on `127.0.0.1:3000`. The daemon's log is `/usr/local/var/log/raaqeb/raaqeb.log`. To restart it after editing the env file: `sudo launchctl kickstart -k system/raaqeb`.
+
+**Gatekeeper.** A file curl downloads carries no quarantine flag, so the installer and a binary fetched with `curl -fLO https://github.com/Taqanah/raaqeb/releases/latest/download/raaqeb-darwin-arm64` run without a prompt. A binary downloaded through a browser carries the flag, and macOS refuses to open it from an unidentified developer. Take the flag off before the first run:
+
+```sh
+xattr -d com.apple.quarantine raaqeb-darwin-arm64
+chmod +x raaqeb-darwin-arm64
+```
+
+Or open it once, then allow it under System Settings, Privacy & Security, "Open Anyway". The binary is already signed ad hoc as Bun compiles it; `codesign --verify raaqeb-darwin-arm64` passes, and there is nothing to sign by hand.
+
+## Windows
+
+In PowerShell run as Administrator, the Windows installer does the whole install:
+
+```powershell
+irm https://raaqeb.dev/install.ps1 | iex
+```
+
+It installs the latest stable release. `$env:RAAQEB_VERSION = '0.2.0-beta.1'; irm https://raaqeb.dev/install.ps1 | iex` installs the release you name, a pre-release for one. `RAAQEB_DOWNLOAD_URL` wins over both and may be a URL or a local folder holding the binaries, `SHA256SUMS` and `install.ps1`: `$env:RAAQEB_DOWNLOAD_URL = 'C:\raaqeb'; iex (Get-Content -Raw C:\raaqeb\install.ps1)`. The script:
+
+1. picks `raaqeb-windows-x64.exe` or `raaqeb-windows-arm64.exe` by the machine's own architecture, which an emulated PowerShell does not change;
+2. downloads it and `SHA256SUMS`, and refuses a binary whose checksum does not match;
+3. installs `C:\Program Files\Raaqeb\raaqeb.exe`;
+4. creates `C:\ProgramData\Raaqeb`, owned by the Administrators. Only they and SYSTEM have full access, and the folder inherits no permissions. Local Service may read the folder and the env file `.env` in it, and write only in the data directory, `data`. The installer writes `.env` the first time only. A folder of that name that another account made first is refused, since a planted `.env` or install key cannot be trusted: look inside it, remove it, and run the installer again;
+5. registers the task `Raaqeb` in Task Scheduler: the binary itself, run as Local Service from that folder, started at boot and again within a minute whenever it is not running, with no time limit;
+6. starts it, waits for `/health` and prints the next step.
+
+Raaqeb listens on `127.0.0.1:3000`. Windows has no service wrapper here: the binary does not speak the protocol of a Windows service, so Task Scheduler runs it. Ending the task kills the process, which SQLite recovers from at the next start. Because the task starts Raaqeb again within a minute, stop it by disabling it first:
+
+```powershell
+Disable-ScheduledTask Raaqeb; Stop-ScheduledTask Raaqeb      # stop
+Enable-ScheduledTask Raaqeb; Start-ScheduledTask Raaqeb      # start
+```
+
+Raaqeb keeps no log on Windows: Task Scheduler gives the task no console and no file, so its output goes nowhere and past lines are not kept. To read the log, stop the task and run Raaqeb by hand in a console in that folder: `cd C:\ProgramData\Raaqeb; & 'C:\Program Files\Raaqeb\raaqeb.exe' serve`, then Ctrl+C.
+
+**SmartScreen.** A file `irm` or `Invoke-WebRequest` downloads carries no Mark of the Web, so the installer and its binary run without a prompt. A binary downloaded through a browser carries the mark, and SmartScreen stops its first run with "Windows protected your PC": choose **More info**, then **Run anyway**. Or take the mark off first: `Unblock-File .\raaqeb-windows-x64.exe`.
+
+## Docker
+
+The image runs the glibc binary on distroless, as uid 65532, with `/data` as its volume and `raaqeb health` as its health check:
+
+```sh
+docker run -d --name raaqeb --restart unless-stopped \
+  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0
+```
+
+A named volume needs nothing more. A bind mount needs the container to run as the folder's owner: `--user "$(id -u):$(id -g)" -v "$PWD/data:/data"`. The image has no shell; `docker exec raaqeb raaqeb <command>` runs the binary directly.
+
+## Docker Compose
+
+`deploy/compose.yaml` runs Raaqeb with `restart: unless-stopped` on SQLite in a named volume. Two profiles add a service each:
+
+- `--profile postgres` adds Postgres 18. Set `POSTGRES_PASSWORD` in a `.env` file beside `compose.yaml`, then on the onboarding database screen choose Postgres with `postgres://raaqeb:<POSTGRES_PASSWORD>@postgres:5432/raaqeb`.
+- `--profile caddy` adds Caddy in front with automatic HTTPS for `DOMAIN`, set in the same `.env`, and certificates on demand for custom domains ([custom domains](/en/docs/operate/custom-domains)). With Caddy in front, delete the `ports` line of the `raaqeb` service, so Caddy is the only way in.
+
+The compose network has a fixed subnet, `172.31.253.0/29`, so Caddy's address, `172.31.253.2`, is known and `RAAQEB_TRUSTED_PROXIES` names it. If it overlaps a network of the host, change the subnet and its `ip_range`, and Caddy's address in both places it appears: the `caddy` service's `ipv4_address` and `RAAQEB_TRUSTED_PROXIES`. A bind mount in place of the named volume needs `user: "<uid>:<gid>"` on the `raaqeb` service.
+
+```sh
+docker compose --profile caddy up -d
+```
+
+## Fly.io
+
+`deploy/fly/README.md` is a guide of its own, with a sample `fly.toml`.
+
+## The bare binary
+
+Run the binary anywhere: `./raaqeb-linux-x64`, `./raaqeb-darwin-arm64` or `.\raaqeb-windows-x64.exe`. With no settings it keeps its data in `./data` and listens on `127.0.0.1:3000`. It reads a `.env` file from its working directory, so boot settings can live there. Ctrl+C stops it cleanly on every platform, and so do SIGTERM and, on Windows, closing its console window.

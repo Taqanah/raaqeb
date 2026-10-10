@@ -1,0 +1,9 @@
+{
+  // Its own program: the website registers its own router with TanStack, which would clash with the product's in one.
+  "extends": "../tsconfig.json",
+  "include": ["."],
+  "exclude": ["dist"],
+  "compilerOptions": {
+    "paths": { "@/*": ["../src/*"], "~/*": ["./*"] }
+  }
+}

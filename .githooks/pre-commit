@@ -1,0 +1,9 @@
+#!/bin/sh
+# Refuse commits made while HEAD is main. Work reaches main through a reviewed
+# pull request, never a direct commit. Install once per clone:
+#   git config core.hooksPath .githooks
+branch=$(git symbolic-ref --short -q HEAD)
+if [ "$branch" = "main" ]; then
+  echo "pre-commit: refusing to commit on main. Create a branch: git switch -c <number>-<slug>" >&2
+  exit 1
+fi

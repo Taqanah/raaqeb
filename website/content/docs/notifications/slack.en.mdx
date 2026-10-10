@@ -1,0 +1,71 @@
+---
+title: Slack
+description: How to get a Slack incoming webhook URL, what a Slack channel posts, and how a refused post shows in Raaqeb.
+---
+
+A Slack channel posts each notification to one Slack channel through an incoming webhook, as plain text in the channel language. Slack's formatting is off, so a monitor's name shows as typed and cannot mention anyone or make a link of its own.
+
+## What you need first
+
+An incoming webhook URL. In Slack:
+
+1. Open [api.slack.com/apps](https://api.slack.com/apps) and choose **Create New App**, then **From scratch**. Name it and pick your workspace.
+2. Open **Incoming Webhooks** and turn it on.
+3. Choose **Add New Webhook**, pick the Slack channel, and allow it.
+4. Copy the webhook URL. It starts with `https://hooks.slack.com/services/`.
+
+Any receiver that takes Slack's incoming webhook body works too: the field accepts any `http` or `https` URL.
+
+## Fields
+
+| Field | Meaning | Required | Default |
+| --- | --- | --- | --- |
+| **Name** | What the admin area calls the channel, at most 80 characters. | Yes | None |
+| **Channel language** | The language of the message. | No | **The install language** |
+| **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
+| **URL** | The incoming webhook URL. The URL carries Slack's token, so it is a secret: stored encrypted with the install key and never shown after saving. | Yes | None |
+
+## The message
+
+Raaqeb posts this JSON to the webhook URL:
+
+```json
+{
+  "mrkdwn": false,
+  "text": "Main website is down\n\nThe monitor is down.\n\nMonitor: Main website\nTarget: https://example.com\nReason: Timed out\nTime: Sep 25, 2026, 18:49 (UTC)\n<https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d|Open the monitor>\n<https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d|Open an incident>"
+}
+```
+
+In Slack it reads:
+
+```text
+Main website is down
+
+The monitor is down.
+
+Monitor: Main website
+Target: https://example.com
+Reason: Timed out
+Time: Sep 25, 2026, 18:49 (UTC)
+Open the monitor
+Open an incident
+```
+
+The first line is the subject. The last two lines are links, present only when the install stores a public address. Raaqeb escapes `&`, `<` and `>` in the text, so nothing in a name is read as markup. See [What a notification says](/en/docs/notifications#what-a-notification-says) for every event's lines.
+
+## Failures and limits
+
+One attempt gives up after 10 seconds. A failed attempt is retried 30 seconds, 2 minutes and 10 minutes later. Slack's rate limit answers `429`, which retries on the same schedule.
+
+| Reason code | Text | Typical cause |
+| --- | --- | --- |
+| `unexpected_status` | Unexpected status code | Slack refused the post. **Observed** shows the status and **Error text** Slack's answer, such as `invalid_token`, `no_service` for a removed webhook, or `channel_is_archived`. |
+| `timeout` | Timed out | No answer within 10 seconds. |
+| `dns_failed` | DNS lookup failed | The URL's host does not resolve. |
+| `connection_refused` | Connection refused | Nothing listens at the URL's host and port. |
+| `connection_failed` | Connection failed | The connection was reset or the host was unreachable. |
+| `certificate_expired` | Certificate expired | The receiver's certificate has expired. |
+| `certificate_invalid` | Certificate invalid | The certificate cannot be verified. |
+| `unknown` | Unknown error | Anything else. **Error text** says what happened. |
+
+The webhook URL is removed from every recorded error text.

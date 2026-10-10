@@ -1,0 +1,3 @@
+# Every node-shebang bin in node_modules/.bin runs on Bun, not Node.
+[run]
+bun = true

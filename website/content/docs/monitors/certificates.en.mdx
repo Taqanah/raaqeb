@@ -1,0 +1,65 @@
+---
+title: Certificate record
+description: How Raaqeb records an HTTPS monitor's TLS certificate and warns before it expires.
+---
+
+For an HTTPS monitor with the certificate warning on, Raaqeb keeps a certificate record: what it knows about the certificate the site serves now. It reads the certificate on its own schedule, shows it on the monitor's page, and sends the certificate expiring event before the certificate runs out.
+
+## Switch it on
+
+The option is on the [HTTP](/en/docs/monitors/http) monitor form, in **Certificate and capture**:
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Warn before the certificate expires** | Keeps a certificate record and sends the certificate expiring event. | Off. For `https` addresses only. |
+| **Before it expires** | How many days before expiry the first warning goes. | 14 days. 1 to 365. |
+
+**Certificate expiring** then appears under **Events that notify**, on by default.
+
+## What the record holds
+
+The **Certificate record** card on the monitor's page shows:
+
+| Field | What it is |
+|---|---|
+| **Subject** | The certificate's subject, such as `CN=example.com`. |
+| **Issuer** | Who issued it. |
+| **Valid from** | The start of its validity. |
+| **Valid until** | Its expiry. |
+| **Names** | The DNS names and IP addresses it covers. |
+| **Fingerprint** | Its SHA-256 fingerprint. |
+| **Last read** | When Raaqeb last read it. |
+
+The card marks a certificate **Expiring soon** once it is within the monitor's warning days, and **Expired** once its validity has ended.
+
+## How it is read
+
+Raaqeb reads the certificate over its own TLS connection to the URL's host and port, `443` unless the URL names another, apart from the checks. It reads the certificate the server sends first, the leaf, and does not verify it, so a self-signed or mismatched certificate is still recorded.
+
+- A monitor with no record is read within about a minute of saving.
+- After that, the record is read again every 12 hours.
+- A read that fails leaves the record as it was and is tried again an hour later.
+- Reads go one connection at a time, each with a 10 second timeout. A paused monitor is not read.
+
+There is one record per monitor, replaced when the certificate's fingerprint changes; earlier certificates are not kept. Changing the URL's host, port or scheme, or switching the option off, deletes the record, and the next read starts a new one.
+
+## Warnings
+
+The certificate expiring event goes at most twice for each certificate:
+
+1. Once the certificate is within the days set in **Before it expires**.
+2. Once more when it is within one day of expiry, or has expired.
+
+A certificate first seen already within a day of expiry gets only the second warning. A renewed certificate has a new fingerprint and starts over.
+
+A warning is sent only when the monitor is not paused, the **Certificate expiring** event is on, and at least one notification channel is selected. One that could not go for those reasons is not counted as sent, so turning the event on or selecting a channel later still sends it. While a maintenance window covers the monitor, the warning waits for the window's end.
+
+## The record and the check
+
+The record does not decide whether the monitor is up. Every HTTP check verifies the certificate itself: an expired certificate makes the check down with "Certificate expired", and one that does not verify with "Certificate invalid", whether the warning is on or not. With **Ignore TLS errors** on, checks accept those certificates, and the record and its warnings are the only signal left.
+
+## Related pages
+
+- [HTTP](/en/docs/monitors/http): the monitor form and the check's reasons.
+- [Monitors](/en/docs/monitors): monitor events and maintenance windows.
+- [Notifications](/en/docs/notifications): what each channel sends.

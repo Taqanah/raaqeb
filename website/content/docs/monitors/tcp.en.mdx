@@ -1,0 +1,45 @@
+---
+title: TCP
+description: Watch that a host accepts connections on a port with a TCP monitor, and read the reasons a failed check reports.
+---
+
+A TCP monitor opens a connection to a host and port and closes it again. It sends nothing and reads nothing, so it proves that something accepts connections there, not that the service behind the port answers correctly. Use it for mail servers, SSH, game servers and any port without HTTP. For a database, a [database monitor](/en/docs/monitors/database) signs in and runs a query, which tells you more.
+
+## Add a TCP monitor
+
+Select **Add monitor** and choose **TCP** as the **Check type**. The fields every check type shares are on [Monitors](/en/docs/monitors).
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Host** | The host name, IPv4 address or IPv6 address to connect to. | Required. Write an IPv6 address without square brackets, as `2001:db8::1`. |
+| **Port** | The TCP port. | Required. 1 to 65535. |
+
+**Test now** shows the address the connection reached.
+
+## Up, degraded and down
+
+The response time is the time to an open connection, capped by the timeout. The connection is plain TCP: no TLS handshake happens.
+
+- **Up**: the connection opened within the degraded threshold.
+- **Degraded**: the connection opened, slower than the degraded threshold.
+- **Down**: the connection did not open on the last attempt.
+
+The reasons a failed check reports:
+
+| Reason | What happened |
+|---|---|
+| Timed out | The connection did not open within the timeout. |
+| DNS lookup failed | The host name did not resolve. |
+| Connection refused | Nothing listens at the host and port. Shows both. |
+| Connection failed | The connection was reset, closed before it opened, or the host or network is unreachable. The code is kept. |
+| Unknown error | Anything else. The raw error text is kept beside it. |
+
+## Example
+
+To watch a mail server's submission port, set **Host** to `mail.example.com` and **Port** to `587`. When the server stops, the check reports "Connection refused" with `mail.example.com` and `587`. When a firewall drops the packets instead, it reports "Timed out" once every attempt has run out of time: with the defaults, after about 32 seconds.
+
+## Related pages
+
+- [Monitors](/en/docs/monitors): the schedule, retries, events and retention.
+- [HTTP](/en/docs/monitors/http): when the port speaks HTTP.
+- [Database](/en/docs/monitors/database): sign in and run a query.

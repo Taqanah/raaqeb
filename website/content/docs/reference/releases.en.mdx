@@ -1,0 +1,30 @@
+---
+title: Releases
+description: Where Raaqeb's releases are published, what each one carries, and how you learn that a newer one is out.
+---
+
+Releases are published at [github.com/Taqanah/raaqeb/releases](https://github.com/Taqanah/raaqeb/releases).
+
+This page lists each release, newest first, with its release notes.
+
+## 0.1.0
+
+2026-10-10. [Release page](https://github.com/Taqanah/raaqeb/releases/tag/v0.1.0)
+
+The first stable release: what the docs describe, installed by the installer or the Docker image.
+
+## What a release carries
+
+A release's download folder, `https://github.com/Taqanah/raaqeb/releases/download/<tag>/`, is where the installer downloads from, and the address it takes in `RAAQEB_DOWNLOAD_URL` if you mirror it. It holds:
+
+- One binary per platform.
+- `SHA256SUMS`, which the installer checks the binary against before installing it.
+- The two installers, `install.sh` and `install.ps1`.
+
+The Docker image is `ghcr.io/taqanah/raaqeb`, tagged with the version, such as `ghcr.io/taqanah/raaqeb:0.1.0`.
+
+The installer's address, `https://raaqeb.dev/install.sh`, serves the script of the latest stable release. A release whose tag carries a suffix, such as `v0.2.0-beta.1`, is a pre-release: it is never the latest, and you install it with `RAAQEB_VERSION=0.2.0-beta.1`.
+
+## Learning of a newer release
+
+The admin area shows a banner when a newer release exists. Raaqeb never updates itself; how to upgrade each kind of install is in [Upgrades](/en/docs/operate/upgrades).

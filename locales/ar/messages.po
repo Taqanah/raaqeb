@@ -1,0 +1,4873 @@
+msgid ""
+msgstr ""
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5);\n"
+
+#. js-lingui-explicit-id
+msgid "app_name"
+msgstr "راقب"
+
+#. js-lingui-explicit-id
+msgid "app_close"
+msgstr "إغلاق"
+
+#. js-lingui-explicit-id
+msgid "app_toasts"
+msgstr "الإشعارات"
+
+#. js-lingui-explicit-id
+msgid "app_cancel"
+msgstr "إلغاء"
+
+#. js-lingui-explicit-id
+msgid "app_optional"
+msgstr "اختياري"
+
+#. js-lingui-explicit-id
+msgid "app_save"
+msgstr "حفظ"
+
+#. js-lingui-explicit-id
+msgid "app_search"
+msgstr "بحث"
+
+#. js-lingui-explicit-id
+msgid "app_delete"
+msgstr "حذف"
+
+#. js-lingui-explicit-id
+msgid "app_form_invalid"
+msgstr "صحّح الحقول المعلّمة."
+
+#. js-lingui-explicit-id
+msgid "setting_theme"
+msgstr "النسق"
+
+#. js-lingui-explicit-id
+msgid "setting_theme_system"
+msgstr "حسب النظام"
+
+#. js-lingui-explicit-id
+msgid "setting_theme_light"
+msgstr "فاتح"
+
+#. js-lingui-explicit-id
+msgid "setting_theme_dark"
+msgstr "داكن"
+
+#. js-lingui-explicit-id
+msgid "setting_font_size"
+msgstr "حجم الخط"
+
+#. js-lingui-explicit-id
+msgid "setting_font_size_small"
+msgstr "صغير"
+
+#. js-lingui-explicit-id
+msgid "setting_font_size_medium"
+msgstr "متوسط"
+
+#. js-lingui-explicit-id
+msgid "setting_font_size_large"
+msgstr "كبير"
+
+#. js-lingui-explicit-id
+msgid "setting_density"
+msgstr "الكثافة"
+
+#. js-lingui-explicit-id
+msgid "setting_density_compact"
+msgstr "مضغوط"
+
+#. js-lingui-explicit-id
+msgid "setting_density_comfortable"
+msgstr "مريح"
+
+#. js-lingui-explicit-id
+msgid "setting_density_spacious"
+msgstr "واسع"
+
+#. js-lingui-explicit-id
+msgid "setting_radius"
+msgstr "استدارة الحواف"
+
+#. js-lingui-explicit-id
+msgid "setting_radius_none"
+msgstr "بلا"
+
+#. js-lingui-explicit-id
+msgid "setting_radius_medium"
+msgstr "متوسطة"
+
+#. js-lingui-explicit-id
+msgid "setting_radius_large"
+msgstr "كبيرة"
+
+#. js-lingui-explicit-id
+msgid "monitor_degraded"
+msgstr "متعثّر"
+
+#. js-lingui-explicit-id
+msgid "monitor_paused"
+msgstr "مُعلَّق"
+
+#. js-lingui-explicit-id
+msgid "monitor_waiting_first_check"
+msgstr "بانتظار أول فحص"
+
+#. js-lingui-explicit-id
+msgid "monitor_waiting_first_heartbeat"
+msgstr "بانتظار أول نبضة"
+
+#. js-lingui-explicit-id
+msgid "monitor_outage"
+msgstr "انقطاع"
+
+#. js-lingui-explicit-id
+msgid "maintenance_window"
+msgstr "وقت الصيانة"
+
+#. js-lingui-explicit-id
+msgid "auth_sign_in_title"
+msgstr "تسجيل الدخول"
+
+#. js-lingui-explicit-id
+msgid "auth_email"
+msgstr "البريد الإلكتروني"
+
+#. js-lingui-explicit-id
+msgid "auth_password"
+msgstr "كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "auth_sign_in"
+msgstr "تسجيل الدخول"
+
+#. js-lingui-explicit-id
+msgid "auth_signing_in"
+msgstr "جارٍ تسجيل الدخول…"
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_password"
+msgstr "نسيت كلمة المرور؟"
+
+#. js-lingui-explicit-id
+msgid "auth_invalid_credentials"
+msgstr "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+
+#. js-lingui-explicit-id
+msgid "auth_rate_limited"
+msgstr "محاولات أكثر من الحد. انتظر قليلًا ثم حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "auth_unavailable"
+msgstr "تعذّر الوصول إلى الخادوم. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "auth_sign_out"
+msgstr "تسجيل الخروج"
+
+#. js-lingui-explicit-id
+msgid "auth_sign_out_question"
+msgstr "تسجيل الخروج من راقب؟"
+
+#. js-lingui-explicit-id
+msgid "auth_signing_out"
+msgstr "جارٍ تسجيل الخروج…"
+
+#. js-lingui-explicit-id
+msgid "app_language"
+msgstr "اللغة"
+
+#. js-lingui-explicit-id
+msgid "auth_origin_refused"
+msgstr "هذا العنوان ليس العنوان العام للتثبيت. افتح راقب من عنوانه العام."
+
+#. js-lingui-explicit-id
+msgid "auth_origin_set_address"
+msgstr "إذا كان راقب سيُفتح من هذا العنوان، فشغّل هذا الأمر على الخادوم ليصبح عنوانه العام:"
+
+#. js-lingui-explicit-id
+msgid "onboarding_language_title"
+msgstr "اللغة"
+
+#. js-lingui-explicit-id
+msgid "onboarding_language_lead"
+msgstr "اختر لغة التثبيت. يمكن تغييرها لاحقًا من الإعدادات."
+
+#. js-lingui-explicit-id
+msgid "onboarding_step"
+msgstr "الخطوة {current} من {total}"
+
+#. js-lingui-explicit-id
+msgid "onboarding_continue"
+msgstr "متابعة"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_title"
+msgstr "قاعدة البيانات"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_lead"
+msgstr "المكان الذي يحفظ فيه راقب بياناته، ويُختار مرة واحدة."
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_sqlite"
+msgstr "SQLite على هذا الخادوم"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_sqlite_note"
+msgstr "الخيار الافتراضي: ملف واحد في مجلد البيانات."
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_postgres"
+msgstr "خادوم Postgres"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_postgres_note"
+msgstr "خادوم تشغّله أنت، أو Neon أو Supabase. يحتاج إلى رابط اتصال."
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_url"
+msgstr "رابط الاتصال"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_url_hint"
+msgstr "روابط Neon وSupabase وPlanetScale روابط Postgres عادية، فتعمل كما هي."
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_test"
+msgstr "اختبار الاتصال"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_testing"
+msgstr "جارٍ الاختبار…"
+
+#. js-lingui-explicit-id
+msgid "onboarding_database_url_line"
+msgstr "في ملف compose، يُبقي هذا السطر اختيارك بعد إعادة إنشاء الحاوية:"
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_empty"
+msgstr "قاعدة بيانات فارغة. عند المتابعة يُنشئ راقب جداوله فيها."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_raaqeb"
+msgstr "قاعدة بيانات لراقب في الإصدار {version}. عند المتابعة يعتمدها راقب ويرحّلها إلى إصداره، فخذ منها نسخة احتياطية أولًا."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_foreign"
+msgstr "فيها جداول ليست لراقب. لا ينشئ راقب إلا جداوله، ولا يمسّ غيرها."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_unrecorded"
+msgstr "فيها جداول بأسماء جداول راقب دون سجل الترحيل، فلا تُقبل. استعد نسخة احتياطية أخذها راقب، أو اختر قاعدة بيانات فارغة."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_newer"
+msgstr "قاعدة بيانات لراقب من إصدار أحدث من هذا، فلا تُقبل. ثبّت إصدارًا أحدث من راقب بدلًا من ذلك."
+
+#. js-lingui-explicit-id
+msgid "onboarding_verdict_foreign_record"
+msgstr "فيها سجل ترحيل لتطبيق آخر، فلا تُقبل. لا يشارك راقب قاعدة بياناته تطبيقًا آخر."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_refused"
+msgstr "تعذّر الاتصال: رفض الخادوم الاتصال."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_timeout"
+msgstr "تعذّر الاتصال: انتهت مهلة الانتظار."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_authentication"
+msgstr "تعذّر الاتصال: رُفض اسم المستخدم أو كلمة المرور."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_tls"
+msgstr "تعذّر الاتصال: فشل TLS."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_database"
+msgstr "تعذّر الاتصال: قاعدة البيانات غير موجودة."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_malformed"
+msgstr "الرابط ليس رابط Postgres. يجب أن يكون رابطًا كاملًا يبدأ بـ ⁦postgres://⁩."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_unknown"
+msgstr "تعذّر الاتصال: حدث خطأ غير متوقع."
+
+#. js-lingui-explicit-id
+msgid "onboarding_choose_refused"
+msgstr "لم تُقبل قاعدة البيانات. انظر نتيجة الاختبار."
+
+#. js-lingui-explicit-id
+msgid "onboarding_choose_open_failed"
+msgstr "فُتحت قاعدة البيانات، لكن فشل ترحيلها أو كتابة config.json. راجع سجل الخادوم."
+
+#. js-lingui-explicit-id
+msgid "onboarding_choose_already_chosen"
+msgstr "اختيرت قاعدة بيانات بالفعل."
+
+#. js-lingui-explicit-id
+msgid "onboarding_choose_invalid"
+msgstr "الرابط لا يبدأ بـ ⁦postgres://⁩."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unavailable"
+msgstr "لم يُجب الخادوم. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_title"
+msgstr "حساب المشغّل"
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_lead"
+msgstr "البريد وكلمة المرور اللذان تسجّل بهما الدخول. لا تُرسَل رسالة للتحقق منهما."
+
+#. js-lingui-explicit-id
+msgid "onboarding_public_address"
+msgstr "العنوان العام"
+
+#. js-lingui-explicit-id
+msgid "onboarding_public_address_hint"
+msgstr "العنوان الذي يصل منه الزوار والمشغّل إلى هذا التثبيت، ويمكن تغييره لاحقًا من الإعدادات."
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_create"
+msgstr "إنشاء الحساب والمتابعة"
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_creating"
+msgstr "جارٍ الإنشاء…"
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_already_exists"
+msgstr "يوجد حساب مشغّل بالفعل. سجّل الدخول."
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_no_database"
+msgstr "اختر قاعدة البيانات أولًا."
+
+#. js-lingui-explicit-id
+msgid "onboarding_account_invalid"
+msgstr "تحقّق من البريد وكلمة المرور والعنوان العام."
+
+#. js-lingui-explicit-id
+msgid "onboarding_address_elsewhere"
+msgstr "هذه الصفحة مفتوحة من عنوان غير العنوان العام الذي أدخلته. لن يعمل تسجيل الدخول إلا حين يُفتح راقب من العنوان العام."
+
+#. js-lingui-explicit-id
+msgid "onboarding_address_confirm"
+msgstr "أؤكد أن راقب سيُفتح من العنوان العام الذي أدخلته."
+
+#. js-lingui-explicit-id
+msgid "monitor_list_title"
+msgstr "المراقبات"
+
+#. js-lingui-explicit-id
+msgid "monitor_empty_title"
+msgstr "لا مراقبات بعد"
+
+#. js-lingui-explicit-id
+msgid "monitor_empty_description"
+msgstr "أضف أول مراقبة. ولاستعادة ملف تصدير سابق، تجد الاستيراد في صفحة الإعدادات."
+
+#. js-lingui-explicit-id
+msgid "monitor_add"
+msgstr "إضافة مراقبة"
+
+#. js-lingui-explicit-id
+msgid "monitor_import_link"
+msgstr "الاستيراد في الإعدادات"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_title"
+msgstr "خطوات البدء"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_monitor"
+msgstr "إضافة مراقبة"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_link"
+msgstr "إضافة مكوّن وربطه بالمراقبة"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_published"
+msgstr "إنشاء صفحة حالة ونشرها"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_channel"
+msgstr "إضافة قناة إشعار"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_done"
+msgstr "تمّت"
+
+#. js-lingui-explicit-id
+msgid "monitor_getting_started_dismiss"
+msgstr "إخفاء خطوات البدء"
+
+#. js-lingui-explicit-id
+msgid "app_nav_monitoring"
+msgstr "المراقبة"
+
+#. js-lingui-explicit-id
+msgid "app_nav_status"
+msgstr "الحالة العامة"
+
+#. js-lingui-explicit-id
+msgid "app_nav_install"
+msgstr "التثبيت"
+
+#. js-lingui-explicit-id
+msgid "app_nav_actions"
+msgstr "إجراءات"
+
+#. js-lingui-explicit-id
+msgid "app_navigation"
+msgstr "التنقل"
+
+#. js-lingui-explicit-id
+msgid "app_loading"
+msgstr "جارٍ التحميل"
+
+#. js-lingui-explicit-id
+msgid "app_error_title"
+msgstr "تعذّر عرض الصفحة"
+
+#. js-lingui-explicit-id
+msgid "app_error_description"
+msgstr "حدث خطأ أثناء تحميل هذه الصفحة. أعد المحاولة بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "app_try_again"
+msgstr "أعد المحاولة"
+
+#. js-lingui-explicit-id
+msgid "app_sidebar_toggle"
+msgstr "الشريط الجانبي"
+
+#. js-lingui-explicit-id
+msgid "page_list_title"
+msgstr "صفحات الحالة"
+
+#. js-lingui-explicit-id
+msgid "incident_list_title"
+msgstr "الحوادث"
+
+#. js-lingui-explicit-id
+msgid "maintenance_list_title"
+msgstr "أوقات الصيانة"
+
+#. js-lingui-explicit-id
+msgid "channel_list_title"
+msgstr "قنوات الإشعار"
+
+#. js-lingui-explicit-id
+msgid "channel_type_webhook"
+msgstr "Webhook"
+
+#. js-lingui-explicit-id
+msgid "channel_field_url"
+msgstr "عنوان الرابط"
+
+#. js-lingui-explicit-id
+msgid "channel_field_url_hint"
+msgstr "يستقبل طلب POST بمحتوى JSON موقّع. يُحفظ معمّى ولا يُعرض بعد الحفظ."
+
+#. js-lingui-explicit-id
+msgid "channel_field_signing_secret"
+msgstr "مفتاح التوقيع"
+
+#. js-lingui-explicit-id
+msgid "channel_field_signing_secret_hint"
+msgstr "يولّده راقب، ويتحقق به المستقبل من توقيع كل طلب."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_name"
+msgstr "اكتب اسمًا للقناة، 80 حرفًا على الأكثر."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_required"
+msgstr "هذا الحقل مطلوب."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_url"
+msgstr "اكتب عنوانًا يبدأ بـ http أو https."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_text"
+msgstr "هذه القيمة غير صالحة."
+
+#. js-lingui-explicit-id
+msgid "channel_add"
+msgstr "إضافة قناة"
+
+#. js-lingui-explicit-id
+msgid "channel_new_title"
+msgstr "قناة جديدة"
+
+#. js-lingui-explicit-id
+msgid "channel_empty_title"
+msgstr "لا توجد قنوات إشعار بعد"
+
+#. js-lingui-explicit-id
+msgid "channel_empty_description"
+msgstr "أضف قناة لتصل إشعارات المراقبات إلى فريقك."
+
+#. js-lingui-explicit-id
+msgid "channel_column_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "channel_column_type"
+msgstr "النوع"
+
+#. js-lingui-explicit-id
+msgid "channel_column_destination"
+msgstr "الوجهة"
+
+#. js-lingui-explicit-id
+msgid "channel_column_language"
+msgstr "لغة القناة"
+
+#. js-lingui-explicit-id
+msgid "channel_column_last_send"
+msgstr "آخر إشعار"
+
+#. js-lingui-explicit-id
+msgid "channel_applies_badge"
+msgstr "للمراقبات الجديدة"
+
+#. js-lingui-explicit-id
+msgid "channel_never_sent"
+msgstr "لم يُرسل شيء"
+
+#. js-lingui-explicit-id
+msgid "channel_section_details"
+msgstr "القناة"
+
+#. js-lingui-explicit-id
+msgid "channel_field_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "channel_field_type"
+msgstr "النوع"
+
+#. js-lingui-explicit-id
+msgid "channel_field_locale"
+msgstr "لغة القناة"
+
+#. js-lingui-explicit-id
+msgid "channel_locale_install"
+msgstr "لغة التثبيت"
+
+#. js-lingui-explicit-id
+msgid "channel_locale_none"
+msgstr "تُرسل هذه القناة بيانات بلا لغة"
+
+#. js-lingui-explicit-id
+msgid "channel_field_applies_to_new"
+msgstr "تطبيق على المراقبات الجديدة تلقائيًا"
+
+#. js-lingui-explicit-id
+msgid "channel_field_applies_to_new_hint"
+msgstr "تبدأ كل مراقبة جديدة وهذه القناة محددة فيها."
+
+#. js-lingui-explicit-id
+msgid "channel_field_kept"
+msgstr "محفوظ. اتركه فارغًا للإبقاء عليه."
+
+#. js-lingui-explicit-id
+msgid "channel_field_renew"
+msgstr "مفتاح توقيع جديد عند الحفظ"
+
+#. js-lingui-explicit-id
+msgid "channel_field_renew_hint"
+msgstr "بعد الحفظ يتوقف المستقبل عن التحقق بالمفتاح القديم."
+
+#. js-lingui-explicit-id
+msgid "channel_secret_after_save"
+msgstr "يظهر هنا بعد الحفظ."
+
+#. js-lingui-explicit-id
+msgid "channel_secrets_unreadable"
+msgstr "لا يستطيع مفتاح راقب فتح البيانات السرية لهذه القناة. اكتبها من جديد واحفظ."
+
+#. js-lingui-explicit-id
+msgid "channel_saved"
+msgstr "حُفظت القناة."
+
+#. js-lingui-explicit-id
+msgid "channel_created"
+msgstr "أُضيفت القناة."
+
+#. js-lingui-explicit-id
+msgid "channel_saving"
+msgstr "جارٍ الحفظ…"
+
+#. js-lingui-explicit-id
+msgid "channel_unavailable"
+msgstr "تعذّر تنفيذ الإجراء لأن قاعدة البيانات لم تُجب. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "channel_not_found"
+msgstr "لم تعد هذه القناة موجودة."
+
+#. js-lingui-explicit-id
+msgid "channel_corrupt"
+msgstr "تعذّر عرض القنوات: إحدى القنوات المخزنة لا تطابق هذا الإصدار. معرّف القناة:"
+
+#. js-lingui-explicit-id
+msgid "channel_delete"
+msgstr "حذف القناة"
+
+#. js-lingui-explicit-id
+msgid "channel_delete_title"
+msgstr "حذف هذه القناة؟"
+
+#. js-lingui-explicit-id
+msgid "channel_delete_description"
+msgstr "تُزال من كل مراقبة تستخدمها، وتُحذف آخر إشعاراتها. لا يمكن التراجع عن الحذف."
+
+#. js-lingui-explicit-id
+msgid "channel_section_test"
+msgstr "إرسال تجريبي"
+
+#. js-lingui-explicit-id
+msgid "channel_send_test"
+msgstr "إرسال تجريبي"
+
+#. js-lingui-explicit-id
+msgid "channel_send_test_hint"
+msgstr "يرسل إشعارًا تجريبيًا واحدًا الآن بالإعدادات المحفوظة، دون إعادة محاولة."
+
+#. js-lingui-explicit-id
+msgid "channel_sending"
+msgstr "جارٍ الإرسال…"
+
+#. js-lingui-explicit-id
+msgid "channel_recent_title"
+msgstr "آخر الإشعارات"
+
+#. js-lingui-explicit-id
+msgid "channel_recent_empty"
+msgstr "لم يُرسل شيء بعد."
+
+#. js-lingui-explicit-id
+msgid "channel_preview_title"
+msgstr "معاينة الإشعارات"
+
+#. js-lingui-explicit-id
+msgid "channel_preview_hint"
+msgstr "ما تستلمه هذه القناة من كل إشعار، بقيم هي أمثلة: المراقبة وأوقاتها ومددها مختلَقة. لا يُرسَل شيء من هنا."
+
+#. js-lingui-explicit-id
+msgid "channel_preview_sample"
+msgstr "مثال"
+
+#. js-lingui-explicit-id
+msgid "channel_preview_monitor"
+msgstr "الموقع الرئيسي"
+
+#. js-lingui-explicit-id
+msgid "channel_preview_reminder"
+msgstr "تذكير"
+
+#. js-lingui-explicit-id
+msgid "channel_send_sent"
+msgstr "أُرسل"
+
+#. js-lingui-explicit-id
+msgid "channel_send_pending"
+msgstr "بانتظار إعادة المحاولة"
+
+#. js-lingui-explicit-id
+msgid "channel_send_queued"
+msgstr "بانتظار الإرسال"
+
+#. js-lingui-explicit-id
+msgid "channel_send_failed"
+msgstr "فشل"
+
+#. js-lingui-explicit-id
+msgid "channel_send_test_kind"
+msgstr "تجريبي"
+
+#. js-lingui-explicit-id
+msgid "channel_send_attempts"
+msgstr "{count, plural, zero {لا محاولات} one {محاولة واحدة} two {محاولتان} few {# محاولات} many {# محاولة} other {# محاولة}}"
+
+#. js-lingui-explicit-id
+msgid "channel_send_next"
+msgstr "المحاولة التالية: {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_channels"
+msgstr "قنوات الإشعار"
+
+#. js-lingui-explicit-id
+msgid "monitor_channels_hint"
+msgstr "تصل إشعارات هذه المراقبة إلى القنوات المحددة."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_notifications"
+msgstr "الإشعارات"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_events"
+msgstr "الأحداث التي تُرسل إشعارًا"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_down"
+msgstr "التعطّل"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_recovered"
+msgstr "التعافي"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_degraded_started"
+msgstr "بدء التعثّر"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_degraded_ended"
+msgstr "انتهاء التعثّر"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_certificate_expiring"
+msgstr "قرب انتهاء الشهادة"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_degraded_hint"
+msgstr "يُرسل حين يُحدَّد حد التعثّر في الجدولة."
+
+#. js-lingui-explicit-id
+msgid "monitor_event_certificate_hint"
+msgstr "قبل الانتهاء بـ {days}، ثم قبله بيوم واحد."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_reminder"
+msgstr "التذكير أثناء التعطّل"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_reminder_hint"
+msgstr "يكرر تنبيه التعطّل ما دامت المراقبة متعطّلة."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_reminder_every"
+msgstr "كرّر كل"
+
+#. js-lingui-explicit-id
+msgid "monitor_reminder_needs_down"
+msgstr "يتطلب تفعيل حدث التعطّل."
+
+#. js-lingui-explicit-id
+msgid "monitor_channels_empty"
+msgstr "لا توجد قنوات إشعار بعد."
+
+#. js-lingui-explicit-id
+msgid "setting_title"
+msgstr "الإعدادات"
+
+#. js-lingui-explicit-id
+msgid "app_palette_title"
+msgstr "لوحة الأوامر"
+
+#. js-lingui-explicit-id
+msgid "app_palette_placeholder"
+msgstr "ابحث في الصفحات والمراقبات والإجراءات"
+
+#. js-lingui-explicit-id
+msgid "app_palette_empty"
+msgstr "لا نتائج"
+
+#. js-lingui-explicit-id
+msgid "app_palette_search_monitors"
+msgstr "ابحث في المراقبات عن «{query}»"
+
+#. js-lingui-explicit-id
+msgid "app_shortcuts"
+msgstr "اختصارات لوحة المفاتيح"
+
+#. js-lingui-explicit-id
+msgid "app_shortcuts_lead"
+msgstr "ترتبط الاختصارات بمواضع المفاتيح، فتعمل مع أي تخطيط للوحة المفاتيح."
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_palette"
+msgstr "فتح لوحة الأوامر"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_sidebar"
+msgstr "إظهار الشريط الجانبي أو إخفاؤه"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_save"
+msgstr "حفظ النموذج الذي تعمل فيه"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_new_monitor"
+msgstr "إضافة مراقبة من قائمة المراقبات"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_search"
+msgstr "الانتقال إلى البحث"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_shortcuts"
+msgstr "عرض هذه القائمة"
+
+#. js-lingui-explicit-id
+msgid "app_shortcut_close"
+msgstr "إغلاق ما هو مفتوح"
+
+#. js-lingui-explicit-id
+msgid "app_release_banner"
+msgstr "صدر إصدار جديد من راقب:"
+
+#. js-lingui-explicit-id
+msgid "app_release_notes"
+msgstr "ملاحظات الإصدار"
+
+#. js-lingui-explicit-id
+msgid "app_saved"
+msgstr "محفوظ"
+
+#. js-lingui-explicit-id
+msgid "app_key_ctrl"
+msgstr "تحكم"
+
+#. js-lingui-explicit-id
+msgid "app_key_esc"
+msgstr "هروب"
+
+#. js-lingui-explicit-id
+msgid "app_unsaved"
+msgstr "تغييرات غير محفوظة"
+
+#. js-lingui-explicit-id
+msgid "app_no_changes"
+msgstr "لا تغييرات لحفظها"
+
+#. js-lingui-explicit-id
+msgid "app_nothing_to_save"
+msgstr "لا شيء لحفظه بعد"
+
+#. js-lingui-explicit-id
+msgid "app_saving"
+msgstr "جارٍ الحفظ"
+
+#. js-lingui-explicit-id
+msgid "app_managed_by_environment"
+msgstr "مضبوط بمتغير بيئة"
+
+#. js-lingui-explicit-id
+msgid "app_managed_by_environment_hint"
+msgstr "حُدّد بمتغير بيئة عند التشغيل، ولا يُعدَّل هنا."
+
+#. js-lingui-explicit-id
+msgid "setting_general"
+msgstr "عام"
+
+#. js-lingui-explicit-id
+msgid "setting_appearance"
+msgstr "المظهر"
+
+#. js-lingui-explicit-id
+msgid "setting_account"
+msgstr "الحساب"
+
+#. js-lingui-explicit-id
+msgid "setting_install_language"
+msgstr "لغة التثبيت"
+
+#. js-lingui-explicit-id
+msgid "setting_time_zone"
+msgstr "المنطقة الزمنية"
+
+#. js-lingui-explicit-id
+msgid "setting_time_zone_host"
+msgstr "منطقة الخادوم:"
+
+#. js-lingui-explicit-id
+msgid "setting_zone_search"
+msgstr "ابحث عن مدينة أو منطقة، مثل الرياض أو Riyadh"
+
+#. js-lingui-explicit-id
+msgid "setting_zone_empty"
+msgstr "لا منطقة تطابق البحث."
+
+#. js-lingui-explicit-id
+msgid "setting_zone_suggested"
+msgstr "مقترحة"
+
+#. js-lingui-explicit-id
+msgid "setting_zone_all"
+msgstr "كل المناطق"
+
+#. js-lingui-explicit-id
+msgid "setting_time_now"
+msgstr "الوقت الآن: {time}"
+
+#. js-lingui-explicit-id
+msgid "setting_clock"
+msgstr "نسق الساعة"
+
+#. js-lingui-explicit-id
+msgid "setting_clock_12h"
+msgstr "12 ساعة"
+
+#. js-lingui-explicit-id
+msgid "setting_clock_24h"
+msgstr "24 ساعة"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar"
+msgstr "التقويم"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar_gregorian"
+msgstr "ميلادي"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar_hijri"
+msgstr "هجري"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar_hijri_gregorian"
+msgstr "هجري وميلادي"
+
+#. js-lingui-explicit-id
+msgid "setting_calendar_hint"
+msgstr "يغيّر طريقة عرض التواريخ في الإدارة وصفحات الحالة والإشعارات. تبقى الموجزات وملفات التصدير بالتاريخ الميلادي، ويتبع الهجري تقويم أم القرى."
+
+#. js-lingui-explicit-id
+msgid "setting_public_address"
+msgstr "العنوان العام"
+
+#. js-lingui-explicit-id
+msgid "setting_public_address_hint"
+msgstr "العنوان الذي يصل منه الزوار والمشغّل إلى التثبيت، وتستخدمه روابط إعادة التعيين وفحص المصدر عند تسجيل الدخول."
+
+#. js-lingui-explicit-id
+msgid "setting_trusted_proxies"
+msgstr "الوكلاء الموثوقون"
+
+#. js-lingui-explicit-id
+msgid "setting_trusted_proxies_hint"
+msgstr "عناوين IP أو نطاقات عناوين CIDR للوكيل العكسي الذي أمام راقب، مفصولة بفواصل. كل عنوان هنا يحدد عنوان الزائر والبروتوكول، فلا تضع إلا ذلك الوكيل. مثال:"
+
+#. js-lingui-explicit-id
+msgid "setting_trusted_proxies_invalid"
+msgstr "يجب أن يكون كل وكيل موثوق عنوان IP أو نطاق عناوين CIDR."
+
+#. js-lingui-explicit-id
+msgid "setting_release_check"
+msgstr "التحقق اليومي من الإصدارات"
+
+#. js-lingui-explicit-id
+msgid "setting_release_check_hint"
+msgstr "يسأل الخادوم GitHub مرة يوميًا عن إصدار أحدث، ويعرض لافتة في الإدارة، ولا يرقّي نفسه أبدًا."
+
+#. js-lingui-explicit-id
+msgid "setting_database"
+msgstr "نوع قاعدة البيانات"
+
+#. js-lingui-explicit-id
+msgid "setting_database_sqlite"
+msgstr "SQLite على هذا الخادوم"
+
+#. js-lingui-explicit-id
+msgid "setting_database_postgres"
+msgstr "Postgres"
+
+#. js-lingui-explicit-id
+msgid "setting_database_hint"
+msgstr "اختير في مرحلة الإعداد. للانتقال إلى النوع الآخر: صدّر، ثم استورد في تثبيت جديد."
+
+#. js-lingui-explicit-id
+msgid "setting_operator_language"
+msgstr "لغة المشغّل"
+
+#. js-lingui-explicit-id
+msgid "setting_follow_install"
+msgstr "كما في التثبيت"
+
+#. js-lingui-explicit-id
+msgid "setting_overrides_lead"
+msgstr "اختياراتك لشاشاتك أنت. «كما في التثبيت» يتبع إعدادات التثبيت."
+
+#. js-lingui-explicit-id
+msgid "setting_overrides_title"
+msgstr "التفضيلات"
+
+#. js-lingui-explicit-id
+msgid "setting_email_change"
+msgstr "تغيير البريد الإلكتروني"
+
+#. js-lingui-explicit-id
+msgid "setting_email_new"
+msgstr "البريد الإلكتروني الجديد"
+
+#. js-lingui-explicit-id
+msgid "setting_email_same"
+msgstr "هذا هو البريد الحالي."
+
+#. js-lingui-explicit-id
+msgid "setting_password_change"
+msgstr "تغيير كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "setting_password_current"
+msgstr "كلمة المرور الحالية"
+
+#. js-lingui-explicit-id
+msgid "setting_password_new"
+msgstr "كلمة المرور الجديدة"
+
+#. js-lingui-explicit-id
+msgid "setting_password_wrong"
+msgstr "كلمة المرور الحالية غير صحيحة."
+
+#. js-lingui-explicit-id
+msgid "setting_password_note"
+msgstr "تغيير كلمة المرور ينهي كل جلسة أخرى."
+
+#. js-lingui-explicit-id
+msgid "setting_invalid"
+msgstr "تحقّق من القيم المدخلة."
+
+#. js-lingui-explicit-id
+msgid "setting_unavailable"
+msgstr "تعذّر الحفظ لأن قاعدة البيانات لا تستجيب."
+
+#. js-lingui-explicit-id
+msgid "setting_storage"
+msgstr "التخزين"
+
+#. js-lingui-explicit-id
+msgid "setting_retention_days"
+msgstr "مدة الاحتفاظ"
+
+#. js-lingui-explicit-id
+msgid "setting_retention_hint"
+msgstr "عدد أيام سجل الفحوص الذي تحتفظ به كل مراقبة ليست لها مدة خاصة: الفحوص الخام حتى 30 يومًا، وملخّصات كل ساعة حتى 90 يومًا، والملخّصات اليومية لما بعدها. تقصير المدة يحذف السجل الأقدم في المهمة الليلية التالية."
+
+#. js-lingui-explicit-id
+msgid "setting_retention_invalid"
+msgstr "أدخل عددًا صحيحًا من الأيام بين 1 و3650."
+
+#. js-lingui-explicit-id
+msgid "setting_size_budget"
+msgstr "ميزانية التخزين"
+
+#. js-lingui-explicit-id
+msgid "setting_unit_megabytes"
+msgstr "ميغابايت"
+
+#. js-lingui-explicit-id
+msgid "setting_size_budget_hint"
+msgstr "دعها فارغة لتكون بلا حد. إذا تجاوزها حجم البيانات، حذف راقب أقدم السجل قبل تسجيل الفحص التالي: الأيام الخام أولًا، ثم ملخّصات كل ساعة، ثم الملخّصات اليومية. لا تُحذف الانقطاعات ولا الحوادث ولا بيانات الشهادات ولا الإعدادات."
+
+#. js-lingui-explicit-id
+msgid "setting_size_budget_invalid"
+msgstr "أدخل عددًا صحيحًا من الميغابايت بين 64 و1048576 (تيرابايت واحد)، أو دعها فارغة."
+
+#. js-lingui-explicit-id
+msgid "setting_used_size"
+msgstr "المستخدم الآن: {size}"
+
+#. js-lingui-explicit-id
+msgid "setting_free_disk"
+msgstr "المساحة الحرة على القرص: {size}"
+
+#. js-lingui-explicit-id
+msgid "setting_reserve_note"
+msgstr "يُبقي راقب مساحة {size} حرة على هذا القرص، بميزانية أو بدونها، بحذف أقدم السجل أولًا. وإذا لم يبقَ ما يُحذف، توقف عن تسجيل الفحوص حتى تتوفر المساحة."
+
+#. js-lingui-explicit-id
+msgid "setting_reserve_low"
+msgstr "المساحة الحرة أقل من الاحتياطي: يحذف راقب أقدم السجل، وقد يتوقف عن تسجيل الفحوص."
+
+#. js-lingui-explicit-id
+msgid "setting_postgres_unlimited"
+msgstr "لا يخبر Postgres راقب بالمساحة الحرة على القرص، فيحتفظ راقب دون ميزانية بكل ما تسمح به مدة الاحتفاظ. حدّد ميزانية لتقييد حجم جداول راقب."
+
+#. js-lingui-explicit-id
+msgid "monitor_search_placeholder"
+msgstr "ابحث بالاسم أو الهدف"
+
+#. js-lingui-explicit-id
+msgid "monitor_filter_group"
+msgstr "المجموعة"
+
+#. js-lingui-explicit-id
+msgid "monitor_filter_all_groups"
+msgstr "كل المجموعات"
+
+#. js-lingui-explicit-id
+msgid "monitor_filter_tag"
+msgstr "الوسم"
+
+#. js-lingui-explicit-id
+msgid "monitor_filter_all_tags"
+msgstr "كل الوسوم"
+
+#. js-lingui-explicit-id
+msgid "monitor_sort"
+msgstr "الترتيب"
+
+#. js-lingui-explicit-id
+msgid "monitor_sort_name"
+msgstr "بالاسم"
+
+#. js-lingui-explicit-id
+msgid "monitor_sort_newest"
+msgstr "الأحدث أولًا"
+
+#. js-lingui-explicit-id
+msgid "monitor_no_matches"
+msgstr "لا مراقبات تطابق التصفية"
+
+#. js-lingui-explicit-id
+msgid "monitor_no_matches_hint"
+msgstr "غيّر البحث أو المجموعة أو الوسم، أو امسح التصفية."
+
+#. js-lingui-explicit-id
+msgid "monitor_clear_filters"
+msgstr "مسح التصفية"
+
+#. js-lingui-explicit-id
+msgid "monitor_select_all"
+msgstr "تحديد الكل"
+
+#. js-lingui-explicit-id
+msgid "monitor_select_one"
+msgstr "تحديد {name}"
+
+#. js-lingui-explicit-id
+msgid "monitor_selected"
+msgstr "المحدد: {count}"
+
+#. js-lingui-explicit-id
+msgid "monitor_actions"
+msgstr "إجراءات"
+
+#. js-lingui-explicit-id
+msgid "monitor_edit"
+msgstr "تعديل"
+
+#. js-lingui-explicit-id
+msgid "monitor_duplicate"
+msgstr "إنشاء نسخة"
+
+#. js-lingui-explicit-id
+msgid "monitor_copy_name"
+msgstr "نسخة من {name}"
+
+#. js-lingui-explicit-id
+msgid "monitor_copy_credentials"
+msgstr "لم يُنسخ الاستيثاق ولا ترويسات الطلب، فاكتبها من جديد."
+
+#. js-lingui-explicit-id
+msgid "monitor_copy_connection_url"
+msgstr "لم يُنسخ رابط الاتصال، فاكتبه من جديد."
+
+#. js-lingui-explicit-id
+msgid "monitor_pause"
+msgstr "تعليق"
+
+#. js-lingui-explicit-id
+msgid "monitor_acknowledge"
+msgstr "إقرار"
+
+#. js-lingui-explicit-id
+msgid "monitor_resume"
+msgstr "استئناف"
+
+#. js-lingui-explicit-id
+msgid "monitor_delete_title"
+msgstr "حذف المراقبات المحددة؟"
+
+#. js-lingui-explicit-id
+msgid "monitor_delete_description"
+msgstr "{count, plural, zero {لن يُحذف شيء} one {ستُحذف مراقبة واحدة} two {ستُحذف مراقبتان} few {ستُحذف # مراقبات} many {ستُحذف # مراقبة} other {ستُحذف # مراقبة}} مع سجل الفحوص. لا يمكن التراجع عن الحذف."
+
+#. js-lingui-explicit-id
+msgid "monitor_unavailable"
+msgstr "تعذّر تنفيذ الإجراء لأن قاعدة البيانات لم تُجب. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "monitor_type_http"
+msgstr "HTTP"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_tcp"
+msgstr "TCP"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_dns"
+msgstr "DNS"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_postgres"
+msgstr "Postgres"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_mysql"
+msgstr "MySQL"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_redis"
+msgstr "Redis"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_database"
+msgstr "قاعدة بيانات"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_docker"
+msgstr "Docker"
+
+#. js-lingui-explicit-id
+msgid "monitor_type_heartbeat"
+msgstr "نبض"
+
+#. js-lingui-explicit-id
+msgid "monitor_column_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "monitor_column_organization"
+msgstr "المجموعة والوسوم"
+
+#. js-lingui-explicit-id
+msgid "monitor_column_state"
+msgstr "الحالة"
+
+#. js-lingui-explicit-id
+msgid "monitor_delete_one_title"
+msgstr "حذف هذه المراقبة؟"
+
+#. js-lingui-explicit-id
+msgid "monitor_delete_one_description"
+msgstr "ستُحذف هذه المراقبة مع سجل فحوصها. لا يمكن التراجع عن الحذف."
+
+#. js-lingui-explicit-id
+msgid "monitor_corrupt"
+msgstr "تعذّر عرض القائمة: إعدادات إحدى المراقبات المخزنة لا تطابق هذا الإصدار. معرّف المراقبة:"
+
+#. js-lingui-explicit-id
+msgid "reason_ok"
+msgstr "نجح الفحص"
+
+#. js-lingui-explicit-id
+msgid "reason_timeout"
+msgstr "انتهت مهلة الانتظار"
+
+#. js-lingui-explicit-id
+msgid "reason_dns_failed"
+msgstr "تعذّر العثور على عنوان المضيف"
+
+#. js-lingui-explicit-id
+msgid "reason_connection_refused"
+msgstr "رُفض الاتصال"
+
+#. js-lingui-explicit-id
+msgid "reason_connection_failed"
+msgstr "تعذّر الاتصال"
+
+#. js-lingui-explicit-id
+msgid "reason_certificate_expired"
+msgstr "انتهت صلاحية الشهادة"
+
+#. js-lingui-explicit-id
+msgid "reason_certificate_invalid"
+msgstr "الشهادة غير صالحة"
+
+#. js-lingui-explicit-id
+msgid "reason_unexpected_status"
+msgstr "رمز حالة غير متوقع"
+
+#. js-lingui-explicit-id
+msgid "reason_assertion_failed"
+msgstr "لم يتحقق معيار"
+
+#. js-lingui-explicit-id
+msgid "reason_slow"
+msgstr "استجابة بطيئة"
+
+#. js-lingui-explicit-id
+msgid "reason_too_many_redirects"
+msgstr "إعادات توجيه أكثر من الحد"
+
+#. js-lingui-explicit-id
+msgid "reason_heartbeat_late"
+msgstr "تأخرت النبضة"
+
+#. js-lingui-explicit-id
+msgid "reason_unknown"
+msgstr "خطأ غير معروف"
+
+#. js-lingui-explicit-id
+msgid "reason_dns_mismatch"
+msgstr "لم تطابق إجابة DNS القيمة المتوقعة"
+
+#. js-lingui-explicit-id
+msgid "reason_auth_failed"
+msgstr "رفض الخادوم تسجيل الدخول"
+
+#. js-lingui-explicit-id
+msgid "reason_query_failed"
+msgstr "رفض الخادوم الاستعلام"
+
+#. js-lingui-explicit-id
+msgid "reason_container_not_found"
+msgstr "لا توجد حاوية بهذا الاسم"
+
+#. js-lingui-explicit-id
+msgid "reason_container_not_running"
+msgstr "الحاوية لا تعمل"
+
+#. js-lingui-explicit-id
+msgid "reason_container_restarting"
+msgstr "يعيد Docker تشغيل الحاوية"
+
+#. js-lingui-explicit-id
+msgid "reason_container_paused"
+msgstr "الحاوية موقوفة مؤقتًا"
+
+#. js-lingui-explicit-id
+msgid "reason_container_dead"
+msgstr "الحاوية معطوبة"
+
+#. js-lingui-explicit-id
+msgid "reason_container_unhealthy"
+msgstr "يقول Docker إنّ الحاوية معتلّة"
+
+#. js-lingui-explicit-id
+msgid "reason_tls_required"
+msgstr "لا يقبل الخادوم تسجيل الدخول إلا عبر اتصال معمّى، فأضف ⁦?sslmode=require⁩ إلى رابط الاتصال"
+
+#. js-lingui-explicit-id
+msgid "monitor_status_up"
+msgstr "يعمل"
+
+#. js-lingui-explicit-id
+msgid "monitor_status_down"
+msgstr "متعطّل"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_required"
+msgstr "هذا الحقل مطلوب."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_too_long"
+msgstr "لا يتجاوز عدد الأحرف {max}."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_whole_number"
+msgstr "أدخل عددًا صحيحًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_range"
+msgstr "أدخل قيمة من {min} إلى {max}."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_period"
+msgstr "أدخل مدة من 20 ثانية إلى 30 يومًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_grace"
+msgstr "أدخل مدة أكبر من صفر ولا تتجاوز 30 يومًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_cron"
+msgstr "لا يقرأ cron هذا التعبير: يلزم خمسة حقول أو اسم مثل ⁦@daily⁩."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_url"
+msgstr "أدخل عنوانًا كاملًا يبدأ بـ http أو https."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_url_credentials"
+msgstr "ضع اسم المستخدم وكلمة المرور في قسم الاستيثاق، لا في العنوان."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_connection_url_postgres"
+msgstr "أدخل رابطًا كاملًا يبدأ بـ postgres أو postgresql ويسمّي المضيف."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_connection_url_mysql"
+msgstr "أدخل رابطًا كاملًا يبدأ بـ mysql أو mariadb ويسمّي المضيف."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_connection_url_redis"
+msgstr "أدخل رابطًا كاملًا يبدأ بـ redis أو rediss ويسمّي المضيف."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_docker_endpoint"
+msgstr "أدخل مسارًا يبدأ بـ ⁦/⁩ أو رابط http أو https بلا اسم مستخدم ولا كلمة مرور ولا استعلام."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_container"
+msgstr "اكتب الاسم كما يكتبه Docker: حرف أو رقم، ثم حروف أو أرقام أو ⁦_⁩ أو ⁦.⁩ أو ⁦-⁩، بلا شرطة مائلة في أوله."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_host"
+msgstr "أدخل اسم مضيف أو عنوان IP."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_dns_name"
+msgstr "أدخل اسم نطاق من حروف لاتينية وأرقام وشرطة وشرطة سفلية، مثل ⁦example.com⁩ أو ⁦_dmarc.example.com⁩."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_status_codes"
+msgstr "استخدم رموزًا مثل 200 أو 2xx أو 200-299 تفصل بينها فواصل."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_pattern"
+msgstr "هذا النمط ليس تعبيرًا نمطيًا صالحًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_json_path"
+msgstr "هذا المسار غير صالح: مفاتيح تفصل بينها نقاط، والفهارس بين أقواس مربعة، مثل ⁦data.items[0].status⁩."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_resolver"
+msgstr "أدخل عنوان IP، ويمكن إضافة المنفذ."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_header_name"
+msgstr "اسم الترويسة حروف لاتينية وأرقام وشرطات، دون مسافات."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_header_value"
+msgstr "قيمة الترويسة سطر واحد من الأحرف اللاتينية."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_header_duplicate"
+msgstr "هذه الترويسة مضافة من قبل."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_user"
+msgstr "لا يمكن أن يحتوي اسم المستخدم على نقطتين (:)."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_too_many"
+msgstr "الحد الأقصى {max}."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_invalid"
+msgstr "هذه القيمة غير صالحة."
+
+#. js-lingui-explicit-id
+msgid "monitor_new_title"
+msgstr "مراقبة جديدة"
+
+#. js-lingui-explicit-id
+msgid "monitor_created"
+msgstr "أُضيفت المراقبة."
+
+#. js-lingui-explicit-id
+msgid "monitor_saved"
+msgstr "حُفظت المراقبة."
+
+#. js-lingui-explicit-id
+msgid "monitor_edit_title"
+msgstr "تعديل المراقبة"
+
+#. js-lingui-explicit-id
+msgid "monitor_form_corrupt"
+msgstr "تعذّر فتح النموذج: إعدادات هذه المراقبة المخزنة لا تطابق هذا الإصدار. معرّف المراقبة:"
+
+#. js-lingui-explicit-id
+msgid "monitor_save_not_found"
+msgstr "لم تعد هذه المراقبة موجودة."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_basics"
+msgstr "المراقبة"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_basics_hint"
+msgstr "الاسم ونوع الفحص وما يفحصه."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_description"
+msgstr "الوصف"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_check_type"
+msgstr "نوع الفحص"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_method"
+msgstr "الطريقة"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_url"
+msgstr "عنوان الرابط"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_database_type"
+msgstr "نوع قاعدة البيانات"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_connection_url"
+msgstr "رابط الاتصال"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_connection_url_hint"
+msgstr "يضم كلمة المرور، فيحفظه راقب معمّى ولا يعرضه مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_connection_url_mysql_hint"
+msgstr "مع طريقة تسجيل الدخول الافتراضية في MySQL 8 لا يسجّل راقب الدخول إلا عبر اتصال معمّى، فأضف ⁦?sslmode=require⁩ إلى الرابط."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_query"
+msgstr "الاستعلام"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_command"
+msgstr "الأمر"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_query_hint"
+msgstr "اختياري. يشغّله راقب كما كتبته، فاجعله للقراءة فقط وسجّل الدخول بمستخدم لا يملك إلا القراءة."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_answer_expected_hint"
+msgstr "اختيارية. ينجح الفحص حين تساوي أول قيمة في الإجابة هذا النص: أول عمود من أول صف، أو ردّ Redis."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_docker_endpoint"
+msgstr "عنوان Docker"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_docker_endpoint_hint"
+msgstr "مسار مقبس Unix مثل ⁦/var/run/docker.sock⁩، أو رابط http أو https لواجهة Docker Engine البرمجية، مثل وكيل مقبس للقراءة فقط. يعمل مقبس Podman المتوافق كذلك."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_container"
+msgstr "اسم الحاوية"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_container_hint"
+msgstr "يتبع راقب الاسم، فيبقى الفحص حين تُنشأ الحاوية من جديد كما يفعل compose."
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_list"
+msgstr "اعرض حاويات Docker"
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_listing"
+msgstr "جارٍ عرض الحاويات…"
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_choose"
+msgstr "اختر حاوية"
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_empty"
+msgstr "لا حاويات في Docker."
+
+#. js-lingui-explicit-id
+msgid "monitor_containers_failed"
+msgstr "تعذّر عرض الحاويات، فاكتب الاسم بنفسك."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_host"
+msgstr "المضيف"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_host_hint"
+msgstr "اسم مضيف أو عنوان IPv4 أو عنوان IPv6. اكتب عنوان IPv6 بلا أقواس مربعة."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_port"
+msgstr "المنفذ"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_dns_name"
+msgstr "اسم النطاق"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_record_type"
+msgstr "نوع السجل"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_expected"
+msgstr "القيمة المتوقعة"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_expected_hint"
+msgstr "اتركها فارغة لتُقبل أي إجابة."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_resolver"
+msgstr "خادوم DNS"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_resolver_hint"
+msgstr "اتركه فارغًا لاستخدام خادوم DNS الخاص بالنظام."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_schedule"
+msgstr "الجدولة"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_schedule_hint"
+msgstr "متى يعمل الفحص، وكم ينتظر، وكم مرة يعيد المحاولة."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_interval"
+msgstr "الفاصل الزمني"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_timeout"
+msgstr "مهلة الانتظار"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_retries"
+msgstr "المحاولات قبل التعطّل"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_degraded"
+msgstr "حد التعثّر"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_degraded_hint"
+msgstr "الفحص الأبطأ من هذا الحد ينجح ويظهر متعثّرًا، ولا يُفشل الفحص أبدًا كما يفعل معيار مدة الاستجابة. اتركه فارغًا لتعطيله."
+
+#. js-lingui-explicit-id
+msgid "monitor_unit_seconds"
+msgstr "ثانية"
+
+#. js-lingui-explicit-id
+msgid "monitor_unit_ms"
+msgstr "ملي ثانية"
+
+#. js-lingui-explicit-id
+msgid "monitor_unit_days"
+msgstr "يوم"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_success_rule"
+msgstr "معايير النجاح"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_success_rule_hint"
+msgstr "يكون الفحص ناجحًا عندما تتحقق جميع المعايير بالترتيب."
+
+#. js-lingui-explicit-id
+msgid "monitor_add_assertion"
+msgstr "إضافة معيار"
+
+#. js-lingui-explicit-id
+msgid "monitor_remove_assertion"
+msgstr "إزالة المعيار"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_kind"
+msgstr "نوع المعيار"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_status"
+msgstr "رمز الحالة ضمن"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_body_contains"
+msgstr "المحتوى يتضمن"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_body_not_contains"
+msgstr "المحتوى لا يتضمن"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_json_equals"
+msgstr "قيمة JSON تساوي"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_json_matches"
+msgstr "قيمة JSON تطابق النمط"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_header_equals"
+msgstr "الترويسة تساوي"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_response_time_under"
+msgstr "مدة الاستجابة أقل من"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_codes"
+msgstr "رموز الحالة"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_text"
+msgstr "النص"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_path"
+msgstr "المسار، مثل ⁦data.status⁩"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_value"
+msgstr "القيمة"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_pattern"
+msgstr "النمط"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_header"
+msgstr "اسم الترويسة"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_request"
+msgstr "الطلب"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_request_hint"
+msgstr "ما ترسله كل محاولة."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_body"
+msgstr "محتوى الطلب"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_body_hint"
+msgstr "لا ترسل الطريقتان GET وHEAD محتوى."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_follow_redirects"
+msgstr "تتبّع إعادة التوجيه"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_ignore_tls"
+msgstr "تجاهل أخطاء TLS"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_ignore_tls_hint"
+msgstr "يقبل الشهادات المنتهية والموقّعة ذاتيًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_auth"
+msgstr "الاستيثاق"
+
+#. js-lingui-explicit-id
+msgid "monitor_auth_none"
+msgstr "بلا استيثاق"
+
+#. js-lingui-explicit-id
+msgid "monitor_auth_basic"
+msgstr "اسم مستخدم وكلمة مرور"
+
+#. js-lingui-explicit-id
+msgid "monitor_auth_bearer"
+msgstr "رمز Bearer"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_user"
+msgstr "اسم المستخدم"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_password"
+msgstr "كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_token"
+msgstr "الرمز"
+
+#. js-lingui-explicit-id
+msgid "monitor_secret_kept"
+msgstr "محفوظة؛ اتركها فارغة للإبقاء عليها"
+
+#. js-lingui-explicit-id
+msgid "monitor_url_kept"
+msgstr "محفوظ؛ اتركه فارغًا للإبقاء عليه"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_headers"
+msgstr "ترويسات الطلب"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_headers_hint"
+msgstr "تُحفظ مع بيانات الاستيثاق معمّاة، ولا تظهر قيمها بعد الحفظ."
+
+#. js-lingui-explicit-id
+msgid "monitor_add_header"
+msgstr "إضافة ترويسة"
+
+#. js-lingui-explicit-id
+msgid "monitor_remove_header"
+msgstr "إزالة الترويسة"
+
+#. js-lingui-explicit-id
+msgid "monitor_header_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "monitor_header_value"
+msgstr "القيمة"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_capture"
+msgstr "الشهادة وحفظ الاستجابة"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tls_expiry"
+msgstr "نبّه قبل انتهاء الشهادة"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tls_expiry_days"
+msgstr "قبل الانتهاء"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tls_expiry_hint"
+msgstr "لعناوين https فقط."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_capture_mode"
+msgstr "حفظ الاستجابة"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_capture_mode_hint"
+msgstr "ترويسات الاستجابة وأول 4 KB من المحتوى، دون بيانات الاستيثاق أبدًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_capture_off"
+msgstr "معطّل"
+
+#. js-lingui-explicit-id
+msgid "monitor_capture_on_failure"
+msgstr "عند التعطّل فقط"
+
+#. js-lingui-explicit-id
+msgid "monitor_capture_always"
+msgstr "دائمًا"
+
+#. js-lingui-explicit-id
+msgid "monitor_capture_cost"
+msgstr "نحو {size} يوميًا لهذه المراقبة."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_organization"
+msgstr "التنظيم والاحتفاظ"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_group"
+msgstr "المجموعة"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tags"
+msgstr "الوسوم"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_tags_hint"
+msgstr "افصل بينها بفواصل."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_retention"
+msgstr "مدة الاحتفاظ"
+
+#. js-lingui-explicit-id
+msgid "monitor_retention_default"
+msgstr "افتراضي التثبيت ({days})"
+
+#. js-lingui-explicit-id
+msgid "monitor_retention_custom"
+msgstr "مدة خاصة بهذه المراقبة"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_heartbeat"
+msgstr "جدولة النبضات"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_heartbeat_hint"
+msgstr "متى تستدعي مهمتك رابطها. إذا تأخرت النبضة أكثر من فترة السماح صارت المراقبة متعطّلة."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_schedule_kind"
+msgstr "طريقة الجدولة"
+
+#. js-lingui-explicit-id
+msgid "monitor_schedule_every"
+msgstr "مدة ثابتة"
+
+#. js-lingui-explicit-id
+msgid "monitor_schedule_cron"
+msgstr "تعبير cron"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_every"
+msgstr "نبضة واحدة كل"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_unit"
+msgstr "الوحدة"
+
+#. js-lingui-explicit-id
+msgid "monitor_duration_seconds"
+msgstr "ثوانٍ"
+
+#. js-lingui-explicit-id
+msgid "monitor_duration_minutes"
+msgstr "دقائق"
+
+#. js-lingui-explicit-id
+msgid "monitor_duration_hours"
+msgstr "ساعات"
+
+#. js-lingui-explicit-id
+msgid "monitor_duration_days"
+msgstr "أيام"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_cron"
+msgstr "تعبير cron"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_cron_hint"
+msgstr "خمسة حقول أو اسم مثل ⁦@daily⁩، ويُقرأ بالمنطقة الزمنية للتثبيت."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_grace"
+msgstr "فترة السماح"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_grace_hint"
+msgstr "إذا تُركت فارغة فهي خُمس المدة."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_title"
+msgstr "رابط النبض"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_hint"
+msgstr "تستدعي مهمتك هذا الرابط في كل مرة تعمل، بطريقة GET أو HEAD أو POST."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_after_save"
+msgstr "يظهر الرابط بعد حفظ المراقبة."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_command"
+msgstr "مثلًا في آخر المهمة:"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_last"
+msgstr "آخر نبضة"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_source"
+msgstr "عنوان المصدر"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_none"
+msgstr "لم تصل أي نبضة بعد."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_renew"
+msgstr "رابط جديد عند الحفظ"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_renew_hint"
+msgstr "يتوقف الرابط الحالي عن العمل حين تحفظ."
+
+#. js-lingui-explicit-id
+msgid "monitor_test_title"
+msgstr "الفحص الفوري"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_hint"
+msgstr "يشغّل فحصًا واحدًا بما في النموذج الآن، دون حفظ ودون تسجيل."
+
+#. js-lingui-explicit-id
+msgid "monitor_test_run"
+msgstr "افحص الآن"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_running"
+msgstr "جارٍ الفحص…"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_unavailable"
+msgstr "تعذّر الفحص لأن الخادوم لم يُجب."
+
+#. js-lingui-explicit-id
+msgid "monitor_test_response_time"
+msgstr "مدة الاستجابة"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_status_code"
+msgstr "رمز الحالة"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_bytes"
+msgstr "حجم المحتوى"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_address"
+msgstr "العنوان المتصَل به"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_records"
+msgstr "السجلات في الإجابة"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_answer"
+msgstr "الإجابة"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_expected"
+msgstr "المتوقع"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_observed"
+msgstr "المرصود"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_target"
+msgstr "الهدف"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_error"
+msgstr "نص الخطأ"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_headers"
+msgstr "ترويسات الاستجابة"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_body"
+msgstr "أول 4 KB من المحتوى"
+
+#. js-lingui-explicit-id
+msgid "monitor_test_redacted"
+msgstr "محجوبة"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_passed"
+msgstr "تحقق"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_failed"
+msgstr "لم يتحقق"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_unreached"
+msgstr "لم يُقيَّم"
+
+#. js-lingui-explicit-id
+msgid "monitor_assertion_ms"
+msgstr "الزمن"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_token"
+msgstr "الرمز سطر واحد من الأحرف اللاتينية."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_number"
+msgstr "أدخل رقمًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_check_now"
+msgstr "افحص الآن"
+
+#. js-lingui-explicit-id
+msgid "monitor_checking"
+msgstr "جارٍ الفحص…"
+
+#. js-lingui-explicit-id
+msgid "monitor_every"
+msgstr "كل {interval}"
+
+#. js-lingui-explicit-id
+msgid "monitor_last_check"
+msgstr "آخر فحص: {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_no_checks"
+msgstr "لا فحوص بعد."
+
+#. js-lingui-explicit-id
+msgid "monitor_uptime_window"
+msgstr "نسبة التوفّر خلال {window}"
+
+#. js-lingui-explicit-id
+msgid "monitor_no_data"
+msgstr "لا بيانات"
+
+#. js-lingui-explicit-id
+msgid "monitor_downtime"
+msgstr "زمن التعطّل"
+
+#. js-lingui-explicit-id
+msgid "monitor_observed_time"
+msgstr "الوقت المرصود"
+
+#. js-lingui-explicit-id
+msgid "monitor_days_title"
+msgstr "نسبة التوفّر اليومية"
+
+#. js-lingui-explicit-id
+msgid "monitor_day_show_on_chart"
+msgstr "عرض على الرسم البياني"
+
+#. js-lingui-explicit-id
+msgid "monitor_response_time"
+msgstr "مدة الاستجابة"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_range"
+msgstr "المدة المعروضة"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_average"
+msgstr "المتوسط"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_min"
+msgstr "الأدنى"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_max"
+msgstr "الأعلى"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_empty"
+msgstr "لا فحوص في هذه المدة."
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_all_down"
+msgstr "فشلت كل الفحوص في هذه المدة."
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_label"
+msgstr "الرسم البياني لمدة الاستجابة"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_down"
+msgstr "فحص فاشل"
+
+#. js-lingui-explicit-id
+msgid "monitor_chart_zoom_out"
+msgstr "إلغاء التكبير"
+
+#. js-lingui-explicit-id
+msgid "monitor_recent_checks"
+msgstr "أحدث الفحوص"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_time"
+msgstr "الوقت"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_result"
+msgstr "النتيجة"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_reason"
+msgstr "السبب"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_attempts"
+msgstr "المحاولات"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_attempts_count"
+msgstr "{count, plural, zero {لا محاولات} one {محاولة واحدة} two {محاولتان} few {# محاولات} many {# محاولة} other {# محاولة}}"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_open"
+msgstr "التفاصيل"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_close"
+msgstr "إخفاء"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_nothing_kept"
+msgstr "لم يُحفظ مع هذا الفحص شيء."
+
+#. js-lingui-explicit-id
+msgid "monitor_check_corrupt"
+msgstr "تعذّر فتح بيانات هذا الفحص: لا تطابق هذا الإصدار."
+
+#. js-lingui-explicit-id
+msgid "monitor_outages_title"
+msgstr "الانقطاعات"
+
+#. js-lingui-explicit-id
+msgid "monitor_outages_count"
+msgstr "{count, plural, zero {لا انقطاعات خلال 90 يومًا} one {انقطاع واحد خلال 90 يومًا} two {انقطاعان خلال 90 يومًا} few {# انقطاعات خلال 90 يومًا} many {# انقطاعًا خلال 90 يومًا} other {# انقطاع خلال 90 يومًا}}"
+
+#. js-lingui-explicit-id
+msgid "monitor_outages_newest"
+msgstr "تُعرض أحدث {shown}."
+
+#. js-lingui-explicit-id
+msgid "monitor_outage_detected"
+msgstr "رُصد في"
+
+#. js-lingui-explicit-id
+msgid "monitor_outage_duration"
+msgstr "المدة"
+
+#. js-lingui-explicit-id
+msgid "monitor_outage_ongoing"
+msgstr "مستمر منذ {duration}"
+
+#. js-lingui-explicit-id
+msgid "monitor_outage_acknowledged"
+msgstr "أُقِرّ به {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_title"
+msgstr "بيانات الشهادة"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_subject"
+msgstr "صاحب الشهادة"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_issuer"
+msgstr "المُصدِر"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_valid_from"
+msgstr "صالحة من"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_valid_to"
+msgstr "صالحة حتى"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_names"
+msgstr "الأسماء"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_fingerprint"
+msgstr "البصمة"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_last_seen"
+msgstr "آخر قراءة"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_expiring"
+msgstr "تنتهي قريبًا"
+
+#. js-lingui-explicit-id
+msgid "monitor_certificate_expired"
+msgstr "منتهية"
+
+#. js-lingui-explicit-id
+msgid "monitor_detail_corrupt"
+msgstr "تعذّر عرض المراقبة: بيانات مخزَّنة لها لا تطابق هذا الإصدار. معرّف المراقبة:"
+
+#. js-lingui-explicit-id
+msgid "monitor_detail_unavailable"
+msgstr "تعذّر العرض لأن قاعدة البيانات لم تُجب. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "channel_type_email"
+msgstr "البريد الإلكتروني"
+
+#. js-lingui-explicit-id
+msgid "channel_field_from"
+msgstr "المرسِل"
+
+#. js-lingui-explicit-id
+msgid "channel_field_from_hint"
+msgstr "عنوان بريد، ويجوز أن يسبقه اسم: ⁦راقب <alerts@raaqeb.dev>⁩"
+
+#. js-lingui-explicit-id
+msgid "channel_refused_from"
+msgstr "اكتب عنوان بريد صحيحًا، أو اسمًا يليه العنوان بين قوسي زاوية."
+
+#. js-lingui-explicit-id
+msgid "channel_field_to"
+msgstr "المستلمون"
+
+#. js-lingui-explicit-id
+msgid "channel_field_to_hint"
+msgstr "عنوان واحد أو أكثر تفصل بينها فواصل، حتى 10 عناوين."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_to"
+msgstr "اكتب من عنوان إلى 10 عناوين بريد صحيحة تفصل بينها فواصل."
+
+#. js-lingui-explicit-id
+msgid "channel_field_host"
+msgstr "خادوم SMTP"
+
+#. js-lingui-explicit-id
+msgid "channel_refused_host"
+msgstr "اكتب اسم مضيف أو عنوان IP، بلا بروتوكول ولا منفذ."
+
+#. js-lingui-explicit-id
+msgid "channel_field_security"
+msgstr "أمان الاتصال"
+
+#. js-lingui-explicit-id
+msgid "channel_security_starttls"
+msgstr "STARTTLS"
+
+#. js-lingui-explicit-id
+msgid "channel_security_starttls_hint"
+msgstr "يبدأ الاتصال غير معمّى ثم ينتقل إلى TLS قبل أن يُرسَل أي اسم مستخدم أو كلمة مرور."
+
+#. js-lingui-explicit-id
+msgid "channel_security_tls"
+msgstr "TLS"
+
+#. js-lingui-explicit-id
+msgid "channel_security_tls_hint"
+msgstr "الاتصال معمّى من أول بايت."
+
+#. js-lingui-explicit-id
+msgid "channel_security_none"
+msgstr "بلا أمان"
+
+#. js-lingui-explicit-id
+msgid "channel_security_none_hint"
+msgstr "بلا أمان لا يُرسَل اسم مستخدم ولا كلمة مرور، فهو لخادوم بريد على الجهاز نفسه أو في الشبكة نفسها."
+
+#. js-lingui-explicit-id
+msgid "channel_field_port"
+msgstr "المنفذ"
+
+#. js-lingui-explicit-id
+msgid "channel_field_port_hint"
+msgstr "587 لـ STARTTLS، و465 لـ TLS، و25 بلا أمان."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_port"
+msgstr "اكتب رقم منفذ من 1 إلى 65535."
+
+#. js-lingui-explicit-id
+msgid "channel_field_username"
+msgstr "اسم المستخدم"
+
+#. js-lingui-explicit-id
+msgid "channel_field_username_hint"
+msgstr "اتركه فارغًا إن كان الخادوم لا يطلب تسجيل الدخول."
+
+#. js-lingui-explicit-id
+msgid "channel_field_password"
+msgstr "كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_down"
+msgstr "{monitor}: متعطّل"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_recovered"
+msgstr "{monitor}: يعمل من جديد"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_degraded_started"
+msgstr "{monitor}: متعثّر"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_degraded_ended"
+msgstr "{monitor}: انتهى التعثّر"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_certificate_expiring"
+msgstr "{monitor}: الشهادة على وشك الانتهاء"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_test"
+msgstr "رسالة تجريبية من راقب"
+
+#. js-lingui-explicit-id
+msgid "channel_text_down"
+msgstr "المراقبة متعطّلة."
+
+#. js-lingui-explicit-id
+msgid "channel_text_recovered"
+msgstr "تعافت المراقبة."
+
+#. js-lingui-explicit-id
+msgid "channel_text_degraded_started"
+msgstr "المراقبة متعثّرة."
+
+#. js-lingui-explicit-id
+msgid "channel_text_degraded_ended"
+msgstr "انتهى تعثّر المراقبة."
+
+#. js-lingui-explicit-id
+msgid "channel_text_certificate_expiring"
+msgstr "شهادة المراقبة على وشك الانتهاء."
+
+#. js-lingui-explicit-id
+msgid "channel_text_test"
+msgstr "هذه رسالة تجريبية من راقب. وصولها يعني أن القناة تعمل."
+
+#. js-lingui-explicit-id
+msgid "channel_line_monitor"
+msgstr "المراقبة: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_target"
+msgstr "الهدف: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_reason"
+msgstr "العلة: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_downtime"
+msgstr "زمن التعطّل: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_time_left"
+msgstr "المدة المتبقية: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_expires_at"
+msgstr "تنتهي في: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_time"
+msgstr "الوقت: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_link"
+msgstr "الرابط: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_channel"
+msgstr "القناة: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_subject_reminder"
+msgstr "{monitor}: ما زال متعطّلًا"
+
+#. js-lingui-explicit-id
+msgid "channel_text_reminder"
+msgstr "المراقبة ما زالت متعطّلة."
+
+#. js-lingui-explicit-id
+msgid "channel_line_down_for"
+msgstr "مدة التعطّل حتى الآن: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_open_incident"
+msgstr "فتح حادثة: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_link_monitor"
+msgstr "فتح المراقبة"
+
+#. js-lingui-explicit-id
+msgid "channel_link_open_incident"
+msgstr "فتح حادثة"
+
+#. js-lingui-explicit-id
+msgid "channel_type_slack"
+msgstr "Slack"
+
+#. js-lingui-explicit-id
+msgid "channel_type_discord"
+msgstr "Discord"
+
+#. js-lingui-explicit-id
+msgid "channel_type_telegram"
+msgstr "Telegram"
+
+#. js-lingui-explicit-id
+msgid "channel_type_ntfy"
+msgstr "ntfy"
+
+#. js-lingui-explicit-id
+msgid "channel_type_webhook_lead"
+msgstr "يرسل JSON موقّعًا إلى عنوان تحدده."
+
+#. js-lingui-explicit-id
+msgid "channel_type_email_lead"
+msgstr "يرسل بريدًا عبر خادوم SMTP تحدده."
+
+#. js-lingui-explicit-id
+msgid "channel_type_slack_lead"
+msgstr "إلى قناة عبر Incoming Webhook."
+
+#. js-lingui-explicit-id
+msgid "channel_type_discord_lead"
+msgstr "إلى قناة عبر Webhook خادم Discord."
+
+#. js-lingui-explicit-id
+msgid "channel_type_telegram_lead"
+msgstr "إلى محادثة أو مجموعة عبر بوت."
+
+#. js-lingui-explicit-id
+msgid "channel_type_ntfy_lead"
+msgstr "إشعار على الهاتف عبر موضوع ntfy."
+
+#. js-lingui-explicit-id
+msgid "channel_field_slack_url_hint"
+msgstr "رابط Incoming Webhook من Slack، ويبدأ عادة بـ ⁦https://hooks.slack.com⁩. يُحفظ معمّى ولا يُعرض بعد الحفظ."
+
+#. js-lingui-explicit-id
+msgid "channel_field_discord_url_hint"
+msgstr "رابط Webhook من إعدادات القناة في Discord، ويبدأ عادة بـ ⁦https://discord.com/api/webhooks⁩. يُحفظ معمّى ولا يُعرض بعد الحفظ."
+
+#. js-lingui-explicit-id
+msgid "channel_field_bot_token"
+msgstr "رمز البوت"
+
+#. js-lingui-explicit-id
+msgid "channel_field_bot_token_hint"
+msgstr "يعطيك إياه ⁦@BotFather⁩ عند إنشاء البوت. يُحفظ معمّى ولا يُعرض بعد الحفظ."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_bot_token"
+msgstr "اكتب الرمز كما أعطاك إياه ⁦@BotFather⁩ تمامًا: رقم البوت، ثم نقطتان، ثم رمز طويل."
+
+#. js-lingui-explicit-id
+msgid "channel_field_chat_id"
+msgstr "معرّف المحادثة"
+
+#. js-lingui-explicit-id
+msgid "channel_field_chat_id_hint"
+msgstr "رقم المحادثة، ويكون سالبًا للمجموعات، أو اسم قناة عامة مثل ⁦@raaqeb_alerts⁩. أضف البوت إلى المحادثة أولًا."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_chat_id"
+msgstr "اكتب رقمًا، أو اسم قناة يبدأ بـ ⁦@⁩."
+
+#. js-lingui-explicit-id
+msgid "channel_field_server"
+msgstr "الخادوم"
+
+#. js-lingui-explicit-id
+msgid "channel_field_server_hint"
+msgstr "عنوان خادوم ntfy. الخادوم العام هو ⁦https://ntfy.sh⁩."
+
+#. js-lingui-explicit-id
+msgid "channel_field_topic"
+msgstr "الموضوع"
+
+#. js-lingui-explicit-id
+msgid "channel_field_topic_hint"
+msgstr "اسم الموضوع الذي تشترك فيه تطبيقاتك. على الخادوم العام يقرؤه كل من يعرفه، فاختر اسمًا يصعب تخمينه. يُحفظ معمّى ولا يُعرض بعد الحفظ."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_topic"
+msgstr "استخدم حروفًا لاتينية وأرقامًا والشرطة والشرطة السفلية فقط، 64 حرفًا على الأكثر."
+
+#. js-lingui-explicit-id
+msgid "channel_field_access_token"
+msgstr "رمز الوصول"
+
+#. js-lingui-explicit-id
+msgid "channel_field_access_token_hint"
+msgstr "اختياري، لخادوم يطلب تسجيل الدخول. يُحفظ معمّى ولا يُعرض بعد الحفظ."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_server"
+msgstr "اكتب عنوان الخادوم وحده دون اسم الموضوع، مثل ⁦https://ntfy.sh⁩."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_access_token"
+msgstr "اكتب الرمز كما أعطاك إياه الخادوم، دون مسافات."
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_title"
+msgstr "استعادة كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_intro"
+msgstr "أدخل بريد حساب المشغّل ليصلك رابط إعادة التعيين."
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_submit"
+msgstr "إرسال الرابط"
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_sent"
+msgstr "إذا كان هذا البريد بريد حساب المشغّل، فقد أُرسل إليه رابط صالح لساعة واحدة."
+
+#. js-lingui-explicit-id
+msgid "auth_forgot_no_mail"
+msgstr "إذا لم تصلك رسالة خلال دقائق، فربما لا تعمل قناة البريد. شغّل هذا الأمر على الخادوم ليطبع رابطًا دون بريد:"
+
+#. js-lingui-explicit-id
+msgid "auth_no_email_title"
+msgstr "لا بريد في هذا التثبيت"
+
+#. js-lingui-explicit-id
+msgid "auth_no_email_intro"
+msgstr "لا توجد قناة بريد، فلا يمكن إرسال رابط إعادة التعيين. شغّل هذا الأمر على الخادوم:"
+
+#. js-lingui-explicit-id
+msgid "auth_no_email_prints"
+msgstr "يطبع الأمر رابطًا تفتحه في المتصفح لتعيين كلمة مرور جديدة."
+
+#. js-lingui-explicit-id
+msgid "auth_back_to_sign_in"
+msgstr "العودة إلى تسجيل الدخول"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_title"
+msgstr "تعيين كلمة مرور جديدة"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_new_password"
+msgstr "كلمة المرور الجديدة"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_submit"
+msgstr "حفظ كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_done"
+msgstr "تغيّرت كلمة المرور. سجّل الدخول بها."
+
+#. js-lingui-explicit-id
+msgid "auth_reset_invalid_link"
+msgstr "هذا الرابط غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا."
+
+#. js-lingui-explicit-id
+msgid "auth_code_title"
+msgstr "الخطوة الثانية"
+
+#. js-lingui-explicit-id
+msgid "auth_code_intro"
+msgstr "أُرسل رمز مؤقت من ستة أرقام إلى بريد حسابك."
+
+#. js-lingui-explicit-id
+msgid "auth_code_label"
+msgstr "الرمز المؤقت"
+
+#. js-lingui-explicit-id
+msgid "auth_code_trust"
+msgstr "الوثوق بهذا المتصفح 30 يومًا"
+
+#. js-lingui-explicit-id
+msgid "auth_code_submit"
+msgstr "تأكيد"
+
+#. js-lingui-explicit-id
+msgid "auth_code_resend"
+msgstr "إرسال رمز جديد"
+
+#. js-lingui-explicit-id
+msgid "auth_code_resent"
+msgstr "أُرسل رمز جديد."
+
+#. js-lingui-explicit-id
+msgid "auth_code_wrong"
+msgstr "الرمز غير صحيح."
+
+#. js-lingui-explicit-id
+msgid "auth_code_no_attempts"
+msgstr "لم تبق محاولات. اطلب رمزًا جديدًا."
+
+#. js-lingui-explicit-id
+msgid "auth_code_expired"
+msgstr "انتهت صلاحية الرمز. اطلب رمزًا جديدًا."
+
+#. js-lingui-explicit-id
+msgid "auth_code_not_sent"
+msgstr "تعذّر إرسال الرمز. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "auth_mail_reset_subject"
+msgstr "راقب: رابط إعادة تعيين كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_reset_sentence"
+msgstr "افتح هذا الرابط لتعيين كلمة مرور جديدة. الرابط صالح لساعة واحدة."
+
+#. js-lingui-explicit-id
+msgid "auth_mail_code_subject"
+msgstr "راقب: رمزك المؤقت"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_code_sentence"
+msgstr "هذا رمزك المؤقت لتسجيل الدخول. الرمز صالح لخمس دقائق."
+
+#. js-lingui-explicit-id
+msgid "auth_mail_test_subject"
+msgstr "راقب: رسالة تجريبية"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_test_sentence"
+msgstr "هذه رسالة تجريبية من راقب. وصولها يعني أن بريد تسجيل الدخول يعمل."
+
+#. js-lingui-explicit-id
+msgid "setting_sign_in"
+msgstr "تسجيل الدخول"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_title"
+msgstr "بريد تسجيل الدخول"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_intro"
+msgstr "القناة التي ترسل رابط إعادة التعيين والرمز المؤقت إلى بريد حساب المشغّل، وكل رسالة إلى مشتركي صفحات الحالة:"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_channel"
+msgstr "قناة البريد"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_none"
+msgstr "لا توجد قناة بريد بعد. أضف واحدة من صفحة القنوات."
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_test"
+msgstr "إرسال رسالة تجريبية"
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_test_sent"
+msgstr "قبلت القناة الرسالة. تفقّد بريدك."
+
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_title"
+msgstr "الاستيثاق الثنائي"
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_intro"
+msgstr "بعد كلمة المرور، يطلب تسجيل الدخول رمزًا من تطبيق الاستيثاق أو رمزًا مؤقتًا يُرسل بالبريد. يمكن تفعيله بالرموز البريدية بعد وصول رسالة تجريبية، حتى لا تُقفل خارج حسابك."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_on"
+msgstr "الاستيثاق الثنائي مفعّل."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_off"
+msgstr "الاستيثاق الثنائي معطّل."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_needs_test"
+msgstr "يُتاح بعد وصول رسالة تجريبية عبر قناة بريد تسجيل الدخول أعلاه، أو أعدّ تطبيق استيثاق أدناه."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_enable"
+msgstr "فعّله بالرموز البريدية"
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_disable"
+msgstr "عطّل الاستيثاق الثنائي"
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_not_tested"
+msgstr "لم تصل رسالة تجريبية عبر هذه القناة بعد."
+
+#. js-lingui-explicit-id
+msgid "auth_sending"
+msgstr "جارٍ الإرسال…"
+
+#. js-lingui-explicit-id
+msgid "auth_reset_note"
+msgstr "8 أحرف على الأقل. حفظها ينهي كل الجلسات."
+
+#. js-lingui-explicit-id
+msgid "auth_reset_ask_new"
+msgstr "اطلب رابطًا جديدًا"
+
+#. js-lingui-explicit-id
+msgid "component_list_title"
+msgstr "المكوّنات"
+
+#. js-lingui-explicit-id
+msgid "component_level_operational"
+msgstr "يعمل"
+
+#. js-lingui-explicit-id
+msgid "component_level_under_maintenance"
+msgstr "قيد الصيانة"
+
+#. js-lingui-explicit-id
+msgid "component_level_degraded_performance"
+msgstr "متعثّر"
+
+#. js-lingui-explicit-id
+msgid "component_level_partial_outage"
+msgstr "انقطاع جزئي"
+
+#. js-lingui-explicit-id
+msgid "component_level_major_outage"
+msgstr "انقطاع كلي"
+
+#. js-lingui-explicit-id
+msgid "component_add"
+msgstr "إضافة مكوّن"
+
+#. js-lingui-explicit-id
+msgid "component_empty_title"
+msgstr "لا مكوّنات بعد"
+
+#. js-lingui-explicit-id
+msgid "component_empty_description"
+msgstr "المكوّن ما تعرضه صفحات الحالة للزوار. اربطه بمراقبات لتُستنتج حالته منها، أو اضبط حالته يدويًا."
+
+#. js-lingui-explicit-id
+msgid "component_column_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "component_column_status"
+msgstr "الحالة"
+
+#. js-lingui-explicit-id
+msgid "component_column_monitors"
+msgstr "المراقبات"
+
+#. js-lingui-explicit-id
+msgid "component_column_pages"
+msgstr "الصفحات"
+
+#. js-lingui-explicit-id
+msgid "component_column_uptime"
+msgstr "نسبة التوفّر في 90 يومًا"
+
+#. js-lingui-explicit-id
+msgid "component_set_by_hand"
+msgstr "حالة يدوية"
+
+#. js-lingui-explicit-id
+msgid "component_no_data"
+msgstr "لا بيانات"
+
+#. js-lingui-explicit-id
+msgid "component_unavailable"
+msgstr "تعذّرت قراءة المكوّنات. أعد المحاولة بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "component_corrupt"
+msgstr "بيانات مخزَّنة لا يقرؤها هذا الإصدار:"
+
+#. js-lingui-explicit-id
+msgid "component_new_title"
+msgstr "مكوّن جديد"
+
+#. js-lingui-explicit-id
+msgid "component_section_details"
+msgstr "المكوّن"
+
+#. js-lingui-explicit-id
+msgid "component_field_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "component_field_description"
+msgstr "الوصف"
+
+#. js-lingui-explicit-id
+msgid "component_field_description_hint"
+msgstr "سطر يقرؤه الزائر بجانب الاسم. اختياري."
+
+#. js-lingui-explicit-id
+msgid "component_section_monitors"
+msgstr "المراقبات المرتبطة"
+
+#. js-lingui-explicit-id
+msgid "component_section_monitors_hint"
+msgstr "تُستنتج حالة المكوّن من مراقباته المرتبطة غير المعلَّقة: إن تعطّلت كلها فانقطاع كلي، وإن تعطّل بعضها فانقطاع جزئي، وإن تعثّرت إحداها فمتعثّر."
+
+#. js-lingui-explicit-id
+msgid "component_monitors_none"
+msgstr "لا مراقبات في التثبيت بعد."
+
+#. js-lingui-explicit-id
+msgid "component_monitors_filter"
+msgstr "تصفية المراقبات"
+
+#. js-lingui-explicit-id
+msgid "component_monitors_no_match"
+msgstr "لا مراقبة تطابق التصفية."
+
+#. js-lingui-explicit-id
+msgid "component_section_status"
+msgstr "الحالة اليدوية"
+
+#. js-lingui-explicit-id
+msgid "component_status_hand_hint"
+msgstr "تظهر هذه الحالة ما دام المكوّن بلا مراقبات مرتبطة."
+
+#. js-lingui-explicit-id
+msgid "component_status_derived_hint"
+msgstr "للمكوّن مراقبات مرتبطة، فحالته مستنتجة منها ولا تُضبط يدويًا."
+
+#. js-lingui-explicit-id
+msgid "component_status_now"
+msgstr "الحالة الآن"
+
+#. js-lingui-explicit-id
+msgid "component_shown_on"
+msgstr "صفحات الحالة التي تعرضه"
+
+#. js-lingui-explicit-id
+msgid "component_shown_on_none"
+msgstr "لا تعرضه أي صفحة حالة بعد."
+
+#. js-lingui-explicit-id
+msgid "component_saving"
+msgstr "جارٍ الحفظ…"
+
+#. js-lingui-explicit-id
+msgid "component_saved"
+msgstr "حُفظ المكوّن."
+
+#. js-lingui-explicit-id
+msgid "component_created"
+msgstr "أُضيف المكوّن."
+
+#. js-lingui-explicit-id
+msgid "component_not_found"
+msgstr "لم يُعثر على هذا المكوّن."
+
+#. js-lingui-explicit-id
+msgid "component_delete"
+msgstr "حذف المكوّن"
+
+#. js-lingui-explicit-id
+msgid "component_delete_title"
+msgstr "حذف هذا المكوّن؟"
+
+#. js-lingui-explicit-id
+msgid "component_delete_description"
+msgstr "يختفي من كل صفحة حالة تعرضه، وتبقى مراقباته كما هي. لا يمكن التراجع عن الحذف."
+
+#. js-lingui-explicit-id
+msgid "component_refused_name"
+msgstr "اكتب اسمًا حتى 100 حرف."
+
+#. js-lingui-explicit-id
+msgid "component_refused_description"
+msgstr "الوصف حتى 500 حرف."
+
+#. js-lingui-explicit-id
+msgid "component_missing_name"
+msgstr "اكتب الاسم بلغة التثبيت."
+
+#. js-lingui-explicit-id
+msgid "component_missing_description"
+msgstr "اكتب الوصف بلغة التثبيت."
+
+#. js-lingui-explicit-id
+msgid "page_add"
+msgstr "إضافة صفحة حالة"
+
+#. js-lingui-explicit-id
+msgid "page_empty_title"
+msgstr "لا صفحات حالة بعد"
+
+#. js-lingui-explicit-id
+msgid "page_empty_description"
+msgstr "صفحة الحالة ما يراه زوارك: المكوّنات التي تختارها بترتيبك، وحالتها الآن."
+
+#. js-lingui-explicit-id
+msgid "page_column_title"
+msgstr "الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_column_path"
+msgstr "المسار"
+
+#. js-lingui-explicit-id
+msgid "page_column_language"
+msgstr "اللغة"
+
+#. js-lingui-explicit-id
+msgid "page_column_level"
+msgstr "الحالة"
+
+#. js-lingui-explicit-id
+msgid "page_column_components"
+msgstr "المكوّنات"
+
+#. js-lingui-explicit-id
+msgid "page_default_badge"
+msgstr "الافتراضية"
+
+#. js-lingui-explicit-id
+msgid "page_unpublished_badge"
+msgstr "غير منشورة"
+
+#. js-lingui-explicit-id
+msgid "page_unavailable"
+msgstr "تعذّرت قراءة صفحات الحالة. أعد المحاولة بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "page_corrupt"
+msgstr "بيانات مخزَّنة لا يقرؤها هذا الإصدار:"
+
+#. js-lingui-explicit-id
+msgid "page_new_title"
+msgstr "صفحة حالة جديدة"
+
+#. js-lingui-explicit-id
+msgid "page_field_title"
+msgstr "عنوان الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_field_title_hint"
+msgstr "يظهر في رأس الصفحة وفي نافذة المتصفح."
+
+#. js-lingui-explicit-id
+msgid "page_field_slug"
+msgstr "مسار الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_field_slug_hint"
+msgstr "أحرف لاتينية صغيرة وأرقام وشرطات، حتى 63."
+
+#. js-lingui-explicit-id
+msgid "page_served_at"
+msgstr "تُعرض على"
+
+#. js-lingui-explicit-id
+msgid "page_field_locale"
+msgstr "لغة الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_field_locale_hint"
+msgstr "لغة واجهة الصفحة على عنوانها الأصلي، واللغة الأخرى على عنوان ببادئتها. نصوص الصفحة مطلوبة بهذه اللغة، ويعرض عنوان كل لغة النص المكتوب بها، أو نص هذه اللغة إن لم يُكتب."
+
+#. js-lingui-explicit-id
+msgid "page_field_published"
+msgstr "منشورة"
+
+#. js-lingui-explicit-id
+msgid "page_field_published_hint"
+msgstr "لا يجد الزوار شيئًا في صفحة غير منشورة، وتراها أنت ما دمت مسجّل الدخول."
+
+#. js-lingui-explicit-id
+msgid "page_create"
+msgstr "إنشاء الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_creating"
+msgstr "جارٍ الإنشاء…"
+
+#. js-lingui-explicit-id
+msgid "page_section_page"
+msgstr "الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_field_default"
+msgstr "الصفحة الافتراضية"
+
+#. js-lingui-explicit-id
+msgid "page_field_default_hint"
+msgstr "تُعرض على العنوان العام نفسه، بلا مسار. ولا تكون الافتراضية إلا صفحة واحدة."
+
+#. js-lingui-explicit-id
+msgid "page_field_domain"
+msgstr "نطاق مخصص"
+
+#. js-lingui-explicit-id
+msgid "page_field_domain_hint"
+msgstr "وجّه هذا الاسم إلى الوكيل العكسي لديك، فيعرض راقب الصفحة عليه. اختياري."
+
+#. js-lingui-explicit-id
+msgid "page_section_components"
+msgstr "المكوّنات"
+
+#. js-lingui-explicit-id
+msgid "page_section_components_hint"
+msgstr "ما يراه الزائر بالترتيب، في مجموعات من مستوى واحد."
+
+#. js-lingui-explicit-id
+msgid "page_components_empty"
+msgstr "لا مكوّنات على الصفحة بعد."
+
+#. js-lingui-explicit-id
+msgid "page_add_component"
+msgstr "أضف مكوّنًا…"
+
+#. js-lingui-explicit-id
+msgid "page_add_group"
+msgstr "إضافة مجموعة"
+
+#. js-lingui-explicit-id
+msgid "page_group_name"
+msgstr "اسم المجموعة"
+
+#. js-lingui-explicit-id
+msgid "page_group_new"
+msgstr "مجموعة جديدة"
+
+#. js-lingui-explicit-id
+msgid "page_move_up"
+msgstr "تحريك لأعلى"
+
+#. js-lingui-explicit-id
+msgid "page_move_down"
+msgstr "تحريك لأسفل"
+
+#. js-lingui-explicit-id
+msgid "page_move_to"
+msgstr "نقل إلى"
+
+#. js-lingui-explicit-id
+msgid "page_top_level"
+msgstr "خارج المجموعات"
+
+#. js-lingui-explicit-id
+msgid "page_remove_component"
+msgstr "إزالة من الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_remove_group"
+msgstr "إزالة المجموعة"
+
+#. js-lingui-explicit-id
+msgid "page_remove_group_hint"
+msgstr "تبقى مكوّناتها على الصفحة خارج المجموعات."
+
+#. js-lingui-explicit-id
+msgid "page_group_empty"
+msgstr "لا تظهر المجموعة الفارغة للزوار."
+
+#. js-lingui-explicit-id
+msgid "page_all_placed"
+msgstr "كل المكوّنات على الصفحة."
+
+#. js-lingui-explicit-id
+msgid "page_no_components"
+msgstr "لا مكوّنات في التثبيت بعد."
+
+#. js-lingui-explicit-id
+msgid "page_level_now"
+msgstr "حالة الصفحة الآن"
+
+#. js-lingui-explicit-id
+msgid "page_section_appearance"
+msgstr "المظهر"
+
+#. js-lingui-explicit-id
+msgid "page_field_logo"
+msgstr "الشعار"
+
+#. js-lingui-explicit-id
+msgid "page_field_favicon"
+msgstr "أيقونة المتصفح"
+
+#. js-lingui-explicit-id
+msgid "page_field_cover"
+msgstr "صورة الغلاف"
+
+#. js-lingui-explicit-id
+msgid "page_field_cover_hint"
+msgstr "تظهر حين يُشارك رابط الصفحة."
+
+#. js-lingui-explicit-id
+msgid "page_image_types"
+msgstr "PNG أو JPEG أو WebP أو SVG، حتى {size}."
+
+#. js-lingui-explicit-id
+msgid "page_image_types_favicon"
+msgstr "ICO أو PNG أو JPEG أو WebP أو SVG، حتى {size}."
+
+#. js-lingui-explicit-id
+msgid "page_image_choose"
+msgstr "اختيار صورة"
+
+#. js-lingui-explicit-id
+msgid "page_image_replace"
+msgstr "استبدال"
+
+#. js-lingui-explicit-id
+msgid "page_image_remove"
+msgstr "إزالة"
+
+#. js-lingui-explicit-id
+msgid "page_image_none"
+msgstr "لا صورة."
+
+#. js-lingui-explicit-id
+msgid "page_image_uploading"
+msgstr "جارٍ الرفع…"
+
+#. js-lingui-explicit-id
+msgid "page_image_invalid"
+msgstr "هذا الملف ليس صورة مقبولة."
+
+#. js-lingui-explicit-id
+msgid "page_image_too_large"
+msgstr "الملف أكبر من الحد."
+
+#. js-lingui-explicit-id
+msgid "page_image_unavailable"
+msgstr "تعذّر حفظ الصورة. أعد المحاولة بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "page_field_theme"
+msgstr "النسق الافتراضي"
+
+#. js-lingui-explicit-id
+msgid "page_field_theme_hint"
+msgstr "لزائر لم يختر نسقًا في متصفحه."
+
+#. js-lingui-explicit-id
+msgid "page_field_brand"
+msgstr "لون الهوية"
+
+#. js-lingui-explicit-id
+msgid "page_field_brand_hint"
+msgstr "للروابط والأزرار على الصفحة."
+
+#. js-lingui-explicit-id
+msgid "page_colour_reset"
+msgstr "اللون الافتراضي"
+
+#. js-lingui-explicit-id
+msgid "page_colour_default"
+msgstr "الافتراضي"
+
+#. js-lingui-explicit-id
+msgid "page_field_status_colours"
+msgstr "ألوان الحالات"
+
+#. js-lingui-explicit-id
+msgid "page_field_labels"
+msgstr "أسماء الحالات"
+
+#. js-lingui-explicit-id
+msgid "page_field_labels_hint"
+msgstr "تغيّر ما يقرؤه الزائر فقط، وتبقى القيم الآلية كما هي. اتركها فارغة للاسم الافتراضي."
+
+#. js-lingui-explicit-id
+msgid "page_field_labels_language_hint"
+msgstr "تعرض كل لغة الأسماء المكتوبة بها، وتعرض اللغة المتروكة فارغة الأسماء الافتراضية."
+
+#. js-lingui-explicit-id
+msgid "page_section_content"
+msgstr "المحتوى"
+
+#. js-lingui-explicit-id
+msgid "page_field_description"
+msgstr "الوصف"
+
+#. js-lingui-explicit-id
+msgid "page_field_description_hint"
+msgstr "يظهر تحت العنوان وفي نتائج البحث وحين يُشارك الرابط. اختياري."
+
+#. js-lingui-explicit-id
+msgid "page_field_bars"
+msgstr "شريط الأيام"
+
+#. js-lingui-explicit-id
+msgid "page_field_bars_hint"
+msgstr "خلية لكل يوم، تُلوَّن بنسبة توفّر المكوّن في ذلك اليوم."
+
+#. js-lingui-explicit-id
+msgid "page_field_bar_days"
+msgstr "طول الشريط"
+
+#. js-lingui-explicit-id
+msgid "page_field_percentages"
+msgstr "عرض النسب"
+
+#. js-lingui-explicit-id
+msgid "page_field_subscriptions"
+msgstr "قنوات الاشتراك"
+
+#. js-lingui-explicit-id
+msgid "page_field_subscriptions_hint"
+msgstr "لا يُعرض البريد الإلكتروني إلا حين توجد قناة بريد."
+
+#. js-lingui-explicit-id
+msgid "page_field_footer"
+msgstr "روابط أسفل الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_footer_label"
+msgstr "نص الرابط"
+
+#. js-lingui-explicit-id
+msgid "page_footer_url"
+msgstr "الرابط"
+
+#. js-lingui-explicit-id
+msgid "page_footer_add"
+msgstr "إضافة رابط"
+
+#. js-lingui-explicit-id
+msgid "page_footer_remove"
+msgstr "إزالة الرابط"
+
+#. js-lingui-explicit-id
+msgid "page_field_contact"
+msgstr "رابط التواصل"
+
+#. js-lingui-explicit-id
+msgid "page_field_contact_hint"
+msgstr "رابط https أو mailto. اختياري."
+
+#. js-lingui-explicit-id
+msgid "page_field_noindex"
+msgstr "إخفاء عن محركات البحث"
+
+#. js-lingui-explicit-id
+msgid "page_field_powered_by"
+msgstr "عرض «يعمل بواسطة راقب»"
+
+#. js-lingui-explicit-id
+msgid "page_section_css"
+msgstr "CSS مخصص"
+
+#. js-lingui-explicit-id
+msgid "page_field_css_hint"
+msgstr "يُضاف بعد أنماط تنسيق الصفحة العامة، حتى 64 كيلوبايت. اختياري."
+
+#. js-lingui-explicit-id
+msgid "page_refused_title"
+msgstr "اكتب عنوانًا حتى 100 حرف."
+
+#. js-lingui-explicit-id
+msgid "page_refused_slug"
+msgstr "أحرف لاتينية صغيرة وأرقام وشرطات، حتى 63، بلا شرطة في أوله أو آخره."
+
+#. js-lingui-explicit-id
+msgid "page_refused_slug_taken"
+msgstr "صفحة أخرى تستخدم هذا المسار."
+
+#. js-lingui-explicit-id
+msgid "page_refused_domain"
+msgstr "اكتب اسم نطاق فقط، بلا بروتوكول ولا مسار ولا منفذ."
+
+#. js-lingui-explicit-id
+msgid "page_refused_domain_taken"
+msgstr "صفحة أخرى تستخدم هذا النطاق."
+
+#. js-lingui-explicit-id
+msgid "page_refused_domain_public"
+msgstr "هذا نطاق العنوان العام نفسه، وهو يعرض لوحة الإدارة والصفحة الافتراضية."
+
+#. js-lingui-explicit-id
+msgid "page_refused_group"
+msgstr "اكتب اسم مجموعة حتى 100 حرف."
+
+#. js-lingui-explicit-id
+msgid "page_refused_label"
+msgstr "حتى 40 حرفًا."
+
+#. js-lingui-explicit-id
+msgid "page_refused_description"
+msgstr "الوصف حتى 500 حرف."
+
+#. js-lingui-explicit-id
+msgid "page_refused_footer_label"
+msgstr "اكتب نص الرابط حتى 40 حرفًا."
+
+#. js-lingui-explicit-id
+msgid "page_refused_link"
+msgstr "رابط https أو http أو mailto."
+
+#. js-lingui-explicit-id
+msgid "page_refused_css"
+msgstr "حتى 64 كيلوبايت، دون ⁦</style>⁩."
+
+#. js-lingui-explicit-id
+msgid "page_saving"
+msgstr "جارٍ الحفظ…"
+
+#. js-lingui-explicit-id
+msgid "page_saved"
+msgstr "حُفظت الصفحة."
+
+#. js-lingui-explicit-id
+msgid "page_created"
+msgstr "أُنشئت صفحة الحالة."
+
+#. js-lingui-explicit-id
+msgid "page_not_found"
+msgstr "لم يُعثر على صفحة الحالة هذه."
+
+#. js-lingui-explicit-id
+msgid "page_delete"
+msgstr "حذف الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_delete_title"
+msgstr "حذف صفحة الحالة هذه؟"
+
+#. js-lingui-explicit-id
+msgid "page_delete_description"
+msgstr "لن يستطيع الزوار فتحها بعد الآن، وتُحذف مجموعاتها وصورها. تبقى المكوّنات. لا يمكن التراجع عن الحذف."
+
+#. js-lingui-explicit-id
+msgid "setting_address_is_page_domain"
+msgstr "هذا النطاق تُعرض عليه صفحة حالة. اختر عنوانًا آخر، أو أزل النطاق المخصص من الصفحة."
+
+#. js-lingui-explicit-id
+msgid "incident_impact_none"
+msgstr "بلا تأثير"
+
+#. js-lingui-explicit-id
+msgid "incident_impact_minor"
+msgstr "طفيف"
+
+#. js-lingui-explicit-id
+msgid "incident_impact_major"
+msgstr "كبير"
+
+#. js-lingui-explicit-id
+msgid "incident_impact_critical"
+msgstr "حرج"
+
+#. js-lingui-explicit-id
+msgid "incident_stage_investigating"
+msgstr "قيد التحرّي"
+
+#. js-lingui-explicit-id
+msgid "incident_stage_identified"
+msgstr "تم تحديد السبب"
+
+#. js-lingui-explicit-id
+msgid "incident_stage_monitoring"
+msgstr "قيد المتابعة"
+
+#. js-lingui-explicit-id
+msgid "incident_stage_resolved"
+msgstr "تم الحل"
+
+#. js-lingui-explicit-id
+msgid "incident_add"
+msgstr "حادثة جديدة"
+
+#. js-lingui-explicit-id
+msgid "incident_new_title"
+msgstr "حادثة جديدة"
+
+#. js-lingui-explicit-id
+msgid "incident_column_title"
+msgstr "الحادثة"
+
+#. js-lingui-explicit-id
+msgid "incident_column_impact"
+msgstr "التأثير"
+
+#. js-lingui-explicit-id
+msgid "incident_column_stage"
+msgstr "المرحلة"
+
+#. js-lingui-explicit-id
+msgid "incident_column_components"
+msgstr "المكوّنات المتأثرة"
+
+#. js-lingui-explicit-id
+msgid "incident_column_started"
+msgstr "البداية"
+
+#. js-lingui-explicit-id
+msgid "incident_column_duration"
+msgstr "المدة"
+
+#. js-lingui-explicit-id
+msgid "incident_open_for"
+msgstr "مفتوحة منذ {duration}"
+
+#. js-lingui-explicit-id
+msgid "incident_lasted"
+msgstr "استمرت {duration}"
+
+
+
+#. js-lingui-explicit-id
+msgid "incident_empty_title"
+msgstr "لا حوادث"
+
+#. js-lingui-explicit-id
+msgid "incident_empty_description"
+msgstr "اكتب حادثة حين تؤثر مشكلة في مكوّن يعرضه الزوار. تظهر على كل صفحة حالة تعرض مكوّنًا متأثرًا."
+
+#. js-lingui-explicit-id
+msgid "incident_needs_component"
+msgstr "تذكر الحادثة المكوّنات التي تؤثر فيها، ولا مكوّنات بعد. أضف مكوّنًا أولًا."
+
+#. js-lingui-explicit-id
+msgid "incident_unavailable"
+msgstr "تعذّرت قراءة الحوادث أو حفظها. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "incident_corrupt"
+msgstr "حادثة مخزنة لا يقرؤها هذا الإصدار:"
+
+#. js-lingui-explicit-id
+msgid "incident_not_found"
+msgstr "لم تعد هذه الحادثة موجودة."
+
+#. js-lingui-explicit-id
+msgid "incident_affects_none"
+msgstr "لا تؤثر في أي مكوّن بعد حذف مكوّناتها."
+
+#. js-lingui-explicit-id
+msgid "incident_section_details"
+msgstr "الحادثة"
+
+#. js-lingui-explicit-id
+msgid "incident_field_title"
+msgstr "العنوان"
+
+#. js-lingui-explicit-id
+msgid "incident_field_title_hint"
+msgstr "يقرؤه الزوار في عنوان بطاقة الحادثة."
+
+#. js-lingui-explicit-id
+msgid "incident_field_impact"
+msgstr "مستوى التأثير"
+
+#. js-lingui-explicit-id
+msgid "incident_field_impact_hint"
+msgstr "يتصدر بطاقة الحادثة وبريد المشتركين. لافتة الصفحة تتبع حالة المكوّنات، لا التأثير."
+
+#. js-lingui-explicit-id
+msgid "incident_field_stage"
+msgstr "المرحلة"
+
+#. js-lingui-explicit-id
+msgid "incident_field_message"
+msgstr "نص التحديث"
+
+#. js-lingui-explicit-id
+msgid "incident_field_message_hint"
+msgstr "نص عادي بلا تنسيق. كل فقرة تتخذ اتجاه لغتها."
+
+#. js-lingui-explicit-id
+msgid "incident_section_components"
+msgstr "المكوّنات المتأثرة"
+
+#. js-lingui-explicit-id
+msgid "incident_section_components_hint"
+msgstr "الحالة التي تضعها الحادثة على كل مكوّن. المكوّن المرتبط بمراقبات يُظهر الأسوأ من حالتها وحالة الحادثة."
+
+
+
+#. js-lingui-explicit-id
+msgid "incident_components_none"
+msgstr "لا مكوّنات بعد. أنشئها من صفحة المكوّنات أولًا."
+
+
+#. js-lingui-explicit-id
+msgid "incident_component_linked"
+msgstr "مرتبط بمراقبات"
+
+#. js-lingui-explicit-id
+msgid "incident_component_now"
+msgstr "الآن: "
+
+#. js-lingui-explicit-id
+msgid "incident_prefilled"
+msgstr "فُتحت من تنبيه تعطّل المراقبة: المكوّنات المرتبطة بها مختارة بحالتها الآن."
+
+#. js-lingui-explicit-id
+msgid "incident_prefilled_unlinked"
+msgstr "فُتحت من تنبيه تعطّل المراقبة، ولا مكوّن مرتبط بها. اختر المكوّنات المتأثرة."
+
+#. js-lingui-explicit-id
+msgid "incident_create"
+msgstr "انشر الحادثة"
+
+#. js-lingui-explicit-id
+msgid "incident_creating"
+msgstr "جارٍ النشر…"
+
+#. js-lingui-explicit-id
+msgid "incident_refused_title"
+msgstr "اكتب عنوانًا لا يتجاوز 200 حرف."
+
+#. js-lingui-explicit-id
+msgid "incident_refused_message"
+msgstr "اكتب نصًا لا يتجاوز 5000 حرف."
+
+#. js-lingui-explicit-id
+msgid "incident_missing_title"
+msgstr "اكتب العنوان بلغة التثبيت."
+
+#. js-lingui-explicit-id
+msgid "incident_missing_message"
+msgstr "اكتب النص بلغة التثبيت."
+
+#. js-lingui-explicit-id
+msgid "incident_refused_components"
+msgstr "اختر مكوّنًا متأثرًا واحدًا على الأقل."
+
+#. js-lingui-explicit-id
+msgid "incident_refused_resolved"
+msgstr "حُلّت هذه الحادثة، فلا تقبل تحديثات أخرى."
+
+#. js-lingui-explicit-id
+msgid "incident_section_edit"
+msgstr "العنوان والتأثير"
+
+#. js-lingui-explicit-id
+msgid "incident_saved"
+msgstr "حُفظ."
+
+#. js-lingui-explicit-id
+msgid "incident_created"
+msgstr "نُشرت الحادثة."
+
+#. js-lingui-explicit-id
+msgid "incident_saving"
+msgstr "جارٍ الحفظ…"
+
+#. js-lingui-explicit-id
+msgid "incident_section_update"
+msgstr "تحديث جديد"
+
+#. js-lingui-explicit-id
+msgid "incident_post"
+msgstr "انشر التحديث"
+
+#. js-lingui-explicit-id
+msgid "incident_posting"
+msgstr "جارٍ النشر…"
+
+#. js-lingui-explicit-id
+msgid "incident_posted"
+msgstr "نُشر التحديث."
+
+#. js-lingui-explicit-id
+msgid "incident_resolve_keep"
+msgstr "أبقِ على المكوّنات المضبوطة يدويًا الحالة التي وضعتها الحادثة"
+
+#. js-lingui-explicit-id
+msgid "incident_resolve_hint"
+msgstr "يعود كل مكوّن مضبوط يدويًا إلى الحالة التي كان عليها قبل الحادثة ما لم تُبقِ الحالة التي وضعتها الحادثة. المكوّن المرتبط بمراقبات يتبع مراقباته."
+
+#. js-lingui-explicit-id
+msgid "incident_section_timeline"
+msgstr "التحديثات"
+
+#. js-lingui-explicit-id
+msgid "incident_fix"
+msgstr "صحّح النص"
+
+#. js-lingui-explicit-id
+msgid "incident_fix_save"
+msgstr "احفظ النص"
+
+#. js-lingui-explicit-id
+msgid "incident_fix_hint"
+msgstr "يتغير النص وحده. يبقى الوقت والمرحلة والحالات كما هي."
+
+#. js-lingui-explicit-id
+msgid "incident_resolved_note"
+msgstr "حُلّت هذه الحادثة ولا تقبل تحديثات أخرى. إن عادت المشكلة فافتح حادثة جديدة."
+
+#. js-lingui-explicit-id
+msgid "incident_delete"
+msgstr "احذف الحادثة"
+
+#. js-lingui-explicit-id
+msgid "incident_delete_title"
+msgstr "حذف هذه الحادثة؟"
+
+#. js-lingui-explicit-id
+msgid "incident_delete_description"
+msgstr "تختفي الحادثة وكل تحديثاتها من كل صفحة حالة، ويخرج وقتها من أشرطة المكوّنات ونسب توفّرها. لا يمكن التراجع عن الحذف."
+
+#. js-lingui-explicit-id
+msgid "component_incidents_setting"
+msgstr "حوادث مفتوحة تضع حالته"
+
+#. js-lingui-explicit-id
+msgid "incident_refused_changed"
+msgstr "تغيّرت الحادثة أو مكوّناتها منذ فتحت الصفحة، والصفحة تعرضها الآن. راجع تحديثك وانشره مجددًا."
+
+#. js-lingui-explicit-id
+msgid "maintenance_stage_scheduled"
+msgstr "مُجدوَل"
+
+#. js-lingui-explicit-id
+msgid "maintenance_stage_in_progress"
+msgstr "جارٍ"
+
+#. js-lingui-explicit-id
+msgid "maintenance_stage_completed"
+msgstr "مكتمل"
+
+#. js-lingui-explicit-id
+msgid "maintenance_add"
+msgstr "وقت صيانة جديد"
+
+#. js-lingui-explicit-id
+msgid "maintenance_new_title"
+msgstr "وقت صيانة جديد"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_title"
+msgstr "وقت الصيانة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_stage"
+msgstr "المرحلة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_components"
+msgstr "المكوّنات المتأثرة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_starts"
+msgstr "البداية"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_ends"
+msgstr "النهاية"
+
+#. js-lingui-explicit-id
+msgid "maintenance_column_duration"
+msgstr "المدة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_empty_title"
+msgstr "لا أوقات صيانة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_empty_description"
+msgstr "جدوِل وقت صيانة قبل عمل مخطط له. تظهر مكوّناته «قيد الصيانة» طوال مدته، ولا ترسل المراقبات المرتبطة بها إشعارًا، ولا يُحسب وقته في نسبة التوفّر."
+
+#. js-lingui-explicit-id
+msgid "maintenance_needs_component"
+msgstr "يذكر وقت الصيانة المكوّنات التي يشملها، ولا مكوّنات بعد. أضف مكوّنًا أولًا."
+
+#. js-lingui-explicit-id
+msgid "maintenance_unavailable"
+msgstr "تعذّرت قراءة أوقات الصيانة أو حفظها. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "maintenance_corrupt"
+msgstr "وقت صيانة مخزن لا يقرؤه هذا الإصدار:"
+
+#. js-lingui-explicit-id
+msgid "maintenance_not_found"
+msgstr "لم يعد وقت الصيانة هذا موجودًا."
+
+#. js-lingui-explicit-id
+msgid "maintenance_affects_none"
+msgstr "لا يؤثر في أي مكوّن بعد حذف مكوّناته."
+
+#. js-lingui-explicit-id
+msgid "maintenance_section_details"
+msgstr "وقت الصيانة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_title"
+msgstr "العنوان"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_title_hint"
+msgstr "يقرؤه الزوار في عنوان بطاقة الصيانة."
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_message"
+msgstr "الوصف"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_message_hint"
+msgstr "نص عادي بلا تنسيق يقرؤه الزوار. كل فقرة تتخذ اتجاه لغتها."
+
+#. js-lingui-explicit-id
+msgid "maintenance_section_times"
+msgstr "الأوقات"
+
+#. js-lingui-explicit-id
+msgid "maintenance_times_hint"
+msgstr "تُكتب الأوقات بالدقيقة في منطقتك الزمنية. البداية في الدقيقة الحالية تعني الآن."
+
+#. js-lingui-explicit-id
+msgid "maintenance_times_zone"
+msgstr "المنطقة الزمنية"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_starts"
+msgstr "البداية"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_ends"
+msgstr "النهاية"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_day"
+msgstr "اليوم"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_month"
+msgstr "الشهر"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_year"
+msgstr "السنة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_hour"
+msgstr "الساعة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_minute"
+msgstr "الدقيقة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_period"
+msgstr "صباحًا أو مساءً"
+
+#. js-lingui-explicit-id
+msgid "maintenance_section_components"
+msgstr "المكوّنات المتأثرة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_section_components_hint"
+msgstr "تظهر «قيد الصيانة» طوال مدته، وكل مراقبة مرتبطة بأحدها لا ترسل إشعارًا حتى ينتهي."
+
+#. js-lingui-explicit-id
+msgid "maintenance_components_none"
+msgstr "لا مكوّنات بعد. أنشئها من صفحة المكوّنات أولًا."
+
+#. js-lingui-explicit-id
+msgid "maintenance_create"
+msgstr "جدوِل وقت الصيانة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_creating"
+msgstr "جارٍ الجدولة…"
+
+#. js-lingui-explicit-id
+msgid "maintenance_saving"
+msgstr "جارٍ الحفظ…"
+
+#. js-lingui-explicit-id
+msgid "maintenance_saved"
+msgstr "حُفظ."
+
+#. js-lingui-explicit-id
+msgid "maintenance_created"
+msgstr "جُدوِل وقت الصيانة."
+
+#. js-lingui-explicit-id
+msgid "maintenance_locked_started"
+msgstr "بدأ وقت الصيانة، فلا تتغير بدايته ولا مكوّناته. عدّل النص والنهاية، أو أنهِه الآن."
+
+#. js-lingui-explicit-id
+msgid "maintenance_locked_completed"
+msgstr "اكتمل وقت الصيانة، فلا يتغير فيه إلا العنوان والوصف."
+
+#. js-lingui-explicit-id
+msgid "maintenance_end_now"
+msgstr "أنهِه الآن"
+
+#. js-lingui-explicit-id
+msgid "maintenance_end_now_title"
+msgstr "إنهاء وقت الصيانة الآن؟"
+
+#. js-lingui-explicit-id
+msgid "maintenance_end_now_description"
+msgstr "تعود المكوّنات إلى حالتها وتعود المراقبات إلى إشعاراتها، وكل مراقبة ما زالت متعطّلة ترسل تنبيه تعطّلها عند انتهاء الوقت."
+
+#. js-lingui-explicit-id
+msgid "maintenance_cancel"
+msgstr "ألغِ وقت الصيانة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_cancel_title"
+msgstr "إلغاء وقت الصيانة هذا؟"
+
+#. js-lingui-explicit-id
+msgid "maintenance_cancel_description"
+msgstr "يُحذف قبل أن يبدأ ويختفي من كل صفحة حالة. لا يمكن التراجع عن الإلغاء."
+
+#. js-lingui-explicit-id
+msgid "maintenance_keep"
+msgstr "أبقِه"
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_title"
+msgstr "اكتب عنوانًا لا يتجاوز 200 حرف."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_message"
+msgstr "اكتب وصفًا لا يتجاوز 5000 حرف."
+
+#. js-lingui-explicit-id
+msgid "maintenance_missing_title"
+msgstr "اكتب العنوان بلغة التثبيت."
+
+#. js-lingui-explicit-id
+msgid "maintenance_missing_message"
+msgstr "اكتب الوصف بلغة التثبيت."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_components"
+msgstr "اختر مكوّنًا متأثرًا واحدًا على الأقل."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_time"
+msgstr "اكتب تاريخًا ووقتًا."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_start_past"
+msgstr "مضت هذه البداية. اختر الآن أو وقتًا لاحقًا."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_end_order"
+msgstr "اجعل النهاية بعد البداية بدقيقة على الأقل."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_end_past"
+msgstr "مضت هذه النهاية. اختر الآن أو وقتًا لاحقًا."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_changed"
+msgstr "بدأ وقت الصيانة أو انتهى منذ فتحت الصفحة، والصفحة تعرضه الآن. راجع تعديلك واحفظه مجددًا."
+
+#. js-lingui-explicit-id
+msgid "component_maintenance_setting"
+msgstr "أوقات صيانة جارية تضعه قيد الصيانة"
+
+#. js-lingui-explicit-id
+msgid "monitor_under_maintenance"
+msgstr "قيد الصيانة"
+
+#. js-lingui-explicit-id
+msgid "public_banner_operational"
+msgstr "كل المكوّنات تعمل"
+
+#. js-lingui-explicit-id
+msgid "public_banner_under_maintenance"
+msgstr "صيانة جارية على بعض المكوّنات"
+
+#. js-lingui-explicit-id
+msgid "public_banner_degraded_performance"
+msgstr "بعض المكوّنات متعثّرة"
+
+#. js-lingui-explicit-id
+msgid "public_banner_partial_outage"
+msgstr "انقطاع جزئي في بعض المكوّنات"
+
+#. js-lingui-explicit-id
+msgid "public_banner_major_outage"
+msgstr "انقطاع كلي في بعض المكوّنات"
+
+#. js-lingui-explicit-id
+msgid "public_preview_banner"
+msgstr "غير منشورة: لا يرى هذه الصفحة غيرك ما دمت مسجّل الدخول."
+
+#. js-lingui-explicit-id
+msgid "public_impact"
+msgstr "التأثير: {impact}"
+
+#. js-lingui-explicit-id
+msgid "public_affected"
+msgstr "المكوّنات المتأثرة"
+
+#. js-lingui-explicit-id
+msgid "public_affects"
+msgstr "تمسّ {components}"
+
+#. js-lingui-explicit-id
+msgid "public_latest_update"
+msgstr "آخر تحديث"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance_starts"
+msgstr "يبدأ"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance_ends"
+msgstr "ينتهي"
+
+#. js-lingui-explicit-id
+msgid "public_components"
+msgstr "المكوّنات"
+
+#. js-lingui-explicit-id
+msgid "public_group_size"
+msgstr "{count, plural, zero {لا مكوّنات} one {مكوّن واحد} two {مكوّنان} few {# مكوّنات} many {# مكوّنًا} other {# مكوّن}}"
+
+#. js-lingui-explicit-id
+msgid "public_no_components"
+msgstr "لا تعرض هذه الصفحة أي مكوّن بعد"
+
+#. js-lingui-explicit-id
+msgid "public_uptime"
+msgstr "نسبة التوفّر {uptime}"
+
+#. js-lingui-explicit-id
+msgid "public_bar"
+msgstr "نسبة التوفّر اليومية"
+
+#. js-lingui-explicit-id
+msgid "public_day_downtime"
+msgstr "زمن التعطّل: {duration}"
+
+#. js-lingui-explicit-id
+msgid "public_day_no_data"
+msgstr "لا بيانات لهذا اليوم"
+
+#. js-lingui-explicit-id
+msgid "public_day_no_downtime"
+msgstr "لم يُسجَّل تعطّل في هذا اليوم"
+
+#. js-lingui-explicit-id
+msgid "public_day_response"
+msgstr "متوسط مدة الاستجابة: {duration}"
+
+#. js-lingui-explicit-id
+msgid "public_day_cell"
+msgstr "{date}، {status}"
+
+#. js-lingui-explicit-id
+msgid "public_incident"
+msgstr "حادثة"
+
+#. js-lingui-explicit-id
+msgid "public_day_month"
+msgstr "عرض سجل هذا الشهر"
+
+#. js-lingui-explicit-id
+msgid "public_day_close"
+msgstr "إغلاق"
+
+#. js-lingui-explicit-id
+msgid "public_powered_by"
+msgstr "يعمل بواسطة راقب"
+
+#. js-lingui-explicit-id
+msgid "public_contact"
+msgstr "تواصل معنا"
+
+#. js-lingui-explicit-id
+msgid "public_theme"
+msgstr "نسق الصفحة"
+
+#. js-lingui-explicit-id
+msgid "public_history"
+msgstr "السجل"
+
+#. js-lingui-explicit-id
+msgid "public_history_link"
+msgstr "عرض السجل"
+
+#. js-lingui-explicit-id
+msgid "public_history_empty"
+msgstr "لا حوادث ولا أوقات صيانة في هذا الشهر"
+
+#. js-lingui-explicit-id
+msgid "public_history_previous"
+msgstr "الشهر السابق"
+
+#. js-lingui-explicit-id
+msgid "public_history_next"
+msgstr "الشهر التالي"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance"
+msgstr "صيانة"
+
+#. js-lingui-explicit-id
+msgid "public_lasted"
+msgstr "استمرت {duration}"
+
+#. js-lingui-explicit-id
+msgid "public_started"
+msgstr "البداية"
+
+#. js-lingui-explicit-id
+msgid "public_resolved"
+msgstr "الحل"
+
+#. js-lingui-explicit-id
+msgid "public_duration"
+msgstr "المدة"
+
+#. js-lingui-explicit-id
+msgid "public_view_nav"
+msgstr "موضعك في الصفحة"
+
+#. js-lingui-explicit-id
+msgid "public_updates"
+msgstr "التحديثات"
+
+#. js-lingui-explicit-id
+msgid "public_current_status"
+msgstr "الحالة الآن"
+
+#. js-lingui-explicit-id
+msgid "public_not_found"
+msgstr "لا يوجد في هذه الصفحة ما يطابق هذا العنوان"
+
+#. js-lingui-explicit-id
+msgid "public_unavailable"
+msgstr "تعذّر عرض هذه الصفحة الآن. حاول مرة أخرى بعد قليل"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance_started"
+msgstr "بدأ"
+
+#. js-lingui-explicit-id
+msgid "public_maintenance_ended"
+msgstr "انتهى"
+
+#. js-lingui-explicit-id
+msgid "subscription_confirm_subject"
+msgstr "أكّد اشتراكك في {page}"
+
+#. js-lingui-explicit-id
+msgid "subscription_confirm_sentence"
+msgstr "افتح الرابط أدناه واضغط الزر في صفحته خلال 48 ساعة لتأكيد اشتراكك. إن لم تطلبه فتجاهل هذه الرسالة."
+
+#. js-lingui-explicit-id
+msgid "subscription_confirm_webhook"
+msgstr "افتح رابط التأكيد واضغط الزر في صفحته خلال 48 ساعة لتأكيد هذا الاشتراك. لن يصل إلى هنا شيء آخر قبل ذلك."
+
+#. js-lingui-explicit-id
+msgid "subscription_subject_incident"
+msgstr "{impact}: {title}"
+
+#. js-lingui-explicit-id
+msgid "subscription_subject_maintenance"
+msgstr "صيانة: {title}"
+
+#. js-lingui-explicit-id
+msgid "subscription_text_published"
+msgstr "حادثة جديدة في {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_updated"
+msgstr "تحديث جديد لحادثة في {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_resolved"
+msgstr "حُلّت حادثة في {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_scheduled"
+msgstr "صيانة مجدولة في {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_started"
+msgstr "بدأت صيانة في {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_completed"
+msgstr "اكتملت صيانة في {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_rescheduled"
+msgstr "تغيّر موعد صيانة في {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_text_cancelled"
+msgstr "أُلغيت صيانة مجدولة في {page}."
+
+#. js-lingui-explicit-id
+msgid "subscription_line_confirm"
+msgstr "التأكيد: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_stage"
+msgstr "الحالة: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_components"
+msgstr "المكوّنات المتأثرة: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_starts"
+msgstr "البداية: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_ends"
+msgstr "النهاية: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_link"
+msgstr "التفاصيل: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_time"
+msgstr "الوقت: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_unsubscribe"
+msgstr "إلغاء الاشتراك: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_footer"
+msgstr "وصلتك هذه الرسالة لأنك مشترك في تحديثات {page}."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_title"
+msgstr "تابع التحديثات"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_description"
+msgstr "تابع كل حادثة أو صيانة تمسّ هذه الصفحة."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_by"
+msgstr "الاستلام عبر"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_email"
+msgstr "البريد الإلكتروني"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_webhook"
+msgstr "Webhook"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_email_label"
+msgstr "عنوان البريد"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_webhook_label"
+msgstr "رابط Webhook"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_submit"
+msgstr "اشترك"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_sending"
+msgstr "جارٍ الاشتراك…"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_sent_email"
+msgstr "تفقّد بريدك: افتح الرابط الذي أرسلناه واضغط الزر في صفحته خلال 48 ساعة لتأكيد الاشتراك."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_sent_webhook"
+msgstr "أرسلنا رابط التأكيد إلى Webhook الخاص بك. افتحه واضغط الزر في صفحته خلال 48 ساعة لتأكيد الاشتراك."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_invalid_email"
+msgstr "اكتب عنوان بريد صحيحًا."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_invalid_webhook"
+msgstr "اكتب رابطًا يبدأ بـ https بلا اسم مستخدم ولا كلمة مرور."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_limited"
+msgstr "طلبات اشتراك أكثر من الحد من هنا. حاول مرة أخرى بعد دقائق."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_unreachable"
+msgstr "لا نرسل إلا إلى روابط https على الإنترنت العام."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_not_offered"
+msgstr "لم تعد الصفحة تتيح هذه الطريقة. أعد تحميل الصفحة."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_unavailable"
+msgstr "تعذّر حفظ الاشتراك الآن. حاول مرة أخرى بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_noscript"
+msgstr "يحتاج الاشتراك إلى JavaScript."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_feed"
+msgstr "تابع موجز الصفحة بدلًا من ذلك"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_feed_choice"
+msgstr "الموجز"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_feed_label"
+msgstr "رابط الموجز"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_feed_hint"
+msgstr "أضف هذا الرابط إلى قارئ موجزات ليصلك فيه كل جديد عن الحوادث والصيانة. لا يحتاج إلى عنوان ولا تأكيد."
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_copy"
+msgstr "نسخ"
+
+#. js-lingui-explicit-id
+msgid "public_subscribe_copied"
+msgstr "نُسخ"
+
+#. js-lingui-explicit-id
+msgid "public_subscription_title"
+msgstr "اشتراكك"
+
+#. js-lingui-explicit-id
+msgid "public_subscription_pending"
+msgstr "أكّد اشتراكك لتصلك حوادث هذه الصفحة وصيانتها."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_confirmed"
+msgstr "أنت مشترك. تصلك كل حادثة وصيانة على هذه الصفحة."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_unsubscribed"
+msgstr "ألغيت اشتراكك. لن يصلك شيء آخر من هذه الصفحة."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_expired"
+msgstr "انتهت صلاحية رابط التأكيد. اشترك من جديد من الصفحة."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_confirm"
+msgstr "أكّد الاشتراك"
+
+#. js-lingui-explicit-id
+msgid "public_subscription_unsubscribe"
+msgstr "إلغاء الاشتراك"
+
+#. js-lingui-explicit-id
+msgid "page_view"
+msgstr "عرض الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers"
+msgstr "المشتركون"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_empty"
+msgstr "لم يشترك أحد في هذه الصفحة بعد."
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_address"
+msgstr "العنوان"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_by"
+msgstr "عبر"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_state"
+msgstr "الحالة"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_since"
+msgstr "منذ"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_last"
+msgstr "آخر رسالة"
+
+#. js-lingui-explicit-id
+msgid "page_subscriber_pending"
+msgstr "بانتظار التأكيد"
+
+#. js-lingui-explicit-id
+msgid "page_subscriber_confirmed"
+msgstr "مؤكَّد"
+
+#. js-lingui-explicit-id
+msgid "page_subscriber_unsubscribed"
+msgstr "ألغى اشتراكه"
+
+#. js-lingui-explicit-id
+msgid "page_subscriber_expired"
+msgstr "انتهى رابط التأكيد"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_remove"
+msgstr "إزالة"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_remove_title"
+msgstr "إزالة هذا المشترك؟"
+
+#. js-lingui-explicit-id
+msgid "page_subscribers_remove_description"
+msgstr "لن يصل إلى هذا العنوان شيء آخر من هذه الصفحة، ولن يُبلَّغ بذلك. يمكنه الاشتراك من جديد من الصفحة."
+
+#. js-lingui-explicit-id
+msgid "public_subscription_again"
+msgstr "اشترك من جديد في الصفحة"
+
+#. js-lingui-explicit-id
+msgid "setting_export_import"
+msgstr "التصدير والاستيراد"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_check"
+msgstr "تهيئة راقب"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_intro"
+msgstr "يقارن هذا القسم ما يراه الخادوم بما ضُبط عليه التثبيت، ويقول ما الخطأ وكيف يُصلح. لا يغيّر شيئًا ولا يتصل بأي جهة."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_passed"
+msgstr "سليم"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_failed"
+msgstr "يحتاج إصلاحًا"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded"
+msgstr "الوكيل العكسي"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_direct"
+msgstr "وصل هذا الطلب مباشرة، بلا ترويسات توجيه، من هذا العنوان:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_trusted"
+msgstr "وصل هذا الطلب عبر وكيل موثوق:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_untrusted"
+msgstr "وصل هذا الطلب بترويسات توجيه من عنوان ليس وكيلًا موثوقًا، فلا يأخذ بها راقب: يعدّ كل زائر هذا العنوان، ويأخذ البروتوكول والمضيف من الاتصال نفسه لا مما يذكره الوكيل."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_headers"
+msgstr "ترويسات التوجيه في الطلب:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_fix_setting"
+msgstr "أضف هذا العنوان، أو نطاق العناوين الذي يتصل منه وكيلك، إلى الوكلاء الموثوقين في الإعدادات العامة."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_match"
+msgstr "العنوان العام هو العنوان الذي فتح منه هذا المتصفح راقب:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_mismatch"
+msgstr "العنوان العام المحفوظ ليس العنوان الذي فتح منه هذا المتصفح راقب، فسيُرفض تسجيل الدخول من هنا حين تنتهي هذه الجلسة."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_missing"
+msgstr "لا عنوان عام محفوظ، فلا عنوان تُبنى عليه روابط إعادة التعيين وروابط المشتركين."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_stored"
+msgstr "المحفوظ:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_browser"
+msgstr "هذا المتصفح:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_address_fix"
+msgstr "إن كان هذا المتصفح على العنوان الذي ستبقي عليه، فاجعله العنوان العام في الإعدادات العامة. وإلا فافتح راقب من العنوان العام."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_email"
+msgstr "قناة البريد الإلكتروني"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_email_present"
+msgstr "توجد قناة بريد إلكتروني ترسل روابط إعادة تعيين كلمة المرور ورموز الاستيثاق الثنائي."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_email_missing"
+msgstr "لا توجد قناة بريد إلكتروني، فلا يمكن إرسال رابط لإعادة تعيين كلمة المرور ولا تفعيل الاستيثاق الثنائي."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_email_fix"
+msgstr "أضف قناة بريد إلكتروني في قنوات الإشعار، ثم أرسل رسالة تجريبية من إعدادات تسجيل الدخول."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode"
+msgstr "أذونات مجلد البيانات"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_private"
+msgstr "لا يفتح مجلد البيانات إلا مالكه:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_open_empty"
+msgstr "يستطيع مستخدمون آخرون على هذا الخادوم فتح مجلد البيانات، لكن لا بيانات سرية فيه بعد:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_open_secret"
+msgstr "يستطيع مستخدمون آخرون على هذا الخادوم فتح مجلد البيانات، وفيه بيانات سرية:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_secret_config"
+msgstr "مفتاح راقب، ورابط قاعدة البيانات الذي اختير في مرحلة الإعداد."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_secret_sqlite"
+msgstr "قاعدة البيانات: بيانات الدخول، والجلسات، والبيانات السرية للقنوات."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_fix"
+msgstr "اجعل مالكه وحده يفتحه، على الخادوم أو على وحدة التخزين التي خلفه، مثلًا بهذا الأمر:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume"
+msgstr "بقاء مجلد البيانات"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_kept"
+msgstr "مجلد البيانات على وحدة تخزين مضمومة خاصة به:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_lost"
+msgstr "مجلد البيانات على نظام ملفات الحاوية نفسها لا على وحدة تخزين. فحين تُنشأ الحاوية من جديد، عند الترقية أو عند كل إعادة تشغيل لدى بعض مزودي الاستضافة، يضيع مفتاح راقب ومعه كل بيانات الاستيثاق المعمّاة به، وتضيع قاعدة بيانات SQLite إن كانت فيه."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_fix"
+msgstr "ضُمّ وحدة تخزين إلى هذا المسار في الحاوية:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_memory"
+msgstr "مجلد البيانات في الذاكرة، على tmpfs أو ramfs، فيفرغ عند إعادة تشغيل الخادوم، أو عند إعادة تشغيل الحاوية إن كان مضمومًا فيها: يضيع مفتاح راقب ومعه كل بيانات الاستيثاق المعمّاة به، وتضيع قاعدة بيانات SQLite إن كانت فيه."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_memory_fix"
+msgstr "انقل مجلد البيانات إلى قرص أو وحدة تخزين تبقى، وانسخ إليه البيانات قبل إعادة التشغيل التالية. هذا مساره الآن:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_forwarded_fix_boot"
+msgstr "الوكلاء الموثوقون في هذا التثبيت يُحدَّدون عند التشغيل بما يلي، ولا تغيّرهم الإعدادات العامة: أضف إليه هذا العنوان، أو نطاق العناوين الذي يتصل منه وكيلك، ثم أعد تشغيل راقب:"
+
+#. js-lingui-explicit-id
+msgid "setting_setup_mode_fix_volume"
+msgstr "مجلد البيانات وحدة تخزين مضمومة، فلا يصل إليه chmod على الخادوم. اضبط مالكها وأذوناتها حيث تُنشأ، ليكون المستخدم الذي يعمل به راقب مالكها ولا يفتحها غيره."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_anonymous"
+msgstr "مجلد البيانات وحدة تخزين أنشأها Docker بلا اسم لصورة راقب. تبقى عند إعادة تشغيل الحاوية، لكن الحاوية الجديدة، كالتي تنشئها الترقية بحذف الحاوية وتشغيلها من جديد، تأخذ وحدة جديدة فارغة: يضيع مفتاح راقب ومعه كل بيانات الاستيثاق المعمّاة به، وتضيع قاعدة بيانات SQLite إن كانت فيه."
+
+#. js-lingui-explicit-id
+msgid "setting_setup_volume_anonymous_fix"
+msgstr "شغّل الحاوية بوحدة تخزين مسمّاة على هذا المسار، وانسخ إليها البيانات قبل أن تُنشأ الحاوية من جديد، مثلًا:"
+
+#. js-lingui-explicit-id
+msgid "setting_export"
+msgstr "تصدير"
+
+#. js-lingui-explicit-id
+msgid "setting_export_lead"
+msgstr "نزّل هذا التثبيت ملفًا واحدًا: مراقباته وقنواته ومكوّناته وصفحات الحالة والحوادث وأوقات الصيانة والاشتراكات والإعدادات، ومعها سجله كاملًا إن شئت. يستطيع تثبيت آخر استيراده."
+
+#. js-lingui-explicit-id
+msgid "setting_export_mode_full"
+msgstr "كل شيء مع سجل الفحوص"
+
+#. js-lingui-explicit-id
+msgid "setting_export_mode_configuration"
+msgstr "كل شيء بلا سجل الفحوص"
+
+#. js-lingui-explicit-id
+msgid "setting_export_mode_full_note"
+msgstr "الإعداد وكل فحص وانقطاع: ملف أكبر، ونقل كامل."
+
+#. js-lingui-explicit-id
+msgid "setting_export_mode_configuration_note"
+msgstr "كل شيء ما عدا سجل الفحوص: ملف صغير."
+
+#. js-lingui-explicit-id
+msgid "setting_export_size"
+msgstr "الحجم التقريبي: {size}"
+
+#. js-lingui-explicit-id
+msgid "setting_export_size_reading"
+msgstr "يُحسب الحجم…"
+
+#. js-lingui-explicit-id
+msgid "setting_export_secrets_title"
+msgstr "الملف يحوي بيانات سرية"
+
+#. js-lingui-explicit-id
+msgid "setting_export_secrets"
+msgstr "كل كلمة مرور ومفتاح ورابط webhook فيه مكشوف، فمن يملك الملف يستطيع استخدامها. احفظه كما تحفظ نسخة احتياطية، واحذفه بعد إتمام النقل."
+
+#. js-lingui-explicit-id
+msgid "setting_export_download"
+msgstr "تنزيل ملف التصدير"
+
+#. js-lingui-explicit-id
+msgid "setting_export_busy"
+msgstr "يجري تنزيل تصدير الآن. حاول مرة أخرى بعد انتهائه."
+
+#. js-lingui-explicit-id
+msgid "setting_export_unavailable"
+msgstr "قاعدة البيانات لا تستجيب. حاول مرة أخرى بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "setting_export_unreadable"
+msgstr "لا يستطيع مفتاح راقب فتح بيانات الاستيثاق المحفوظة لإحدى المراقبات أو القنوات أو الاشتراكات. أعد كتابتها في صفحتها ثم صدّر من جديد. المعرّف:"
+
+#. js-lingui-explicit-id
+msgid "setting_import"
+msgstr "استيراد"
+
+#. js-lingui-explicit-id
+msgid "setting_import_lead"
+msgstr "حمّل ملف تصدير في هذا التثبيت. لا يعمل الاستيراد إلا ما دام التثبيت بلا مراقبات ولا صفحات حالة ولا مكوّنات ولا حوادث ولا أوقات صيانة. تحلّ إعدادات الملف محل إعدادات هذا التثبيت، عدا العنوان العام وحسابك وتفضيلاتك."
+
+#. js-lingui-explicit-id
+msgid "setting_import_choose"
+msgstr "اختيار ملف"
+
+#. js-lingui-explicit-id
+msgid "setting_import_none"
+msgstr "لم يُختر ملف."
+
+#. js-lingui-explicit-id
+msgid "setting_import_file"
+msgstr "ملف التصدير"
+
+#. js-lingui-explicit-id
+msgid "setting_import_hint"
+msgstr "الملف الذي نزّله التصدير، من هذا التثبيت أو من غيره."
+
+#. js-lingui-explicit-id
+msgid "setting_import_submit"
+msgstr "استيراد الملف"
+
+#. js-lingui-explicit-id
+msgid "setting_importing"
+msgstr "جارٍ الاستيراد…"
+
+#. js-lingui-explicit-id
+msgid "setting_import_done"
+msgstr "اكتمل الاستيراد. المراقبات: {monitors}، صفحات الحالة: {pages}، سطور السجل: {records}."
+
+#. js-lingui-explicit-id
+msgid "setting_import_not_empty"
+msgstr "هذا التثبيت فيه مراقبات أو صفحات حالة أو مكوّنات أو حوادث أو أوقات صيانة، والاستيراد لا يعمل إلا في تثبيت فارغ. لم يُستورد شيء."
+
+#. js-lingui-explicit-id
+msgid "setting_import_invalid"
+msgstr "الملف ليس ملف تصدير من راقب، أو أنه تالف. لم يُستورد شيء."
+
+#. js-lingui-explicit-id
+msgid "setting_import_line"
+msgstr "(السطر {line})"
+
+#. js-lingui-explicit-id
+msgid "setting_import_version"
+msgstr "الملف من إصدار آخر من راقب لا يقرؤه هذا الإصدار. لم يُستورد شيء."
+
+#. js-lingui-explicit-id
+msgid "setting_import_too_large"
+msgstr "الملف أكبر مما يقبله الاستيراد (4 GB)."
+
+#. js-lingui-explicit-id
+msgid "setting_import_no_file"
+msgstr "اختر ملف التصدير أولًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_history_download"
+msgstr "تنزيل السجل"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_change"
+msgstr "تعديل"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_add_channel"
+msgstr "إضافة قناة إشعار"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_remove_channel"
+msgstr "إزالة قناة إشعار"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_set_group"
+msgstr "تعيين المجموعة"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_add_tag"
+msgstr "إضافة وسم"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_remove_tag"
+msgstr "إزالة وسم"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_description"
+msgstr "{count, plural, zero {لن يتغير شيء} one {يُطبَّق على مراقبة واحدة محددة} two {يُطبَّق على مراقبتين محددتين} few {يُطبَّق على # مراقبات محددة} many {يُطبَّق على # مراقبة محددة} other {يُطبَّق على # مراقبة محددة}}، وتبقى كما هي كل مراقبة لا يغيّرها."
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_channel"
+msgstr "قناة الإشعار"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_tag"
+msgstr "الوسم"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_group_hint"
+msgstr "اتركه فارغًا لإخراج المراقبات من مجموعتها."
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_apply"
+msgstr "تطبيق"
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_tag_comma"
+msgstr "وسم واحد بلا فاصلة."
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_channel_gone"
+msgstr "لم تعد هذه القناة موجودة. أعد تحميل الصفحة."
+
+#. js-lingui-explicit-id
+msgid "monitor_bulk_tags_full"
+msgstr "إحدى المراقبات المحددة تحمل {max} وسمًا، وهو أقصى ما تحمله المراقبة."
+
+#. js-lingui-explicit-id
+msgid "auth_code_app_intro"
+msgstr "أدخل الرمز ذا الأرقام الستة الذي يعرضه تطبيق الاستيثاق الآن."
+
+#. js-lingui-explicit-id
+msgid "auth_code_app_label"
+msgstr "رمز التطبيق"
+
+#. js-lingui-explicit-id
+msgid "auth_code_backup_intro"
+msgstr "أدخل أحد رموزك الاحتياطية. يصلح كل رمز مرة واحدة."
+
+#. js-lingui-explicit-id
+msgid "auth_code_backup_label"
+msgstr "الرمز الاحتياطي"
+
+#. js-lingui-explicit-id
+msgid "auth_code_backup_wrong"
+msgstr "الرمز الاحتياطي غير صحيح أو سبق استخدامه."
+
+#. js-lingui-explicit-id
+msgid "auth_code_use_app"
+msgstr "استخدم تطبيق الاستيثاق"
+
+#. js-lingui-explicit-id
+msgid "auth_code_use_backup"
+msgstr "استخدم رمزًا احتياطيًا"
+
+#. js-lingui-explicit-id
+msgid "auth_code_use_email"
+msgstr "أرسل لي رمزًا بالبريد"
+
+#. js-lingui-explicit-id
+msgid "auth_code_start_over"
+msgstr "انتهت محاولة الدخول هذه. سجّل الدخول من جديد."
+
+#. js-lingui-explicit-id
+msgid "auth_code_sign_in_again"
+msgstr "سجّل الدخول من جديد"
+
+#. js-lingui-explicit-id
+msgid "auth_code_locked"
+msgstr "رموز خاطئة أكثر من الحد. انتظر 15 دقيقة ثم حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_title"
+msgstr "تطبيق الاستيثاق"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_intro"
+msgstr "تطبيق على هاتفك يعرض رمزًا جديدًا كل 30 ثانية، ولا يحتاج إلى البريد. إعداده يفعّل الاستيثاق الثنائي."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_off"
+msgstr "لم يُعدّ تطبيق استيثاق بعد."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_on"
+msgstr "تطبيق الاستيثاق مُعدّ."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_set_up"
+msgstr "أعدّ التطبيق"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_scan"
+msgstr "امسح رمز QR هذا بالتطبيق، أو اكتب فيه المفتاح أدناه."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_qr"
+msgstr "رمز QR لتطبيق الاستيثاق"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_key"
+msgstr "المفتاح"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_code"
+msgstr "الرمز الذي يعرضه التطبيق"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_confirm"
+msgstr "أكّد وفعّل"
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_code_wrong"
+msgstr "الرمز غير صحيح. تحقّق من ضبط ساعة الهاتف وجرّب الرمز التالي."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_disable"
+msgstr "عطّل التطبيق"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_title"
+msgstr "الرموز الاحتياطية"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_intro"
+msgstr "يُدخلك كل رمز مرة واحدة إن لم يكن الهاتف في متناولك. لن تظهر إلا الآن، فنزّلها أو دوّنها واحفظها في مكان آمن."
+
+#. js-lingui-explicit-id
+msgid "setting_backup_download"
+msgstr "تنزيل"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_done"
+msgstr "حفظتها"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_new"
+msgstr "رموز احتياطية جديدة"
+
+#. js-lingui-explicit-id
+msgid "setting_backup_new_note"
+msgstr "المجموعة الجديدة تُبطل كل رموز المجموعة السابقة."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_off_note"
+msgstr "تعطيله يزيل أيضًا تطبيق الاستيثاق ورموزه الاحتياطية."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_off_keeps_email"
+msgstr "تعطيل التطبيق يزيله ويزيل رموزه الاحتياطية، ويبقى الاستيثاق الثنائي مفعّلًا بالرموز البريدية."
+
+#. js-lingui-explicit-id
+msgid "setting_authenticator_off_ends_step"
+msgstr "تعطيل التطبيق يزيله ويزيل رموزه الاحتياطية، ويعطّل الاستيثاق الثنائي لأن الرموز البريدية غير جاهزة."
+
+#. js-lingui-explicit-id
+msgid "auth_email_invalid"
+msgstr "اكتب عنوان بريد صحيحًا."
+
+#. js-lingui-explicit-id
+msgid "auth_password_required"
+msgstr "اكتب كلمة المرور."
+
+#. js-lingui-explicit-id
+msgid "auth_password_length"
+msgstr "اكتب من 8 إلى 128 حرفًا."
+
+#. js-lingui-explicit-id
+msgid "setting_public_address_invalid"
+msgstr "اكتب عنوانًا يبدأ بـ http أو https وينتهي عند المضيف أو منفذه، بلا مسار، مثل ⁦https://status.example.com⁩."

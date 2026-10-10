@@ -1,0 +1,151 @@
+---
+title: Monitors
+description: What a monitor is, how its checks run, when it goes down and comes back up, what it notifies, and how long its history is kept.
+---
+
+A monitor is one thing Raaqeb watches. It has a check type, a schedule and a rule for what counts as up. Each scheduled run is a check, and each check ends as up, degraded or down, with a response time, a reason and the number of attempts it took.
+
+Raaqeb has eight check types, grouped in the form as six choices:
+
+| Check type | What a check does | Page |
+|---|---|---|
+| HTTP | Sends a request and judges the response by its success rules. | [HTTP](/en/docs/monitors/http) |
+| TCP | Opens a connection to a host and port. | [TCP](/en/docs/monitors/tcp) |
+| DNS | Queries one record type and optionally looks for an expected value. | [DNS](/en/docs/monitors/dns) |
+| Database: Postgres, MySQL, Redis | Signs in with a connection URL and runs a query. | [Database](/en/docs/monitors/database) |
+| Docker | Asks the Docker Engine API about one container by name. | [Docker](/en/docs/monitors/docker) |
+| Heartbeat | Expects your job to call a URL on a schedule. | [Heartbeat](/en/docs/monitors/heartbeat) |
+
+## Add a monitor
+
+Open **Monitors** and select **Add monitor**. Choose a **Check type**, fill in what it checks, and select **Save**. Every check type except heartbeat has a **Test now** panel beside the form: it runs one check of the form as it stands, without retries, and saves and records nothing.
+
+These fields are common to every check type:
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Name** | What the list and notifications call the monitor. | Required, up to 120 characters. |
+| **Description** | A note for you. | Optional, up to 1000 characters. |
+| **Group** | The one group the monitor belongs to. Groups are one level deep. | Optional, up to 60 characters. |
+| **Tags** | Free labels for filtering, separated by commas. | Up to 20 tags of up to 40 characters each. |
+| **Retention** | **The install default** or **Its own** number of days of check history. | The install default, 90 days unless changed. Its own: 1 to 3650 days. |
+| **Notification channels** | The channels this monitor's notifications go to. | A new monitor starts with the channels set to **Apply to new monitors by default**. |
+| **Events that notify** | The monitor events that send a notification. | All five on. |
+| **Remind while down** | Repeats the down notification while the monitor stays down. | Off. **Repeat every** 5 minutes to 24 hours, 1 hour when switched on. Needs the down event on. |
+
+The schedule fields apply to every check type except heartbeat, which has its own schedule:
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Interval** | How often a check runs. | 1 minute. Choices from 20 seconds to 24 hours. |
+| **Timeout** | How long one attempt may take before it fails with "Timed out". | 10 seconds. 1 to 60 seconds, up to three decimals. |
+| **Retries before down** | How many more attempts a check makes after a failed one. | 2. From 0 to 10. |
+| **Degraded threshold** | A response time in milliseconds. A successful check slower than this is degraded. | Empty, which is off. 1 to 60000 ms. |
+
+**Duplicate**, on the monitor's page or in the list's item menu, opens a new form with every field copied and the name "Copy of" the original. Credentials are not copied: type them again.
+
+## How a check runs
+
+The scheduler looks for due monitors every second. A monitor is due one interval after its previous check was due, so lateness does not add up. Each monitor has at most one check in flight; a check that starts more than an interval late sets the next one an interval after its own start.
+
+- After Raaqeb starts, first checks are spread over 30 seconds, each no later than its own interval.
+- After you save a change to a monitor, it is due at once.
+- **Check now** on the monitor's page runs a check at the next tick, with retries, and records it like any other. The interval continues from it. A heartbeat monitor has no **Check now**, and a paused monitor's is disabled.
+
+One check is one or more attempts. An attempt that fails is followed, one second later, by another, until one succeeds or the retries are spent. The check takes the result, reason and response time of the attempt that ended it, and records how many attempts it took. Retries never produce checks of their own. The longest one check can take is every attempt at its timeout plus one second between attempts: with the defaults, 3 attempts of 10 seconds and 2 pauses, 32 seconds.
+
+The response time is the attempt's time, capped by the timeout. What it measures depends on the check type, and each check type's page says.
+
+## Up, degraded and down
+
+- **Down**: the last attempt failed. Its reason says why, for example "Timed out" or "Unexpected status code".
+- **Degraded**: the check succeeded, but its response time is above the degraded threshold. A monitor without a threshold is never degraded. Degraded never fails a check; an HTTP monitor's "Response time under" assertion does.
+- **Up**: the check succeeded within the threshold.
+
+Retries are the only confirmation: there is no separate count of failed checks before down. The first down check opens an outage at once, and the first up or degraded check after it closes the outage. An outage keeps its start, its end and the reason of the check that opened it. Downtime and uptime are read from outages, never from counts of checks.
+
+## Monitor events
+
+A monitor reports five monitor events, each switched on or off under **Events that notify**:
+
+| Event | When it happens |
+|---|---|
+| **Down** | A check opens an outage: the monitor was up or degraded, and is now down. |
+| **Recovered** | A check closes the outage: the monitor was down, and is now up or degraded. The notification carries the outage's duration. |
+| **Degraded started** | A check is degraded and the monitor was not. When the monitor was down, it is sent together with the recovered notification. Needs a degraded threshold. |
+| **Degraded ended** | The monitor was degraded and a check is up. Needs a degraded threshold. |
+| **Certificate expiring** | An HTTPS monitor's certificate is within its warning threshold, then within one day. See [Certificate record](/en/docs/monitors/certificates). |
+
+A degraded monitor that goes down raises down alone. A heartbeat that is late is down. After a restart, Raaqeb reads each monitor's last check, so a restart never repeats an event.
+
+The down notification links to a new incident prefilled with the monitor; Raaqeb never opens an incident by itself. See [Incidents](/en/docs/status-pages/incidents).
+
+**Remind while down** repeats the down notification at the outage's start plus whole multiples of **Repeat every**, until the outage ends or you acknowledge it. Reminders missed while Raaqeb was stopped are not sent.
+
+**Acknowledge**, on the monitor's page or in the list's item menu, marks the open outage as known. It stops that outage's reminders and nothing else: checks continue, the outage stays open, the recovered notification is still sent, and the next outage reminds again. It cannot be undone.
+
+How each channel carries these notifications is in [Notifications](/en/docs/notifications).
+
+## Pausing
+
+**Pause** stops a monitor's checks; **Resume** starts them again. Both are on the monitor's page, in the list's item menu, and in the selection bar for several monitors at once.
+
+- Pausing closes the monitor's open outage at the pause time. After you resume, the monitor is due at once, and a down check opens a new outage.
+- A paused monitor is left out of its components' status. If every monitor linked to a component is paused, the component keeps the status the monitors paused last gave it.
+- A paused heartbeat monitor still stores the heartbeats it receives, but produces no checks.
+- Paused time is a gap in the checks. A gap longer than twice the interval is no data, not downtime.
+
+## Groups, tags and the list
+
+Each monitor belongs to at most one group and any number of tags. The monitors list searches by name or target, filters by **Group** and **Tag**, and sorts **By name** or **Newest first**. Select monitors to **Pause**, **Resume** or **Delete** them together, or use **Change** to add or remove a notification channel, set the group, or add or remove a tag. Deleting a monitor deletes its check history too.
+
+## Maintenance windows
+
+A maintenance window covers a monitor while the window is in progress and the monitor is linked to one of its components. A monitor linked to no component is never covered.
+
+While a monitor is covered:
+
+- Its checks keep running and are recorded, and outages open and close as usual.
+- It sends no operator notifications and no reminders. If it is still down when the window ends, the down notification is sent then. A certificate warning waits for the window's end too.
+- The time is not observed time, so it does not count against uptime.
+- The list shows it as **Under maintenance**.
+
+See [Maintenance](/en/docs/status-pages/maintenance).
+
+## The monitor's page
+
+Open a monitor from the list to see:
+
+- **Uptime, last 24 hours**, and the same over 7, 30 and 90 days. Hover a figure for its downtime and observed time.
+- **Daily uptime**, one cell per UTC day for the last 90 days.
+- **Response time**, a chart over the same four ranges, with **Download the history** for the range shown. A heartbeat monitor shows its heartbeat URL instead.
+- **Recent checks**: the newest 20, each with its time, result, reason, response time and attempts. **Details** opens what was kept with it: the failure detail of a down check (the failed assertion, the expected and observed values, the error text) and the capture, if the capture mode kept one.
+- **Outages**: the newest 20 of the last 90 days, with how many there were in those 90 days.
+- **Certificate record**, for an HTTPS monitor with the certificate warning on.
+
+## Uptime
+
+A monitor's uptime over a window is one minus its downtime divided by its observed time.
+
+- **Observed time** is the part of the window Raaqeb had checks for. A check covers the time up to the next one. A gap longer than twice the interval is no data, and so is time a maintenance window covered. For a heartbeat monitor, the limit is twice its expected period plus grace period.
+- **Downtime** is outage time that falls inside observed time.
+
+A window with no observed time shows **No data**. Uptime is rounded down, so any outage keeps it under 100%.
+
+## Retention
+
+Each monitor keeps check history for its retention: the install default of 90 days, set under **Retention** on the storage settings page, or its own number of days. Inside the retention:
+
+| Kept | For |
+|---|---|
+| Raw checks, with failure details and captures | The smaller of 30 days and the retention. |
+| Hourly rollups | The smaller of 90 days and the retention. |
+| Daily rollups | The whole retention. |
+
+A nightly job, 15 minutes after midnight UTC, packs the previous UTC day's checks and writes its rollups, then deletes history past each monitor's retention. Charts over long ranges read rollups. Outages are never deleted by retention or by the size budget, so downtime stays exact after the checks behind it are gone.
+
+## Related pages
+
+- [Components](/en/docs/status-pages/components): how linked monitors drive a component's status.
+- [Notifications](/en/docs/notifications): channels and what each sends.
+- [Export and import](/en/docs/operate/export-import): moving monitors and their history to another install.

@@ -1,0 +1,54 @@
+---
+title: Webhook
+description: محتوى JSON الذي يرسله راقب إلى قناة Webhook لكل نوع إشعار، وما يستقبله Webhook المشترك.
+---
+
+import { ApiWebhook } from "../../../docs/api/view.tsx";
+
+يرسل راقب نوعين من Webhook. تستقبل [قناة Webhook](/docs/notifications/webhook) إشعارات المشغّل موقّعةً وفق مواصفة Standard Webhooks. أما المشترك الذي اشترك في صفحة حالة عبر Webhook فيستقبل إشعارات المشترك غير موقّعة، بالمحتوى الذي يرسله Atlassian Statuspage.
+
+يحمل كل طلب POST الترويسة `webhook-id`، وهي نفسها في كل إعادة محاولة ليتخلص المستقبل من النسخة المكررة، والترويسة `webhook-timestamp`. وإذا أجاب المستقبل بغير `2xx`، وصله الطلب من جديد بعد 30 ثانية، ثم بعد دقيقتين، ثم بعد 10 دقائق.
+
+## قناة Webhook
+
+لكل نوع إشعار محتوى واحد، يميّزه حقل `type`. وتشرح صفحة القناة [كيف تتحقق من التوقيع](/docs/notifications/webhook).
+
+### التعطّل
+
+<ApiWebhook name="monitor.down" />
+
+### التعافي
+
+<ApiWebhook name="monitor.recovered" />
+
+### بدء التعثّر
+
+<ApiWebhook name="monitor.degraded_started" />
+
+### انتهاء التعثّر
+
+<ApiWebhook name="monitor.degraded_ended" />
+
+### التذكير
+
+<ApiWebhook name="monitor.reminder" />
+
+### قرب انتهاء الشهادة
+
+<ApiWebhook name="monitor.certificate_expiring" />
+
+### الرسالة التجريبية
+
+<ApiWebhook name="channel.test" />
+
+## Webhook المشترك
+
+### التأكيد
+
+<ApiWebhook name="subscription.confirmation" />
+
+### أحداث الحوادث والصيانة
+
+تشترك الأحداث السبعة كلها في محتوى واحد، واسم الحدث في حقل `meta.event`.
+
+<ApiWebhook name="incident.published" />

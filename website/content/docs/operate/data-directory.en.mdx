@@ -1,0 +1,18 @@
+---
+title: The data directory
+description: The one folder Raaqeb owns, what it holds, the mode it needs, and the places where it would not last.
+---
+
+The data directory is the one folder Raaqeb owns. It holds:
+
+- `raaqeb.sqlite`, with its `-wal` and `-shm` files, on SQLite;
+- `snapshots/`, the database copied before each upgrade that migrates it, the newest three kept;
+- `config.json`, mode 0600, holding the install key Raaqeb generated and the Postgres URL the onboarding page stored, sealed with that key.
+
+Raaqeb creates it with mode 0700 and logs one line at boot when a folder it did not create is wider and holds `config.json` or the SQLite file. Backing it up backs up an install on SQLite ([backups](/en/docs/operate/backups)).
+
+On Windows a folder has no such mode: who may open it is its access list, which the Windows installer sets, and Raaqeb neither logs the line nor shows the mode check there.
+
+<Callout type="warn">
+The setup check page, the last of the settings pages, says the same about the mode. On Linux, while the folder holds `config.json` or the SQLite file, it also says when the folder sits on a container's own filesystem, or on a volume Docker made without a name because `docker run` had no `-v`: a restart keeps that volume, but a new container, such as an upgrade by removing the container and running it again, starts without it, and the install key and every credential sealed with it are lost. It says the same of a folder in memory, on `tmpfs` such as `/tmp` on many hosts, which a reboot empties. On a host's own disk it says nothing about this, since it cannot tell a disk that lasts from one that does not.
+</Callout>

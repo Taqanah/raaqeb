@@ -1,0 +1,96 @@
+---
+title: Get started
+description: Install Raaqeb on a Linux server, finish onboarding, add your first monitor and publish your first status page.
+---
+
+This tutorial takes you from an empty server to a running install with one monitor and one public status page. You need a Linux server with systemd or OpenRC, root access through `sudo`, and a URL to monitor.
+
+## 1. Install Raaqeb
+
+Run the installer on the server:
+
+```sh
+curl -fsSL https://raaqeb.dev/install.sh | sudo sh
+```
+
+It installs the latest stable release. To install a release by its version, set `RAAQEB_VERSION`, such as `RAAQEB_VERSION=0.2.0-beta.1`; to install from a folder or a mirror, set `RAAQEB_DOWNLOAD_URL`. See [Install](/en/docs/operate/install).
+
+The script picks the binary for your machine, refuses it if its checksum does not match, and installs it as `/usr/local/bin/raaqeb`. It creates a `raaqeb` system user and the data directory `/var/lib/raaqeb`, writes `/etc/raaqeb/raaqeb.env` for boot settings, every line a comment, and starts Raaqeb as a systemd or OpenRC service. It waits for Raaqeb to answer, then prints the next step.
+
+Raaqeb now listens on `127.0.0.1:3000`, so only the server itself can reach it. To open it from your browser, do one of these:
+
+- Put a reverse proxy in front of it, with the domain you mean to keep. See [Reverse proxy](/en/docs/operate/reverse-proxy).
+- Reach it over SSH from your own machine with `ssh -L 3000:127.0.0.1:3000 <server>`, then open `http://127.0.0.1:3000`.
+
+macOS, Windows, Docker Compose and the bare binary have their own paths in [Install](/en/docs/operate/install).
+
+### With Docker
+
+The image keeps its data in the `/data` volume and answers on port 3000:
+
+```sh
+docker run -d --name raaqeb --restart unless-stopped \
+  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0
+```
+
+Open `http://<server>:3000` in your browser. Keep the named volume: it holds the database and the install key.
+
+## 2. Finish onboarding [#onboarding]
+
+The first time you open Raaqeb, it shows the onboarding pages. They ask three questions, one per screen.
+
+1. **Language.** Choose **العربية** or **English** as the install language. Every status page and channel starts from it, and you can change it later in settings. Select **Continue**.
+2. **Database.** Choose **SQLite on this server** to keep everything in one file in the data directory. To use Postgres instead, choose **A Postgres server**, paste its **Connection URL**, select **Test the connection** and read the result. Select **Continue**. The database is chosen once. If you set `DATABASE_URL` before the first start, this screen is skipped.
+3. **Operator account.** Type the **Email** and **Password** you will sign in with. The password needs at least 8 characters, and no verification email is sent.
+
+The account screen also asks for the **Public address**: the URL at which visitors and you reach this install. Raaqeb builds reset links and subscriber email links from it, and accepts a sign-in only from it. The field is filled with the address your browser is at. If that is the address you will keep, leave it.
+
+<Callout type="warn">
+If you are onboarding through an SSH tunnel or a temporary address, replace the pre-filled address with the one you will keep, such as `https://status.example.com`. Raaqeb then warns that sign-in will only work at that address. Tick **I confirm Raaqeb will be opened at the public address I entered** and continue. Sign in afterwards at that address, not at the tunnel.
+</Callout>
+
+Select **Create the account and continue**. You are signed in, and the onboarding pages are gone for good. Raaqeb opens the **Monitors** page, which says **No monitors yet**, with a **Getting started** card above it. The card ticks off the steps below as you finish them.
+
+You can change the public address later in the general settings, or from the server with `raaqeb set-address <url>` if the stored one refuses every sign-in.
+
+## 3. Add your first monitor
+
+1. On the **Monitors** page, select **Add monitor**.
+2. Type a **Name**, such as `Website`.
+3. Leave **Check type** on **HTTP**, and type the page's address in **URL**, such as `https://example.com`.
+4. Leave the rest as it is. A new HTTP monitor sends a `GET` every 60 seconds, waits up to 10 seconds, and makes 2 retries before it calls the monitor down. Its success rules hold one assertion: **Status code in** `2xx`.
+5. Optionally, select **Test now** to run one check of the form as it stands. Nothing is saved or recorded.
+6. Select **Save**.
+
+Raaqeb opens the monitor's page. The first check runs within seconds; until it lands, the page says "No checks yet." Then the page shows whether the monitor is **Up** or **Down**, its uptime, a response-time chart, its **Daily uptime** and its **Recent checks**. A check that failed shows its reason, such as an unexpected status code, and the monitor's **Outages** list records each time it was down.
+
+The monitor has no notification channels yet, so nothing is sent when it goes down. Adding one is the second of the [next steps](#next-steps).
+
+## 4. Publish your first status page
+
+A status page shows components, not monitors. A component is what your visitors read about, and linking it to a monitor lets the monitor drive its status.
+
+First, create the component:
+
+1. In the sidebar, open **Components** and select **Add component**.
+2. Type a **Name**, such as `Website`. This is the name visitors see.
+3. Under **Linked monitors**, tick the monitor you added.
+4. Select **Save**.
+
+The component's status is now derived from the monitor: operational while it is up, major outage while it is down.
+
+Then create the page:
+
+1. In the sidebar, open **Status pages** and select **Add status page**.
+2. Type a **Title**, a **Slug** such as `main`, and choose the **Page language**. Select **Create page**.
+3. In the page editor, under **Components**, choose your component from **Add a component…**.
+4. Turn on **Published**. A new page starts unpublished, and visitors find nothing at it until you publish it.
+5. Select **Save**.
+
+Select **View page** to open it at `/status/<slug>`. The first status page of an install is also the **Default page**, so it answers at the public address itself, such as `https://status.example.com/`. Open that address in a private window to see the page as a visitor does: the component, its status now and its day bar.
+
+## Next steps
+
+- Put Raaqeb behind HTTPS with a [reverse proxy](/en/docs/operate/reverse-proxy), if you have not yet.
+- Add a [notification channel](/en/docs/notifications), then select it on your monitor, so a down monitor reaches you.
+- Set up [backups](/en/docs/operate/backups) of the data directory or your Postgres database.

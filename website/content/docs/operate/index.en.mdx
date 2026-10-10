@@ -1,0 +1,23 @@
+---
+title: Operate Raaqeb
+description: Install Raaqeb on a server and keep it running, from the boot settings and the reverse proxy to backups, upgrades and uninstall.
+---
+
+This guide is for the operator who installs Raaqeb on a server and keeps it running. It covers each way to install it, the settings it reads before it opens its database, the reverse proxy in front of it, custom status page domains, databases and backups, moving an install, upgrades and the commands the binary takes.
+
+Raaqeb is one process. It needs no other service: SQLite in its data directory is the default database. A reverse proxy in front of it ends TLS. One install runs one process; never run two against the same database, since each would check every monitor and send every notification.
+
+- [Install](/en/docs/operate/install)
+- [Boot settings](/en/docs/operate/boot-settings)
+- [The data directory](/en/docs/operate/data-directory)
+- [Commands](/en/docs/operate/commands)
+- [Reverse proxy and TLS](/en/docs/operate/reverse-proxy)
+- [Custom domains](/en/docs/operate/custom-domains)
+- [Postgres](/en/docs/operate/postgres)
+- [Backups](/en/docs/operate/backups)
+- [Moving an install: export and import](/en/docs/operate/export-import)
+- [Upgrades](/en/docs/operate/upgrades)
+- [Health, restarts and logs](/en/docs/operate/health-and-logs)
+- [Public endpoints](/en/docs/operate/public-endpoints)
+- [Container monitors](/en/docs/operate/container-monitors)
+- [Uninstall](/en/docs/operate/uninstall)

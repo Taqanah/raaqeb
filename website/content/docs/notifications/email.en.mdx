@@ -1,0 +1,81 @@
+---
+title: Email
+description: How the email channel sends notifications through your SMTP server, as plain text and HTML, which settings it takes, and how a refused message shows.
+---
+
+An email channel sends each notification as one message, with a plain-text part and an HTML part, through an SMTP server you set, to up to 10 recipients. Raaqeb does not deliver mail itself: any mail service that takes SMTP works, including a provider's relay, your own mail server, or a relay on the same host.
+
+An email channel also has two other uses. Sign-in mail (reset links and one-time codes) and subscriber notifications go through the email channel chosen under **Email channel** on the **Sign-in email** card in settings, or the oldest email channel when none is chosen. A status page offers email subscriptions only while an email channel exists. See [Subscriptions](/en/docs/status-pages/subscriptions).
+
+## What you need first
+
+From your mail provider or server:
+
+- the SMTP server's host name and port;
+- how it protects the connection: STARTTLS (usually port 587) or TLS from the first byte (usually port 465);
+- a user name and password, when the server asks for a sign-in;
+- a sender address the server is allowed to send from.
+
+## Fields
+
+| Field | Meaning | Required | Default |
+| --- | --- | --- | --- |
+| **Name** | What the admin area calls the channel, at most 80 characters. | Yes | None |
+| **Channel language** | The language of the subject and body. | No | **The install language** |
+| **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
+| **Sender** | An address, optionally after a name: `Raaqeb <alerts@raaqeb.dev>`. The name cannot hold quotes, commas or angle brackets. | Yes | None |
+| **Recipients** | One to 10 addresses separated by commas. An Arabic comma (`،`) works too. | Yes | None |
+| **SMTP server** | A host name or an IP address, without a scheme or a port. | Yes | None |
+| **Connection security** | **STARTTLS**, **TLS** or **None**. See below. | Yes | **STARTTLS** |
+| **Port** | 1 to 65535. 587 for STARTTLS, 465 for TLS, 25 without security. | Yes | `587` |
+| **User name** | Leave it empty if the server asks for no sign-in. Not shown when security is **None**. | No | Empty |
+| **Password** | The SMTP password. Shown once a user name is typed. A secret: stored encrypted with the install key and never shown after saving. | With a user name | None |
+
+## Connection security
+
+| Choice | What happens |
+| --- | --- |
+| **STARTTLS** | The connection starts plain and turns to TLS before any user name and password are sent. If the server does not offer STARTTLS, the attempt fails rather than continue in clear. |
+| **TLS** | The connection is encrypted from its first byte. |
+| **None** | No encryption. No user name or password is ever sent over it. It is for a relay on the same host or network. |
+
+The server's certificate is always verified against the root certificates bundled with Bun, not the system's store. There is no option to accept a self-signed or private certificate; a relay that presents one can be reached with **None** if it is on the same host or network.
+
+To try the channel against a local mail catcher such as Mailpit, choose **None** and the catcher's SMTP port (Mailpit's is `1025`).
+
+## The message
+
+Each notification is one message in two parts: plain text, and HTML that reads in the channel language's direction. A mail client shows the HTML part, and one that cannot shows the text. The subject names the monitor and the event. The plain text is the sentence and the label and value lines described in [What a notification says](/en/docs/notifications#what-a-notification-says). The HTML part shows the same lines under the monitor's name, keeps the monitor's target left to right, and turns each link into a button with the words that open it. This is the plain-text part:
+
+```text
+Subject: Main website is up again
+
+The monitor is up again.
+
+Monitor: Main website
+Target: https://example.com
+Downtime: 12 min, 34 sec
+Time: Sep 25, 2026, 19:01 (UTC)
+Link: https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d
+```
+
+- The `Message-ID` is made from the notification's id and the sender's domain, so every retry of one notification carries the same one.
+- Raaqeb greets the server with the sender's domain, not the host's own name.
+- All recipients get the same message. If the server refuses any recipient, the attempt fails and each retry sends to every recipient again.
+
+## Failures and limits
+
+One attempt gives up after 30 seconds. A failed attempt is retried 30 seconds, 2 minutes and 10 minutes later. See [the queue and retries](/en/docs/notifications#the-queue-and-retries).
+
+| Reason code | Text | Typical cause |
+| --- | --- | --- |
+| `unexpected_status` | Unexpected status code | The server refused the message or the sign-in. **Observed** shows the SMTP reply code, such as `535` for a wrong password or `550` for a refused recipient, and **Error text** the server's reply. |
+| `timeout` | Timed out | The server did not finish within 30 seconds. |
+| `dns_failed` | DNS lookup failed | The SMTP server's name does not resolve. |
+| `connection_refused` | Connection refused | Nothing listens at that host and port. Check the port. |
+| `connection_failed` | Connection failed | The connection was reset or the host was unreachable. Check that **Port** and **Connection security** match. |
+| `certificate_expired` | Certificate expired | The server's certificate has expired. |
+| `certificate_invalid` | Certificate invalid | The certificate is self-signed, for another name, or cannot be verified. |
+| `unknown` | Unknown error | Anything else. **Error text** says what happened. |
+
+The password is removed from every recorded error text.

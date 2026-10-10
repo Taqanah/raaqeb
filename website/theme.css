@@ -1,0 +1,235 @@
+/*
+ * What the website's pages share: the product's fonts and
+ * the tokens both pages consume, light and dark by the device unless the
+ * visitor's switch set a class on the root. OKLCH, every neutral tinted
+ * toward the teal anchor, no pure black or white.
+ */
+
+/* Rubik and Plex Mono, the product's own files with its metric overrides (src/styles.css). */
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  ascent-override: 95%;
+  descent-override: 45%;
+  line-gap-override: 0%;
+  src: url("../src/shared/ui/fonts/rubik-arabic.woff2") format("woff2");
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB;
+}
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  ascent-override: 95%;
+  descent-override: 45%;
+  line-gap-override: 0%;
+  src: url("../src/shared/ui/fonts/rubik-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../src/shared/ui/fonts/plex-mono-regular.woff2") format("woff2");
+}
+
+/* Teal anchor at 178°; Rubik 500 for display, Rubik 400 for body, IBM Plex Mono for machine tokens. */
+:root {
+  --bg: light-dark(oklch(98.2% 0.004 178), oklch(14% 0.008 178));
+  --surface: light-dark(oklch(99.2% 0.003 178), oklch(17% 0.009 178));
+  --soft: light-dark(oklch(95.5% 0.006 178), oklch(21% 0.01 178));
+  --fg: light-dark(oklch(19% 0.012 178), oklch(95% 0.006 178));
+  --strong: light-dark(oklch(27% 0.012 178), oklch(90% 0.006 178));
+  --muted: light-dark(oklch(40% 0.012 178), oklch(78% 0.008 178));
+  --faint: light-dark(oklch(54% 0.01 178), oklch(63% 0.01 178));
+  --line: light-dark(oklch(89% 0.008 178), oklch(27% 0.01 178));
+  --line-2: light-dark(oklch(93% 0.006 178), oklch(23% 0.01 178));
+  --action: light-dark(oklch(19% 0.012 178), oklch(95% 0.006 178));
+  --action-fg: light-dark(oklch(98% 0.004 178), oklch(16% 0.01 178));
+  --teal: light-dark(oklch(56% 0.11 178), oklch(80% 0.12 178));
+  --teal-text: light-dark(oklch(48% 0.1 178), oklch(82% 0.11 178));
+  --teal-soft: light-dark(oklch(95% 0.03 178), oklch(24% 0.04 178));
+  --teal-line: light-dark(oklch(85% 0.07 178), oklch(38% 0.08 178));
+  --focus: light-dark(oklch(58% 0.16 178), oklch(78% 0.16 178));
+  --up: light-dark(oklch(62% 0.17 150), oklch(78% 0.17 150));
+  --up-soft: light-dark(oklch(96% 0.03 150), oklch(22% 0.04 150));
+  --up-line: light-dark(oklch(88% 0.08 150), oklch(36% 0.08 150));
+  --up-text: light-dark(oklch(42% 0.12 150), oklch(86% 0.12 150));
+  --degraded: light-dark(oklch(72% 0.17 75), oklch(82% 0.16 85));
+  --degraded-soft: light-dark(oklch(96% 0.04 85), oklch(24% 0.05 85));
+  --degraded-text: light-dark(oklch(46% 0.12 70), oklch(88% 0.12 85));
+  --partial: light-dark(oklch(66% 0.19 45), oklch(76% 0.17 50));
+  --partial-soft: light-dark(oklch(96% 0.03 50), oklch(24% 0.05 50));
+  --partial-text: light-dark(oklch(45% 0.14 45), oklch(86% 0.12 55));
+  --down: light-dark(oklch(58% 0.21 27), oklch(72% 0.18 25));
+  --down-soft: light-dark(oklch(96% 0.02 25), oklch(24% 0.05 25));
+  --down-line: light-dark(oklch(84% 0.09 25), oklch(40% 0.12 25));
+  --down-text: light-dark(oklch(42% 0.16 27), oklch(85% 0.1 25));
+  --maintenance: light-dark(oklch(58% 0.19 262), oklch(74% 0.14 262));
+  --maintenance-soft: light-dark(oklch(96% 0.02 262), oklch(24% 0.05 262));
+  --maintenance-text: light-dark(oklch(42% 0.16 262), oklch(86% 0.08 262));
+  /* A section's backdrop: its texture's dots and lines. */
+  --texture: light-dark(
+    oklch(19% 0.012 178 / 0.17),
+    oklch(95% 0.006 178 / 0.15)
+  );
+  --texture-line: light-dark(
+    oklch(19% 0.012 178 / 0.085),
+    oklch(95% 0.006 178 / 0.075)
+  );
+  /* A surface's edge without a grey line: a near-invisible rim, a top sheen in the dark, and a soft lift under it. */
+  --rim: light-dark(oklch(19% 0.012 178 / 0.06), oklch(95% 0.006 178 / 0.07));
+  --sheen: light-dark(transparent, oklch(100% 0 0 / 0.06));
+  --lift-near: light-dark(oklch(19% 0.012 178 / 0.06), transparent);
+  --lift-far: light-dark(oklch(19% 0.012 178 / 0.1), oklch(0% 0 0 / 0.55));
+  /* A chat's backdrop, as the Telegram channel in the alerts draws it. */
+  --chat: light-dark(oklch(94% 0.022 178), oklch(19% 0.018 178));
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  color-scheme: light dark;
+}
+:root.light {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Rubik", system-ui, "Segoe UI", Tahoma, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-soft: var(--soft);
+  --color-fg: var(--fg);
+  --color-strong: var(--strong);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-action: var(--action);
+  --color-chat: var(--chat);
+  --color-action-fg: var(--action-fg);
+  --color-teal: var(--teal);
+  --color-teal-text: var(--teal-text);
+  --color-teal-soft: var(--teal-soft);
+  --color-teal-line: var(--teal-line);
+  --color-focus: var(--focus);
+  --color-up: var(--up);
+  --color-up-soft: var(--up-soft);
+  --color-up-line: var(--up-line);
+  --color-up-text: var(--up-text);
+  --color-degraded: var(--degraded);
+  --color-degraded-soft: var(--degraded-soft);
+  --color-degraded-text: var(--degraded-text);
+  --color-partial: var(--partial);
+  --color-partial-soft: var(--partial-soft);
+  --color-partial-text: var(--partial-text);
+  --color-down: var(--down);
+  --color-down-soft: var(--down-soft);
+  --color-down-line: var(--down-line);
+  --color-down-text: var(--down-text);
+  --color-maintenance: var(--maintenance);
+  --color-maintenance-soft: var(--maintenance-soft);
+  --color-maintenance-text: var(--maintenance-text);
+}
+
+@layer base {
+  html,
+  body {
+    overflow-x: clip;
+  }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+    color: var(--fg);
+    background: var(--bg);
+  }
+  :lang(ar) body {
+    line-height: 1.75;
+  }
+  /* Arabic headlines need room above and below, and no tightened tracking (ADR-0009). */
+  :lang(ar) :is(h1, h2, h3) {
+    line-height: 1.3;
+    letter-spacing: 0;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}
+
+/* A machine token (a URL, a code, a time): monospace, left to right, isolated from the Arabic around it. */
+@utility token {
+  font-family: var(--font-mono);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* A hairline drawn over an element's own content, for a frame whose picture would cover an inset ring. */
+@utility edge {
+  position: relative;
+  &::after {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    border-radius: inherit;
+    box-shadow:
+      inset 0 1px 0 var(--sheen),
+      inset 0 0 0 1px var(--rim);
+  }
+}
+
+@utility ring-line {
+  box-shadow:
+    inset 0 1px 0 var(--sheen),
+    0 0 0 1px var(--rim),
+    0 1px 2px var(--lift-near),
+    0 18px 40px -22px var(--lift-far);
+}
+
+/* The theme button: a sun in light, its rays turning away as the disc grows and a bite slides in to make the moon in dark. */
+.theme-core {
+  transform: scale(0.5);
+  transform-origin: 12px 12px;
+}
+.theme-bite {
+  transform: translate(9px, -9px);
+}
+.theme-rays {
+  transform-origin: 12px 12px;
+}
+:root.dark .theme-core,
+:root.dark .theme-bite {
+  transform: none;
+}
+:root.dark .theme-rays {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .theme-core,
+  :root:not(.light) .theme-bite {
+    transform: none;
+  }
+  :root:not(.light) .theme-rays {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.4);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .theme-core,
+  .theme-bite,
+  .theme-rays {
+    transition:
+      transform 560ms var(--ease-in-out),
+      opacity 360ms var(--ease-in-out);
+  }
+}

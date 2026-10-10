@@ -1,0 +1,16 @@
+---
+title: الصحة وإعادة التشغيل وسجل الخادوم
+description: عنوان الصحة، ومتى يخرج راقب ليعيد مدير الخدمات تشغيله، وأين تحفظ كل طريقة تثبيت سجل الخادوم.
+---
+
+لا يحتاج `GET /health` إلى تسجيل الدخول. يجيب بالرمز 200 ومعه `{"ok":true,"database":"ok","scheduler":"ok"}`، أو `{"ok":true,"onboarding":true}` قبل مرحلة الإعداد، ويجيب بالرمز 503 ذاكرًا الجزء الذي فشل حين لا تجيب قاعدة البيانات أو لم يُكمل المُجدوِل أي دورة طوال دقيقتين. ويستعمله فحص الصحة في الصورة والمُثبِّت كلاهما عبر `raaqeb health`.
+
+إذا لم يُكمل المُجدوِل أي دورة طوال خمس دقائق، خرج راقب برمز الخروج 1، فيعيد تشغيله `Restart=on-failure` في systemd، أو `supervise-daemon` في OpenRC، أو `KeepAlive` في launchd، أو تشغيل مهمة Windows كل دقيقة، أو `restart: unless-stopped` في Docker.
+
+يكتب راقب في سجل الخادوم سطرًا عاديًا واحدًا لكل حدث على الخرج القياسي، والأخطاء على الخطأ القياسي، ويبدأ كل سطر بـ`raaqeb: `. ولا يكتب في السجل أبدًا بيانات استيثاق ولا قيمة إعداد تشغيل.
+
+- systemd: `journalctl -u raaqeb`
+- OpenRC: `/var/log/raaqeb/raaqeb.log`
+- macOS: `/usr/local/var/log/raaqeb/raaqeb.log`
+- Windows: لا شيء، فلا يحفظ راقب سجلًا هناك. أوقف المهمة وشغّل `serve` يدويًا في وحدة التحكم لتقرأه ([التثبيت على Windows](/docs/operate/install#windows))
+- Docker: `docker logs raaqeb`

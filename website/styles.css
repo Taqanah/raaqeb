@@ -1,0 +1,350 @@
+/*
+ * The landing page. Teal anchor, a floating pill nav, a one-line footer, the
+ * live status page as the clipped-edge picture; one orchestrated reveal in the hero,
+ * demos play once on view, nothing under reduced motion.
+ * Layout and type are Tailwind utilities in the components; what utilities cannot say lives here.
+ */
+
+/* Tailwind scans the landing page only; the docs have their own stylesheet. */
+@import "tailwindcss" source("./landing");
+@import "./theme.css";
+
+/* A bar of days: one cell a day, oldest first, in the reading direction; a phone shows the last 30. */
+.bar > button {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  outline: none;
+  background: var(--up);
+  border-radius: 1px;
+  transition: opacity 120ms var(--ease-out);
+}
+.bar > button:hover,
+.bar > button[aria-expanded="true"] {
+  opacity: 0.55;
+}
+.bar > button:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--focus);
+}
+.bar > [data-cell="degraded"] {
+  background: var(--degraded);
+}
+.bar > [data-cell="partial"] {
+  background: var(--partial);
+}
+.bar > [data-cell="down"] {
+  background: var(--down);
+}
+.bar > [data-cell="maintenance"] {
+  background: var(--maintenance);
+}
+@media (max-width: 47.99rem) {
+  .bar-90 > button:nth-child(-n + 60) {
+    display: none;
+  }
+}
+
+/* A screenshot per theme: the dark one shows when the root says dark, or the device does and the root says nothing. */
+.shot-dark {
+  display: none;
+}
+:root.dark .shot-dark {
+  display: block;
+}
+:root.dark .shot-light {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .shot-dark {
+    display: block;
+  }
+  :root:not(.light) .shot-light {
+    display: none;
+  }
+}
+
+/* The theme change: the script grows the new page as a circle from the button, so the browser's crossfade stays off. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: none;
+}
+
+/* A section's backdrop: a texture behind its content, faded out at the section's top and bottom so the bands meet the page softly. */
+.backdrop {
+  --fade: linear-gradient(transparent, #000 16%, #000 84%, transparent);
+  position: relative;
+  isolation: isolate;
+}
+.backdrop::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+}
+/* Alerts: dots across the whole band, faded only at its top and bottom. */
+.backdrop-dots::before {
+  background:
+    radial-gradient(var(--texture) 1px, transparent 1.6px) 0 0 / 22px 22px;
+  mask-image: var(--fade);
+}
+/* Checks: a fine grid across the whole band, faded only at its top and bottom. */
+.backdrop-grid::before {
+  background:
+    linear-gradient(var(--texture-line) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, var(--texture-line) 1px, transparent 1px) 0 0 / 44px
+    44px;
+  mask-image: var(--fade);
+}
+/* The 240 MB section: a blueprint grid, fine lines and every fifth one stronger. */
+.backdrop-blueprint::before {
+  background:
+    linear-gradient(var(--texture-line) 1px, transparent 1px) 0 0 / 120px 120px,
+    linear-gradient(90deg, var(--texture-line) 1px, transparent 1px) 0 0 / 120px
+    120px,
+    linear-gradient(var(--texture-line) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, var(--texture-line) 1px, transparent 1px) 0 0 / 24px
+    24px;
+  mask-image:
+    var(--fade),
+    radial-gradient(ellipse 80% 75% at 50% 50%, #000, transparent 80%);
+  mask-composite: intersect;
+}
+
+/* The floating pill nav: detached from the edges, a blurred backdrop. */
+.pill {
+  background: color-mix(in oklch, var(--surface) 72%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    0 8px 24px -16px oklch(0% 0 0 / 0.35);
+  backdrop-filter: blur(14px) saturate(1.4);
+}
+
+/* The hero's heartbeat under the product: a faint trace, and a beam running along it in the reading direction. */
+.ecg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.ecg .base {
+  opacity: 0.18;
+  stroke-width: 1.5;
+}
+.ecg .beam {
+  filter: drop-shadow(0 0 6px var(--teal));
+  stroke-width: 2.5;
+  stroke-dasharray: 90 910;
+  stroke-dashoffset: 90;
+}
+
+/* The checks streaming in at the hero page's corner fade out at the bottom, where the oldest leaves. */
+.stream {
+  mask-image: linear-gradient(#000 60%, transparent);
+}
+
+/* The outage's scrubber: a plain range input drawn as the timeline's rail, red while the monitor is down and green from its recovery (270 s of 360, 75 %) on; the unplayed rest is a hairline. */
+.scrub {
+  --rec: 75%;
+  width: 100%;
+  height: 4px;
+  appearance: none;
+  cursor: pointer;
+  background:
+    linear-gradient(var(--line) 0 0) 100% 0 / calc(100% - var(--at, 0%)) 100%
+    no-repeat,
+    linear-gradient(90deg, var(--down) 0 var(--rec), var(--up) 0);
+  border-radius: 2px;
+}
+[dir="rtl"] .scrub {
+  background:
+    linear-gradient(var(--line) 0 0) 0 0 / calc(100% - var(--at, 0%)) 100%
+    no-repeat,
+    linear-gradient(270deg, var(--down) 0 var(--rec), var(--up) 0);
+}
+.scrub::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  appearance: none;
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--tone, var(--teal));
+}
+.scrub::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--surface);
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--tone, var(--teal));
+}
+
+/* A channel's message as it lands: washed in its state's colour, fading out. */
+.wash-down {
+  --wash: var(--down-soft);
+}
+.wash-up {
+  --wash: var(--up-soft);
+}
+
+/* Time runs left to right in a chart, mirrored for Arabic as in the product's chart. */
+[dir="rtl"] .mirror {
+  transform: scaleX(-1);
+}
+
+/* The hero's one orchestrated reveal, staggered by --i; the product arrives last. Demos (.draw, .arrive) run once when their section plays. */
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: rise 420ms var(--ease-out) forwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  .settle {
+    opacity: 0;
+    animation: settle 600ms var(--ease-out) 420ms forwards;
+  }
+  .settle .bar > button {
+    transform: scaleY(0);
+    transform-origin: bottom;
+    animation: grow 500ms var(--ease-out) forwards;
+    animation-delay: calc(700ms + var(--i, 0) * 4ms);
+  }
+  .live {
+    animation: live 2s infinite;
+  }
+  .ecg .beam {
+    animation: sweep 4.8s linear infinite;
+  }
+  .wash-down,
+  .wash-up {
+    animation:
+      arrive 360ms var(--ease-out) both,
+      wash 1.8s var(--ease-out) both;
+  }
+  /* A light running along a line: a short dash, then a rest. */
+  .pulse {
+    stroke-dasharray: 7 93;
+    stroke-dashoffset: 100;
+    animation: run-out 3.2s linear infinite;
+    animation-delay: calc(var(--i, 0) * 430ms);
+  }
+  /* A chart's line revealed from where time starts, by a clip that does not depend on how far the chart is stretched. */
+  .unveil {
+    animation: unveil 1.4s var(--ease-out) both;
+  }
+  /* The process figure's cubes: a slow float, each at its own beat. */
+  .bob {
+    animation: bob 3.6s ease-in-out infinite alternate;
+    animation-delay: calc(var(--i, 0) * -1.2s);
+  }
+  .slot {
+    animation: slot 1.2s var(--ease-out) both;
+  }
+  .drop {
+    animation: drop 600ms var(--ease-out) 900ms both;
+  }
+  .arrive {
+    animation: arrive 360ms var(--ease-out) both;
+  }
+  .draw {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+    animation: draw 1.4s var(--ease-out) forwards;
+  }
+  .tick {
+    transition: --n 1.2s var(--ease-out);
+  }
+}
+@keyframes rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes settle {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes grow {
+  to {
+    transform: none;
+  }
+}
+@keyframes sweep {
+  to {
+    stroke-dashoffset: -910;
+  }
+}
+@keyframes wash {
+  from {
+    background-color: var(--wash);
+  }
+}
+@keyframes unveil {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+@keyframes bob {
+  to {
+    transform: translateY(-6px);
+  }
+}
+@keyframes run-out {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes slot {
+  from {
+    height: 0;
+    opacity: 0;
+    background: var(--up-soft);
+  }
+  60% {
+    background: var(--up-soft);
+  }
+}
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+@keyframes live {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--up) 50%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Without motion the pulses stay hidden: they only mean something moving. */
+  .pulse {
+    display: none;
+  }
+  .rise,
+  .settle {
+    opacity: 1;
+    transform: none;
+  }
+}

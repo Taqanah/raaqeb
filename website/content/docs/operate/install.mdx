@@ -1,0 +1,140 @@
+---
+title: التثبيت
+description: ثبّت راقب بالمُثبِّت على Linux أو macOS أو Windows، أو بـ Docker أو Docker Compose، أو على Fly.io، أو بتشغيل الملف التنفيذي وحده.
+---
+
+يصدر راقب في سبعة ملفات تنفيذية وصورة Docker. وبجانب الملفات التنفيذية ملف `SHA256SUMS`:
+
+- `raaqeb-linux-x64`، `raaqeb-linux-arm64`: بمكتبة glibc، لتوزيعات Debian وUbuntu وFedora وما يشبهها؛
+- `raaqeb-linux-x64-musl`، `raaqeb-linux-arm64-musl`: بمكتبة musl، لتوزيعة Alpine، وتحتاج أولًا إلى `apk add libstdc++ libgcc`؛
+- `raaqeb-darwin-arm64`: لنظام macOS 13 أو أحدث على معالجات Apple Silicon (لا ملف تنفيذي لأجهزة Mac بمعالجات Intel)؛
+- `raaqeb-windows-x64.exe`، `raaqeb-windows-arm64.exe`: لنظام Windows 10 الإصدار 1809 أو أحدث، وWindows 11، وWindows Server 2019 أو أحدث.
+
+هذه أدنى الإصدارات التي يدعمها Bun، أي macOS 13 وWindows 10 الإصدار 1809 (`docs/installation.mdx` في توثيق Bun)؛ وWindows Server 2019 هو إصدار الخواديم من 1809.
+
+يحمل كل ملف تنفيذي كل ما يقدّمه: الصفحات وملفات الترحيل وعميل البريد. ولا يُثبَّت بجانبه شيء آخر. لا يحمل أي منها توقيع ناشر: يحمل ملف macOS توقيعًا بلا هوية (ad hoc) تحتاجه أجهزة Apple Silicon لتشغيله، ولا تحمل ملفات Windows أي توقيع، لذا يسألك النظام مرة واحدة عند أول تشغيل لملف نزّلته بالمتصفح (انظر أدناه).
+
+تُنشر الإصدارات في [github.com/Taqanah/raaqeb/releases](https://github.com/Taqanah/raaqeb/releases). وإلى أن يُنشر أولها لا يجد المُثبِّت إصدارًا، فابنِ من نسخة من المستودع باستخدام Bun: شغّل `bun install`، ثم يكتب `bun run binaries` الملفات التنفيذية في `dist/bin`، ويبني `bun run image` الصورة ويحمّلها في Docker باسم `ghcr.io/taqanah/raaqeb:<version>`. وثبّت من المجلد `dist/bin` بالمتغير `RAAQEB_DOWNLOAD_URL` (القسم التالي).
+
+تنتهي كل طريقة تثبيت في صفحة مرحلة الإعداد، وتسألك ثلاثة أسئلة: اللغة وقاعدة البيانات وحساب المشغّل. افتح راقب على العنوان الذي تنوي الإبقاء عليه. تحفظ شاشة الحساب ذلك العنوان عنوانًا عامًا، ولا يعمل تسجيل الدخول إلا عليه.
+
+## المُثبِّت
+
+على خادوم Linux يعمل بـ systemd أو OpenRC، أو على جهاز Mac بمعالج Apple Silicon (القسم التالي)، يُجري المُثبِّت التثبيت كله بحساب root:
+
+```sh
+curl -fsSL https://raaqeb.dev/install.sh | sudo sh
+```
+
+يثبّت البرنامج النصي أحدث إصدار مستقر. يسأل العنوان `https://github.com/Taqanah/raaqeb/releases/latest` عن الإصدار الذي يحوّله إليه، ولا يستعمل واجهة GitHub البرمجية، فلا ينطبق عليه حدّ للطلبات، وينزّل الملف التنفيذي و`SHA256SUMS` من ذلك الإصدار وحده. ويغيّر ذلك متغيّران:
+
+- `RAAQEB_VERSION` يسمّي الإصدار المراد تثبيته، ومنه الإصدار المبدئي الذي لا يكون أحدث إصدار أبدًا: `curl -fsSL https://raaqeb.dev/install.sh | sudo RAAQEB_VERSION=0.2.0-beta.1 sh`. وبه أيضًا تثبّت إصدارًا أقدم. ويتوقف البرنامج النصي إن لم يوجد إصدار بهذا الرقم.
+- `RAAQEB_DOWNLOAD_URL` هو المجلد الذي يحوي الملفات التنفيذية و`SHA256SUMS` و`install.sh`، مرآةً كان أو مجلدًا على الخادوم، وله الأولوية على ما سواه. وللخادوم الذي لا طريق له إلى GitHub، انسخ إليه `dist/bin` و`deploy/install.sh` وشغّل `sudo RAAQEB_DOWNLOAD_URL=file:///root/bin sh install.sh` (يحتاج العنوان `file://` إلى curl).
+
+يتوقف البرنامج النصي برسالة حين تنقطع الشبكة، وحين لا يكون في المستودع إصدار بعد، وحين لا يسمّي `RAAQEB_VERSION` إصدارًا موجودًا. ويحتاج العثور على أحدث إصدار إلى curl.
+
+يفعل البرنامج النصي ما يلي:
+
+1. يختار الملف التنفيذي المناسب للجهاز: `x86_64` أو `aarch64` بحسب `uname -m`، ونسخة musl إذا قال ذلك `ldd` الخاص بالنظام؛
+2. ينزّله مع `SHA256SUMS`، ويرفض الملف التنفيذي إذا لم يطابق مجموعه الاختباري؛
+3. يضيف `libstdc++` و`libgcc` على Alpine؛
+4. يثبّت `/usr/local/bin/raaqeb`؛
+5. ينشئ مستخدم النظام `raaqeb` ومجموعته، ومجلد البيانات `/var/lib/raaqeb` بالأذونات 0700، ومالكه ذلك المستخدم؛
+6. يكتب `/etc/raaqeb/raaqeb.env`، وكل سطر فيه تعليق، في المرة الأولى فقط؛
+7. يكتب الخدمة ويشغّلها: وحدة systemd مُحصَّنة في `/etc/systemd/system/raaqeb.service`، أو برنامجًا نصيًا لـ OpenRC في `/etc/init.d/raaqeb` يديره `supervise-daemon`؛
+8. ينتظر حتى خمس دقائق أن يجيب `/health` (لأن الترقية ترحّل قاعدة البيانات أولًا)، ثم يطبع الخطوة التالية.
+
+يستمع راقب بعدها على `127.0.0.1:3000`، أي على هذا الخادوم وحده. فإما أن تضع أمامه وكيلًا عكسيًا ([الوكيل العكسي وTLS](/docs/operate/reverse-proxy))، وإما أن تضبط `RAAQEB_HOST=0.0.0.0` في `/etc/raaqeb/raaqeb.env` وتعيد تشغيل الخدمة. ولتجتاز مرحلة الإعداد قبل أن يوجد الوكيل، صِل إليه عبر SSH من جهازك بالأمر `ssh -L 3000:127.0.0.1:3000 <server>` وافتح `http://127.0.0.1:3000`. تملأ مرحلة الإعداد حينها خانة العنوان العام بذلك العنوان، فاكتب مكانه العنوان الذي ستبقي عليه وأكّده.
+
+أما الخادوم الذي لا يعمل بـ systemd ولا OpenRC، فيحصل على الملف التنفيذي والمستخدم والمجلد، ويطبع البرنامج النصي طريقة تشغيل راقب يدويًا.
+
+تشغّل وحدة systemd راقب بالمستخدم `raaqeb` مع `Restart=on-failure` وداخل مَعزِل: لا يكتسب امتيازات جديدة ولا يملك أي امتياز، ونظام الملفات كله للقراءة فقط عدا `/var/lib/raaqeb`، وله `/tmp` خاص، ولا يصل إلى الأجهزة ولا إلى ضبط نواة النظام ولا وحداتها ولا سجلاتها، ولا يفتح إلا مقابس IPv4 وIPv6 وUnix، ولا يستعمل إلا نداءات النظام التي تحتاجها خدمة عادية. يعرض `systemctl cat raaqeb` الوحدة كلها. وتبقى مسموحة الذاكرة التي تُكتب ثم تُنفَّذ، لأن مترجم JIT في Bun يحتاجها.
+
+## macOS
+
+على جهاز Mac بمعالج Apple Silicon، يثبّت الأمر نفسه راقب خدمةً في launchd:
+
+```sh
+curl -fsSL https://raaqeb.dev/install.sh | sudo sh
+```
+
+يعمل فيه `RAAQEB_VERSION` و`RAAQEB_DOWNLOAD_URL` كما سبق. وعلى Mac يفعل البرنامج النصي ما يلي:
+
+1. يرفض جهاز Mac بلا معالج Apple Silicon (أما الصدفة التي تعمل تحت Rosetta، فتظهر معماريتها `x86_64` وتحصل مع ذلك على الملف التنفيذي arm64)؛
+2. ينزّل `raaqeb-darwin-arm64` و`SHA256SUMS`، ويتحقق منه بالأمر `shasum -a 256`؛
+3. ينشئ `_raaqeb`، وهو مستخدم ومجموعة مخفيان بلا صدفة ولا مجلد منزل، بأول معرّف متاح بدءًا من 300، على طريقة macOS في تسمية حسابات خدماته؛
+4. ينشئ مجلد البيانات `/usr/local/var/raaqeb` بالأذونات 0700، ومالكه `_raaqeb`، ويكتب `/usr/local/etc/raaqeb/raaqeb.env` في المرة الأولى فقط؛
+5. يثبّت `/usr/local/bin/raaqeb` بعد أن يزيل عنه أي علامة حجر؛
+6. يكتب `/Library/LaunchDaemons/raaqeb.plist` ويشغّله بالأمر `launchctl bootstrap system`: يعمل راقب بالمستخدم `_raaqeb` منذ تشغيل الجهاز، قبل أن يسجّل أحد دخوله، ويعيد launchd تشغيله في غضون ثوانٍ إذا خرج بخطأ أو أُنهي قسرًا؛
+7. ينتظر أن يجيب `/health` ثم يطبع الخطوة التالية.
+
+يستمع راقب على `127.0.0.1:3000`. ويكتب هذا التثبيت سجل الخادوم في `/usr/local/var/log/raaqeb/raaqeb.log`. ولإعادة تشغيله بعد تعديل ملف البيئة: `sudo launchctl kickstart -k system/raaqeb`.
+
+**Gatekeeper.** لا يحمل الملف الذي ينزّله curl علامة الحجر، لذا يعمل المُثبِّت، والملف التنفيذي الذي تجلبه بالأمر `curl -fLO https://github.com/Taqanah/raaqeb/releases/latest/download/raaqeb-darwin-arm64`، دون أي سؤال. أما الملف التنفيذي الذي تنزّله بالمتصفح فيحمل العلامة، ويرفض macOS فتحه لأنه من مطوّر غير معروف. أزل العلامة قبل التشغيل الأول:
+
+```sh
+xattr -d com.apple.quarantine raaqeb-darwin-arm64
+chmod +x raaqeb-darwin-arm64
+```
+
+أو افتحه مرة، ثم اسمح به من **System Settings**، ثم **Privacy & Security**، ثم **Open Anyway**. الملف التنفيذي موقّع مسبقًا توقيعًا بلا هوية، إذ يوقّعه Bun حين يبنيه؛ فينجح `codesign --verify raaqeb-darwin-arm64`، ولا شيء عليك توقيعه يدويًا.
+
+## Windows [#windows]
+
+في PowerShell يعمل بصفة المسؤول (Run as Administrator)، يُجري مُثبِّت Windows التثبيت كله:
+
+```powershell
+irm https://raaqeb.dev/install.ps1 | iex
+```
+
+يثبّت هذا الأمر أحدث إصدار مستقر. أما `$env:RAAQEB_VERSION = '0.2.0-beta.1'; irm https://raaqeb.dev/install.ps1 | iex` فيثبّت الإصدار الذي تسمّيه، ومنه الإصدار المبدئي. وللمتغير `RAAQEB_DOWNLOAD_URL` الأولوية على ما سواه، ويمكن أن يكون عنوان رابط أو مجلدًا محليًا يحوي الملفات التنفيذية و`SHA256SUMS` و`install.ps1`: `$env:RAAQEB_DOWNLOAD_URL = 'C:\raaqeb'; iex (Get-Content -Raw C:\raaqeb\install.ps1)`. يفعل البرنامج النصي ما يلي:
+
+1. يختار `raaqeb-windows-x64.exe` أو `raaqeb-windows-arm64.exe` بحسب معمارية الجهاز نفسه، ولا يغيّرها تشغيل PowerShell بالمحاكاة؛
+2. ينزّله مع `SHA256SUMS`، ويرفض الملف التنفيذي إذا لم يطابق مجموعه الاختباري؛
+3. يثبّت `C:\Program Files\Raaqeb\raaqeb.exe`؛
+4. ينشئ `C:\ProgramData\Raaqeb`، ومالكه مجموعة Administrators. لا يملك الوصول الكامل إليه إلا هي وSYSTEM، ولا يرث المجلد أي إذن. ويستطيع Local Service أن يقرأ المجلد وملف البيئة `.env` الذي فيه، ولا يكتب إلا في مجلد البيانات `data`. ولا يكتب المُثبِّت `.env` إلا في المرة الأولى. ويرفض مجلدًا بهذا الاسم أنشأه حساب آخر قبله، إذ لا يوثق بملف `.env` أو مفتاح راقب زُرع فيه: افحص ما فيه، واحذفه، ثم شغّل المُثبِّت من جديد؛
+5. يسجّل المهمة `Raaqeb` في جدولة المهام (Task Scheduler): تشغّل الملف التنفيذي نفسه بحساب Local Service من ذلك المجلد، وتبدأ عند تشغيل الجهاز، ثم تبدأ من جديد في غضون دقيقة كلما توقف، بلا حد زمني؛
+6. يشغّلها، وينتظر أن يجيب `/health`، ثم يطبع الخطوة التالية.
+
+يستمع راقب على `127.0.0.1:3000`. لا يعمل راقب هنا خدمةً من خدمات Windows: لا يتكلم الملف التنفيذي ميفاق خدمات Windows، لذا تشغّله جدولة المهام. وإنهاء المهمة يقتل العملية، ويُصلح SQLite أثر ذلك عند التشغيل التالي. ولأن المهمة تعيد تشغيل راقب في غضون دقيقة، عطّلها قبل أن توقفها:
+
+```powershell
+Disable-ScheduledTask Raaqeb; Stop-ScheduledTask Raaqeb      # stop
+Enable-ScheduledTask Raaqeb; Start-ScheduledTask Raaqeb      # start
+```
+
+لا يحفظ راقب سجل الخادوم على Windows: لا تعطي جدولة المهام المهمةَ وحدة تحكم ولا ملفًا، فيضيع خرجها ولا تُحفظ الأسطر السابقة. لقراءة السجل، أوقف المهمة وشغّل راقب يدويًا في وحدة تحكم داخل ذلك المجلد: `cd C:\ProgramData\Raaqeb; & 'C:\Program Files\Raaqeb\raaqeb.exe' serve`، ثم Ctrl+C.
+
+**SmartScreen.** لا يحمل الملف الذي ينزّله `irm` أو `Invoke-WebRequest` علامة Mark of the Web، لذا يعمل المُثبِّت وملفه التنفيذي دون أي سؤال. أما الملف التنفيذي الذي تنزّله بالمتصفح فيحمل العلامة، ويوقف SmartScreen أول تشغيل له برسالة «Windows protected your PC»: اضغط **More info**، ثم **Run anyway**. أو أزل العلامة أولًا: `Unblock-File .\raaqeb-windows-x64.exe`.
+
+## Docker
+
+تشغّل الصورة الملف التنفيذي المبني على glibc فوق صورة distroless، بالمعرّف uid 65532، وتجعل `/data` وحدة تخزينها و`raaqeb health` فحص الصحة فيها:
+
+```sh
+docker run -d --name raaqeb --restart unless-stopped \
+  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0
+```
+
+لا تحتاج وحدة التخزين المسمّاة إلى شيء آخر. أما ضمّ مجلد فيحتاج أن تعمل الحاوية بمالك المجلد: `--user "$(id -u):$(id -g)" -v "$PWD/data:/data"`. لا صدفة في الصورة؛ يشغّل `docker exec raaqeb raaqeb <command>` الملف التنفيذي مباشرة.
+
+## Docker Compose
+
+يشغّل `deploy/compose.yaml` راقب مع `restart: unless-stopped` على SQLite في وحدة تخزين مسمّاة. ويضيف كل ملف تعريف من ملفي التعريف خدمة:
+
+- يضيف `--profile postgres` قاعدة Postgres 18. اضبط `POSTGRES_PASSWORD` في ملف `.env` بجانب `compose.yaml`، ثم اختر Postgres في شاشة قاعدة البيانات في مرحلة الإعداد، برابط الاتصال `postgres://raaqeb:<POSTGRES_PASSWORD>@postgres:5432/raaqeb`.
+- يضيف `--profile caddy` خادوم Caddy أمام راقب، مع HTTPS تلقائي للنطاق `DOMAIN` المضبوط في ملف `.env` نفسه، وشهادات عند الطلب للنطاقات المخصصة ([النطاقات المخصصة](/docs/operate/custom-domains)). ومع Caddy في الأمام، احذف سطر `ports` من خدمة `raaqeb`، ليكون Caddy المدخل الوحيد.
+
+لشبكة compose شبكة فرعية ثابتة، `172.31.253.0/29`، ليكون عنوان Caddy، `172.31.253.2`، معروفًا ويذكره `RAAQEB_TRUSTED_PROXIES`. وإذا تداخلت مع شبكة على الخادوم، فغيّر الشبكة الفرعية و`ip_range` فيها، وغيّر عنوان Caddy في الموضعين اللذين يرد فيهما: `ipv4_address` في خدمة `caddy`، و`RAAQEB_TRUSTED_PROXIES`. ويحتاج ضمّ مجلد مكان وحدة التخزين المسمّاة إلى `user: "<uid>:<gid>"` في خدمة `raaqeb`.
+
+```sh
+docker compose --profile caddy up -d
+```
+
+## Fly.io
+
+`deploy/fly/README.md` دليل قائم بذاته، ومعه ملف `fly.toml` نموذجي.
+
+## الملف التنفيذي وحده
+
+شغّل الملف التنفيذي في أي مكان: `./raaqeb-linux-x64` أو `./raaqeb-darwin-arm64` أو `.\raaqeb-windows-x64.exe`. إذا لم تضبط أي إعداد، يحفظ بياناته في `./data` ويستمع على `127.0.0.1:3000`. ويقرأ ملف `.env` من مجلد العمل، فيمكن أن تكتب فيه إعدادات التشغيل. ويوقفه Ctrl+C إيقافًا سليمًا على كل الأنظمة، وكذلك SIGTERM، وإغلاق نافذة وحدة التحكم على Windows.

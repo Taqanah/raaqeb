@@ -1,0 +1,14 @@
+{
+  "title": "Raaqeb docs",
+  "description": "Raaqeb is a self-hosted uptime monitor and status page in one process.",
+  "pages": [
+    "index",
+    "get-started",
+    "monitors",
+    "notifications",
+    "status-pages",
+    "operate",
+    "api",
+    "reference"
+  ]
+}

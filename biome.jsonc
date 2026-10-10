@@ -1,0 +1,538 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/react",
+    "ultracite/biome/tanstack",
+    "ultracite/biome/type-aware"
+  ],
+  "files": {
+    "includes": [
+      "!!docs/deps",
+      "!!prototypes",
+      "!!bench/**/results",
+      "!src/routeTree.gen.ts",
+      "!website/routeTree.gen.ts",
+      "!locales/message-ids.ts"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    }
+  },
+  "linter": {
+    "rules": {
+      // From the type-aware preset. Its own doc says TypeScript already
+      // performs this check, and Biome 2.5.12 cannot resolve packages with an
+      // exports map under Bun's isolated linker.
+      "correctness": {
+        "noUnresolvedImports": "off"
+      },
+      "nursery": {
+        "noFloatingPromises": "error",
+        "noMisusedPromises": "error"
+      },
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "@lingui/core": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+              "@lingui/react": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+              "drizzle-orm": "Only src/server/storage imports Drizzle (ADR-0007)",
+              "bun:sqlite": "Only src/server/storage imports a database driver (ADR-0007)"
+            },
+            "patterns": [
+              {
+                "group": ["drizzle-orm/*"],
+                "message": "Only src/server/storage imports Drizzle (ADR-0007)"
+              },
+              {
+                "group": ["**/server/**"],
+                "message": "UI and shared code never import server/ (ADR-0007)"
+              },
+              {
+                "group": ["..", "../**", "!../**/locales/**"],
+                "message": "An import that goes up a folder uses @/ (ADR-0007); only locales/, which the alias cannot reach, stays relative"
+              },
+              {
+                "group": [
+                  "node:fs",
+                  "node:fs/*",
+                  "node:path",
+                  "node:child_process",
+                  "node:crypto",
+                  "node:http",
+                  "node:https",
+                  "node:net",
+                  "node:os",
+                  "node:util",
+                  "node:url",
+                  "node:stream",
+                  "node:events",
+                  "node:buffer",
+                  "node:zlib",
+                  "node:dns",
+                  "node:dns/*",
+                  "node:tls",
+                  "node:readline"
+                ],
+                "message": "Bun first: use the Bun API (Bun.file, Bun.$, Bun.serve, Bun.CryptoHasher, Bun.gzipSync, ...). If Bun has no equivalent, add a biome-ignore comment naming why"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "src/server/**",
+        "src/server.ts",
+        "src/server.test.ts",
+        "src/handler.ts",
+        // Start's request middleware runs on the server only; the compiler strips it from the client.
+        "src/start.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@lingui/core": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+                  "@lingui/react": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+                  "drizzle-orm": "Only src/server/storage imports Drizzle (ADR-0007)",
+                  "bun:sqlite": "Only src/server/storage imports a database driver (ADR-0007)"
+                },
+                "patterns": [
+                  {
+                    "group": ["drizzle-orm/*"],
+                    "message": "Only src/server/storage imports Drizzle (ADR-0007)"
+                  },
+                  {
+                    "group": ["**/admin/**", "**/public/**", "**/routes/**"],
+                    "message": "server/ never imports a UI or routes/ (ADR-0007)"
+                  },
+                  {
+                    "group": ["..", "../**", "!../**/locales/**"],
+                    "message": "An import that goes up a folder uses @/ (ADR-0007); only locales/, which the alias cannot reach, stays relative"
+                  },
+                  {
+                    "group": [
+                      "node:fs",
+                      "node:fs/*",
+                      "node:path",
+                      "node:child_process",
+                      "node:crypto",
+                      "node:http",
+                      "node:https",
+                      "node:net",
+                      "node:os",
+                      "node:util",
+                      "node:url",
+                      "node:stream",
+                      "node:events",
+                      "node:buffer",
+                      "node:zlib",
+                      "node:dns",
+                      "node:dns/*",
+                      "node:tls",
+                      "node:readline"
+                    ],
+                    "message": "Bun first: use the Bun API. If Bun has no equivalent, add a biome-ignore comment naming why"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    // scripts/, e2e/ and bench/ may reach each other with ../ (the alias names
+    // src/ only), and the server rules apply as they do to src/server.
+    {
+      "includes": ["scripts/**", "e2e/**", "bench/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@lingui/core": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+                  "@lingui/react": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+                  "drizzle-orm": "Only src/server/storage imports Drizzle (ADR-0007)",
+                  "bun:sqlite": "Only src/server/storage imports a database driver (ADR-0007)"
+                },
+                "patterns": [
+                  {
+                    "group": ["drizzle-orm/*"],
+                    "message": "Only src/server/storage imports Drizzle (ADR-0007)"
+                  },
+                  {
+                    "group": ["**/admin/**", "**/public/**", "**/routes/**"],
+                    "message": "server/ never imports a UI or routes/ (ADR-0007)"
+                  },
+                  {
+                    "group": ["../**/src/**"],
+                    "message": "An import of src/ uses @/ (ADR-0007); ../ stays only between folders outside src/"
+                  },
+                  {
+                    "group": [
+                      "node:fs",
+                      "node:fs/*",
+                      "node:path",
+                      "node:child_process",
+                      "node:crypto",
+                      "node:http",
+                      "node:https",
+                      "node:net",
+                      "node:os",
+                      "node:util",
+                      "node:url",
+                      "node:stream",
+                      "node:events",
+                      "node:buffer",
+                      "node:zlib",
+                      "node:dns",
+                      "node:dns/*",
+                      "node:tls",
+                      "node:readline"
+                    ],
+                    "message": "Bun first: use the Bun API. If Bun has no equivalent, add a biome-ignore comment naming why"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    // Routes parse, check auth and call one module: they may import server/,
+    // admin/ and public/ (ADR-0007), so only the repo-wide bans apply here.
+    {
+      "includes": ["src/routes/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@lingui/core": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+                  "@lingui/react": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+                  "drizzle-orm": "Only src/server/storage imports Drizzle (ADR-0007)",
+                  "bun:sqlite": "Only src/server/storage imports a database driver (ADR-0007)"
+                },
+                "patterns": [
+                  {
+                    "group": ["drizzle-orm/*"],
+                    "message": "Only src/server/storage imports Drizzle (ADR-0007)"
+                  },
+                  {
+                    "group": ["..", "../**", "!../**/locales/**"],
+                    "message": "An import that goes up a folder uses @/ (ADR-0007); only locales/, which the alias cannot reach, stays relative"
+                  },
+                  {
+                    "group": [
+                      "node:fs",
+                      "node:fs/*",
+                      "node:path",
+                      "node:child_process",
+                      "node:crypto",
+                      "node:http",
+                      "node:https",
+                      "node:net",
+                      "node:os",
+                      "node:util",
+                      "node:url",
+                      "node:stream",
+                      "node:events",
+                      "node:buffer",
+                      "node:zlib",
+                      "node:dns",
+                      "node:dns/*",
+                      "node:tls",
+                      "node:readline"
+                    ],
+                    "message": "Bun first: use the Bun API. If Bun has no equivalent, add a biome-ignore comment naming why"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/server/storage/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@lingui/core": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+                  "@lingui/react": "Every user-visible string crosses src/shared/i18n (ADR-0003)"
+                },
+                "patterns": [
+                  {
+                    "group": ["**/admin/**", "**/public/**", "**/routes/**"],
+                    "message": "server/ never imports a UI or routes/ (ADR-0007)"
+                  },
+                  {
+                    "group": ["..", "../**", "!../**/locales/**"],
+                    "message": "An import that goes up a folder uses @/ (ADR-0007); only locales/, which the alias cannot reach, stays relative"
+                  },
+                  {
+                    "group": [
+                      "node:fs",
+                      "node:fs/*",
+                      "node:path",
+                      "node:child_process",
+                      "node:crypto",
+                      "node:http",
+                      "node:https",
+                      "node:net",
+                      "node:os",
+                      "node:util",
+                      "node:url",
+                      "node:stream",
+                      "node:events",
+                      "node:buffer",
+                      "node:zlib",
+                      "node:dns",
+                      "node:dns/*",
+                      "node:tls",
+                      "node:readline"
+                    ],
+                    "message": "Bun first: use the Bun API. If Bun has no equivalent, add a biome-ignore comment naming why"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/shared/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@lingui/core": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+                  "@lingui/react": "Every user-visible string crosses src/shared/i18n (ADR-0003)",
+                  "drizzle-orm": "Only src/server/storage imports Drizzle (ADR-0007)",
+                  "bun:sqlite": "Only src/server/storage imports a database driver (ADR-0007)"
+                },
+                "patterns": [
+                  {
+                    "group": ["drizzle-orm/*"],
+                    "message": "Only src/server/storage imports Drizzle (ADR-0007)"
+                  },
+                  {
+                    "group": [
+                      "**/server/**",
+                      "**/admin/**",
+                      "**/public/**",
+                      "**/routes/**"
+                    ],
+                    "message": "shared/ imports nothing above it (ADR-0007)"
+                  },
+                  {
+                    "group": ["..", "../**", "!../**/locales/**"],
+                    "message": "An import that goes up a folder uses @/ (ADR-0007); only locales/, which the alias cannot reach, stays relative"
+                  },
+                  {
+                    "group": [
+                      "node:fs",
+                      "node:fs/*",
+                      "node:path",
+                      "node:child_process",
+                      "node:crypto",
+                      "node:http",
+                      "node:https",
+                      "node:net",
+                      "node:os",
+                      "node:util",
+                      "node:url",
+                      "node:stream",
+                      "node:events",
+                      "node:buffer",
+                      "node:zlib",
+                      "node:dns",
+                      "node:dns/*",
+                      "node:tls",
+                      "node:readline"
+                    ],
+                    "message": "Bun first: use the Bun API (Bun.file, Bun.$, Bun.serve, Bun.CryptoHasher, Bun.gzipSync, ...). If Bun has no equivalent, add a biome-ignore comment naming why"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    // The website reads src/shared/ and nothing else of the product (ADR-0007).
+    {
+      "includes": ["website/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@lingui/core": "The website's words are website/copy.ts (ADR-0007)",
+                  "@lingui/react": "The website's words are website/copy.ts (ADR-0007)",
+                  "drizzle-orm": "Only src/server/storage imports Drizzle (ADR-0007)",
+                  "bun:sqlite": "Only src/server/storage imports a database driver (ADR-0007)"
+                },
+                "patterns": [
+                  {
+                    "group": [
+                      "**/server/**",
+                      "@/admin/**",
+                      "@/public/**",
+                      "@/routes/**"
+                    ],
+                    "message": "The website imports src/shared/ only (ADR-0007)"
+                  },
+                  {
+                    "group": ["..", "../**"],
+                    "message": "An import that goes up a folder uses ~/ inside website/ or @/ into src/ (ADR-0007)"
+                  },
+                  {
+                    "group": [
+                      "node:fs",
+                      "node:fs/*",
+                      "node:path",
+                      "node:child_process",
+                      "node:crypto",
+                      "node:http",
+                      "node:https",
+                      "node:net",
+                      "node:os",
+                      "node:util",
+                      "node:url",
+                      "node:stream",
+                      "node:events",
+                      "node:buffer",
+                      "node:zlib",
+                      "node:dns",
+                      "node:dns/*",
+                      "node:tls",
+                      "node:readline"
+                    ],
+                    "message": "Bun first: use the Bun API or the platform. If neither has an equivalent, add a biome-ignore comment naming why"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    // The one folder that imports Lingui: it is where every string crosses.
+    {
+      "includes": ["src/shared/i18n/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "drizzle-orm": "Only src/server/storage imports Drizzle (ADR-0007)",
+                  "bun:sqlite": "Only src/server/storage imports a database driver (ADR-0007)"
+                },
+                "patterns": [
+                  {
+                    "group": ["drizzle-orm/*"],
+                    "message": "Only src/server/storage imports Drizzle (ADR-0007)"
+                  },
+                  {
+                    "group": [
+                      "**/server/**",
+                      "**/admin/**",
+                      "**/public/**",
+                      "**/routes/**"
+                    ],
+                    "message": "shared/ imports nothing above it (ADR-0007)"
+                  },
+                  {
+                    "group": ["..", "../**", "!../**/locales/**"],
+                    "message": "An import that goes up a folder uses @/ (ADR-0007); only locales/, which the alias cannot reach, stays relative"
+                  },
+                  {
+                    "group": [
+                      "node:fs",
+                      "node:fs/*",
+                      "node:path",
+                      "node:child_process",
+                      "node:crypto",
+                      "node:http",
+                      "node:https",
+                      "node:net",
+                      "node:os",
+                      "node:util",
+                      "node:url",
+                      "node:stream",
+                      "node:events",
+                      "node:buffer",
+                      "node:zlib",
+                      "node:dns",
+                      "node:dns/*",
+                      "node:tls",
+                      "node:readline"
+                    ],
+                    "message": "Bun first: use the Bun API (Bun.file, Bun.$, Bun.serve, Bun.CryptoHasher, Bun.gzipSync, ...). If Bun has no equivalent, add a biome-ignore comment naming why"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.test.ts", "scripts/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "scripts/**",
+        "src/server/**",
+        "src/server.ts",
+        "**/*.test.ts",
+        "e2e/**",
+        "bench/**",
+        "vite.config.ts",
+        "website/vite.config.ts"
+      ],
+      "javascript": {
+        "globals": ["Bun"]
+      }
+    }
+  ]
+}

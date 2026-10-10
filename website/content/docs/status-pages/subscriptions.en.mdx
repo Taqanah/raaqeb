@@ -1,0 +1,216 @@
+---
+title: Subscriptions
+description: How visitors subscribe to a status page by email or webhook, how they confirm and unsubscribe, the limits, and what each subscriber receives.
+---
+
+A visitor can subscribe to a status page to receive a message whenever an incident or a maintenance window touches it. A subscription ties one subscriber to one status page through one channel, email or webhook. It is pending until the subscriber confirms, then confirmed until they unsubscribe.
+
+A subscription covers the whole page. For updates with no subscription at all, a visitor can read the page's [Atom feed](/en/docs/status-pages/badge-and-feed#feed).
+
+## Offer subscriptions
+
+A page offers the channels ticked under **Subscription channels** in its editor. Both are on for a new page.
+
+- **Email** is offered only while the install has an email [notification channel](/en/docs/notifications/email). Subscriber emails go through the channel chosen under **Email channel** on the **Sign-in** settings page, or else the oldest email channel.
+- **Webhook** needs nothing from you.
+
+With neither channel offered, the dialog offers the feed alone. An unpublished page takes no subscription.
+
+## Subscribe
+
+The **Get updates** button in the overview's header opens the subscribe dialog; it opens without JavaScript too. The visitor chooses **Email** or **Webhook**, whichever the page offers, fills in **Email address** or **Webhook URL**, and selects **Subscribe**. A third choice, **Feed**, shows the page's feed address with a **Copy** button, for a feed reader; it needs no subscription.
+
+The form needs JavaScript. Without it, the page says so and links the feed.
+
+The form gives the same answer whether the address was new, pending or already confirmed, so it never reveals who is subscribed:
+
+| The address was | What happens |
+| --- | --- |
+| New, or unsubscribed | The subscription becomes pending and a confirmation is sent, no sooner than 10 minutes after the last one. |
+| Pending | Another confirmation is sent, no sooner than 10 minutes after the last one. |
+| Confirmed | Nothing is sent. |
+
+The subscription language is the language of the page address the visitor subscribed from: the page language at the plain address, the other language under its prefix. Every message the subscriber receives is in that language.
+
+## Webhook addresses
+
+A webhook URL must be `https`, with no user name or password, up to 2,048 characters, and its host must resolve to an address on the public internet. A URL that resolves to a private or local address is refused with "Updates go only to https addresses on the public internet." The host is checked again before every POST.
+
+The URL is stored encrypted with the install key. One URL is one subscription per page.
+
+## Rate limit
+
+Each client may sign up 5 times in 10 minutes. The client is the visitor's address as seen behind your [trusted proxies](/en/docs/operate/reverse-proxy); an IPv6 /64 counts as one client. The count is kept in memory, so a restart clears it. Past the limit, the form says "Too many sign-ups from here. Try again in a few minutes."
+
+## Confirm
+
+A subscriber confirms by opening the link and pressing the button on its page, within 48 hours. Nothing but the confirmation is sent until then.
+
+- An email subscriber receives an email, "Confirm your subscription to" the page's title, with the link.
+- A webhook subscriber receives the link in its first POST, in the `confirmUrl` field.
+
+The link opens the subscription's own page, `/subscriptions/<token>`, on the status page's host. The page says where the subscription stands and holds the **Confirm subscription** button. Opening a link only shows the page; only the button acts, so a mail scanner that follows links confirms nothing.
+
+A pending subscription whose link is older than 48 hours shows "This confirmation link has expired." and is deleted by the nightly job. The visitor can subscribe again from the page.
+
+## Unsubscribe
+
+Every message carries the subscription's page, where **Unsubscribe** ends the subscription. Emails also carry the `List-Unsubscribe` and `List-Unsubscribe-Post` headers, so a mail client's one-click unsubscribe works. A webhook body carries the link in `meta.unsubscribe`.
+
+An unsubscribed visitor can subscribe again from the status page, which starts a new confirmation.
+
+## What subscribers receive
+
+A subscriber notification goes to every confirmed subscription of every published page that shows a component the event touches. All seven events are always on.
+
+| Event | Sent when |
+| --- | --- |
+| `incident.published` | An incident is published. |
+| `incident.updated` | An update is posted on an incident, including the resolving one. |
+| `maintenance.scheduled` | A maintenance window is scheduled, unless it starts in the current minute. |
+| `maintenance.rescheduled` | An edit moves a window's start or end, unless it moves it to now. |
+| `maintenance.started` | A window starts. |
+| `maintenance.completed` | A window ends. |
+| `maintenance.cancelled` | A scheduled window is cancelled. |
+
+[Incidents](/en/docs/status-pages/incidents#what-subscribers-receive) and [Maintenance windows](/en/docs/status-pages/maintenance#what-subscribers-receive) give the details of each.
+
+Each message is in the subscription language. Your text is in that language where you wrote it, else in the page language. Its links lead to that language's views, on the page's [custom domain](/en/docs/status-pages/custom-domains) if it has one, else on the public address.
+
+Messages to one subscription arrive in order. A message that fails is tried again 30 seconds, 2 minutes and 10 minutes later. A message queued for a page that is no longer published, or for a subscription that no longer takes it, is dropped without a send.
+
+### Email
+
+An email with a plain-text part and an HTML part. The subject is the impact level and the title, such as "Major: API errors", or "Maintenance:" and the title for a window. The body opens with one sentence, such as "A new incident on Acme status.", followed by:
+
+- **Status**: the incident's or window's stage. A cancel has no stage line.
+- **Starts** and **Ends**: a window's times.
+- The update's text, or the window's description.
+- **Affected**: the page's components it touches.
+- **Details**: a link to the incident's or window's view. A cancel links the page.
+- **Time**: when it happened.
+- Why it came: "You get this email because you subscribed to updates from Acme status."
+- **Unsubscribe**: the subscription's page.
+
+The HTML part shows the incident's or window's title above the same lines, opens the view from a **Details** button, and ends with the closing sentence and an **Unsubscribe** link. A confirmation's HTML part opens the subscription's page from a **Confirm subscription** button.
+
+### Webhook
+
+A `POST` with a JSON body and these headers:
+
+| Header | Value |
+| --- | --- |
+| `content-type` | `application/json` |
+| `user-agent` | `Raaqeb` |
+| `webhook-id` | The notification's id, the same on every retry, so the receiver can drop a duplicate. |
+| `webhook-timestamp` | When this attempt was made, in Unix seconds. |
+
+A subscriber's webhook is not signed. Answer with any `2xx` status; anything else, a redirect included, is a failed attempt.
+
+The first POST is the confirmation:
+
+```json title="subscription.confirmation"
+{
+  "confirmUrl": "https://status.example.com/subscriptions/Qm9xZXhhbXBsZXRva2VuMQ",
+  "page": {
+    "id": "0199b6a2-4c1e-7d35-9a0f-2e6b8c4d1f70",
+    "name": "Acme status",
+    "url": "https://status.example.com"
+  },
+  "text": "Open the confirmation link and press the button on its page within 48 hours to confirm this subscription. Nothing else is sent here until then.",
+  "timestamp": "2026-10-07T09:12:00.000Z",
+  "type": "subscription.confirmation"
+}
+```
+
+Every event after it uses the body Statuspage sends its webhook subscribers, so a receiver written for Statuspage reads it unchanged. A maintenance window arrives as an incident with `impact` set to `maintenance`, `scheduled_for` and `scheduled_until` added, and no `reminder_intervals`. Here is an `incident.published` event with one affected component:
+
+```json title="incident.published"
+{
+  "incident": {
+    "components": [
+      {
+        "created_at": "2026-09-01T08:00:00.000Z",
+        "description": null,
+        "group": false,
+        "group_id": null,
+        "id": "0199b6a2-5d10-7a2c-8e41-7f3a9c2b6d18",
+        "name": "API",
+        "only_show_if_degraded": false,
+        "page_id": "0199b6a2-4c1e-7d35-9a0f-2e6b8c4d1f70",
+        "position": 1,
+        "showcase": true,
+        "start_date": null,
+        "status": "major_outage",
+        "updated_at": "2026-09-01T08:00:00.000Z"
+      }
+    ],
+    "created_at": "2026-10-07T09:12:00.000Z",
+    "id": "0199c2f4-1b7e-7c90-b5d2-6a8e3f1c9e04",
+    "impact": "major",
+    "incident_updates": [
+      {
+        "affected_components": [
+          {
+            "code": "0199b6a2-5d10-7a2c-8e41-7f3a9c2b6d18",
+            "name": "API",
+            "new_status": "major_outage",
+            "old_status": "operational"
+          }
+        ],
+        "body": "Requests to the API fail. We are looking into it.",
+        "created_at": "2026-10-07T09:12:00.000Z",
+        "custom_tweet": null,
+        "deliver_notifications": true,
+        "display_at": "2026-10-07T09:12:00.000Z",
+        "id": "0199c2f4-1b7f-7e11-a3c4-0d9b5e2f7a66",
+        "incident_id": "0199c2f4-1b7e-7c90-b5d2-6a8e3f1c9e04",
+        "status": "investigating",
+        "tweet_id": null,
+        "updated_at": "2026-10-07T09:12:00.000Z"
+      }
+    ],
+    "monitoring_at": null,
+    "name": "API errors",
+    "page_id": "0199b6a2-4c1e-7d35-9a0f-2e6b8c4d1f70",
+    "reminder_intervals": null,
+    "resolved_at": null,
+    "shortlink": "https://status.example.com/incidents/0199c2f4-1b7e-7c90-b5d2-6a8e3f1c9e04",
+    "started_at": "2026-10-07T09:12:00.000Z",
+    "status": "investigating",
+    "updated_at": "2026-10-07T09:12:00.000Z"
+  },
+  "meta": {
+    "documentation": "https://status.example.com/api/openapi.json",
+    "event": "incident.published",
+    "unsubscribe": "https://status.example.com/subscriptions/Qm9xZXhhbXBsZXRva2VuMQ"
+  },
+  "page": {
+    "id": "0199b6a2-4c1e-7d35-9a0f-2e6b8c4d1f70",
+    "status_description": "Major System Outage",
+    "status_indicator": "critical"
+  }
+}
+```
+
+Some fields to know:
+
+- `meta.event` names the event. It is how a receiver tells `maintenance.cancelled` from `maintenance.completed`: a cancelled window arrives with `status` `completed`.
+- `incident_updates` is newest first. On the update that first names a component, `old_status` is the status the page showed for it just before.
+- A window has one entry in `incident_updates`: its description at its stage. At its start it lists each affected component with `new_status` `under_maintenance`; at its end, with `old_status` `under_maintenance`. On scheduled, rescheduled and cancelled it lists no component.
+- `page.status_indicator` is the [summary's indicator](/en/docs/status-pages/badge-and-feed#summary) when the event was queued.
+
+The [API reference](/en/docs/api) holds the full schema of both bodies, under the OpenAPI document's `webhooks`.
+
+## Manage subscribers
+
+Open a page's editor and select **Subscribers**. The list shows each subscriber's **Address** (the email address, or a webhook's host alone), **By**, **Language**, **State**, **Since** and **Last message**, which tells how the last send went.
+
+| State | Meaning |
+| --- | --- |
+| **Waiting for confirmation** | Pending, with a link younger than 48 hours. |
+| **Confirmed** | Receives every event. |
+| **Unsubscribed** | Receives nothing. |
+| **Link expired** | Pending past 48 hours; the nightly job deletes it. |
+
+**Remove** deletes the subscription and its queued messages. The subscriber is not told, and can subscribe again from the page. A subscription whose messages keep failing is not removed by itself.

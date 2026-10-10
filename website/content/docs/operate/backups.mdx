@@ -1,0 +1,28 @@
+---
+title: النسخ الاحتياطية
+description: خذ نسخة احتياطية من قاعدة البيانات ومفتاح راقب معًا، على SQLite وراقب يعمل، أو على Postgres بأدوات المزوّد.
+---
+
+<Callout type="warn">
+ليس في راقب أمر للنسخ الاحتياطي. خذ نسخة احتياطية من قاعدة البيانات ومفتاح راقب معًا: بلا المفتاح لا يمكن فتح بيانات الاستيثاق الخاصة بالمراقبات والقنوات المحفوظة في قاعدة البيانات.
+</Callout>
+
+على SQLite، ينسخ `VACUUM INTO` قاعدة البيانات إلى ملف جديد وراقب يعمل، نسخةً متّسقة كما كانت في لحظة واحدة، بأداة سطر الأوامر `sqlite3`:
+
+```sh
+sqlite3 /var/lib/raaqeb/raaqeb.sqlite "VACUUM INTO '/root/raaqeb-$(date +%F).sqlite'"
+cp /var/lib/raaqeb/config.json /root/raaqeb-config-$(date +%F).json
+```
+
+ومع Docker، عبر حاوية مؤقتة على وحدة التخزين نفسها:
+
+```sh
+docker run --rm -v raaqeb-data:/data -v "$PWD":/backup alpine:3.22 sh -c \
+  "apk add --no-cache sqlite >/dev/null && sqlite3 /data/raaqeb.sqlite \"VACUUM INTO '/backup/raaqeb.sqlite'\" && cp /data/config.json /backup/"
+```
+
+للاستعادة، أوقف راقب، وضع النسخة في مكانها باسم `raaqeb.sqlite` بعد أن تحذف ملفَّيها `-wal` و`-shm`، وأعِد `config.json` إلى جانبها، واجعل الملفين ملكًا للمستخدم الذي يعمل به راقب، ثم شغّل راقب. إن كان راقب مثبّتًا بالمُثبِّت، فنفّذ بالمستخدم root: `chown raaqeb:raaqeb /var/lib/raaqeb/raaqeb.sqlite /var/lib/raaqeb/config.json && chmod 0600 /var/lib/raaqeb/raaqeb.sqlite /var/lib/raaqeb/config.json`. وفي الصورة، معرّف هذا المستخدم (uid) هو 65532. ونسخة مجلد البيانات كله، تؤخذ وراقب متوقف، نسخة احتياطية أيضًا.
+
+على Postgres، استعمل النسخ الاحتياطية لدى المزوّد أو الاستعادة إلى نقطة زمنية، أو `pg_dump`. تحفظ الخطة المجانية القليل من النسخ أو لا تحفظ شيئًا، فتحقّق مما تحفظه خطتك، وغطِّ ما لا تحفظه بتشغيل `pg_dump` وفق جدول. واحفظ مفتاح راقب: `RAAQEB_SECRET_KEY` إن كنت ضبطته، أو `config.json` من مجلد البيانات.
+
+تُبقي ميزانية التخزين في إعدادات التخزين سجل راقب تحت حد، وعلى SQLite يُبقي راقب 64 ميغابايت حرة على القرص بحذف أقدم سجله. ولا يحمي أي منهما من عملية أخرى تملأ القرص.

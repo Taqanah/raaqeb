@@ -1,0 +1,4 @@
+{
+  "title": "الواجهة البرمجية",
+  "pages": ["heartbeats", "status-pages", "subscriptions", "webhooks", "health"]
+}

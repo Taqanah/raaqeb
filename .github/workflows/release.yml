@@ -1,0 +1,186 @@
+# Builds, checks and drafts a release when a version tag is pushed. Nothing is
+# published from here: the draft release waits for a person to publish it, and
+# the image's X.Y and latest tags move only when that release is published as
+# a stable one (promote.yml). The only credential is the workflow's own token.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+# One run per tag; a second push of the same tag waits, it never cancels a run that is pushing the image.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: 1.4.2
+
+jobs:
+  # Compiles the seven binaries once, checks them and the image on Linux, and
+  # keeps the binaries for every job after it, so each check and each
+  # attestation sees the same bytes.
+  build:
+    name: Build and check on Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: The tag names the package's version
+        run: |
+          version=$(bun -e 'process.stdout.write(require("./package.json").version)')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::the tag $GITHUB_REF_NAME does not match package.json's version $version"
+            exit 1
+          fi
+      # `bun run binaries` is the build that `bun run install:check` and
+      # `bun run image:check` each start with; the scripts run here on the
+      # binaries just built, which are the ones released.
+      - run: bun run binaries
+      - run: bun scripts/install-check.ts
+      # A builder that can write an OCI archive of both platforms.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - run: bunx playwright install --with-deps chromium
+      - run: bun scripts/package.ts image
+      - run: bun scripts/image-check.ts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binaries
+          path: dist/bin/
+          if-no-files-found: error
+          retention-days: 14
+
+  smoke-mac:
+    name: Smoke test on macOS (Apple Silicon)
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: binaries
+          path: smoke
+      - name: Gather the folder the script runs from
+        run: cp scripts/smoke-mac.sh deploy/install.sh smoke/
+      - name: Smoke test the binary, then the installer, the daemon and the uninstall
+        working-directory: smoke
+        run: sh smoke-mac.sh --install
+
+  smoke-windows:
+    name: Smoke test on Windows (${{ matrix.arch }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            os: windows-2025
+          - arch: arm64
+            os: windows-11-arm
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      # The installer is a script a person pipes into PowerShell; keep its line endings as committed.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: binaries
+          path: smoke
+      - name: Gather the folder the script runs from
+        shell: powershell
+        run: Copy-Item scripts/smoke-windows.ps1, deploy/install.ps1 smoke/
+      - name: Smoke test the binary, then the installer, its task and the uninstall
+        shell: powershell
+        working-directory: smoke
+        run: ./smoke-windows.ps1 -Install
+
+  # Pushes the image once every platform's check has passed.
+  image:
+    name: Push the image
+    needs: [build, smoke-mac, smoke-windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: binaries
+          path: dist/bin
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Both platforms, an SBOM attached, tagged with the version only.
+      - run: bun scripts/package.ts push
+      - name: Read the pushed image's digest
+        id: digest
+        run: |
+          digest=$(docker buildx imagetools inspect "ghcr.io/taqanah/raaqeb:${GITHUB_REF_NAME#v}" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/taqanah/raaqeb
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+
+  # Drafts the release: the binaries, their checksums and the two installers.
+  release:
+    name: Draft the release
+    needs: [build, image]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: binaries
+          path: dist/bin
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/bin/raaqeb-*
+      # A version with a hyphen (0.1.0-rc.1) is a pre-release, so GitHub's latest skips it.
+      - name: Create the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in
+            *-*) flags="--prerelease" ;;
+          esac
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --draft $flags \
+            --title "$GITHUB_REF_NAME" --notes "Release notes to follow." \
+            dist/bin/raaqeb-* dist/bin/SHA256SUMS deploy/install.sh deploy/install.ps1

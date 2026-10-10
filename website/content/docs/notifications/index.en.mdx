@@ -1,0 +1,177 @@
+---
+title: Notifications
+description: How Raaqeb tells your team about monitor events through channels, how it queues and retries sends, and what each message says.
+---
+
+Raaqeb sends two kinds of notification. Both go through one queue that stores each notification before it is sent, so a restart loses nothing.
+
+- An **operator notification** goes to your team's notification channels when a monitor event happens: a monitor goes down, recovers, becomes degraded, stops being degraded, or its certificate is about to expire. This page and the channel pages cover it.
+- A **subscriber notification** goes to a status page's subscribers when an incident or a maintenance window affects a component the page shows. It is covered in [Subscriptions](/en/docs/status-pages/subscriptions).
+
+## Channels
+
+A notification channel is a destination your install owns, such as a Slack incoming webhook or an SMTP mailbox. You add channels under **Notification channels** in the admin area, then each monitor selects the channels it uses. Six channel types are built in:
+
+| Channel type | What it does |
+| --- | --- |
+| [Email](/en/docs/notifications/email) | Sends a message with a plain-text part and an HTML part through an SMTP server you set. |
+| [Webhook](/en/docs/notifications/webhook) | Posts a signed JSON body to a URL you set. |
+| [Slack](/en/docs/notifications/slack) | Posts to a Slack channel through an incoming webhook. |
+| [Discord](/en/docs/notifications/discord) | Posts to a Discord channel through a webhook. |
+| [Telegram](/en/docs/notifications/telegram) | A bot writes to one chat, group or channel. |
+| [ntfy](/en/docs/notifications/ntfy) | Publishes a phone notification to an ntfy topic. |
+
+Every channel form has these fields, then the fields of its type:
+
+| Field | Meaning | Required | Default |
+| --- | --- | --- | --- |
+| **Name** | What the admin area calls the channel. At most 80 characters. Only operators see it. | Yes | None |
+| **Type** | The channel type. Fixed once the channel is saved; to change it, add a new channel. | Yes | None |
+| **Channel language** | The language the messages are written in. Not shown for a webhook, which sends machine values only. | No | **The install language** |
+| **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
+
+The channel list shows each channel's type, its destination (the webhook's host, the email recipients, the Telegram chat ID, the ntfy server), its channel language and its **Last notification**.
+
+## Choosing channels and events on a monitor
+
+The **Notifications** section of the monitor form holds three things:
+
+- **Notification channels**: the channels this monitor's notifications go to.
+- **Events that notify**: one switch per monitor event. A new monitor starts with all five on.
+- **Remind while down**: repeats the down notification while the monitor stays down. Off by default.
+
+An event that cannot happen for the monitor sends nothing, even when its switch is on:
+
+| Monitor event | Sent when | Can happen when |
+| --- | --- | --- |
+| **Down** | An outage opens: the first check that confirms the monitor is down. A late heartbeat is down for a heartbeat monitor. | Always. |
+| **Recovered** | The outage closes: the first check that is no longer down. | Always. |
+| **Degraded started** | A check succeeds but is slower than the monitor's degraded threshold. | The monitor has a degraded threshold. Heartbeat monitors are never degraded. |
+| **Degraded ended** | A check is up again after the monitor was degraded. A degraded monitor that goes down sends only **Down**. | The monitor has a degraded threshold. |
+| **Certificate expiring** | The certificate expires within the monitor's warning threshold, then once more within one day. A new certificate starts over. | An HTTPS monitor with the certificate expiry option on. See [Certificates](/en/docs/monitors/certificates). |
+
+Raaqeb sends one notification per monitor event and per channel. It does not group several monitors into one message.
+
+### Maintenance, pauses and acknowledgement
+
+- A monitor that a maintenance window in progress covers sends no notification and no reminder. If it is still down when the window ends, its down notification goes then. See [Maintenance](/en/docs/status-pages/maintenance).
+- A paused monitor runs no checks, so it sends nothing, and its reminders stop.
+- Acknowledging an open outage stops its reminders and nothing else. The recovered notification still goes, and the next outage reminds again. See [Monitors](/en/docs/monitors).
+
+### Reminders
+
+With **Remind while down** on, Raaqeb repeats the down notification as "still down" while the outage stays open, until it recovers or you acknowledge it. Pick the interval under **Repeat every**: 5, 10, 15 or 30 minutes, or 1, 2, 4, 6, 12 or 24 hours. The default is 1 hour.
+
+Reminders fall at the outage's start plus whole multiples of the interval. Raaqeb stores no reminder state: after a restart the next reminder falls at the next multiple, and reminders missed while it was stopped are not sent. A reminder needs the **Down** event on.
+
+## What a notification says
+
+Every channel type but the webhook writes the notification as text in its channel language: one short sentence, then one label and value per line. A URL, a target or a time always sits on a line of its own, never inside a sentence, so an Arabic message reads right to left and a URL stays whole.
+
+A down notification in English, as an email carries it:
+
+```text
+The monitor is down.
+
+Monitor: Main website
+Target: https://example.com
+Reason: Timed out
+Time: Sep 25, 2026, 18:49 (UTC)
+Link: https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d
+Open an incident: https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d
+```
+
+Its subject is `Main website is down`. The lines each event carries:
+
+| Notification | Subject | Lines after Monitor and Target |
+| --- | --- | --- |
+| Down | `{monitor} is down` | Reason, Time, Link, Open an incident |
+| Reminder | `{monitor} is still down` | Reason, Down for, Time, Link |
+| Recovered | `{monitor} is up again` | Downtime, Time, Link |
+| Degraded started | `{monitor} is degraded` | Reason, Time, Link |
+| Degraded ended | `{monitor} is no longer degraded` | Time, Link |
+| Certificate expiring | `{monitor}: the certificate expires soon` | Time left, Expires, Time, Link |
+
+- A heartbeat monitor has no target, so its messages have no Target line.
+- The reason is the [reason](/en/docs/monitors) the check ended with, in words, such as `Timed out` or `Unexpected status code`.
+- Times are written in the install's time zone, clock and calendar, with the zone's name.
+- The Link line opens the monitor in the admin area, and the down notification's last line opens a new incident prefilled with the monitor. Both are made from the public address, so they are left out when the install stores none. See [the public address](/en/docs/get-started#onboarding).
+- Slack, Discord and Telegram show the subject as the first line and turn the two link lines into the words **Open the monitor** and **Open an incident**. ntfy turns them into buttons.
+
+The text is fixed. There are no message templates.
+
+## Channel language
+
+Each channel writes in its own language: **The install language**, **العربية** or **English**. The install language follows the install's setting when you change it later. The webhook has no channel language: its JSON carries machine values and is never translated.
+
+## Apply to new monitors
+
+**Apply to new monitors by default** preselects the channel on the form of every monitor you add after that. It does not change existing monitors; select or clear the channel on each monitor's form for those. The channel list marks such channels **On new monitors**. A new channel starts with the switch on.
+
+## Notification preview and Send test
+
+A saved channel's page shows a **Notification preview**: each operator notification the channel can receive (down, the reminder, recovered, degraded started and ended, certificate expiring) as that channel type carries it, in the channel language. It uses a made-up monitor called "Main website" and example times, and sends nothing. For a webhook it shows the JSON body, and for email the HTML part as a mail client shows it, in the theme you chose, light or dark.
+
+**Send test** sends one test notification now with the saved settings. It makes one attempt, without retries and outside the queue, and the result appears at the top of **Recent notifications** marked **Test**. Save the form before you test a change.
+
+The test message reads:
+
+```text
+This is a test message from Raaqeb. Its arrival means the channel works.
+
+Channel: Ops mail
+Time: Sep 25, 2026, 18:49 (UTC)
+```
+
+Its subject is `Test message from Raaqeb`.
+
+## The queue and retries
+
+Every notification is stored in the database before it is sent.
+
+- **Retries.** A failed attempt is tried again 30 seconds, 2 minutes and 10 minutes after each failure: four attempts over about 12.5 minutes. After the fourth failure the notification is marked failed and not tried again. A rate limit (an answer of `429`) retries on the same schedule; Raaqeb does not read `Retry-After`.
+- **Order.** Each channel sends its notifications one at a time, in the order they were queued. A notification waiting for a retry holds back the newer ones on the same channel until it is sent or fails for good.
+- **Concurrency.** At most four sends run at once across the install, each on a different channel or subscription.
+- **At least once.** A send still on the network when Raaqeb stops is sent again at the next boot. A webhook receiver sees the same `webhook-id` on every attempt of one notification, and an email keeps the same `Message-ID`, so a receiver can drop a duplicate.
+- **Timeouts.** One attempt gives up after 10 seconds, or 30 seconds for email.
+
+**Recent notifications** on the channel's page lists the 20 newest notifications. Each shows its status, its event, when it finished, the number of attempts and, while it waits for a retry, **Next attempt**. Each channel keeps its 50 newest finished notifications; older ones are deleted.
+
+| Status | Meaning |
+| --- | --- |
+| **Waiting to send** | Queued, not tried yet. |
+| **Waiting to retry** | An attempt failed; another is due. |
+| **Sent** | The receiver accepted it. |
+| **Failed** | The fourth attempt failed, or a **Send test** attempt failed. |
+
+## When a send fails
+
+A failed attempt records a reason, what it saw, and the receiver's own text, with every secret value of the channel replaced by `…`. **Recent notifications** shows the reason in words, then **Expected** and **Observed** where the reason has them, then **Error text**. Each failed attempt of a queued notification also writes one line to the log, naming the notification, the channel, the reason code and when it is tried again. See [Health and logs](/en/docs/operate/health-and-logs).
+
+| Reason code | Text | When |
+| --- | --- | --- |
+| `unexpected_status` | Unexpected status code | The receiver answered outside `2xx`, a redirect included, or the SMTP server refused the message. **Expected** is `2xx`, **Observed** is the status or SMTP reply code, and **Error text** is the start of the receiver's answer. |
+| `timeout` | Timed out | No answer within the attempt's timeout. |
+| `dns_failed` | DNS lookup failed | The receiver's host name did not resolve. |
+| `connection_refused` | Connection refused | Nothing listens at that host and port. |
+| `connection_failed` | Connection failed | The connection was reset, the host was unreachable, or the TLS handshake ended early. |
+| `certificate_expired` | Certificate expired | The receiver's certificate has expired. |
+| `certificate_invalid` | Certificate invalid | The receiver's certificate is self-signed, for another name, or cannot be verified. |
+| `unknown` | Unknown error | Anything else, including secrets the install key cannot open. **Error text** says what happened. |
+
+Certificates are always verified. There is no option to skip verification.
+
+## How secrets are stored
+
+Fields that hold a credential are secret: the webhook URL and signing secret, the SMTP password, the Slack and Discord webhook URLs, the Telegram bot token, and the ntfy topic and access token. Raaqeb seals them together with the install key (AES-256-GCM) before they reach the database. Every other field is stored as typed.
+
+- A typed secret is write-only. After you save, its field is empty and reads **Stored. Leave it empty to keep it.** Type a new value to replace it.
+- An optional secret, such as the ntfy access token, cannot be emptied from the form once stored. Delete the channel and add it again to clear it.
+- The webhook's signing secret is generated by Raaqeb and shown on the channel's page, so you can give it to the receiver.
+- If the install key changes, Raaqeb cannot open the stored secrets. The channel's page says **The install key cannot open this channel's secrets. Type them again and save.**, and its sends fail as `unknown` until you do.
+
+The install key comes from `RAAQEB_SECRET_KEY` or is generated on first boot. See [Boot settings](/en/docs/operate/boot-settings). An export writes channel credentials in clear and an import seals them again with the importing install's key; see [Export and import](/en/docs/operate/export-import).
+
+## Deleting a channel
+
+**Delete channel** removes the channel from every monitor that uses it and deletes its recent notifications. It cannot be undone.

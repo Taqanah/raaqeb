@@ -1,0 +1,1 @@
+ALTER TABLE `outages` ADD `acknowledged_at` integer;

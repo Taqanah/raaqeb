@@ -1,0 +1,16 @@
+---
+title: Subscriptions
+description: The links that confirm a subscription and end it.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+Each subscription has its own token in its confirm and unsubscribe links. Opening a link with a GET only leads to the subscription's page, where a button sends the POST that acts, so a mail scanner that follows links confirms and unsubscribes nobody.
+
+## Confirm
+
+<ApiOperation path="/subscriptions/{token}/confirm" />
+
+## Unsubscribe
+
+<ApiOperation path="/subscriptions/{token}/unsubscribe" />

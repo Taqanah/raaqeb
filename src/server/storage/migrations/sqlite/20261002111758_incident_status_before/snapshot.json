@@ -1,0 +1,3314 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "1a0552fe-d87a-4366-8b4e-4b3298686c53",
+  "prevIds": ["d5448647-4d3d-46a3-8e3a-ff43b0bbec04"],
+  "ddl": [
+    {
+      "name": "auth_account",
+      "entityType": "tables"
+    },
+    {
+      "name": "auth_session",
+      "entityType": "tables"
+    },
+    {
+      "name": "auth_two_factor",
+      "entityType": "tables"
+    },
+    {
+      "name": "auth_user",
+      "entityType": "tables"
+    },
+    {
+      "name": "auth_verification",
+      "entityType": "tables"
+    },
+    {
+      "name": "captures",
+      "entityType": "tables"
+    },
+    {
+      "name": "certificate_records",
+      "entityType": "tables"
+    },
+    {
+      "name": "change_counter",
+      "entityType": "tables"
+    },
+    {
+      "name": "channels",
+      "entityType": "tables"
+    },
+    {
+      "name": "checks",
+      "entityType": "tables"
+    },
+    {
+      "name": "component_groups",
+      "entityType": "tables"
+    },
+    {
+      "name": "component_monitors",
+      "entityType": "tables"
+    },
+    {
+      "name": "components",
+      "entityType": "tables"
+    },
+    {
+      "name": "daily_rollups",
+      "entityType": "tables"
+    },
+    {
+      "name": "failure_details",
+      "entityType": "tables"
+    },
+    {
+      "name": "groups",
+      "entityType": "tables"
+    },
+    {
+      "name": "heartbeats",
+      "entityType": "tables"
+    },
+    {
+      "name": "hourly_rollups",
+      "entityType": "tables"
+    },
+    {
+      "name": "incident_statuses",
+      "entityType": "tables"
+    },
+    {
+      "name": "incident_updates",
+      "entityType": "tables"
+    },
+    {
+      "name": "incidents",
+      "entityType": "tables"
+    },
+    {
+      "name": "maintenance_components",
+      "entityType": "tables"
+    },
+    {
+      "name": "maintenance_windows",
+      "entityType": "tables"
+    },
+    {
+      "name": "monitor_channels",
+      "entityType": "tables"
+    },
+    {
+      "name": "monitor_tags",
+      "entityType": "tables"
+    },
+    {
+      "name": "monitors",
+      "entityType": "tables"
+    },
+    {
+      "name": "notifications",
+      "entityType": "tables"
+    },
+    {
+      "name": "outages",
+      "entityType": "tables"
+    },
+    {
+      "name": "page_components",
+      "entityType": "tables"
+    },
+    {
+      "name": "page_images",
+      "entityType": "tables"
+    },
+    {
+      "name": "sealed_days",
+      "entityType": "tables"
+    },
+    {
+      "name": "settings",
+      "entityType": "tables"
+    },
+    {
+      "name": "status_pages",
+      "entityType": "tables"
+    },
+    {
+      "name": "subscriptions",
+      "entityType": "tables"
+    },
+    {
+      "name": "tags",
+      "entityType": "tables"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "provider_id",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "access_token",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "refresh_token",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "access_token_expires_at",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "refresh_token_expires_at",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "scope",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id_token",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "password",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "auth_account"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "auth_session"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "table": "auth_session"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "token",
+      "entityType": "columns",
+      "table": "auth_session"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "expires_at",
+      "entityType": "columns",
+      "table": "auth_session"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "ip_address",
+      "entityType": "columns",
+      "table": "auth_session"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "user_agent",
+      "entityType": "columns",
+      "table": "auth_session"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "auth_session"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "auth_session"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "auth_two_factor"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "table": "auth_two_factor"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "secret",
+      "entityType": "columns",
+      "table": "auth_two_factor"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "backup_codes",
+      "entityType": "columns",
+      "table": "auth_two_factor"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "1",
+      "generated": null,
+      "name": "verified",
+      "entityType": "columns",
+      "table": "auth_two_factor"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "failed_verification_count",
+      "entityType": "columns",
+      "table": "auth_two_factor"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "locked_until",
+      "entityType": "columns",
+      "table": "auth_two_factor"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "auth_user"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "auth_user"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "email",
+      "entityType": "columns",
+      "table": "auth_user"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "email_verified",
+      "entityType": "columns",
+      "table": "auth_user"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "image",
+      "entityType": "columns",
+      "table": "auth_user"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "two_factor_enabled",
+      "entityType": "columns",
+      "table": "auth_user"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "auth_user"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "auth_user"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "auth_verification"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "identifier",
+      "entityType": "columns",
+      "table": "auth_verification"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "value",
+      "entityType": "columns",
+      "table": "auth_verification"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "expires_at",
+      "entityType": "columns",
+      "table": "auth_verification"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "auth_verification"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "auth_verification"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "captures"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "started_at",
+      "entityType": "columns",
+      "table": "captures"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "headers",
+      "entityType": "columns",
+      "table": "captures"
+    },
+    {
+      "type": "blob",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "body",
+      "entityType": "columns",
+      "table": "captures"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "certificate_records"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "subject",
+      "entityType": "columns",
+      "table": "certificate_records"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "issuer",
+      "entityType": "columns",
+      "table": "certificate_records"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "valid_from",
+      "entityType": "columns",
+      "table": "certificate_records"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "valid_to",
+      "entityType": "columns",
+      "table": "certificate_records"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "names",
+      "entityType": "columns",
+      "table": "certificate_records"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "fingerprint",
+      "entityType": "columns",
+      "table": "certificate_records"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "last_seen_at",
+      "entityType": "columns",
+      "table": "certificate_records"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "warned",
+      "entityType": "columns",
+      "table": "certificate_records"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "change_counter"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "value",
+      "entityType": "columns",
+      "table": "change_counter"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "channels"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "channels"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "type",
+      "entityType": "columns",
+      "table": "channels"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "config",
+      "entityType": "columns",
+      "table": "channels"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credentials",
+      "entityType": "columns",
+      "table": "channels"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "locale",
+      "entityType": "columns",
+      "table": "channels"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "applies_to_new",
+      "entityType": "columns",
+      "table": "channels"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "channels"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "channels"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "checks"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "started_at",
+      "entityType": "columns",
+      "table": "checks"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "result",
+      "entityType": "columns",
+      "table": "checks"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "response_ms",
+      "entityType": "columns",
+      "table": "checks"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status_code",
+      "entityType": "columns",
+      "table": "checks"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "reason",
+      "entityType": "columns",
+      "table": "checks"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "attempts",
+      "entityType": "columns",
+      "table": "checks"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "bytes",
+      "entityType": "columns",
+      "table": "checks"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "component_groups"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "page_id",
+      "entityType": "columns",
+      "table": "component_groups"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "component_groups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "position",
+      "entityType": "columns",
+      "table": "component_groups"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "component_id",
+      "entityType": "columns",
+      "table": "component_monitors"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "component_monitors"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "components"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "components"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "description",
+      "entityType": "columns",
+      "table": "components"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "components"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "components"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "components"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "daily_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "day",
+      "entityType": "columns",
+      "table": "daily_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "checks",
+      "entityType": "columns",
+      "table": "daily_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "observed_ms",
+      "entityType": "columns",
+      "table": "daily_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "average_ms",
+      "entityType": "columns",
+      "table": "daily_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "min_ms",
+      "entityType": "columns",
+      "table": "daily_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "max_ms",
+      "entityType": "columns",
+      "table": "daily_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "failed",
+      "entityType": "columns",
+      "table": "daily_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "degraded",
+      "entityType": "columns",
+      "table": "daily_rollups"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "failure_details"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "started_at",
+      "entityType": "columns",
+      "table": "failure_details"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "assertion",
+      "entityType": "columns",
+      "table": "failure_details"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "params",
+      "entityType": "columns",
+      "table": "failure_details"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "error",
+      "entityType": "columns",
+      "table": "failure_details"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "groups"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "groups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "groups"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "heartbeats"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "arrived_at",
+      "entityType": "columns",
+      "table": "heartbeats"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "source_ip",
+      "entityType": "columns",
+      "table": "heartbeats"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "hourly_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "hour",
+      "entityType": "columns",
+      "table": "hourly_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "checks",
+      "entityType": "columns",
+      "table": "hourly_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "observed_ms",
+      "entityType": "columns",
+      "table": "hourly_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "average_ms",
+      "entityType": "columns",
+      "table": "hourly_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "min_ms",
+      "entityType": "columns",
+      "table": "hourly_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "max_ms",
+      "entityType": "columns",
+      "table": "hourly_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "failed",
+      "entityType": "columns",
+      "table": "hourly_rollups"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "degraded",
+      "entityType": "columns",
+      "table": "hourly_rollups"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "update_id",
+      "entityType": "columns",
+      "table": "incident_statuses"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "component_id",
+      "entityType": "columns",
+      "table": "incident_statuses"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "incident_statuses"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status_before",
+      "entityType": "columns",
+      "table": "incident_statuses"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "incident_updates"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "incident_id",
+      "entityType": "columns",
+      "table": "incident_updates"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "stage",
+      "entityType": "columns",
+      "table": "incident_updates"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "message",
+      "entityType": "columns",
+      "table": "incident_updates"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "author",
+      "entityType": "columns",
+      "table": "incident_updates"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "incident_updates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "incidents"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "title",
+      "entityType": "columns",
+      "table": "incidents"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "impact",
+      "entityType": "columns",
+      "table": "incidents"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "incidents"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "incidents"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "resolved_at",
+      "entityType": "columns",
+      "table": "incidents"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "window_id",
+      "entityType": "columns",
+      "table": "maintenance_components"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "component_id",
+      "entityType": "columns",
+      "table": "maintenance_components"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "maintenance_windows"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "title",
+      "entityType": "columns",
+      "table": "maintenance_windows"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "message",
+      "entityType": "columns",
+      "table": "maintenance_windows"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "starts_at",
+      "entityType": "columns",
+      "table": "maintenance_windows"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "ends_at",
+      "entityType": "columns",
+      "table": "maintenance_windows"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "stage",
+      "entityType": "columns",
+      "table": "maintenance_windows"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "maintenance_windows"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "maintenance_windows"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "monitor_channels"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "channel_id",
+      "entityType": "columns",
+      "table": "monitor_channels"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "monitor_tags"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "tag_id",
+      "entityType": "columns",
+      "table": "monitor_tags"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "description",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "check_type",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "target",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "config",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "interval_ms",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "timeout_ms",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "retries",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "degraded_ms",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "retention_days",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credentials",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "heartbeat_token",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'[\"down\",\"recovered\",\"degraded_started\",\"degraded_ended\",\"certificate_expiring\"]'",
+      "generated": null,
+      "name": "events",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "reminder_ms",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "paused",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "paused_at",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "group_id",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "monitors"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "channel_id",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "subscription_id",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "payload",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "attempts",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "queued_at",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "next_attempt_at",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "finished_at",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "reason",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "failure",
+      "entityType": "columns",
+      "table": "notifications"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "outages"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "started_at",
+      "entityType": "columns",
+      "table": "outages"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "ended_at",
+      "entityType": "columns",
+      "table": "outages"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "reason",
+      "entityType": "columns",
+      "table": "outages"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "page_id",
+      "entityType": "columns",
+      "table": "page_components"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "component_id",
+      "entityType": "columns",
+      "table": "page_components"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "group_id",
+      "entityType": "columns",
+      "table": "page_components"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "position",
+      "entityType": "columns",
+      "table": "page_components"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "page_id",
+      "entityType": "columns",
+      "table": "page_images"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "page_images"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "content_type",
+      "entityType": "columns",
+      "table": "page_images"
+    },
+    {
+      "type": "blob",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "body",
+      "entityType": "columns",
+      "table": "page_images"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "hash",
+      "entityType": "columns",
+      "table": "page_images"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "page_images"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "monitor_id",
+      "entityType": "columns",
+      "table": "sealed_days"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "day",
+      "entityType": "columns",
+      "table": "sealed_days"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "checks",
+      "entityType": "columns",
+      "table": "sealed_days"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "observed_ms",
+      "entityType": "columns",
+      "table": "sealed_days"
+    },
+    {
+      "type": "blob",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "chunk",
+      "entityType": "columns",
+      "table": "sealed_days"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "key",
+      "entityType": "columns",
+      "table": "settings"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "value",
+      "entityType": "columns",
+      "table": "settings"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "settings"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "slug",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "title",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "locale",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "custom_domain",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "is_default",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "published",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "customization",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "status_pages"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "page_id",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "channel",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "address",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credentials",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "locale",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "token",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "requested_at",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "confirmed_at",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "subscriptions"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "tags"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "tags"
+    },
+    {
+      "columns": ["user_id"],
+      "tableTo": "auth_user",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_auth_account_user_id_auth_user_id_fk",
+      "entityType": "fks",
+      "table": "auth_account"
+    },
+    {
+      "columns": ["user_id"],
+      "tableTo": "auth_user",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_auth_session_user_id_auth_user_id_fk",
+      "entityType": "fks",
+      "table": "auth_session"
+    },
+    {
+      "columns": ["user_id"],
+      "tableTo": "auth_user",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_auth_two_factor_user_id_auth_user_id_fk",
+      "entityType": "fks",
+      "table": "auth_two_factor"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_captures_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "captures"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_certificate_records_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "certificate_records"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_checks_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "checks"
+    },
+    {
+      "columns": ["page_id"],
+      "tableTo": "status_pages",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_component_groups_page_id_status_pages_id_fk",
+      "entityType": "fks",
+      "table": "component_groups"
+    },
+    {
+      "columns": ["component_id"],
+      "tableTo": "components",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_component_monitors_component_id_components_id_fk",
+      "entityType": "fks",
+      "table": "component_monitors"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_component_monitors_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "component_monitors"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_daily_rollups_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "daily_rollups"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_failure_details_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "failure_details"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_heartbeats_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "heartbeats"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_hourly_rollups_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "hourly_rollups"
+    },
+    {
+      "columns": ["update_id"],
+      "tableTo": "incident_updates",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_incident_statuses_update_id_incident_updates_id_fk",
+      "entityType": "fks",
+      "table": "incident_statuses"
+    },
+    {
+      "columns": ["component_id"],
+      "tableTo": "components",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_incident_statuses_component_id_components_id_fk",
+      "entityType": "fks",
+      "table": "incident_statuses"
+    },
+    {
+      "columns": ["incident_id"],
+      "tableTo": "incidents",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_incident_updates_incident_id_incidents_id_fk",
+      "entityType": "fks",
+      "table": "incident_updates"
+    },
+    {
+      "columns": ["window_id"],
+      "tableTo": "maintenance_windows",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_maintenance_components_window_id_maintenance_windows_id_fk",
+      "entityType": "fks",
+      "table": "maintenance_components"
+    },
+    {
+      "columns": ["component_id"],
+      "tableTo": "components",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_maintenance_components_component_id_components_id_fk",
+      "entityType": "fks",
+      "table": "maintenance_components"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_monitor_channels_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "monitor_channels"
+    },
+    {
+      "columns": ["channel_id"],
+      "tableTo": "channels",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_monitor_channels_channel_id_channels_id_fk",
+      "entityType": "fks",
+      "table": "monitor_channels"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_monitor_tags_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "monitor_tags"
+    },
+    {
+      "columns": ["tag_id"],
+      "tableTo": "tags",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_monitor_tags_tag_id_tags_id_fk",
+      "entityType": "fks",
+      "table": "monitor_tags"
+    },
+    {
+      "columns": ["group_id"],
+      "tableTo": "groups",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "SET NULL",
+      "nameExplicit": false,
+      "name": "fk_monitors_group_id_groups_id_fk",
+      "entityType": "fks",
+      "table": "monitors"
+    },
+    {
+      "columns": ["channel_id"],
+      "tableTo": "channels",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_notifications_channel_id_channels_id_fk",
+      "entityType": "fks",
+      "table": "notifications"
+    },
+    {
+      "columns": ["subscription_id"],
+      "tableTo": "subscriptions",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_notifications_subscription_id_subscriptions_id_fk",
+      "entityType": "fks",
+      "table": "notifications"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_outages_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "outages"
+    },
+    {
+      "columns": ["page_id"],
+      "tableTo": "status_pages",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_page_components_page_id_status_pages_id_fk",
+      "entityType": "fks",
+      "table": "page_components"
+    },
+    {
+      "columns": ["component_id"],
+      "tableTo": "components",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_page_components_component_id_components_id_fk",
+      "entityType": "fks",
+      "table": "page_components"
+    },
+    {
+      "columns": ["group_id"],
+      "tableTo": "component_groups",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_page_components_group_id_component_groups_id_fk",
+      "entityType": "fks",
+      "table": "page_components"
+    },
+    {
+      "columns": ["page_id"],
+      "tableTo": "status_pages",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_page_images_page_id_status_pages_id_fk",
+      "entityType": "fks",
+      "table": "page_images"
+    },
+    {
+      "columns": ["monitor_id"],
+      "tableTo": "monitors",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_sealed_days_monitor_id_monitors_id_fk",
+      "entityType": "fks",
+      "table": "sealed_days"
+    },
+    {
+      "columns": ["page_id"],
+      "tableTo": "status_pages",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_subscriptions_page_id_status_pages_id_fk",
+      "entityType": "fks",
+      "table": "subscriptions"
+    },
+    {
+      "columns": ["monitor_id", "started_at"],
+      "nameExplicit": false,
+      "name": "captures_pk",
+      "entityType": "pks",
+      "table": "captures"
+    },
+    {
+      "columns": ["monitor_id", "started_at"],
+      "nameExplicit": false,
+      "name": "checks_pk",
+      "entityType": "pks",
+      "table": "checks"
+    },
+    {
+      "columns": ["component_id", "monitor_id"],
+      "nameExplicit": false,
+      "name": "component_monitors_pk",
+      "entityType": "pks",
+      "table": "component_monitors"
+    },
+    {
+      "columns": ["monitor_id", "day"],
+      "nameExplicit": false,
+      "name": "daily_rollups_pk",
+      "entityType": "pks",
+      "table": "daily_rollups"
+    },
+    {
+      "columns": ["monitor_id", "started_at"],
+      "nameExplicit": false,
+      "name": "failure_details_pk",
+      "entityType": "pks",
+      "table": "failure_details"
+    },
+    {
+      "columns": ["monitor_id", "arrived_at"],
+      "nameExplicit": false,
+      "name": "heartbeats_pk",
+      "entityType": "pks",
+      "table": "heartbeats"
+    },
+    {
+      "columns": ["monitor_id", "hour"],
+      "nameExplicit": false,
+      "name": "hourly_rollups_pk",
+      "entityType": "pks",
+      "table": "hourly_rollups"
+    },
+    {
+      "columns": ["update_id", "component_id"],
+      "nameExplicit": false,
+      "name": "incident_statuses_pk",
+      "entityType": "pks",
+      "table": "incident_statuses"
+    },
+    {
+      "columns": ["window_id", "component_id"],
+      "nameExplicit": false,
+      "name": "maintenance_components_pk",
+      "entityType": "pks",
+      "table": "maintenance_components"
+    },
+    {
+      "columns": ["monitor_id", "channel_id"],
+      "nameExplicit": false,
+      "name": "monitor_channels_pk",
+      "entityType": "pks",
+      "table": "monitor_channels"
+    },
+    {
+      "columns": ["monitor_id", "tag_id"],
+      "nameExplicit": false,
+      "name": "monitor_tags_pk",
+      "entityType": "pks",
+      "table": "monitor_tags"
+    },
+    {
+      "columns": ["monitor_id", "started_at"],
+      "nameExplicit": false,
+      "name": "outages_pk",
+      "entityType": "pks",
+      "table": "outages"
+    },
+    {
+      "columns": ["page_id", "component_id"],
+      "nameExplicit": false,
+      "name": "page_components_pk",
+      "entityType": "pks",
+      "table": "page_components"
+    },
+    {
+      "columns": ["page_id", "kind"],
+      "nameExplicit": false,
+      "name": "page_images_pk",
+      "entityType": "pks",
+      "table": "page_images"
+    },
+    {
+      "columns": ["monitor_id", "day"],
+      "nameExplicit": false,
+      "name": "sealed_days_pk",
+      "entityType": "pks",
+      "table": "sealed_days"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "auth_account_pk",
+      "table": "auth_account",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "auth_session_pk",
+      "table": "auth_session",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "auth_two_factor_pk",
+      "table": "auth_two_factor",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "auth_user_pk",
+      "table": "auth_user",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "auth_verification_pk",
+      "table": "auth_verification",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["monitor_id"],
+      "nameExplicit": false,
+      "name": "certificate_records_pk",
+      "table": "certificate_records",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "change_counter_pk",
+      "table": "change_counter",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "channels_pk",
+      "table": "channels",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "component_groups_pk",
+      "table": "component_groups",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "components_pk",
+      "table": "components",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "groups_pk",
+      "table": "groups",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "incident_updates_pk",
+      "table": "incident_updates",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "incidents_pk",
+      "table": "incidents",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "maintenance_windows_pk",
+      "table": "maintenance_windows",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "monitors_pk",
+      "table": "monitors",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "notifications_pk",
+      "table": "notifications",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["key"],
+      "nameExplicit": false,
+      "name": "settings_pk",
+      "table": "settings",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "status_pages_pk",
+      "table": "status_pages",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "subscriptions_pk",
+      "table": "subscriptions",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "tags_pk",
+      "table": "tags",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "auth_account_user_id",
+      "entityType": "indexes",
+      "table": "auth_account"
+    },
+    {
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "auth_session_user_id",
+      "entityType": "indexes",
+      "table": "auth_session"
+    },
+    {
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "auth_two_factor_user_id",
+      "entityType": "indexes",
+      "table": "auth_two_factor"
+    },
+    {
+      "columns": [
+        {
+          "value": "identifier",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "auth_verification_identifier",
+      "entityType": "indexes",
+      "table": "auth_verification"
+    },
+    {
+      "columns": [
+        {
+          "value": "page_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "component_groups_page_id",
+      "entityType": "indexes",
+      "table": "component_groups"
+    },
+    {
+      "columns": [
+        {
+          "value": "monitor_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "component_monitors_monitor_id",
+      "entityType": "indexes",
+      "table": "component_monitors"
+    },
+    {
+      "columns": [
+        {
+          "value": "component_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "incident_statuses_component_id",
+      "entityType": "indexes",
+      "table": "incident_statuses"
+    },
+    {
+      "columns": [
+        {
+          "value": "incident_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "incident_updates_incident_id",
+      "entityType": "indexes",
+      "table": "incident_updates"
+    },
+    {
+      "columns": [
+        {
+          "value": "component_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "maintenance_components_component_id",
+      "entityType": "indexes",
+      "table": "maintenance_components"
+    },
+    {
+      "columns": [
+        {
+          "value": "channel_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "monitor_channels_channel_id",
+      "entityType": "indexes",
+      "table": "monitor_channels"
+    },
+    {
+      "columns": [
+        {
+          "value": "tag_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "monitor_tags_tag_id",
+      "entityType": "indexes",
+      "table": "monitor_tags"
+    },
+    {
+      "columns": [
+        {
+          "value": "group_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "monitors_group_id",
+      "entityType": "indexes",
+      "table": "monitors"
+    },
+    {
+      "columns": [
+        {
+          "value": "heartbeat_token",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "monitors_heartbeat_token",
+      "entityType": "indexes",
+      "table": "monitors"
+    },
+    {
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false
+        },
+        {
+          "value": "next_attempt_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "notifications_due",
+      "entityType": "indexes",
+      "table": "notifications"
+    },
+    {
+      "columns": [
+        {
+          "value": "channel_id",
+          "isExpression": false
+        },
+        {
+          "value": "queued_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "notifications_channel",
+      "entityType": "indexes",
+      "table": "notifications"
+    },
+    {
+      "columns": [
+        {
+          "value": "subscription_id",
+          "isExpression": false
+        },
+        {
+          "value": "queued_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "notifications_subscription",
+      "entityType": "indexes",
+      "table": "notifications"
+    },
+    {
+      "columns": [
+        {
+          "value": "component_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "page_components_component_id",
+      "entityType": "indexes",
+      "table": "page_components"
+    },
+    {
+      "columns": [
+        {
+          "value": "is_default",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": "\"is_default\" = 1",
+      "origin": "manual",
+      "name": "status_pages_default",
+      "entityType": "indexes",
+      "table": "status_pages"
+    },
+    {
+      "columns": [
+        {
+          "value": "token",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "subscriptions_token",
+      "entityType": "indexes",
+      "table": "subscriptions"
+    },
+    {
+      "columns": [
+        {
+          "value": "page_id",
+          "isExpression": false
+        },
+        {
+          "value": "channel",
+          "isExpression": false
+        },
+        {
+          "value": "address",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "subscriptions_address",
+      "entityType": "indexes",
+      "table": "subscriptions"
+    },
+    {
+      "columns": ["token"],
+      "nameExplicit": false,
+      "name": "auth_session_token_unique",
+      "entityType": "uniques",
+      "table": "auth_session"
+    },
+    {
+      "columns": ["email"],
+      "nameExplicit": false,
+      "name": "auth_user_email_unique",
+      "entityType": "uniques",
+      "table": "auth_user"
+    },
+    {
+      "columns": ["name"],
+      "nameExplicit": false,
+      "name": "groups_name_unique",
+      "entityType": "uniques",
+      "table": "groups"
+    },
+    {
+      "columns": ["slug"],
+      "nameExplicit": false,
+      "name": "status_pages_slug_unique",
+      "entityType": "uniques",
+      "table": "status_pages"
+    },
+    {
+      "columns": ["custom_domain"],
+      "nameExplicit": false,
+      "name": "status_pages_custom_domain_unique",
+      "entityType": "uniques",
+      "table": "status_pages"
+    },
+    {
+      "columns": ["name"],
+      "nameExplicit": false,
+      "name": "tags_name_unique",
+      "entityType": "uniques",
+      "table": "tags"
+    },
+    {
+      "value": "(\"channel_id\" IS NULL) <> (\"subscription_id\" IS NULL)",
+      "name": "notifications_target",
+      "entityType": "checks",
+      "table": "notifications"
+    }
+  ],
+  "renames": []
+}

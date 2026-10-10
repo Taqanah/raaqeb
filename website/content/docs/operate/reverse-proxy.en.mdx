@@ -1,0 +1,96 @@
+---
+title: Reverse proxy and TLS
+description: What the proxy in front of Raaqeb must pass and allow, with tested snippets for Caddy, Nginx and Traefik.
+---
+
+Raaqeb serves plain HTTP and leaves TLS to a reverse proxy. The proxy must pass the host the visitor asked for, and add `X-Forwarded-For` and `X-Forwarded-Proto`. Raaqeb believes those headers only from its trusted proxies, set on the general settings page or by `RAAQEB_TRUSTED_PROXIES`. A proxy on the same server connects from `127.0.0.1` or `::1`. Once the proxy is in place, open the setup check page under settings through it: it names the address the request came from when that address sent forwarded headers without being trusted, and says whether the public address is the address the browser is at.
+
+The trusted proxies decide the client address that the sign-in limit, the subscription sign-up limit, the sign-in log lines and a heartbeat's source address read. Without them, behind a proxy, every visitor is the proxy: everyone shares one allowance of three sign-ins in ten seconds, and five sign-ups in ten minutes close the subscribe form for all.
+
+Three requests need more of the proxy than a page does:
+
+- an import uploads the export file, up to 4 GB, so the proxy must not cap a request body below the file's size;
+- "test now" on a monitor and "send test" on an email channel hold their request up to 70 seconds while nothing is sent;
+- downloads stream as they are made.
+
+Each snippet below was run in front of a stand-in for Raaqeb: it passes the host and the forwarded headers, a 200 MB upload streams through, a 100-second upload passes whole, and an answer that takes 90 seconds arrives. Each one reaches Raaqeb at `127.0.0.1:3000`, so set the trusted proxies to `127.0.0.1`. Write `127.0.0.1`, not `localhost`, which may resolve to `::1`.
+
+## Caddy
+
+Caddy gets and renews the certificate itself, passes the host and the forwarded headers, replacing any the client sent, and limits neither a body's size nor a request's time:
+
+```text title="Caddyfile"
+raaqeb.example.com {
+	reverse_proxy 127.0.0.1:3000
+}
+```
+
+[Custom domains](/en/docs/operate/custom-domains) adds them to it. Under Docker Compose, `deploy/Caddyfile` is this with Raaqeb's container name.
+
+## Nginx
+
+```nginx
+server {
+	listen 443 ssl;
+	server_name raaqeb.example.com;
+	# ssl_certificate and ssl_certificate_key, from certbot or your own
+	client_max_body_size 4g;
+	location / {
+		proxy_pass http://127.0.0.1:3000;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_set_header X-Forwarded-Host $host;
+		proxy_request_buffering off;
+		proxy_read_timeout 300s;
+	}
+}
+```
+
+- `client_max_body_size` is 1 MB by default, which refuses an import.
+- `X-Forwarded-Host` must be set here: Nginx otherwise passes on whatever the client sent, and Raaqeb believes it from a trusted proxy.
+- `proxy_request_buffering off` streams an upload to Raaqeb; without it Nginx writes the whole file to its own disk first.
+- `proxy_read_timeout` is 60 seconds by default, which cuts "test now" short.
+
+## Traefik
+
+Traefik passes the host and the forwarded headers, replacing any the client sent. Its entry point reads a whole request within 60 seconds by default, body included, which cuts a slow import's upload; set `readTimeout` in the static configuration. A finite value there caps how long an upload may take.
+
+```yaml
+# Static configuration
+entryPoints:
+  websecure:
+    address: ":443"
+    transport:
+      respondingTimeouts:
+        readTimeout: 0
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: you@example.com
+      storage: /etc/traefik/acme.json
+      tlsChallenge: {}
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+```
+
+```yaml
+# /etc/traefik/dynamic.yml
+http:
+  routers:
+    raaqeb:
+      rule: Host(`raaqeb.example.com`)
+      entryPoints: [websecure]
+      service: raaqeb
+      tls:
+        certResolver: letsencrypt
+  services:
+    raaqeb:
+      loadBalancer:
+        servers:
+          - url: http://127.0.0.1:3000
+```
+
+Traefik reaches `127.0.0.1:3000` when it runs on the host. In a Docker network, the URL names Raaqeb's container and the trusted proxies name Traefik's address.

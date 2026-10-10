@@ -1,0 +1,114 @@
+---
+title: Incidents
+description: How to open an incident, set its impact and the status of each affected component, post updates, resolve it, and what subscribers receive.
+---
+
+An incident is a record of a problem that you write for visitors. It has a title, an impact level, the components it affects, and a timeline of incident updates that move it through four stages: investigating, identified, monitoring, resolved. Raaqeb never opens an incident by itself: a monitor going down records an outage and changes the status of the components linked to it, and the incident is yours to write.
+
+An incident belongs to the install. It shows on every status page that shows at least one of its affected components.
+
+## Open an incident
+
+An incident names the components it affects, so at least one [component](/en/docs/status-pages/components) must exist.
+
+1. In the admin area, open **Incidents** and select **New incident**.
+2. Fill in **Title** and choose the **Impact level**.
+3. Choose the **Stage**: **Investigating**, **Identified** or **Monitoring**.
+4. Write the first **Update**: what visitors should know now.
+5. Under **Affected components**, tick each component the problem touches and choose the status the incident sets on it.
+6. Select **Publish the incident**.
+
+The incident is public as soon as it is published, and its subscribers are notified. There is no draft.
+
+| Field | Rule |
+| --- | --- |
+| **Title** | Up to 200 characters. Visitors read it at the top of the incident's row in the page's status card. |
+| **Update** | Plain text up to 5,000 characters, with no formatting. Each paragraph takes its own language's direction. |
+
+**Title** and **Update** have one input per language. The install language's text is required and the other language's is optional; a page in the other language shows the install language's text where it is empty.
+
+### From a down notification
+
+When the install has a [public address](/en/docs/get-started#onboarding), a monitor's down notification carries an **Open an incident** link. It opens **New incident** with the monitor's name as the title and the components linked to that monitor already ticked, at their status now. Change anything before you publish.
+
+## Impact level
+
+The impact level says how bad the incident is for visitors. It opens the incident's line of details on the status page and leads the subscriber email's subject, and it counts in the summary's indicator. It does not change the page's banner, which follows the components' status.
+
+| Impact level | Machine value |
+| --- | --- |
+| **No impact** | `none` |
+| **Minor** | `minor` |
+| **Major** | `major` |
+| **Critical** | `critical` |
+
+## Status per component
+
+Each update sets a status on each affected component: **Operational**, **Degraded performance**, **Partial outage** or **Major outage**. The latest update's statuses are the ones that count while the incident is open.
+
+- A component with linked monitors shows the worse of its monitors' derived status and the incident's status.
+- A component with no linked monitors shows the incident's status in place of its status set by hand.
+- When several open incidents set a status on the same component, the worst one counts.
+- A maintenance window in progress puts the component under maintenance, whatever the incident says.
+
+The time an incident holds a component at partial outage or major outage counts as downtime in that component's day bar and uptime.
+
+## Post an update
+
+Open the incident from the **Incidents** list. Under **New update**:
+
+1. Choose the **Stage**. An open incident can move between **Investigating**, **Identified** and **Monitoring** in any order.
+2. Write the **Update**.
+3. Under **Affected components**, set the status of each affected component. You can tick more components.
+4. Select **Post the update**.
+
+An update may add an affected component and never removes one, so the incident stays on every page it reached. A component the problem no longer touches stays ticked; set it to **Operational**.
+
+Each update is stamped with the time it is posted and the operator's email. Visitors never see the email.
+
+If another update was posted since you opened the page, the update is refused and the page shows the incident as it is now. Check your update and post it again. A ticked component deleted meanwhile is left out of the update, and an incident whose components were all deleted is deleted with them.
+
+## Resolve an incident
+
+To resolve an incident, post an update with the stage **Resolved**. The component statuses give way to one choice: **Keep the status this incident set on components set by hand**.
+
+Resolving ends the incident's hold on every affected component:
+
+- A component set by hand returns to the status it had before the incident, unless you tick the box, which makes the incident's status its new status set by hand.
+- A component with linked monitors follows its monitors again. A monitor that is still down keeps it red.
+
+Resolved is final. A resolved incident takes no more updates; if the problem returns, open a new incident.
+
+## Edit, fix and delete
+
+- **Title and impact** changes the incident's title and impact level. Select **Save**.
+- **Fix the text** on an update in the **Updates** timeline changes only that update's text. Its time, stage and statuses stay.
+- **Delete the incident** removes it and all its updates from every status page, and its time leaves the components' day bars and uptime. A delete cannot be undone.
+
+None of these notify subscribers.
+
+## Where an incident shows
+
+On each status page that shows one of its affected components:
+
+| Where | When |
+| --- | --- |
+| A card on the overview, with its impact, stage, latest update and the page's components it affects | While it is open |
+| Its own view at `<page>/incidents/<id>`, with every update, newest first | Always, open or resolved |
+| The page's history, in the UTC month it started | Once it is resolved |
+| The day card of each day it ran on | While the day is on the bar |
+| The page's [feed](/en/docs/status-pages/badge-and-feed#feed) | Among the 50 entries changed last |
+| The page's [summary](/en/docs/status-pages/badge-and-feed#summary) | While it is open |
+
+A page shows only its own components in an incident's list of affected components.
+
+## What subscribers receive
+
+Confirmed subscribers of every published page that shows an affected component receive:
+
+| Event | When |
+| --- | --- |
+| `incident.published` | You publish the incident. |
+| `incident.updated` | You post an update, including the resolving one. |
+
+An email's subject is the impact level and the title, such as "Major: API errors". The message names the stage, the update's text, the affected components on that page and a link to the incident's view. A webhook receives the incident in Statuspage's body, where each update lists `old_status` and `new_status` for each of the page's components it set a status on. See [What subscribers receive](/en/docs/status-pages/subscriptions#what-subscribers-receive).

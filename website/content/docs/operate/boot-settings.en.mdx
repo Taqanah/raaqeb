@@ -1,0 +1,32 @@
+---
+title: Boot settings
+description: The values Raaqeb reads before it opens its database, the flag for each, and where each install path sets them.
+---
+
+A boot setting is a value Raaqeb needs before it opens its database. Everything else is a setting in the admin area.
+
+| Variable | Flag | Meaning |
+|---|---|---|
+| `RAAQEB_PORT` | `--port` | The listen port, 3000 by default. |
+| `RAAQEB_HOST` | `--host` | The bind address: `127.0.0.1` by default, `0.0.0.0` in the image. |
+| `RAAQEB_DATA_DIR` | `--data-dir` | The data directory: `./data` by default, `/data` in the image, `/var/lib/raaqeb` from the installer, `/usr/local/var/raaqeb` on a Mac, `C:\ProgramData\Raaqeb\data` on Windows. |
+| `RAAQEB_TRUSTED_PROXIES` | `--trusted-proxies` | The proxies whose forwarded headers are believed, comma separated, IPv4 and IPv6 addresses and CIDR ranges. Set, it wins over the general settings page and locks its field. |
+| `RAAQEB_SECRET_KEY` | `--secret-key` | The install key, 43 base64url characters. Unset, Raaqeb generates one into `config.json`. |
+| `DATABASE_URL` | `--database-url` | A Postgres URL. Set, it skips the onboarding database screen and wins over the choice stored in `config.json`. |
+| `BETTER_AUTH_SECRETS` | `--better-auth-secrets` | The sign-in secret, in the versioned form `1:<secret>`. Unset, Raaqeb generates one into the database. It also opens the authenticator app's secret, so a rotation keeps the old version in the list. |
+
+Where to set them:
+
+- installer: `/etc/raaqeb/raaqeb.env`, then restart the service. The unit sets the data directory, the host and the port itself, and the file wins over them. systemd reads the file and OpenRC runs it as `sh`, so put a value in single quotes unless it holds only letters, digits and `. , : / - _`; a URL with `&` in it is cut short otherwise.
+- installer on a Mac: `/usr/local/etc/raaqeb/raaqeb.env`, then `sudo launchctl kickstart -k system/raaqeb`. launchd runs it as `sh`, with the same quoting rule.
+- installer on Windows: `C:\ProgramData\Raaqeb\.env`, then restart the task. Bun reads it as a `.env` file, where a `$` is written `\$`.
+- Docker: `-e NAME=value`, or `environment:` in the compose file.
+- bare binary: the environment, a flag, or `.env` in the working directory, where a `$` is written `\$`.
+
+Raaqeb never prints a boot setting's value; a refusal names the variable and the value's length.
+
+To make an install key yourself, so you hold a copy before the first boot:
+
+```sh
+openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n'
+```

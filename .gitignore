@@ -1,0 +1,12 @@
+.claude/worktrees/
+node_modules/
+docs/deps/
+dist/
+.tanstack/
+test-results/
+tsconfig.tsbuildinfo
+data/
+locales/*/messages.ts
+locales/fallback.ts
+bench/floor/results/
+.design-shots/

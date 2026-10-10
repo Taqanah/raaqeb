@@ -1,0 +1,14 @@
+{
+  "title": "توثيق راقب",
+  "description": "راقب أداة مراقبة وصفحة حالة مستضافة ذاتيًا، في عملية واحدة.",
+  "pages": [
+    "index",
+    "get-started",
+    "monitors",
+    "notifications",
+    "status-pages",
+    "operate",
+    "api",
+    "reference"
+  ]
+}

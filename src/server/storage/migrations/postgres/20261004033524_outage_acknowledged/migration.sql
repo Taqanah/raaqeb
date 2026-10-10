@@ -1,0 +1,1 @@
+ALTER TABLE "outages" ADD COLUMN "acknowledged_at" bigint;

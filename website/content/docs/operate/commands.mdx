@@ -1,0 +1,20 @@
+---
+title: الأوامر
+description: الأوامر الأربعة التي يقبلها الملف التنفيذي raaqeb، وطريقة تشغيل reset-password وset-address بجانب خادوم يعمل.
+---
+
+يقبل الملف التنفيذي أربعة أوامر:
+
+- يشغّل `raaqeb` أو `raaqeb serve` الخادوم.
+- يسأل `raaqeb health` العنوان `/health` في الخادوم، ويخرج بالرمز 0 إذا أجاب بـ 200، وبالرمز 1 في غير ذلك.
+- يطبع `raaqeb reset-password` رابط إعادة التعيين لحساب المشغّل. أما `raaqeb reset-password --interactive` فيطلب كلمة المرور الجديدة بإدخال مخفي بدلًا من ذلك. وفي الحالتين يوقف الاستيثاق الثنائي ويحذف تطبيق الاستيثاق ورموزه الاحتياطية؛ ففعّله من جديد في صفحة إعدادات تسجيل الدخول.
+- يحفظ `raaqeb set-address <url>` العنوان العام، وهو طريقة الدخول من جديد حين يرفض العنوان المحفوظ كل تسجيل دخول. ويخرج بالرمز 0 إذا حُفظ، و1 إذا رُفض أو لم توجد قاعدة بيانات بعد، و2 إذا لم يكن النص مصدرًا (origin).
+
+يعمل `reset-password` و`set-address` بجانب الخادوم، على مجلد البيانات نفسه وإعدادات التشغيل نفسها. شغّلهما بالمستخدم الذي يعمل به الخادوم، ليبقى لكل ملف يكتبانه مالكه:
+
+- المُثبِّت: بحساب root، `su -s /bin/sh raaqeb -c 'set -a; . /etc/raaqeb/raaqeb.env; RAAQEB_DATA_DIR=/var/lib/raaqeb exec raaqeb reset-password'`
+- المُثبِّت على Mac: `sudo -u _raaqeb sh -c 'set -a; . /usr/local/etc/raaqeb/raaqeb.env; RAAQEB_DATA_DIR=/usr/local/var/raaqeb exec raaqeb reset-password'`
+- المُثبِّت على Windows: في PowerShell بصفة المسؤول، `cd C:\ProgramData\Raaqeb; & 'C:\Program Files\Raaqeb\raaqeb.exe' reset-password`؛ يأخذ الملف الذي ينشئه في مجلد البيانات قائمة أذونات ذلك المجلد، فيبقى Local Service قادرًا على الكتابة فيه
+- Docker: `docker exec -it raaqeb raaqeb reset-password --interactive`
+- Compose: `docker compose exec raaqeb raaqeb reset-password`
+- Fly.io: `fly ssh console -C "raaqeb reset-password"`

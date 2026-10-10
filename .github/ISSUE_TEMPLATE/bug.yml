@@ -1,0 +1,52 @@
+name: "تقرير خطأ | Bug report"
+description: "سلوك لا يوافق ما يقوله التوثيق | Behaviour that does not match the docs"
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: "الإصدار | Version"
+      description: "الإصدار الذي ثبّتّه، أو وسم صورة Docker | The release you installed, or the Docker image tag"
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: "طريقة التثبيت | Install method"
+      options:
+        - "المُثبِّت (install.sh أو install.ps1) | Installer script (install.sh or install.ps1)"
+        - "صورة Docker | Docker image"
+        - "ملف تنفيذي | Binary"
+        - "أخرى | Other"
+    validations:
+      required: true
+  - type: dropdown
+    id: database
+    attributes:
+      label: "قاعدة البيانات | Database"
+      options:
+        - SQLite
+        - Postgres
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: "نظام التشغيل والمعالج | Operating system and CPU"
+      placeholder: "Debian 12, x86_64"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: "خطوات إعادة حدوث المشكلة | Steps to reproduce"
+      description: "ما فعلته، وما توقعته، وما حدث بدلًا منه | What you did, what you expected and what happened instead"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: "سجل الخادوم | Server log"
+      description: "الأسطر التي تخص المشكلة. احذف أي سر منها | The lines about the problem. Remove any secret from them"
+      render: shell

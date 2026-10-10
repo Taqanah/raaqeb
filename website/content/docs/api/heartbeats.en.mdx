@@ -1,0 +1,18 @@
+---
+title: Heartbeats
+description: The address a job calls to tell its heartbeat monitor it ran.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+A heartbeat monitor expects a heartbeat once per period. When none arrives within the period and its grace period, its check is down with the reason "heartbeat late". Each heartbeat monitor has its own URL with a token, shown in its **Heartbeat URL** panel once saved; [heartbeat monitors](/en/docs/monitors/heartbeat) covers the setup. Call it at the end of your job with whichever method is easiest:
+
+```sh
+curl -fsS https://status.example.com/api/heartbeat/<token>
+```
+
+The token is the only credential. Anyone who has it can record heartbeats for the monitor.
+
+## Record a heartbeat
+
+<ApiOperation path="/api/heartbeat/{token}" />

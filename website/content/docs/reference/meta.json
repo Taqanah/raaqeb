@@ -1,0 +1,11 @@
+{
+  "title": "المرجع",
+  "pages": [
+    "releases",
+    "ai-assistants",
+    "[الأوامر](/docs/operate/commands)",
+    "[إعدادات التشغيل](/docs/operate/boot-settings)",
+    "[عناوين الواجهة البرمجية العامة](/docs/operate/public-endpoints)",
+    "[الواجهة البرمجية](/docs/api)"
+  ]
+}

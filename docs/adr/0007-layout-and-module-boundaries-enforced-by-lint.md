@@ -1,0 +1,33 @@
+---
+status: accepted
+---
+
+# Feature folders around deep modules, with the import boundaries enforced by Biome
+
+Raaqeb is one package laid out as `src/routes/` (TanStack Start file routes), `src/server/` (the deep modules, one folder per domain: boot, checks, scheduler, notify, status, storage, auth, firstrun, capabilities, settings, release; `boot` holds the boot settings, `settings` the install-wide setting declarations and `release` the daily release check), `src/admin/<feature>/` (admin UI by feature), `src/public/` (status page UI) and `src/shared/` (Zod schemas, pure domain code, i18n, shadcn copies, the API client). Dependencies point one way: `routes -> server`, `routes -> admin | public -> shared`. The four rules that make this an architecture rather than a folder naming habit are checked by Biome's `noRestrictedImports` patterns in `biome.jsonc`, so a violation fails `bun run check` and never reaches review.
+
+## Decisions bundled here
+
+- **Feature folders on the server, feature folders in the admin UI.** A deep module is a feature folder by definition, so the server side follows the deep-module rule. The admin UI uses the same shape (`routes -> features -> shared`): `src/admin/monitors/` holds that feature's components, queries and forms together.
+- **DDD as language and boundaries.** `CONTEXT.md` is the shared language; every module, repository and test uses its words. One repository per aggregate, speaking in domain verbs and never returning a Drizzle row. Pure domain rules (status derivation, uptime, schedule math, assertions) live in modules that do no I/O and take `now` as a parameter. The tutorial layering of entities, value objects, use cases, ports and adapters inside each module is refused: on a 240 MB single-tenant tool it produces five-line files and shallow modules, which is the opposite of what the deep-module rule asks for.
+- **Four import rules, checked by lint.** The UIs never import `server/`; `server/` never imports a UI or `routes/`; `shared/` imports nothing above it; only `server/storage` imports `drizzle-orm`, `bun:sqlite` or Bun's Postgres driver. Biome's `noRestrictedImports` carries these as path patterns with per-folder overrides, and Ultracite's `type-aware` preset adds `noImportCycles`. Verified with Biome 2.5.12 and Ultracite 7.11.0: pattern groups such as `@/server/**` and exact paths such as `drizzle-orm` are caught, an override switches the rule off inside `storage`, and `noFloatingPromises` and `noMisusedPromises` work from Biome's own type inference without `tsc`. All four rules are enforced: an `src/shared/**` override blocks `@/admin`, `@/public` and `@/routes`, which is what carries the third rule. The fourth reaches past what patterns can say, because Bun's Postgres driver is `import { SQL } from "bun"` and a path pattern cannot name one export of `bun`; a small test in `scripts/` greps the tree for that import outside `src/server/storage`. `src/server/checks/database-io.ts` may open `Bun.SQL` to reach a monitored database, never Raaqeb's own; it is the one exception to the driver rule, and the import-rule test names it.
+- **No barrel files.** Ultracite's `core` preset already turns on `noBarrelFile`. The seam of a module is its exported functions, not an `index.ts`; the cost is a longer import path, the gain is a smaller module graph on a runtime that must stay small.
+- **Bun first, enforced the same way.** `node:` modules are blocked by the same rule, one module name per pattern because `node:**` is not a valid Biome glob; `node:readline` is on the list with the rest. Where Bun has no equivalent the import carries a `biome-ignore` comment naming why, which is the only record kept; `rg "noRestrictedImports" src` lists every exception.
+- **Tests beside the file.** `<name>.test.ts` next to `<name>.ts` for unit and integration tests, because the loop in ADR-0008 is file-local and the agent editing one file sees the other. Playwright specs live in `e2e/`. Chosen over a mirrored `tests/` tree; the choice can be changed.
+
+## Considered options
+
+- **Layer folders** (`services/`, `repositories/`, `components/`). Scatter one feature across distant directories; rejected.
+- **Convention only, checked in review.** Free, and it does not survive fifty agent sessions. Rejected as the sole enforcement.
+- **dependency-cruiser.** Real graph rules and a drawable graph, at the price of a Node-based tool and its own config. Held in reserve; Biome's patterns plus `noImportCycles` cover the four rules that matter.
+- **TypeScript project references.** Compiler-enforced, but they fight a single-package layout. Rejected.
+- **One barrel per deep module as its visible interface.** Makes the seam visible in the file system. Rejected for the module-graph cost and because Ultracite already bans barrels.
+
+## Consequences
+
+- Adding a rule means adding a pattern to `biome.jsonc`; adding a deep module means a folder under `server/`.
+- A route file that grows past parsing, an auth check and one module call is doing work that belongs in `server/`.
+- `noRestrictedImports` sees paths, not the graph: a cycle through an allowed path is caught by `noImportCycles`, and a rule that needs graph shape beyond that is the trigger to bring in dependency-cruiser.
+- An import that goes up a folder uses the `@/` alias to `src/`; one in the importer's own folder or below stays relative. The same `noRestrictedImports` rule refuses `..` and `../**` in every `src/` override, except `../**/locales/**`, since the compiled catalogs sit outside `src/`; in `scripts/`, `e2e/` and `bench/` it refuses `../**/src/**` only, so a `../` between those folders stays. Every runtime that loads the tree reads the alias from `tsconfig.json`: Bun (the server, `bun test`, the bench's stand-in container, which mounts `tsconfig.json`), Vite through `resolve.tsconfigPaths`, and Playwright's loader.
+- The public website is `website/`, beside `src/`, in the same package with no `package.json` of its own: one more Vite root (`website/vite.config.ts`) that Start prerenders to static HTML, and its own TypeScript program (`website/tsconfig.json`), because it registers its own router with TanStack. It may import `src/shared/` through `@/`, never `src/admin`, `src/public`, `src/routes` or `src/server`, which a `website/**` override in `biome.jsonc` refuses; inside `website/` an import that goes up a folder uses the `~/` alias to `website/`. `src/` never imports `website/`, which the `..` rule already refuses and no alias reaches. The website shares the product's dependencies and its components, and never ships in the binary.
+- Every import path carries its file extension, as the `type-aware` preset requires; `tsconfig.json` sets `allowImportingTsExtensions`.

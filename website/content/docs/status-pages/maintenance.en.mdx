@@ -1,0 +1,84 @@
+---
+title: Maintenance windows
+description: How to schedule a maintenance window, what it does to components, monitors and notifications, and what status pages and subscribers see.
+---
+
+A maintenance window is a scheduled period, with a start and an end, during which its affected components show under maintenance. While it runs, the monitors linked to those components send no operator notifications and the time does not count against anyone's uptime. Like an incident, a window belongs to the install and shows on every status page that shows one of its components.
+
+A window is one period. Raaqeb has no recurring windows: schedule one window for each time.
+
+## Schedule a window
+
+A window names the components it covers, so at least one [component](/en/docs/status-pages/components) must exist.
+
+1. In the admin area, open **Maintenance windows** and select **New maintenance window**.
+2. Fill in **Title** and **Description**, the text visitors read.
+3. Under **Times**, set **Starts** and **Ends**.
+4. Under **Affected components**, tick the components the work touches.
+5. Select **Schedule the window**.
+
+| Field | Rule |
+| --- | --- |
+| **Title** | Up to 200 characters. Visitors read it at the top of the maintenance card. |
+| **Description** | Plain text up to 5,000 characters, with no formatting. Each paragraph takes its own language's direction. |
+| **Starts** | To the minute, now or later. A start in the current minute means now. A start in the past is refused. |
+| **Ends** | At least one minute after the start, and not in the past. |
+
+Times are entered on your own clock, in the time zone shown under **Time zone**, and stored in UTC. **Title** and **Description** have one input per language; the install language's text is required.
+
+## Stages
+
+A window has three stages: **Scheduled**, **In progress** and **Completed**. You do not set the stage: the scheduler moves the window to in progress at its start and to completed at its end. A window whose start and end both passed while Raaqeb was stopped goes straight to completed.
+
+What you can change depends on the stage:
+
+| Stage | What you can change | Actions |
+| --- | --- | --- |
+| **Scheduled** | Everything: title, description, times, components | **Cancel the maintenance window** deletes it. A cancel cannot be undone. |
+| **In progress** | Title, description and end | **End it now** sets the end to now; the scheduler completes the window at its next tick. |
+| **Completed** | Title and description | None |
+
+A started window cannot be cancelled or deleted, and its start and components no longer change, because it has already taken time out of uptime. It is deleted only with the last component it names. If the scheduler moved the window while you were editing, the save is refused and the page shows the window as it is now. Check your edit and save it again.
+
+## Effect on components and monitors
+
+While a window is in progress:
+
+- **Components.** Every affected component shows under maintenance. This wins over its monitors, its incidents and its status set by hand.
+- **Covered monitors.** Every monitor linked to an affected component is covered, whatever its other components show. A monitor linked to no component is never covered.
+- **Checks go on.** Covered monitors keep running their checks, and an outage is still recorded.
+- **No operator notifications.** A covered monitor sends no down, recovered, degraded or certificate notification and no reminder. A certificate warning is raised again once the window ends.
+- **No uptime cost.** The window's time is not observed time for its components or for the covered monitors, so it is neither downtime nor uptime. It shows as no data where nothing else was observed that day.
+
+When the window ends, each covered monitor that is still down sends its down notification then, whether or not one was sent before the window began.
+
+A window reaches the monitors linked to its components as the links are now. Linking a monitor to a component later reaches back over a past window until that day is sealed.
+
+## What the page shows
+
+On each status page that shows one of its affected components:
+
+| Where | When |
+| --- | --- |
+| A card on the overview, with its stage, start, end, the page's components it affects and its description | While it is scheduled or in progress. Windows in progress come first, then scheduled ones, soonest first. |
+| Its own view at `<page>/maintenance/<id>` | Always |
+| The page's history, in the UTC month it started | Once it is completed |
+| The day card of each day it ran on | While the day is on the bar |
+| The page's [feed](/en/docs/status-pages/badge-and-feed#feed) | Among the 50 entries changed last |
+| The page's [summary](/en/docs/status-pages/badge-and-feed#summary), under `scheduled_maintenances` | While it is scheduled or in progress |
+
+A cancelled window leaves every status page.
+
+## What subscribers receive
+
+Confirmed subscribers of every published page that shows an affected component receive:
+
+| Event | When |
+| --- | --- |
+| `maintenance.scheduled` | You schedule a window. Not sent for a window that starts in the current minute, which sends `maintenance.started` alone. |
+| `maintenance.rescheduled` | An edit moves the start or the end, while scheduled or in progress. Not sent when the new start or end is the current minute. |
+| `maintenance.started` | The window starts. A window that went straight to completed sends `maintenance.completed` alone. |
+| `maintenance.completed` | The window ends: at its time, through **End it now**, or by an edit that sets the end to now. |
+| `maintenance.cancelled` | You cancel a scheduled window. |
+
+Editing only the title or description sends nothing. An email's subject is "Maintenance:" followed by the title. A webhook receives the window in Statuspage's body, as an incident with impact `maintenance`. See [What subscribers receive](/en/docs/status-pages/subscriptions#what-subscribers-receive).

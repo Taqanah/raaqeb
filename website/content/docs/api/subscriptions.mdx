@@ -1,0 +1,16 @@
+---
+title: الاشتراكات
+description: الرابطان اللذان يؤكدان الاشتراك وينهيانه.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+لكل اشتراك رمزه الخاص في رابطي التأكيد وإلغاء الاشتراك. لا يفعل فتح الرابط بطلب GET إلا أن يقود إلى صفحة الاشتراك، وفيها زر يرسل طلب POST الذي ينفّذ الإجراء، فلا يؤكد ماسح البريد الذي يتبع الروابط اشتراك أحد ولا يلغيه.
+
+## التأكيد
+
+<ApiOperation path="/subscriptions/{token}/confirm" />
+
+## إلغاء الاشتراك
+
+<ApiOperation path="/subscriptions/{token}/unsubscribe" />

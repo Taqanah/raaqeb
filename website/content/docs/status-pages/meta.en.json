@@ -1,0 +1,11 @@
+{
+  "title": "Status pages",
+  "pages": [
+    "components",
+    "incidents",
+    "maintenance",
+    "subscriptions",
+    "custom-domains",
+    "badge-and-feed"
+  ]
+}

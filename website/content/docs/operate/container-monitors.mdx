@@ -1,0 +1,36 @@
+---
+title: مراقبات الحاويات
+description: اجعل مراقبة الحاوية تصل إلى Docker أو Podman، والأفضل أن يكون ذلك عبر وكيل مقبس لا يمرّر إلا مسارين للقراءة فقط.
+---
+
+تسأل مراقبة الحاوية Docker عن حاوية واحدة باسمها: تعمل المراقبة ما دامت الحاوية تعمل ولم يحكم عليها فحص الصحة فيها (`HEALTHCHECK`)، إن كان لها فحص، بأنها معتلّة. يقرأ راقب مسارين من الواجهة البرمجية لـDocker Engine، هما `GET /containers/json` لقائمة النموذج و`GET /containers/<name>/json` لكل فحص، ولا يكتب شيئًا أبدًا. عنوان Docker مسار مقبس Unix، والافتراضي `/var/run/docker.sock`، أو رابط http أو https. ويعمل مقبس Podman المتوافق مع Docker بالطريقة نفسها (`/run/podman/podman.sock`، أو `/run/user/<uid>/podman/podman.sock` حين يعمل Podman دون root). على Windows، يستمع Docker Desktop على أنبوب مسمّى (named pipe) لا يصل إليه راقب، ففعّل في Docker Desktop الإعداد **⁦Expose daemon on tcp://localhost:2375 without TLS⁩** واستعمل `http://localhost:2375`، أو ضع وكيل مقبس أمام Docker واستعمل رابطه. يفتح المنفذ المكشوف الواجهة البرمجية كلها بلا استيثاق، فيجب أن يبقى على localhost.
+
+من يستطيع الكتابة إلى مقبس Docker يملك امتيازات root على الخادوم، سواء ضُمّ المقبس للقراءة فقط أم لا: فالواجهة البرمجية تشغّل الحاويات. أعطِ راقب وكيلًا يمرّر المسارين ولا شيء غيرهما. يفعل ذلك [wollomatic/socket-proxy](https://github.com/wollomatic/socket-proxy) بنمط واحد لكل طريقة. مع Docker Compose، أضف هذه الخدمة إلى `deploy/compose.yaml`، وأضف `DOCKER_GID=<the number>` إلى ملف `.env` الذي بجانبه:
+
+```yaml
+services:
+  socket-proxy:
+    image: wollomatic/socket-proxy:1
+    restart: unless-stopped
+    # The docker group's id on the host, from `stat -c %g /var/run/docker.sock`.
+    user: "65534:${DOCKER_GID:?set DOCKER_GID in .env}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - -listenip=0.0.0.0
+      # Only the raaqeb service may ask, and only for the list and one container.
+      - -allowfrom=raaqeb
+      - -allowGET=^(/v[0-9.]+)?/containers(/json|/[a-zA-Z0-9][a-zA-Z0-9_.-]+/json)$$
+```
+
+عندئذ يكون عنوان Docker في المراقبة `http://socket-proxy:2375`. يرفض الوكيل أي مسار آخر بالرمز 403، وأي طريقة أخرى بالرمز 405، وأي عميل غير الخدمة `raaqeb`. وفي نطاق `ip_range` لشبكة ملف Compose متّسع لهذه الخدمة الثالثة بجانب راقب وPostgres. ومع ذلك يكشف ما يمرّره الوكيل الكثير: تتضمن تفاصيل الحاوية متغيرات بيئتها، فأبقِ الوكيل على الشبكة الخاصة التي يتشاركها مع راقب، ولا تكشف منفذه على الخادوم أبدًا. ويصل راقب إلى Docker على خادوم آخر بالطريقة نفسها، والوكيل يستمع على عنوان لا يبلغه إلا خادوم راقب. لا يرسل راقب بيانات استيثاق ولا شهادة عميل، فالشبكة وحدها تحدّد من يصل إلى الوكيل.
+
+وهذان خياران يعطيان راقب ما يعادل امتيازات root، لخادوم تقبل فيه ذلك:
+
+- مع Docker، ضُمّ المقبس إلى حاوية راقب (`- /var/run/docker.sock:/var/run/docker.sock`) وأضف مجموعة المقبس، `group_add: ["<the docker group's id>"]`، لأن الصورة تعمل بالمستخدم 65532 الذي لا يملك امتيازات.
+- إن كان راقب مثبّتًا بالمُثبِّت، فأضف المستخدم `raaqeb` إلى المجموعة `docker`: شغّل `systemctl edit raaqeb` واكتب `[Service]` ثم `SupplementaryGroups=docker`، ثم شغّل `systemctl restart raaqeb`. وعلى OpenRC، شغّل `addgroup raaqeb docker` ثم أعد تشغيل الخدمة.
+
+إذا لم يستطع راقب فتح المقبس، ظهرت في النموذج وفي المراقبة العلة «تعذّر الاتصال» مع رمزها: `ENOENT` حين لا يوجد شيء في المسار (المقبس غير مضموم)، و`EACCES` حين لا يُسمح لمستخدم راقب بفتحه (المجموعة ناقصة)، و`ECONNREFUSED` حين لا يستمع شيء هناك. ويظهر رفض الوكيل على أنه «رمز حالة غير متوقع»، 403 أو 405.

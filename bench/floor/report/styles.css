@@ -1,0 +1,205 @@
+/* The report's roles, light and dark, from the dataviz reference palette (its first three series slots, validated in both modes). */
+:root {
+  --surface: #fcfcfb;
+  --page: #f9f9f7;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --ring: rgba(11, 11, 11, 0.1);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --critical: #d03b3b;
+  --good: #0ca30c;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1a1a19;
+    --page: #0d0d0d;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --ring: rgba(255, 255, 255, 0.1);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    color-scheme: dark;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font:
+    14px / 1.5 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: var(--ink);
+  background: var(--page);
+}
+main {
+  max-width: 1100px;
+  padding: 24px;
+  margin: 0 auto;
+}
+h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+h3 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.meta,
+.note {
+  margin: 0;
+  color: var(--ink-2);
+}
+.card {
+  padding: 16px;
+  margin-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--ring);
+  border-radius: 12px;
+}
+.banner {
+  padding: 12px 16px;
+  margin-top: 16px;
+  background: var(--surface);
+  border: 2px solid var(--critical);
+  border-radius: 12px;
+}
+.banner strong {
+  color: var(--critical);
+}
+.unverified {
+  border-color: var(--muted);
+}
+.held {
+  border-color: var(--good);
+}
+.held strong {
+  color: var(--good);
+}
+/* A table wider than its card scrolls inside it, never the page. */
+.table {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+  border-collapse: collapse;
+}
+th,
+td {
+  padding: 4px 8px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--grid);
+}
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+th {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+details {
+  margin-top: 8px;
+}
+summary {
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.chart {
+  position: relative;
+}
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.tick {
+  font-size: 11px;
+  fill: var(--muted);
+}
+.gridline {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+.baseline {
+  stroke: var(--axis);
+  stroke-width: 1;
+}
+.limit {
+  stroke: var(--critical);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.series {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.label {
+  font-size: 11px;
+  fill: var(--ink-2);
+}
+.legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.key {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.tooltip {
+  position: absolute;
+  top: 0;
+  padding: 6px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--ring);
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+.tooltip b {
+  color: var(--ink);
+}
+.tooltip span {
+  color: var(--ink-2);
+}
+.bar {
+  fill: var(--series-1);
+}
+.bar:hover,
+.bar:focus {
+  outline: none;
+  opacity: 0.8;
+}
+.beyond {
+  font-weight: 600;
+  color: var(--critical);
+}

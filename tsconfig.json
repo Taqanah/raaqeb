@@ -1,0 +1,35 @@
+{
+  "include": [
+    "src",
+    "scripts",
+    "bench",
+    "e2e",
+    "locales",
+    "lingui.config.ts",
+    "vite.config.ts",
+    "playwright.config.ts"
+  ],
+  "exclude": ["node_modules", "prototypes", "docs", "website"],
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "ES2025.Intl", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["bun", "vite/client"],
+    "jsx": "react-jsx",
+    "paths": { "@/*": ["./src/*"] },
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false
+  }
+}

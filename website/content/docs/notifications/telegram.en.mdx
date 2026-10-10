@@ -1,0 +1,73 @@
+---
+title: Telegram
+description: How to create a Telegram bot and find a chat ID, what a Telegram channel sends, and how a refused message shows in Raaqeb.
+---
+
+A Telegram channel has your bot write each notification to one chat: a private chat, a group or a Telegram channel. The message is text in the channel language, sent through the Bot API's `sendMessage`, with link previews off.
+
+## What you need first
+
+A bot token and a chat ID.
+
+1. In Telegram, open a chat with [@BotFather](https://t.me/BotFather), send `/newbot` and follow its questions. It answers with the bot token, such as `123456789:AAH...`.
+2. Let the bot into the chat. For a private chat, open the bot and press **Start**. For a group, add the bot to it. For a Telegram channel, add the bot as an administrator that can post.
+3. Find the chat ID. Send a message in the chat (in a group, a command addressed to the bot, such as `/start@your_bot`, since a bot in a group sees only those by default), then open `https://api.telegram.org/bot<token>/getUpdates` in a browser and read the number under `"chat":{"id":`. A group's ID is negative. A public Telegram channel can use its `@name` instead.
+
+## Fields
+
+| Field | Meaning | Required | Default |
+| --- | --- | --- | --- |
+| **Name** | What the admin area calls the channel, at most 80 characters. | Yes | None |
+| **Channel language** | The language of the message. | No | **The install language** |
+| **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
+| **Bot token** | The token @BotFather gave you: the bot's number, a colon, then a long code. A secret: stored encrypted with the install key and never shown after saving. | Yes | None |
+| **Chat ID** | The chat's number, negative for a group, or a public channel's name such as `@raaqeb_alerts` (5 to 32 characters after the `@`). Stored as typed. | Yes | None |
+
+The channel writes to the chat's general topic. A forum topic inside a group cannot be chosen.
+
+## The message
+
+Raaqeb posts this JSON to `https://api.telegram.org/bot<token>/sendMessage`:
+
+```json
+{
+  "chat_id": "-1001234567890",
+  "link_preview_options": { "is_disabled": true },
+  "parse_mode": "HTML",
+  "text": "Main website is down\n\nThe monitor is down.\n\nMonitor: Main website\nTarget: https://example.com\nReason: Timed out\nTime: Sep 25, 2026, 18:49 (UTC)\n<a href=\"https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d\">Open the monitor</a>\n<a href=\"https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d\">Open an incident</a>"
+}
+```
+
+In Telegram it reads:
+
+```text
+Main website is down
+
+The monitor is down.
+
+Monitor: Main website
+Target: https://example.com
+Reason: Timed out
+Time: Sep 25, 2026, 18:49 (UTC)
+Open the monitor
+Open an incident
+```
+
+The first line is the subject. The last two lines are links, present only when the install stores a public address. Every `&`, `<` and `>` in the text is escaped, so nothing in a name is read as HTML. Telegram does not link an address whose host has no dot, such as `http://raaqeb:3000`; for such a public address Raaqeb writes the plain `Link:` and `Open an incident:` lines instead. See [What a notification says](/en/docs/notifications#what-a-notification-says) for every event's lines.
+
+## Failures and limits
+
+Telegram takes at most 4096 characters. A longer message is cut and ends in `…`; the links are kept whole. One attempt gives up after 10 seconds, and a failed attempt is retried 30 seconds, 2 minutes and 10 minutes later. Telegram's rate limit answers `429`, which retries on the same schedule.
+
+| Reason code | Text | Typical cause |
+| --- | --- | --- |
+| `unexpected_status` | Unexpected status code | Telegram refused the message. **Observed** shows the status and **Error text** Telegram's description: `401` for a wrong bot token, `400` with `Bad Request: chat not found` for a wrong chat ID or a chat the bot is not in, `403` when the bot was removed or blocked. |
+| `timeout` | Timed out | No answer within 10 seconds. |
+| `dns_failed` | DNS lookup failed | `api.telegram.org` does not resolve from your server. |
+| `connection_refused` | Connection refused | The connection to Telegram was refused. |
+| `connection_failed` | Connection failed | The connection was reset or Telegram was unreachable from your server. |
+| `certificate_expired` | Certificate expired | Telegram's certificate has expired, often because a proxy on the way presents its own. |
+| `certificate_invalid` | Certificate invalid | Telegram's certificate could not be verified, often a proxy on the way. |
+| `unknown` | Unknown error | Anything else. **Error text** says what happened. |
+
+The bot token is removed from every recorded error text.

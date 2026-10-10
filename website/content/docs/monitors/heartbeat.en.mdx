@@ -1,0 +1,90 @@
+---
+title: Heartbeat
+description: Watch cron jobs, backups and other scheduled work with a heartbeat monitor that expects your job to call its URL on a schedule.
+---
+
+A heartbeat monitor waits for your job to call its unique URL. Each call is a heartbeat. If no heartbeat arrives by the expected time plus the grace period, the monitor is down with "Heartbeat late". Use it for work that runs on its own schedule and that Raaqeb cannot reach: cron jobs, backups, queue workers, machines behind a firewall.
+
+## Add a heartbeat monitor
+
+Select **Add monitor** and choose **Heartbeat** as the **Check type**. A heartbeat monitor has no interval, timeout, retries or degraded threshold: its **Heartbeat schedule** replaces them. It is never degraded. The other shared fields are on [Monitors](/en/docs/monitors).
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Schedule by** | **A fixed period** or **A cron expression**. | A fixed period. |
+| **One heartbeat every** and **Unit** | The period, in seconds, minutes, hours or days. | 1 hour. 20 seconds to 30 days, a whole number of the unit. |
+| **Cron expression** | When the job runs: five fields, or a nickname such as `@daily`, `@hourly` or `@weekly`. Read in the install time zone. | Up to 120 characters. An expression that never fires, such as one for 30 February, is refused. |
+| **Grace period** and **Unit** | Extra time after the expected time before a missing heartbeat counts as late. | Empty, which is a fifth of the period. Above zero and up to 30 days. |
+
+For a schedule longer than 30 days, use a cron expression.
+
+The **Heartbeat URL** panel shows the URL once the monitor is saved, with a ready `curl` line, the **Last heartbeat** and its **Source address**. To retire a URL that leaked, switch on **A new URL on save** and select **Save**: the old URL stops working at once.
+
+## Send heartbeats
+
+The URL has this form, on the install's public address:
+
+```text
+https://status.example.com/api/heartbeat/<token>
+```
+
+The token is 22 characters of letters, digits, `-` and `_`. It is the only key: anyone who has the URL can send heartbeats, so treat it as a secret.
+
+| Request | Answer |
+|---|---|
+| `GET`, `HEAD` or `POST` with a known token | `200` with the text `OK`. The heartbeat is stored. |
+| An unknown or malformed token | `404` with the text `Not Found`. Nothing is stored. |
+| The database did not answer | `503` with the text `Service Unavailable`. |
+
+A `HEAD` answer has no body, and no answer is cached. Raaqeb keeps each heartbeat's arrival time and source address, never a request body or query. The source address is the caller's address behind your [trusted proxies](/en/docs/operate/reverse-proxy). Each monitor keeps its latest 100 heartbeats. A paused monitor still stores them.
+
+Call the URL at the end of the job, only when it succeeded. The line the panel shows fails on an error status, stays quiet otherwise, retries three times and gives up after 10 seconds:
+
+```sh
+curl -fsS -m 10 --retry 3 -o /dev/null https://status.example.com/api/heartbeat/<token>
+```
+
+In a crontab, chain it after the job with `&&`, so a failed job sends no heartbeat:
+
+```text
+30 2 * * * /usr/local/bin/backup.sh && curl -fsS -m 10 --retry 3 -o /dev/null https://status.example.com/api/heartbeat/<token>
+```
+
+A `POST` works the same; whatever body it carries is ignored:
+
+```sh
+curl -fsS -m 10 --retry 3 -o /dev/null -X POST https://status.example.com/api/heartbeat/<token>
+```
+
+On Windows:
+
+```powershell
+Invoke-WebRequest -Uri https://status.example.com/api/heartbeat/<token> -Method Post -UseBasicParsing | Out-Null
+```
+
+## Up and down
+
+Raaqeb judges a heartbeat monitor in windows. A window opens when you save the monitor, when you resume it, when Raaqeb starts, and each time the previous window is judged. Raaqeb judges a window once, at the next expected time plus the grace period, and records one check:
+
+- **Up**: a heartbeat arrived since the window opened. Early heartbeats count.
+- **Down**: none arrived. The reason is "Heartbeat late", with the grace period, and the check has no response time.
+
+The next window opens at that moment. With a fixed period, judgements therefore fall one period plus grace period apart. With a cron expression, the expected time is the expression's next fire after the window opened, in the install time zone.
+
+While the monitor is down, a heartbeat produces an up check at once, about a second after it arrives, rather than at the window's end. The outage closes and the recovered notification goes out then.
+
+Before its first check, the list shows the monitor as **Waiting for first heartbeat**, then, once a heartbeat has arrived, as **Waiting for first check** until the window is judged. Raaqeb cannot receive heartbeats while it is stopped, so a restart opens a fresh window instead of judging the time it was down. For uptime, a gap in the checks longer than twice the expected period plus grace period is no data.
+
+## Example
+
+A backup runs at 02:30 every night and usually finishes within 20 minutes. Set **Schedule by** to **A cron expression**, **Cron expression** to `30 2 * * *` and **Grace period** to 45 minutes. Add the crontab line above to the backup host.
+
+Raaqeb judges each window at 03:15 in the install time zone. A backup that succeeds at 02:48 sends its heartbeat, and the 03:15 check is up. A backup that fails sends nothing, so the 03:15 check is down with "Heartbeat late" and the down notification goes out. When you rerun the backup by hand at 09:10 and it succeeds, the heartbeat makes the monitor up at once.
+
+Left empty, the grace period would be a fifth of the 24 hours between fires, 4 hours 48 minutes.
+
+## Related pages
+
+- [Monitors](/en/docs/monitors): events, reminders, pausing and retention.
+- [Public address](/en/docs/get-started#onboarding): the address the heartbeat URL is built on.
+- [Reverse proxy](/en/docs/operate/reverse-proxy): trusted proxies and the source address.

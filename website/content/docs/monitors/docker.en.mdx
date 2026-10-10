@@ -1,0 +1,58 @@
+---
+title: Docker
+description: Watch one container by its name with a container monitor, and read the reasons a failed check reports.
+---
+
+A container monitor asks the Docker daemon's Engine API about one container by its name. The container is up while it runs and its health check, if it has one, has not called it unhealthy. Use it for services that run in containers on a host Raaqeb can reach, including ones with no port to check from outside. Podman's Docker-compatible API works too.
+
+Raaqeb only reads: each check sends `GET /containers/<name>/json`, and the form's container list sends `GET /containers/json`. Giving Raaqeb access to the daemon, ideally through a socket proxy that passes those two paths and nothing else, is on [Container monitors](/en/docs/operate/container-monitors).
+
+## Add a container monitor
+
+Select **Add monitor** and choose **Docker** as the **Check type**. The fields every check type shares are on [Monitors](/en/docs/monitors).
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Docker endpoint** | A Unix socket's absolute path, or the `http` or `https` URL of a Docker Engine API, such as a socket proxy's. | `/var/run/docker.sock`. Up to 2048 characters. A URL with a user name, password, query or fragment is refused. |
+| **Container name** | The container to check. | Required, up to 255 characters, written as Docker writes names: a letter or digit, then letters, digits, `_`, `.` or `-`, with no leading slash. |
+
+Select **List the daemon's containers** to read every container the endpoint knows, stopped ones included, with its state and image, and choose one to fill in the name. If the list fails, the form shows the reason a check would give; type the name instead.
+
+Raaqeb follows the name, not the container's id, so the monitor keeps working when the container is recreated, as Docker Compose does. The endpoint carries no credentials and is stored in the clear.
+
+## Up, degraded and down
+
+The response time is the time the API call took, capped by the timeout.
+
+- **Up**: the container is running, and its health check is healthy, still starting, or absent.
+- **Degraded**: as up, and the API call was slower than the degraded threshold.
+- **Down**: the container is missing, not running, restarting, paused, dead or unhealthy, or the daemon could not be asked, on the last attempt.
+
+The reasons a failed check reports:
+
+| Reason | What happened |
+|---|---|
+| No container has this name | The daemon knows no container by this name. |
+| The container is not running | It is stopped. Shows Docker's state, such as `exited` or `created`, and the last exit code. |
+| Docker is restarting the container | Its restart policy is restarting it. Shows the exit code of the run that ended. |
+| The container is paused | It was paused with `docker pause`. |
+| The container is dead | Docker could not stop or remove it. |
+| The container's health check reports it unhealthy | It runs, and its `HEALTHCHECK` says unhealthy. The health check's last output is kept as the error text. |
+| Unexpected status code | The endpoint answered with a status other than `200`, such as a socket proxy's `403` or `405`. |
+| Connection failed | The socket did not open: `ENOENT` when nothing is at the path, `EACCES` when Raaqeb may not open it, `ECONNREFUSED` when nothing listens. Over a URL, the connection was reset or unreachable. |
+| Connection refused, DNS lookup failed | Over a URL, as for an [HTTP](/en/docs/monitors/http) monitor. |
+| Timed out | The daemon did not answer within the timeout. |
+| Unknown error | Anything else, such as an answer that does not describe a container. The raw text is kept beside it. |
+
+## Example
+
+A Compose project runs a container named `web` with a `HEALTHCHECK`, and a socket proxy as in [Container monitors](/en/docs/operate/container-monitors). Set **Docker endpoint** to `http://socket-proxy:2375` and **Container name** to `web`.
+
+- While `web` starts, its health check reads starting, and the check is up.
+- When the health check fails its retries, the check is down with "The container's health check reports it unhealthy", and the error text holds the health check's last output.
+- When `web` crashes with exit code `137` and its restart policy brings it back, a check that lands in between is down with "Docker is restarting the container" and the exit code.
+
+## Related pages
+
+- [Container monitors](/en/docs/operate/container-monitors): socket access and the proxy.
+- [Monitors](/en/docs/monitors): the schedule, retries, events and retention.

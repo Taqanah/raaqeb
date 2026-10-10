@@ -1,0 +1,22 @@
+---
+title: Postgres
+description: Run Raaqeb on Postgres in place of SQLite, with the connection details of three tested hosted providers and their poolers.
+---
+
+SQLite in the data directory is the default and needs nothing. Postgres is chosen once, on the onboarding database screen or with `DATABASE_URL`. Both hold the same features. The connection test on the onboarding page reports what it found at the URL before anything is written. Raaqeb creates and touches only its own tables, so it may share a database with another application.
+
+Any Postgres server reached by URL works. Three hosted providers have been tested as plain URLs:
+
+| Provider | Direct | Pooled | Notes |
+|---|---|---|---|
+| Neon | `ep-<id>.<region>.aws.neon.tech:5432` | the same with `-pooler` after the endpoint id, port 5432, transaction mode | Raaqeb finds `-pooler` in the host by itself. Remove `channel_binding=require` from the string Neon's console gives: Bun's driver sends it to the server, which refuses the connection over it. |
+| Supabase | `db.<project>.supabase.co:5432`, IPv6 only unless the IPv4 add-on is bought | `aws-0-<region>.pooler.supabase.com`, port 5432 in session mode or 6543 in transaction mode, both over IPv4 | On a server without IPv6, use the pooler. Raaqeb finds port 6543 by itself. |
+| PlanetScale Postgres | `<id>.horizon.psdb.cloud:5432` | the same host, port 6432, PgBouncer in transaction mode | TLS is required. Raaqeb finds port 6432 by itself. |
+
+Use the connection string each provider gives, with its TLS options, and nothing else in its query: Bun's driver sends every query parameter it does not know to the server as a setting, and Postgres refuses the connection over an unknown one. These details come from the providers' own documentation as of October 2026; their consoles show the current ones.
+
+A transaction pooler cannot keep prepared statements across a client's queries. Raaqeb turns them off when the URL has port 6543 or 6432, a host containing `-pooler`, or `pgbouncer=true` in its query, which Raaqeb takes out before it connects. A pooler on any other address needs `pgbouncer=true` added to the URL.
+
+Keep Raaqeb in the same region as its database: every page reads it several times, and a database 10 ms away adds that to each read.
+
+Before upgrading an install on Postgres, take a snapshot with the provider's tools or `pg_dump`. Raaqeb snapshots a SQLite file itself before it migrates it, and cannot do the same for Postgres.

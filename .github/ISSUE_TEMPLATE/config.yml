@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "الإبلاغ عن ثغرة أمنية | Report a vulnerability"
+    url: https://github.com/Taqanah/raaqeb/security/advisories/new
+    about: "أبلغ بشكل خاص، لا تفتح مشكلة عامة | Report it privately, never in a public issue"
+  - name: "سؤال أو فكرة | A question or an idea"
+    url: https://github.com/Taqanah/raaqeb/discussions
+    about: "اسأل أو ناقش في Discussions | Ask or discuss in Discussions"
+  - name: "التوثيقات | Docs"
+    url: https://raaqeb.dev/docs
+    about: "التثبيت والتشغيل وكل ميزة | Install, operate and every feature"

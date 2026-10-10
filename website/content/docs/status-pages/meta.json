@@ -1,0 +1,11 @@
+{
+  "title": "صفحات الحالة",
+  "pages": [
+    "components",
+    "incidents",
+    "maintenance",
+    "subscriptions",
+    "custom-domains",
+    "badge-and-feed"
+  ]
+}

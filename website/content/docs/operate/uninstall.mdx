@@ -1,0 +1,33 @@
+---
+title: إلغاء التثبيت
+description: احذف راقب الذي ثبّته المُثبِّت من Linux أو Mac أو Windows، أو احذف تثبيت Docker مع وحدة تخزينه.
+---
+
+إن كان راقب مثبّتًا بالمُثبِّت، فنفّذ بالمستخدم root:
+
+```sh
+systemctl disable --now raaqeb && rm /etc/systemd/system/raaqeb.service && systemctl daemon-reload   # systemd
+rc-service raaqeb stop && rc-update del raaqeb && rm -r /etc/init.d/raaqeb /var/log/raaqeb    # OpenRC
+rm /usr/local/bin/raaqeb
+rm -r /etc/raaqeb /var/lib/raaqeb    # the settings and the data: back them up first
+userdel raaqeb                        # deluser raaqeb on Alpine, which removes its group too
+```
+
+على Mac، بالمستخدم root:
+
+```sh
+launchctl bootout system/raaqeb && rm /Library/LaunchDaemons/raaqeb.plist /usr/local/bin/raaqeb
+rm -r /usr/local/etc/raaqeb /usr/local/var/raaqeb /usr/local/var/log/raaqeb   # the settings and the data: back them up first
+dscl . -delete /Users/_raaqeb && dscl . -delete /Groups/_raaqeb
+```
+
+على Windows، في PowerShell بصفة المسؤول:
+
+```powershell
+Disable-ScheduledTask Raaqeb; Stop-ScheduledTask Raaqeb; Unregister-ScheduledTask Raaqeb -Confirm:$false
+Get-Process raaqeb -ErrorAction SilentlyContinue | Wait-Process -Timeout 30    # the stop ends the process a moment later
+Remove-Item -Recurse "$env:ProgramFiles\Raaqeb"
+Remove-Item -Recurse "$env:ProgramData\Raaqeb"    # the settings and the data: back them up first
+```
+
+مع Docker، احذف الحاوية، ثم احذف وحدة التخزين بالأمر `docker volume rm raaqeb-data` متى لم تعد تحتاج إلى بياناتها.

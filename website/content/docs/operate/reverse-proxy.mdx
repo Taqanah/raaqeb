@@ -1,0 +1,96 @@
+---
+title: الوكيل العكسي وTLS
+description: ما يجب أن يمرّره الوكيل الذي أمام راقب وما يجب أن يسمح به، مع قصاصات مجرَّبة لـ Caddy وNginx وTraefik.
+---
+
+يقدّم راقب HTTP غير مُعمّى، ويترك TLS لوكيل عكسي. يجب أن يمرّر الوكيل المضيف الذي طلبه الزائر، وأن يضيف `X-Forwarded-For` و`X-Forwarded-Proto`. ولا يصدّق راقب هاتين الترويستين إلا من الوكلاء الموثوقين، وتضبطهم في صفحة الإعدادات العامة أو بالمتغير `RAAQEB_TRUSTED_PROXIES`. ويتصل الوكيل الذي على الخادوم نفسه من `127.0.0.1` أو `::1`. بعد أن تضع الوكيل، افتح عبره صفحة تهيئة راقب في الإعدادات: تذكر العنوان الذي جاء منه الطلب إذا أرسل ترويسات التوجيه دون أن يكون موثوقًا، وتقول هل العنوان العام هو العنوان الذي يفتحه المتصفح.
+
+يحدّد الوكلاء الموثوقون عنوان العميل الذي يعتمد عليه حدّ محاولات تسجيل الدخول، وحدّ طلبات الاشتراك، وأسطر سجل الخادوم الخاصة بتسجيل الدخول، والعنوان الذي جاءت منه النبضة. ودونهم، خلف وكيل، يصبح كل زائر هو الوكيل: يتقاسم الجميع حصة واحدة من ثلاث محاولات تسجيل دخول في عشر ثوانٍ، وتغلق خمسة طلبات اشتراك في عشر دقائق نموذج الاشتراك أمام الجميع.
+
+تحتاج ثلاثة طلبات من الوكيل أكثر مما تحتاجه الصفحة:
+
+- يرفع الاستيراد ملف التصدير، حتى 4 غيغابايت، فلا يجوز أن يحدّ الوكيل محتوى الطلب بأقل من حجم الملف؛
+- يُبقي **افحص الآن** في المراقبة و**إرسال تجريبي** في قناة البريد الإلكتروني طلبَهما مفتوحًا حتى 70 ثانية لا يُرسَل خلالها شيء؛
+- تتدفّق التنزيلات أثناء إنشائها.
+
+جُرّبت كل قصاصة أدناه أمام بديل يحاكي راقب: يمرّر المضيف وترويسات التوجيه، ويتدفّق عبره رفع بحجم 200 ميغابايت، ويمرّ رفع يستغرق 100 ثانية كاملًا، وتصل إجابة تستغرق 90 ثانية. ويصل كل منها إلى راقب على `127.0.0.1:3000`، فاضبط الوكلاء الموثوقين على `127.0.0.1`. اكتب `127.0.0.1` لا `localhost`، فقد يكون عنوان الأخير `::1`.
+
+## Caddy
+
+يحصل Caddy على الشهادة ويجدّدها بنفسه، ويمرّر المضيف وترويسات التوجيه مستبدلًا أي ترويسات منها أرسلها العميل، ولا يحدّ حجم المحتوى ولا مدة الطلب:
+
+```text title="Caddyfile"
+raaqeb.example.com {
+	reverse_proxy 127.0.0.1:3000
+}
+```
+
+تشرح صفحة [النطاقات المخصصة](/docs/operate/custom-domains) كيف تضيفها إليه. وفي Docker Compose، `deploy/Caddyfile` هو هذا نفسه باسم حاوية راقب.
+
+## Nginx
+
+```nginx
+server {
+	listen 443 ssl;
+	server_name raaqeb.example.com;
+	# ssl_certificate and ssl_certificate_key, from certbot or your own
+	client_max_body_size 4g;
+	location / {
+		proxy_pass http://127.0.0.1:3000;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_set_header X-Forwarded-Host $host;
+		proxy_request_buffering off;
+		proxy_read_timeout 300s;
+	}
+}
+```
+
+- قيمة `client_max_body_size` الافتراضية 1 ميغابايت، وهي ترفض الاستيراد.
+- يجب ضبط `X-Forwarded-Host` هنا: وإلا مرّر Nginx ما أرسله العميل كما هو، وصدّقه راقب لأنه جاء من وكيل موثوق.
+- يجعل `proxy_request_buffering off` الرفع يتدفّق إلى راقب؛ ودونه يكتب Nginx الملف كله على قرصه أولًا.
+- قيمة `proxy_read_timeout` الافتراضية 60 ثانية، وهي تقطع **افحص الآن** قبل أن ينتهي.
+
+## Traefik
+
+يمرّر Traefik المضيف وترويسات التوجيه مستبدلًا أي ترويسات منها أرسلها العميل. وتقرأ نقطة الدخول (entry point) فيه الطلب كله، بمحتواه، في غضون 60 ثانية افتراضيًا، وهذا يقطع رفع الاستيراد البطيء؛ فاضبط `readTimeout` في الإعداد الثابت (static configuration). وأي قيمة محدودة هناك تحدّ المدة التي يمكن أن يستغرقها الرفع.
+
+```yaml
+# Static configuration
+entryPoints:
+  websecure:
+    address: ":443"
+    transport:
+      respondingTimeouts:
+        readTimeout: 0
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: you@example.com
+      storage: /etc/traefik/acme.json
+      tlsChallenge: {}
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+```
+
+```yaml
+# /etc/traefik/dynamic.yml
+http:
+  routers:
+    raaqeb:
+      rule: Host(`raaqeb.example.com`)
+      entryPoints: [websecure]
+      service: raaqeb
+      tls:
+        certResolver: letsencrypt
+  services:
+    raaqeb:
+      loadBalancer:
+        servers:
+          - url: http://127.0.0.1:3000
+```
+
+يصل Traefik إلى `127.0.0.1:3000` حين يعمل على الخادوم نفسه. أما في شبكة Docker، فيذكر الرابط اسم حاوية راقب، وتذكر قائمة الوكلاء الموثوقين عنوان Traefik.

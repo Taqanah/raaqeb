@@ -1,0 +1,314 @@
+/*
+ * The docs: Fumadocs' docs layout over the website's fonts and tokens.
+ * Its palette points at the website's light-dark() tokens, which follow the
+ * color-scheme that Fumadocs' theme switch sets on the page; the few rules
+ * below say what its defaults get wrong in Arabic.
+ */
+@import "tailwindcss" source("./");
+@import "@fumadocs/base-ui/css/neutral.css";
+@import "@fumadocs/base-ui/css/preset.css";
+@import "../theme.css";
+
+/* The header borrows the landing page's theme button, language mark and logos; their classes are generated here too. */
+@source "../landing/theme.tsx";
+@source "../landing/icons.tsx";
+@source "../landing/logos.tsx";
+
+/* Tailwind's compiler turns light-dark() into variables keyed on color-scheme declarations, not on what the theme script writes; these key them on the switch's class. */
+:root.light {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+:root {
+  --color-fd-background: var(--bg);
+  --color-fd-foreground: var(--fg);
+  --color-fd-muted: var(--soft);
+  --color-fd-muted-foreground: var(--muted);
+  --color-fd-popover: var(--surface);
+  --color-fd-popover-foreground: var(--fg);
+  --color-fd-card: var(--surface);
+  --color-fd-card-foreground: var(--fg);
+  --color-fd-border: var(--line);
+  --color-fd-primary: var(--teal-text);
+  --color-fd-primary-foreground: var(--action-fg);
+  --color-fd-secondary: var(--soft);
+  --color-fd-secondary-foreground: var(--strong);
+  --color-fd-accent: var(--teal-soft);
+  --color-fd-accent-foreground: var(--teal-text);
+  --color-fd-ring: var(--teal);
+}
+
+/* Inline code is a machine token: left to right, isolated from the Arabic around it. Code blocks already carry dir="ltr". It takes no border and no vertical padding, so a line that holds one keeps the paragraph's line height. */
+.prose :not(pre) > code {
+  direction: ltr;
+  unicode-bidi: isolate;
+  border: 0;
+  border-radius: 0.3rem;
+  background: var(--soft);
+  padding: 0.05em 0.35em;
+  font-size: 0.86em;
+  font-weight: 400;
+  line-height: inherit;
+  color: var(--strong);
+  box-decoration-break: clone;
+}
+
+/* Arabic has no italic, so a slanted quote is a synthesized oblique; quote marks are the writer's. */
+.prose blockquote {
+  font-style: normal;
+  quotes: none;
+}
+
+/* A keyboard shortcut reads left to right in every language, as on the keyboard: Ctrl K, not K Ctrl. */
+:is(span, div):has(> kbd) {
+  direction: ltr;
+}
+
+/* The website's header sits above the layout on a wide screen; the sidebar and the outline stick under it. */
+@media (width >= 48rem) {
+  :root {
+    --fd-banner-height: 3.5rem;
+  }
+}
+
+/* ---- The page: one ink for the text, room between lines, headings that lead. ---- */
+#nd-page {
+  --docs-measure: 46rem;
+}
+#nd-page .prose {
+  --tw-prose-body: var(--fg);
+  --tw-prose-headings: var(--fg);
+  --tw-prose-links: var(--teal-text);
+  --tw-prose-bold: var(--fg);
+  --tw-prose-bullets: var(--faint);
+  --tw-prose-counters: var(--muted);
+  --tw-prose-hr: var(--line);
+  --tw-prose-th-borders: var(--line);
+  --tw-prose-td-borders: var(--line-2);
+  max-width: var(--docs-measure);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+:lang(ar) #nd-page .prose {
+  line-height: 1.95;
+}
+#nd-page h1 {
+  font-size: clamp(2rem, 1.6rem + 1.4vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+#nd-page h1 + p {
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: var(--fg);
+}
+#nd-page .prose :is(h2, h3) {
+  font-weight: 600;
+  scroll-margin-top: calc(var(--fd-banner-height, 0px) + 1.5rem);
+}
+#nd-page .prose h2 {
+  margin-top: 3rem;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+#nd-page .prose h3 {
+  margin-top: 2.25rem;
+  font-size: 1.15rem;
+}
+:lang(ar) #nd-page :is(h1, h2, h3) {
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+#nd-page .prose a:not([data-card]) {
+  font-weight: 500;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklch, var(--teal-text) 40%, transparent);
+  text-underline-offset: 0.3em;
+}
+#nd-page .prose a:not([data-card]):hover {
+  text-decoration-color: currentColor;
+}
+#nd-page .prose :is(ul, ol) > li::marker {
+  color: var(--faint);
+}
+
+/* ---- Code blocks: a surface on the rim, the language and the copy button in a bar above the code. ---- */
+#nd-page figure.shiki {
+  margin-block: 1.5rem;
+  background: var(--surface) !important;
+  border: 0;
+  border-radius: 0.75rem;
+  box-shadow:
+    inset 0 1px 0 var(--sheen),
+    0 0 0 1px var(--rim),
+    0 1px 2px var(--lift-near),
+    0 12px 32px -22px var(--lift-far);
+}
+#nd-page figure.shiki > div:first-child:has(figcaption) {
+  height: 2.5rem;
+  padding-inline: 0.75rem 0.375rem;
+  background: transparent;
+  border-bottom: 1px solid var(--line-2);
+}
+#nd-page figure.shiki figcaption {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+#nd-page figure.shiki .fd-scroll-container {
+  padding-block: 0.875rem;
+}
+#nd-page figure.shiki pre {
+  padding: 0;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.75;
+}
+#nd-page figure.shiki pre .line {
+  padding-inline: 1rem;
+}
+
+/* ---- Tables: rows divided by hairlines, the header in ink, cells at the text's size, wide ones scrolling on their own. ---- */
+#nd-page .prose table {
+  width: 100%;
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  border-collapse: collapse;
+}
+#nd-page .prose :is(th, td) {
+  padding: 0.75rem 1rem 0.75rem 0;
+  vertical-align: top;
+  text-align: start;
+  border: 0;
+}
+#nd-page .prose :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+:dir(rtl) #nd-page .prose :is(th, td) {
+  padding: 0.75rem 0 0.75rem 1rem;
+}
+#nd-page .prose thead th {
+  font-weight: 600;
+  color: var(--fg);
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+}
+#nd-page .prose tbody tr + tr td {
+  border-top: 1px solid var(--line-2);
+}
+#nd-page .prose div:has(> table) {
+  margin-block: 1.75rem;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+/* ---- A note: a coloured mark and a line on its start side, the text in ink. ---- */
+.docs-note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  padding-block: 0.25rem;
+  padding-inline-start: 1rem;
+  margin-block: 1.75rem;
+  border-inline-start: 2px solid var(--teal);
+}
+.docs-note[data-type="warn"] {
+  border-color: var(--degraded);
+}
+.docs-note-mark {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.3em;
+  color: var(--teal);
+}
+.docs-note[data-type="warn"] .docs-note-mark {
+  color: var(--degraded);
+}
+.docs-note-body > :first-child {
+  margin-top: 0;
+}
+.docs-note-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* ---- The sidebar: no panel, no pill; the page you are on is the teal text alone. ---- */
+#nd-sidebar {
+  background: var(--bg);
+  border-color: var(--line-2);
+}
+#nd-sidebar > div:first-child:has(a[href="/"], a[href="/en"]) {
+  display: none;
+}
+#nd-sidebar a[data-active],
+#nd-sidebar-mobile a[data-active] {
+  padding-block: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  border-radius: 0.375rem;
+}
+#nd-sidebar a[data-active]:hover,
+#nd-sidebar-mobile a[data-active]:hover {
+  color: var(--fg);
+  background: transparent;
+}
+#nd-sidebar a[data-active="true"],
+#nd-sidebar-mobile a[data-active="true"] {
+  font-weight: 500;
+  color: var(--teal-text);
+  background: transparent;
+}
+
+/* ---- The outline: quieter, the section you read in teal. ---- */
+#nd-toc a {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+#nd-toc a[data-active="true"] {
+  color: var(--teal-text);
+}
+
+/* ---- Fixes over Fumadocs' defaults. ---- */
+/* A table is the page's own text: no panel behind it; a machine token in a cell never breaks inside. */
+#nd-page .prose :is(table, thead, tbody, tr, th, td) {
+  background: transparent;
+}
+#nd-page .prose td code {
+  white-space: nowrap;
+}
+/* The page you are on is its teal text; no bar beside it. */
+#nd-sidebar a[data-active="true"]::before,
+#nd-sidebar-mobile a[data-active="true"]::before {
+  display: none;
+}
+/* The copy-as-Markdown action is a quiet link, not a boxed button. */
+.docs-actions button {
+  padding-inline: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.docs-actions button:hover {
+  color: var(--fg);
+  background: transparent;
+}
+/* The previous and next pages: surfaces on the rim, not grey-bordered cards. */
+#nd-page a.border.p-4 {
+  background: var(--surface);
+  border: 0;
+  border-radius: 0.75rem;
+  box-shadow:
+    inset 0 1px 0 var(--sheen),
+    0 0 0 1px var(--rim),
+    0 1px 2px var(--lift-near);
+}
+#nd-page a.border.p-4:hover {
+  color: var(--teal-text);
+  background: var(--surface);
+}

@@ -1,0 +1,36 @@
+---
+title: Container monitors
+description: Let a container monitor reach a Docker or Podman daemon, ideally through a socket proxy that passes two read-only paths.
+---
+
+A container monitor asks a Docker daemon about one container by its name: up while it runs and its HEALTHCHECK, if it has one, has not called it unhealthy. Raaqeb reads two paths of the Docker Engine API, `GET /containers/json` for the form's list and `GET /containers/<name>/json` for each check, and never writes. The endpoint is a Unix socket's path, `/var/run/docker.sock` by default, or an http or https URL. Podman's Docker-compatible socket works the same way (`/run/podman/podman.sock`, or `/run/user/<uid>/podman/podman.sock` rootless). On Windows, Docker Desktop listens on a named pipe, which Raaqeb cannot reach; turn on Docker Desktop's "Expose daemon on tcp://localhost:2375 without TLS" setting and use `http://localhost:2375`, or put a socket proxy in front of the daemon and use its URL. The exposed port is the whole API, unauthenticated, so it must stay on localhost.
+
+Whoever can write to the Docker socket is root on the host, read-only mount or not: the API starts containers. Give Raaqeb a proxy that passes the two paths and nothing else. [wollomatic/socket-proxy](https://github.com/wollomatic/socket-proxy) does it with one pattern per method. Under Docker Compose, add this service to `deploy/compose.yaml` and `DOCKER_GID=<the number>` to the `.env` beside it:
+
+```yaml
+services:
+  socket-proxy:
+    image: wollomatic/socket-proxy:1
+    restart: unless-stopped
+    # The docker group's id on the host, from `stat -c %g /var/run/docker.sock`.
+    user: "65534:${DOCKER_GID:?set DOCKER_GID in .env}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - -listenip=0.0.0.0
+      # Only the raaqeb service may ask, and only for the list and one container.
+      - -allowfrom=raaqeb
+      - -allowGET=^(/v[0-9.]+)?/containers(/json|/[a-zA-Z0-9][a-zA-Z0-9_.-]+/json)$$
+```
+
+Then the monitor's endpoint is `http://socket-proxy:2375`. The proxy refuses every other path with 403, every other method with 405, and every client but the `raaqeb` service. The `ip_range` of the compose file's network has room for this third service beside Raaqeb and Postgres. What the proxy passes still says a lot: a container's details include its environment, so keep the proxy on the private network it shares with Raaqeb and never publish its port. A daemon on another host is reached the same way, with the proxy listening on an address only Raaqeb's host can reach; Raaqeb sends no credentials and no client certificate, so the network is the boundary.
+
+The root-equivalent options, for a host where that is acceptable:
+
+- Under Docker, mount the socket into Raaqeb's container (`- /var/run/docker.sock:/var/run/docker.sock`) and add the socket's group, `group_add: ["<the docker group's id>"]`, since the image runs as the unprivileged user 65532.
+- After the installer, add the `raaqeb` user to the `docker` group: `systemctl edit raaqeb` and write `[Service]` then `SupplementaryGroups=docker`, then `systemctl restart raaqeb`. On OpenRC, `addgroup raaqeb docker` and restart the service.
+
+A socket Raaqeb cannot open shows in the form and on the monitor as "connection failed" with its code: `ENOENT` when nothing is at the path (the socket is not mounted), `EACCES` when Raaqeb's user may not open it (the group is missing), `ECONNREFUSED` when nothing listens there. A proxy's refusal shows as an unexpected status, 403 or 405.

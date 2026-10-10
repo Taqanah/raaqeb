@@ -1,0 +1,150 @@
+---
+title: Status pages
+description: What a status page is, how to create and publish one, its addresses, what visitors see on it, and how its status and uptime are worked out.
+---
+
+A status page is a public page that shows a set of components you choose, their status now, a day bar of their daily uptime, and the incidents and maintenance windows that affect them. An install can have many status pages. Components, incidents and maintenance windows belong to the install, not to a page, so one component can appear on several pages and an incident shows on every page that shows a component it affects.
+
+This page covers the page itself. The other pages in this section cover [components](/en/docs/status-pages/components), [incidents](/en/docs/status-pages/incidents), [maintenance windows](/en/docs/status-pages/maintenance), [subscriptions](/en/docs/status-pages/subscriptions), [custom domains](/en/docs/status-pages/custom-domains), and the [badge, feed and summary](/en/docs/status-pages/badge-and-feed).
+
+## Create a status page
+
+A page shows components, so [create a component](/en/docs/status-pages/components) first.
+
+1. In the admin area, open **Status pages** and select **Add status page**.
+2. Fill in **Title**, **Slug** and **Page language**. The form shows the address the page will be **Served at**.
+3. Select **Create page**. The page's editor opens.
+4. Under **Components**, add the components the page shows.
+5. Turn on **Published** and select **Save**.
+
+A new page starts unpublished, with every other setting at its default. A new page becomes the default page, served at the public address itself, whenever the install has none.
+
+| Field | Rule |
+| --- | --- |
+| **Title** | Up to 100 characters. Shown at the top of the page and in the browser tab. |
+| **Slug** | Lower-case Latin letters, digits and dashes, 1 to 63, no dash at either end. Unique across the install's pages. |
+| **Page language** | Arabic or English. The page's interface language at its plain address. See [Languages](#languages). |
+
+## The editor
+
+The editor is one form with one **Save**, except the images, which save as soon as you choose them. **View page** opens the page, and **Subscribers** lists its [subscribers](/en/docs/status-pages/subscriptions#manage-subscribers).
+
+| Section | Fields |
+| --- | --- |
+| **Page** | **Title**, **Slug**, **Page language**, **Published**, **Default page**, **Custom domain**. |
+| **Components** | The components the page shows, in order, in groups one level deep. **Page status now** shows the level the page would have. See [Components](/en/docs/status-pages/components#put-components-on-a-page). |
+| **Appearance** | **Logo**, **Favicon**, **Cover image** (shown when the page's link is shared), **Default theme**, **Brand colour**, **Status colours**, **Status names**. |
+| **Content** | **Description**, **Day bar**, **Bar length**, **Show percentages**, **Subscription channels**, **Footer links**, **Contact link**, **Hide from search engines**, **Show "Powered by Raaqeb"**. |
+| **Custom CSS** | Added after the page's own styles, up to 64 KB. It cannot contain `</`. |
+
+Some limits and defaults:
+
+- **Logo** and **Favicon** take PNG, JPEG, WebP or SVG up to 256 KB; the favicon also takes ICO. **Cover image** takes the same formats up to 1 MB.
+- **Default theme** is **System**, **Light** or **Dark**. It applies to a visitor whose browser holds no choice of its own; visitors switch the theme in the page's footer.
+- **Status names** rename the five status levels for display, per language. The machine values in the summary and webhooks never change. A level with no name in a language shows the default word.
+- **Day bar** is on by default with a **Bar length** of 90 days; the other lengths are 30 and 60. **Show percentages** is on by default.
+- **Footer links** holds up to 10 links, each an `https`, `http` or `mailto` link with a label of up to 40 characters.
+- **Description** is up to 500 characters, shown under the title, in search results and when the link is shared.
+
+**Delete page** removes the page, its groups, its images and its subscribers. The components stay.
+
+## Addresses
+
+A status page has one address per language. The page language is at the plain address and the other language sits under its prefix, `/en` or `/ar`. Every other view hangs from the plain address.
+
+For a page with the slug `acme` and Arabic as its page language, on the public address `https://status.example.com`:
+
+| Address | Shows |
+| --- | --- |
+| `/status/acme` | The overview, in Arabic. |
+| `/en/status/acme` | The overview, in English. |
+| `/status/acme/history` | The history of the current month. |
+| `/status/acme/history/2026-09` | The history of September 2026. |
+| `/status/acme/incidents/<id>` | One incident. |
+| `/status/acme/maintenance/<id>` | One maintenance window. |
+
+The default page is also served at `/`, and its other language at `/en` (or `/ar` for an English page). Only one page is the default; turning on **Default page** for one page turns it off for the other.
+
+A prefix in the page's own language is not an address: `/ar/status/acme` on an Arabic page is not found.
+
+A page with a [custom domain](/en/docs/status-pages/custom-domains) is served at `/` on that domain, with the same views below it, and stays at `/status/<slug>` on the public address too.
+
+## What a visitor sees
+
+Every view shows the page's frame: the logo, title and description at the top with a button that switches to the other language, and a footer with the footer links, **Contact us** when a contact link is set, **Powered by Raaqeb** when it is on, and the theme switch.
+
+A status page has four views:
+
+| View | What it shows |
+| --- | --- |
+| Overview | A banner with the page's status level and, in the same card under it, each open incident with its latest update and one line of its impact, stage, time and the components it touches. A card for each maintenance window in progress or scheduled. The components in the page's order with their status, day bar and uptime. A **View history** button under them, and a **Get updates** button in the header that opens the subscribe dialog. |
+| History | The resolved incidents and completed maintenance windows that started in one UTC month, newest first, with **Previous month** and **Next month**. It reaches back to the month of the page's oldest entry, or the month the longest day bar starts in when that is earlier. |
+| Incident | One incident: its impact, stage, start, end and duration, the page's components it affects, and every update, newest first. |
+| Maintenance window | One window: its stage, its start and end, its description, and the page's components it affects. |
+
+An incident or maintenance window is on a page only while it affects a component the page shows. Each card's title opens its view.
+
+The banner says one of these, unless the page renamed the level under **Status names**, in which case it shows that name:
+
+| Page status level | Banner |
+| --- | --- |
+| Operational | All components operational |
+| Under maintenance | Maintenance in progress on some components |
+| Degraded performance | Degraded performance on some components |
+| Partial outage | Partial outage on some components |
+| Major outage | Major outage on some components |
+
+An open page reloads its view's data every 60 seconds and when the browser tab regains focus, never while the tab is hidden. A change you make in the admin area reaches the next reload. Figures that move with the clock alone, such as today's cell, update at least every five minutes.
+
+## The day bar and uptime
+
+The day bar has one cell per UTC day, coloured by that day's uptime:
+
+| Day's uptime | Colour |
+| --- | --- |
+| 99.9% and over | Operational |
+| 99% to under 99.9% | Degraded performance |
+| 95% to under 99% | Partial outage |
+| Under 95% | Major outage |
+| Nothing observed | No data |
+
+A bar spans the page's **Bar length**. A phone shows at most the last 30 days and a tablet at most the last 60. Today's cell is live. Hovering, focusing or tapping a cell opens the day's card: its status, date, uptime, downtime, average response time, the incidents and maintenance windows that ran on it, and **View this month**, which opens the history of that UTC month. The arrow keys move between days.
+
+A component's status shows as an icon before its name, its word beside it on a wider screen when it is not operational. The **Components** heading says how many days the bars reach back at the screen's width. With **Show percentages** on, the uptime over the days shown sits beside the component's name; with the day bar off, it covers the bar length.
+
+A component's uptime is one minus its downtime over its observed time:
+
+- **Downtime** is the union of its linked monitors' outages and the time incidents held it at partial outage or major outage, resolved ones included.
+- **Observed time**, for each day, is the largest observed time among its linked monitors that day, or the time incidents held it down if that is longer, less the time its maintenance windows ran. A monitor's observed time leaves out paused time and gaps with no checks. A component with no linked monitors counts every day since it was created.
+- Maintenance time is neither downtime nor observed time, so it never lowers uptime.
+- A status set by hand is not counted. A component set to major outage by hand still reads 100% unless an incident or a monitor says otherwise.
+
+Uptime is rounded down, with 2 to 5 decimals, so any downtime keeps it below 100%. A span with no observed time shows no figure.
+
+## A component's status and the page's level
+
+A component's status is one of five status levels: operational, under maintenance, degraded performance, partial outage, major outage. It is worked out in this order:
+
+1. While a maintenance window that affects it is in progress, it is under maintenance.
+2. Otherwise, if it has linked monitors, it shows the worse of its derived status and the status open incidents set on it.
+3. Otherwise, it shows the status open incidents set on it, or else the status set by hand.
+
+The derived status comes from its linked monitors that are not paused: all down is a major outage, some down is a partial outage, any degraded is degraded performance, otherwise operational. When several open incidents set a status on the same component, the worst one counts. [Components](/en/docs/status-pages/components) and [Incidents](/en/docs/status-pages/incidents) give the details.
+
+A component group's status and the page's status level are the worst status among the components they hold, in this order from best to worst: operational, under maintenance, degraded performance, partial outage, major outage. The banner shows the page's level. An incident's impact level does not change the banner. A group starts folded, with the number of components it holds, while all of them are operational, and open while any is not; a visitor opens or folds it.
+
+## Languages
+
+A status page has a page language, which is the language at its plain address; the other language has its own address under its prefix. The button at the top of every view moves between them.
+
+The words of the interface come from Raaqeb's message catalog for each language. Your own text, such as the title, component names and incident updates, is written per language. A view shows the text written in its language, else the page language's text, else whichever language it is written in. The page's title, description, footer link labels and group names need the page language's text; component names, incident titles and updates, and maintenance window titles and descriptions need the install language's.
+
+Dates follow the install's calendar setting, and times first render on the install's clock and time zone. Once the page has loaded, times switch to the visitor's own time zone. Digits are Western in both languages.
+
+## Who can see a page
+
+A page is public once **Published** is on, and anyone with its address can read it. There are no private pages.
+
+An unpublished page is not found by visitors at any of its addresses, takes no subscription and sends its subscribers nothing. Its badge, feed and summary are not found by anyone. When you are signed in, you see its views at its own addresses with a line above them: "Not published: only you see this page, while signed in."
+
+**Hide from search engines** adds a `noindex` robots tag to the page's views. It does not hide the page from anyone who has the address.

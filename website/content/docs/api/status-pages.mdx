@@ -1,0 +1,52 @@
+---
+title: صفحات الحالة
+description: مستند JSON لكل واجهة عرض، وصور الصفحة، وملخّصها المتوافق مع Statuspage، وشارتها وموجزها، وسؤال النطاق المخصص.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+تجيب صفحة الحالة المنشورة عن هذه الطلبات لأي أحد. أما غير المنشورة فتجيب بـ `404`، إلا للمشغّل الذي سجّل الدخول، فيحصل على مستنداتها مع `Cache-Control: no-store`.
+
+تحمل كل إجابة ترويسة ETag. أعِدها في `If-None-Match`، فتأتي الإجابة التي لم تتغير `304` بلا محتوى. و`{id}` هو معرّف صفحة الحالة.
+
+## نظرة عامة
+
+<ApiOperation path="/api/pages/{id}/overview" />
+
+## السجل
+
+<ApiOperation path="/api/pages/{id}/history" />
+
+<ApiOperation path="/api/pages/{id}/history/{month}" />
+
+## الحادثة
+
+<ApiOperation path="/api/pages/{id}/incidents/{incidentId}" />
+
+## وقت الصيانة
+
+<ApiOperation path="/api/pages/{id}/maintenance/{windowId}" />
+
+## الصور
+
+<ApiOperation path="/api/pages/{id}/{kind}" />
+
+## الملخّص المتوافق مع Statuspage
+
+تقرأ هذا الملخّصَ الأدواتُ التي تقرأ ملخّص Atlassian Statuspage. وعلى المسار وحده هو ملخّص الصفحة التي على ذلك المضيف: صاحبة النطاق المخصص، أو الصفحة الافتراضية على مضيف التثبيت نفسه.
+
+<ApiOperation path="/api/v2/summary.json" />
+
+## الشارة
+
+<ApiOperation path="/badge.svg" />
+
+## الموجز
+
+<ApiOperation path="/feed.atom" />
+
+## شهادات النطاقات المخصصة
+
+السؤال الذي يطرحه الوكيل العكسي قبل أن يُصدر عند الطلب شهادةً لاسم مضيف. انظر [النطاقات المخصصة](/docs/operate/custom-domains) لإعداد Caddy الذي يطرح هذا السؤال.
+
+<ApiOperation path="/api/custom-domain" />

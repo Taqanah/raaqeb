@@ -1,0 +1,4 @@
+# The image takes the two glibc binaries and nothing else.
+*
+!dist/bin/raaqeb-linux-x64
+!dist/bin/raaqeb-linux-arm64

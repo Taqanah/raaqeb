@@ -1,0 +1,69 @@
+---
+title: Discord
+description: How to get a Discord webhook URL, what a Discord channel posts, and how a refused post shows in Raaqeb.
+---
+
+A Discord channel posts each notification to one Discord channel through a webhook, as text in the channel language. Raaqeb escapes Discord's markdown, mentions no one and turns off link previews, so a monitor's name shows as typed.
+
+## What you need first
+
+A webhook URL. In Discord, with the Manage Webhooks permission:
+
+1. Open the server's **Server Settings**, then **Integrations**, then **Webhooks**.
+2. Choose **New Webhook**, name it, and pick the channel it posts to.
+3. Choose **Copy Webhook URL**. It starts with `https://discord.com/api/webhooks/`.
+
+## Fields
+
+| Field | Meaning | Required | Default |
+| --- | --- | --- | --- |
+| **Name** | What the admin area calls the channel, at most 80 characters. | Yes | None |
+| **Channel language** | The language of the message. | No | **The install language** |
+| **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
+| **URL** | The webhook URL. The URL carries Discord's token, so it is a secret: stored encrypted with the install key and never shown after saving. | Yes | None |
+
+## The message
+
+Raaqeb posts this JSON to the webhook URL:
+
+```json
+{
+  "allowed_mentions": { "parse": [] },
+  "content": "Main website is down\n\nThe monitor is down.\n\nMonitor: Main website\nTarget: https://example.com\nReason: Timed out\nTime: Sep 25, 2026, 18:49 (UTC)\n[Open the monitor](<https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d>)\n[Open an incident](<https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d>)",
+  "flags": 4
+}
+```
+
+In Discord it reads:
+
+```text
+Main website is down
+
+The monitor is down.
+
+Monitor: Main website
+Target: https://example.com
+Reason: Timed out
+Time: Sep 25, 2026, 18:49 (UTC)
+Open the monitor
+Open an incident
+```
+
+The first line is the subject. The last two lines are links, present only when the install stores a public address. `flags: 4` turns off link previews. See [What a notification says](/en/docs/notifications#what-a-notification-says) for every event's lines.
+
+## Failures and limits
+
+Discord takes at most 2000 characters. A longer message is cut and ends in `…`; the links are kept whole. One attempt gives up after 10 seconds, and a failed attempt is retried 30 seconds, 2 minutes and 10 minutes later. Discord's rate limit answers `429`, which retries on the same schedule.
+
+| Reason code | Text | Typical cause |
+| --- | --- | --- |
+| `unexpected_status` | Unexpected status code | Discord refused the post. **Observed** shows the status and **Error text** Discord's answer, such as `Unknown Webhook` after the webhook was deleted. |
+| `timeout` | Timed out | No answer within 10 seconds. |
+| `dns_failed` | DNS lookup failed | The URL's host does not resolve. |
+| `connection_refused` | Connection refused | Nothing listens at the URL's host and port. |
+| `connection_failed` | Connection failed | The connection was reset or the host was unreachable. |
+| `certificate_expired` | Certificate expired | The receiver's certificate has expired. |
+| `certificate_invalid` | Certificate invalid | The certificate cannot be verified. |
+| `unknown` | Unknown error | Anything else. **Error text** says what happened. |
+
+The webhook URL is removed from every recorded error text.

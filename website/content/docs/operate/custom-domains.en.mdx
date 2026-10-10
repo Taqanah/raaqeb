@@ -1,0 +1,29 @@
+---
+title: Custom domains
+description: Give a status page its own domain, and have the proxy issue its certificate on demand only for a published page.
+---
+
+A status page may have its own domain, set in its editor. Point the domain's DNS at the server, and the proxy serves it like the main address. A custom domain cannot be the public address's host.
+
+Its certificate comes from the proxy. Caddy issues one on demand: the first visit to the domain asks Raaqeb first, at `GET /api/custom-domain?domain=<host>`, which answers 200 only when a published status page holds that domain. A stranger's domain pointed at the server, or the domain of a page not yet published, gets no certificate. `deploy/Caddyfile` does this for the compose file. On the same server:
+
+```text title="Caddyfile"
+{
+	on_demand_tls {
+		ask http://127.0.0.1:3000/api/custom-domain
+	}
+}
+
+raaqeb.example.com {
+	reverse_proxy 127.0.0.1:3000
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	reverse_proxy 127.0.0.1:3000
+}
+```
+
+With Nginx or Traefik, each custom domain needs its own certificate in the proxy's configuration, as the main address does. On Fly.io, `fly certs add <domain>` (the Fly guide).

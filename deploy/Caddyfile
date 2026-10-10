@@ -1,0 +1,22 @@
+# Caddy in front of Raaqeb, the caddy profile of compose.yaml: automatic
+# HTTPS for DOMAIN, and every request passed on with X-Forwarded-For,
+# X-Forwarded-Proto and the host, which Raaqeb believes from this Caddy only.
+# Caddy sets no limit on a request body, so an import's upload passes whole.
+{
+	# A status page's custom domain gets its certificate on its first visit,
+	# once Raaqeb answers that a published page holds it.
+	on_demand_tls {
+		ask http://raaqeb:3000/api/custom-domain
+	}
+}
+
+{$DOMAIN} {
+	reverse_proxy raaqeb:3000
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	reverse_proxy raaqeb:3000
+}

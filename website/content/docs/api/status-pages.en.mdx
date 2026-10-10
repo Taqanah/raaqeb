@@ -1,0 +1,52 @@
+---
+title: Status pages
+description: Each view's JSON document, a page's images, its Statuspage-compatible summary, its badge and feed, and the custom domain question.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+A published status page answers these to anyone. One that is not published answers `404`, except to the signed-in operator, who gets its documents with `Cache-Control: no-store`.
+
+Each answer carries an ETag. Send it back in `If-None-Match` and an unchanged answer is a `304` with no body. `{id}` is the status page's id.
+
+## Overview
+
+<ApiOperation path="/api/pages/{id}/overview" />
+
+## History
+
+<ApiOperation path="/api/pages/{id}/history" />
+
+<ApiOperation path="/api/pages/{id}/history/{month}" />
+
+## Incident
+
+<ApiOperation path="/api/pages/{id}/incidents/{incidentId}" />
+
+## Maintenance window
+
+<ApiOperation path="/api/pages/{id}/maintenance/{windowId}" />
+
+## Images
+
+<ApiOperation path="/api/pages/{id}/{kind}" />
+
+## Statuspage-compatible summary
+
+Tools that read Atlassian Statuspage's summary read this one. At the bare path it is the page at that host: its custom domain, or the default page on the install's own host.
+
+<ApiOperation path="/api/v2/summary.json" />
+
+## Badge
+
+<ApiOperation path="/badge.svg" />
+
+## Feed
+
+<ApiOperation path="/feed.atom" />
+
+## Custom domain certificates
+
+The question a reverse proxy asks before it issues a certificate for a host name on demand. See [custom domains](/en/docs/operate/custom-domains) for the Caddy setup that asks it.
+
+<ApiOperation path="/api/custom-domain" />

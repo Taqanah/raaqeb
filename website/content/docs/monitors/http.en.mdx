@@ -1,0 +1,107 @@
+---
+title: HTTP
+description: Watch a URL with an HTTP monitor, judge its responses with success rules, and read the reasons a failed check reports.
+---
+
+An HTTP monitor sends a request to a URL and judges the response by its success rules: an ordered list of assertions that must all pass. Use it for websites, APIs and health endpoints. For a port that speaks something other than HTTP, use [TCP](/en/docs/monitors/tcp).
+
+## Add an HTTP monitor
+
+Select **Add monitor**, choose **HTTP** as the **Check type**, and fill in the sections below. The fields every check type shares (name, schedule, organization and retention, notifications) are on [Monitors](/en/docs/monitors).
+
+### Monitor
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Method** | The request method. | `GET`. Also `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`. |
+| **URL** | The address to request. | Required. Starts with `http://` or `https://`. An IP address and `localhost` work. A user name or password in the URL is refused: use **Authentication**. |
+
+### Success rules
+
+A check is up when every assertion passes, in order. The first one that fails ends the check and gives its reason; the ones after it are not evaluated. Select **Add assertion** for another row. The rule needs at least one assertion; a new monitor starts with **Status code in** `2xx`.
+
+| Assertion | Fields | Passes when |
+|---|---|---|
+| **Status code in** | **Status codes** | The status code is in the list. Each entry is a class (`2xx`), a code (`204`) or a range (`200-299`), separated by commas. |
+| **Body contains** | **Text** | The body contains the text, case-sensitive. |
+| **Body does not contain** | **Text** | The body does not contain the text. |
+| **JSON value equals** | **Path, such as data.status**, **Value** | The body is JSON, the path exists, and its value as text equals **Value**. |
+| **JSON value matches** | **Path, such as data.status**, **Pattern** | The body is JSON, the path exists, and its value as text matches the regular expression. |
+| **Header equals** | **Header name**, **Value** | The response has the header and its value equals **Value** exactly. A missing header fails, even against an empty value. |
+| **Response time under** | **Time** (ms) | The response time is below this many milliseconds, 1 to 60000. |
+
+A JSON path is keys separated by dots, with indexes in square brackets: `status`, `data.items[0].status`. Wildcards, filters and slices are not supported. A string value is compared as it is; any other value is compared as JSON text, so a number reads `12`, a boolean `true` and an object `{"a":1}`. A pattern is a JavaScript regular expression with no flags, so add `^` and `$` to match the whole value.
+
+Raaqeb reads at most 1 MB of the body and cancels the rest; the assertions run on what was read, decoded as UTF-8.
+
+### Request
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Request body** | Sent with the request. `GET` and `HEAD` send no body. | Empty. Up to 65536 characters. |
+| **Follow redirects** | Follows `301`, `302`, `303`, `307` and `308` responses to their `Location`. Off, the redirect response itself is judged. | On. At most 10 redirects. |
+| **Ignore TLS errors** | Accepts expired and self-signed certificates. | Off. |
+| **Authentication** | **None**, **User name and password** (basic auth) or **Bearer token**. | None. A user name cannot contain a colon. |
+| **Request headers** | Custom headers sent with every attempt. Select **Add header** for another. | Up to 20, each name once. A value is one line of Latin characters. |
+
+Authentication and request headers are credentials: Raaqeb stores them encrypted with the install key and never shows their values again. On edit, a saved secret shows "Saved; leave it empty to keep it". A renamed header needs its value typed again. If you set both **Authentication** and a custom `Authorization` header, **Authentication** wins.
+
+When following redirects, a redirect to another origin drops the `Authorization`, `Cookie` and `Proxy-Authorization` headers; other headers go on. A `303`, or a `301` or `302` answering a `POST`, turns the next request into a `GET` with no body. A redirect to anything but `http` or `https` fails the attempt.
+
+### Certificate and capture
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Warn before the certificate expires** | Records the site's certificate and sends the certificate expiring event. See [Certificate record](/en/docs/monitors/certificates). | Off. For `https` addresses only. |
+| **Before it expires** | How many days before expiry the first warning goes. | 14 days. 1 to 365. |
+| **Capture mode** | When a check keeps the response headers and the first 4 KB of the body: **Off**, **On failure** (down checks only) or **Always**. | Off. **Always** costs about 5.8 MB a day at a 1 minute interval. |
+
+A capture never holds request headers or credentials. `Set-Cookie` and any response header whose name contains `auth`, `token`, `key` or `cookie` keep their name and lose their value. Any credential the check sent that the response repeats is replaced with `[REDACTED]`. The values of the standard request headers `Accept`, `Accept-Encoding`, `Accept-Language`, `Content-Type`, `Cache-Control` and `User-Agent` are not treated as credentials.
+
+## Up, degraded and down
+
+The response time runs from the start of the request to the end of the body read, capped by the timeout.
+
+- **Up**: every assertion passed and the response time is within the degraded threshold.
+- **Degraded**: every assertion passed and the response time is above the degraded threshold.
+- **Down**: an assertion failed, or the request did not complete, on the last attempt.
+
+The reasons a failed check reports:
+
+| Reason | What happened |
+|---|---|
+| Timed out | The attempt, body included, took longer than the timeout. |
+| DNS lookup failed | The host name did not resolve. |
+| Connection refused | Nothing accepted the connection at the host and port. |
+| Connection failed | The connection was reset, closed or unreachable, or the TLS handshake ended before any certificate. The code is kept. |
+| Certificate expired | The certificate's validity has ended. |
+| Certificate invalid | The certificate did not verify: self-signed, issued for another name, or from an unknown issuer. The code is kept. |
+| Unexpected status code | **Status code in** failed. Shows the expected codes and the observed one. |
+| An assertion failed | A body, JSON or header assertion failed. Shows the expected and observed values, up to 200 characters each. |
+| Slow response | **Response time under** failed. Shows the limit and the observed time. |
+| Too many redirects | More than 10 redirects. |
+| Unknown error | Anything else. The raw error text is kept beside it. |
+
+With **Ignore TLS errors** on, the two certificate reasons do not happen.
+
+## Example
+
+An API's health endpoint, `https://api.example.com/health`, answers:
+
+```json
+{ "status": "ok", "db": { "latency_ms": 12 } }
+```
+
+Set **URL** to `https://api.example.com/health`, keep **Status code in** `2xx`, add **JSON value equals** with the path `status` and **Value** `ok`, and set **Degraded threshold** to `800`.
+
+- A `503` response is down with "Unexpected status code", expected `2xx`, observed `503`. The JSON assertion is not evaluated.
+- A `200` with `"status": "starting"` is down with "An assertion failed", expected `ok`, observed `starting`.
+- A `200` with `"status": "ok"` that takes 1.2 seconds is degraded.
+
+Select **Test now** before saving to see the status code, the response time, the body size, each assertion's result and the response itself.
+
+## Related pages
+
+- [Monitors](/en/docs/monitors): the schedule, retries, events and retention.
+- [Certificate record](/en/docs/monitors/certificates): the certificate warning.
+- [TCP](/en/docs/monitors/tcp): a port without HTTP.

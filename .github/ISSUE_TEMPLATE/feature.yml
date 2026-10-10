@@ -1,0 +1,18 @@
+name: "طلب ميزة | Feature request"
+description: "شيء لا يفعله راقب بعد | Something Raaqeb does not do yet"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "المشكلة | The problem"
+      description: "ما الذي تحاول فعله ولا تستطيع؟ | What are you trying to do that you cannot?"
+    validations:
+      required: true
+  - type: textarea
+    id: expectation
+    attributes:
+      label: "ما تتوقعه | What you would expect"
+      description: "كيف تتخيل أن يعمل راقب هنا | How you imagine Raaqeb working here"
+    validations:
+      required: true

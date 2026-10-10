@@ -1,0 +1,46 @@
+---
+title: Introduction
+description: What Raaqeb is, what it does and does not do, what it needs to run, and where to start reading.
+---
+
+Raaqeb is a self-hosted, single-tenant uptime monitor and status page. It checks your sites, servers and databases on a schedule, notifies your team when one goes down, and publishes status pages for your visitors. It runs as one process on your own server, keeps its data in SQLite by default or in Postgres, and speaks Arabic first, with complete English.
+
+## What it does
+
+**Monitors.** A monitor watches one target with one check type:
+
+- HTTP and HTTPS, with success rules: assertions on the status code, the body, a JSON value, a header and the response time. An HTTPS monitor can warn before its certificate expires.
+- TCP: whether a port accepts a connection.
+- DNS: the records a name answers, against the ones you expect.
+- Database: Postgres, MySQL or Redis. Each check signs in, runs a query and can compare the answer.
+- Docker: one container's state, by name, from the Docker Engine API.
+- Heartbeat: your cron job calls a URL, and a late heartbeat marks the monitor down.
+
+Checks run as often as every 20 seconds. A check that fails is retried before the monitor is called down, and each down spell is recorded as an outage.
+
+**Notification channels.** Email over SMTP, signed webhooks, Slack, Discord, Telegram and ntfy. Each monitor chooses its channels and the events that notify, and each channel writes in its own language. A reminder can repeat the down notification until you acknowledge the outage.
+
+**Status pages.** An install can publish several status pages. Each one shows the components you choose, with their status now and a day bar of their daily uptime, and the incidents and maintenance windows that affect them. A page has a slug, an optional custom domain, its own language with the other one beside it, and its own logo, colours and CSS. Visitors can subscribe by email or webhook, read an Atom feed, embed a status badge, and point a status aggregator at a Statuspage-compatible summary.
+
+## What it is not
+
+- **Not multi-tenant.** One install serves one organization, and it has one operator account. There are no teams or roles.
+- **No management API.** Monitors, components, status pages and incidents are managed in the admin area only. The [API](/en/docs/api) is the public, read-only side: the status page documents, the summary, badges, feeds, heartbeat ingest and the health check.
+- **Not a hosted service.** You run it, and your data stays on your server or in your Postgres.
+- **Not a cluster.** One install is one process. Never run two processes against the same database: each would check every monitor and send every notification.
+- **No automatic incidents.** Raaqeb records outages by itself. An incident is something you write for your visitors.
+
+## What it needs
+
+Raaqeb is built to run on 1 vCPU and 240 MB of RAM. A fresh install, with everything it turns on by default, must fit there, and the floor benchmark measures it in a container limited to one CPU and 240 MB.
+
+It needs no other service. The scheduler and the notification queue live in the one process, and SQLite is a file in the data directory. Raaqeb ships as one binary for Linux, macOS and Windows, or a Docker image. The Linux binary is about 86 MB, almost all of it the Bun runtime.
+
+## Where to start
+
+- [Get started](/en/docs/get-started): install Raaqeb, add a monitor and publish a status page.
+- [Monitors](/en/docs/monitors): every check type and its settings.
+- [Notifications](/en/docs/notifications): the channels and what each one sends.
+- [Status pages](/en/docs/status-pages): components, incidents, maintenance and subscriptions.
+- [Operate](/en/docs/operate): install paths, reverse proxies, Postgres, backups and upgrades.
+- [API](/en/docs/api): the public endpoints and the webhooks Raaqeb sends.

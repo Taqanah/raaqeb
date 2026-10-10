@@ -1,0 +1,51 @@
+---
+title: DNS
+description: Watch that a domain name resolves, and optionally to the value you expect, with a DNS monitor.
+---
+
+A DNS monitor queries one record type for a domain name and, when you name an expected value, looks for it among the answers. Use it to catch a name that stops resolving, a record changed by mistake, or a resolver that stopped answering.
+
+## Add a DNS monitor
+
+Select **Add monitor** and choose **DNS** as the **Check type**. The fields every check type shares are on [Monitors](/en/docs/monitors).
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Domain name** | The name to query. | Required. Any part between dots may hold an underscore, so `_dmarc.example.com` and `selector._domainkey.example.com` work. A part is at most 63 characters, a name at most 253. |
+| **Record type** | The record to ask for. | `A`. Also `AAAA`, `CNAME`, `MX`, `TXT`, `NS`. |
+| **Expected value** | A value one of the answers must equal. | Empty, which accepts any answer. |
+| **DNS resolver** | The resolver to ask: an IP address with an optional port, such as `192.0.2.53`, `192.0.2.53:5353` or `[2001:db8::1]:53`. | Empty, which uses the system's resolver. A host name is refused. |
+
+How the expected value is compared:
+
+- `A`, `AAAA`, `CNAME` and `NS` answers compare without case, and a trailing dot on either side does not matter. An IPv6 address is compared as text, so `2001:db8::1` does not equal `2001:db8:0:0:0:0:0:1`.
+- An `MX` answer compares its exchange name only, never its priority.
+- A `TXT` answer joins its chunks and compares the result exactly, case included.
+
+The check passes when any one answer equals the expected value; other answers may be there too. **Test now** lists the records the resolver answered, one per line.
+
+## Up, degraded and down
+
+The response time is the query time, capped by the timeout. Each attempt asks the resolver once.
+
+- **Up**: the resolver answered at least one record, and the expected value, if set, is among them.
+- **Degraded**: as up, slower than the degraded threshold.
+- **Down**: the query failed, answered nothing, or did not contain the expected value, on the last attempt.
+
+The reasons a failed check reports:
+
+| Reason | What happened |
+|---|---|
+| Timed out | The resolver did not answer within the timeout. |
+| DNS lookup failed | The name does not exist, has no record of this type, or the resolver failed or refused the query. Shows the name. |
+| The DNS answer did not match | No answer equals the expected value. Shows the expected value and the answers, up to 200 characters. |
+| Unknown error | Anything else, such as a resolver address the system cannot use. The raw error text is kept beside it. |
+
+## Example
+
+To catch a change to where `www.example.com` points, set **Domain name** to `www.example.com`, **Record type** to `A`, **Expected value** to `203.0.113.10`, and **DNS resolver** to `1.1.1.1` so the answer does not depend on the server's own resolver. If the record moves to `203.0.113.20`, the check is down with "The DNS answer did not match", expected `203.0.113.10`, observed `203.0.113.20`.
+
+## Related pages
+
+- [Monitors](/en/docs/monitors): the schedule, retries, events and retention.
+- [HTTP](/en/docs/monitors/http): check that the address also serves.

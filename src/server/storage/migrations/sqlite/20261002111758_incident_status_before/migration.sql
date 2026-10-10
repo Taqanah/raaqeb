@@ -1,0 +1,1 @@
+ALTER TABLE `incident_statuses` ADD `status_before` text;

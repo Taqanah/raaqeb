@@ -1,0 +1,14 @@
+---
+title: Public endpoints
+description: The summary, badge and feed every status page answers under its address, and the OpenAPI document of every public endpoint.
+---
+
+Each status page answers, under its address (`/` for the default page, `/status/<slug>` for another, or its custom domain):
+
+- `/api/v2/summary.json`, the Statuspage-compatible summary that status aggregators read;
+- `/badge.svg`, a badge of the page's status level, to embed in a README or a site;
+- `/feed.atom`, an Atom feed of its incidents and maintenance windows.
+
+The badge and the feed have the other language under its prefix (`/en/badge.svg` on an Arabic page). `/api/openapi.json` on any host describes every public endpoint, including heartbeat ingest at `/api/heartbeat/<token>` and the webhooks Raaqeb sends.
+
+Subscribers' email goes through the email channel chosen on the sign-in settings page, and their links are made from the page's custom domain or the public address, so keep the public address right. A subscriber's webhook must be an https address on the public internet.

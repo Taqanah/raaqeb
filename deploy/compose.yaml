@@ -1,0 +1,81 @@
+# Raaqeb under Docker Compose. `docker compose up -d` in this
+# folder runs Raaqeb alone on SQLite, its data in the named volume
+# raaqeb-data; open port 3000 and onboarding asks the rest. Two optional
+# services, each a profile:
+#   --profile postgres  Postgres beside it. On the onboarding database screen
+#                       choose Postgres with the URL
+#                       postgres://raaqeb:<POSTGRES_PASSWORD>@postgres:5432/raaqeb
+#   --profile caddy     Caddy in front, with automatic HTTPS for DOMAIN.
+# Their variables, POSTGRES_PASSWORD and DOMAIN, go in a .env file beside
+# this one; a `$` in a value is written `\$`.
+name: raaqeb
+
+services:
+  raaqeb:
+    image: ghcr.io/taqanah/raaqeb:0.1.0
+    restart: unless-stopped
+    ports:
+      # With the caddy profile, delete this line: Caddy is the way in.
+      - "3000:3000"
+    environment:
+      # Caddy's address below: only its forwarded headers are believed.
+      RAAQEB_TRUSTED_PROXIES: 172.31.253.2
+    volumes:
+      # A named volume needs nothing. A bind mount (./data:/data) needs the
+      # service to run as the folder's owner, with `user: "1000:1000"` here
+      # (`--user "$(id -u):$(id -g)"` under docker run).
+      - raaqeb-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+
+  postgres:
+    image: postgres:18.6-alpine
+    profiles: [postgres]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: raaqeb
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_USER: raaqeb
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raaqeb -d raaqeb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  caddy:
+    image: caddy:2.11.4
+    profiles: [caddy]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      default:
+        ipv4_address: 172.31.253.2
+
+# A fixed subnet, so Caddy's address is known to RAAQEB_TRUSTED_PROXIES.
+# Change the subnet and both addresses if it overlaps a network of the host.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.31.253.0/29
+          # Docker hands out .4 to .6 to the other services, so Caddy's .2 stays free.
+          ip_range: 172.31.253.4/30
+
+volumes:
+  raaqeb-data:
+  postgres-data:
+  caddy-data:
+  caddy-config:

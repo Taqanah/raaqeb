@@ -1,0 +1,16 @@
+---
+title: Health, restarts and logs
+description: The health endpoint, when Raaqeb exits so its supervisor restarts it, and where each install path keeps its log.
+---
+
+`GET /health` needs no sign-in. It answers 200 with `{"ok":true,"database":"ok","scheduler":"ok"}`, or `{"ok":true,"onboarding":true}` before onboarding, and 503 naming the failing part when the database does not answer or the scheduler has not ticked for two minutes. The image's health check and the installer both use it through `raaqeb health`.
+
+When the scheduler has not ticked for five minutes, Raaqeb exits with code 1, and `Restart=on-failure`, OpenRC's `supervise-daemon`, launchd's `KeepAlive`, the Windows task's start every minute or Docker's `restart: unless-stopped` starts it again.
+
+Raaqeb logs one plain line per event to standard output, errors to standard error, each starting `raaqeb: `. It never logs a credential or a boot setting's value.
+
+- systemd: `journalctl -u raaqeb`
+- OpenRC: `/var/log/raaqeb/raaqeb.log`
+- macOS: `/usr/local/var/log/raaqeb/raaqeb.log`
+- Windows: none; Raaqeb keeps no log there. Stop the task and run `serve` by hand in a console to read it ([install on Windows](/en/docs/operate/install#windows))
+- Docker: `docker logs raaqeb`

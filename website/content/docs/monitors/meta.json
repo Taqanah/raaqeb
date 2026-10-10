@@ -1,0 +1,12 @@
+{
+  "title": "المراقبات",
+  "pages": [
+    "http",
+    "tcp",
+    "dns",
+    "database",
+    "docker",
+    "heartbeat",
+    "certificates"
+  ]
+}

@@ -1,0 +1,13 @@
+// The public website as a Cloudflare Worker with static assets and no script.
+// `bun run website:build` writes website/dist/client; deploy with
+// `wrangler deploy --config website/wrangler.jsonc`, signed in on your machine.
+{
+  "name": "raaqeb-website",
+  "compatibility_date": "2026-10-09",
+  "assets": {
+    "directory": "./dist/client",
+    // Serves the nearest 404.html for a path that is no file; without one, Cloudflare's plain 404.
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "raaqeb.dev", "custom_domain": true }]
+}

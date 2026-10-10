@@ -1,0 +1,16 @@
+---
+title: "Moving an install: export and import"
+description: Move an install to another server or from SQLite to Postgres with one export file, and what the import keeps and leaves behind.
+---
+
+The export is one file, `raaqeb-export.jsonl.zst`, downloaded from Settings, Export and import. It holds the configuration (monitors, channels, components, status pages, incidents, maintenance windows, subscriptions and the settings that travel) and, in the full mode, the check history. It is how an install moves to another server or from SQLite to Postgres:
+
+1. Export in the full mode on the old install.
+2. Install Raaqeb on the new server and onboard it on the database you want.
+3. Import the file on the same settings page.
+
+The file holds every credential in clear: monitor credentials, channel secrets and subscribers' webhook URLs. Handle it like a backup and delete it after the move. Import seals them again with the new install's key.
+
+Import works only into an install with no monitors, status pages, components, incidents or maintenance windows, and replaces the settings that travel: the install language, the time zone, the clock and the calendar, the appearance settings, the retention, the size budget and the release check switch. The public address, the trusted proxies, the sign-in settings and the operator's own preferences stay as the new install has them. Ids travel, so status page addresses, heartbeat URLs and subscribers' links keep working once the domain points at the new server. The operator account, certificate records and the notification queue stay behind.
+
+A proxy that caps request bodies must let the file through ([reverse proxy and TLS](/en/docs/operate/reverse-proxy)).

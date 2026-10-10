@@ -1,0 +1,106 @@
+---
+title: Badge, feed and summary
+description: The addresses and contents of a status page's SVG badge, Atom feed, Statuspage-compatible summary and per-view JSON documents.
+---
+
+Every published status page has four machine-readable outputs beside its HTML views: an SVG badge to embed in other sites, an Atom feed, a summary in the shape of Statuspage's `summary.json`, and one JSON document per view. All are public, need no key, and answer `GET` and `HEAD`. The [API reference](/en/docs/api) holds their schemas.
+
+## Addresses
+
+The badge, feed and summary hang from the page's plain address. For a page with the slug `acme` and Arabic as its page language, on the public address `https://status.example.com`:
+
+| Output | Page language | Other language |
+| --- | --- | --- |
+| Badge | `/status/acme/badge.svg` | `/en/status/acme/badge.svg` |
+| Feed | `/status/acme/feed.atom` | `/en/status/acme/feed.atom` |
+| Summary | `/status/acme/api/v2/summary.json` | None: the summary has no words to translate. |
+
+For the default page, drop `/status/acme`: `/badge.svg`, `/en/badge.svg`, `/feed.atom`, `/en/feed.atom` and `/api/v2/summary.json`. On a [custom domain](/en/docs/status-pages/custom-domains), the same paths sit at the domain's root.
+
+The view documents use the page's id instead, and answer on any host that serves Raaqeb:
+
+| Document | Address |
+| --- | --- |
+| Overview | `/api/pages/<id>/overview` |
+| History, current month | `/api/pages/<id>/history` |
+| History, one month | `/api/pages/<id>/history/<yyyy-mm>` |
+| One incident | `/api/pages/<id>/incidents/<incident id>` |
+| One maintenance window | `/api/pages/<id>/maintenance/<window id>` |
+
+The page's id is the last part of its editor's address, `/admin/pages/<id>`, and the summary's `page.id`.
+
+## Badge
+
+The badge is an SVG pill, 20 pixels tall: a dot in the colour of the page's status level and the level's name. The name is in the address's language, or the page's own name for the level when it set one in that language under **Status names**. The dot takes the page's **Status colours**. The page's title is in the SVG's `title` and `aria-label` for assistive technology, not in the picture.
+
+Embed it with an `img` element, linked to the page:
+
+```html title="Embed the badge"
+<a href="https://status.example.com/status/acme">
+  <img src="https://status.example.com/status/acme/badge.svg" alt="Acme status">
+</a>
+```
+
+In Markdown: `![Acme status](https://status.example.com/status/acme/badge.svg)`. For the English words, use `/en/status/acme/badge.svg`.
+
+The badge is served with a sandbox `Content-Security-Policy`, so it works as an image and runs nothing.
+
+## Feed
+
+The feed is Atom. It holds one entry for each incident and each maintenance window on the page's components, the 50 changed last, newest first. A visitor adds the feed's address to any feed reader; there is no subscription record and nothing to confirm.
+
+Each entry has:
+
+- The incident's or window's title, and a link to its view.
+- Its category, `incident` or `maintenance`, its creation time and its last change.
+- For an incident: its impact level, the page's components it affects, and every update with its stage and time, newest first.
+- For a maintenance window: its stage, its start and end, the page's components it affects, and its description.
+
+The feed's words are in the address's language, and so is your text where you wrote it, else the page language's. Dates in the feed's text are always Gregorian, on the install's clock and time zone, whatever the calendar setting.
+
+Every view of the page names its feed in a `link rel="alternate"` element, so a browser or reader can find it from the page's address.
+
+## Summary
+
+The summary describes the page in the shape of Statuspage's `/api/v2/summary.json`, so an aggregator that reads Statuspage pages reads a Raaqeb page unchanged. It holds:
+
+| Field | Contents |
+| --- | --- |
+| `page` | The page's id, title, plain address, the install's time zone, and the time of the last edit to the page, its components, its open incidents or the listed windows. |
+| `components` | The page's components in its order. A group comes before its members, with `group` set to `true` and its members' ids in `components`; a member carries the group's id in `group_id`. |
+| `incidents` | The open incidents on the page's components, each with its updates newest first. |
+| `scheduled_maintenances` | The maintenance windows in progress, then the scheduled ones, on the page's components. |
+| `status` | The page's `indicator` and its `description`. |
+
+The indicator is the worse of two values: the page's status level, mapped through this table, and the highest impact level among the page's open incidents, mapped the same way. The indicators run from `none` to `critical` in the table's order.
+
+| Page status level | Impact level | Indicator | Description |
+| --- | --- | --- | --- |
+| Operational | No impact | `none` | All Systems Operational |
+| Under maintenance | | `maintenance` | Service Under Maintenance |
+| Degraded performance | Minor | `minor` | Minor Service Outage |
+| Partial outage | Major | `major` | Partial System Outage |
+| Major outage | Critical | `critical` | Major System Outage |
+
+The summary carries machine values and your own text, never interface words, so it has one address for both languages. Your text is in the page language. Times are ISO 8601 in UTC. Fields Raaqeb has no data for carry Statuspage's neutral values, such as `null` for `start_date`.
+
+## View documents
+
+Each view of a status page renders from one JSON document and nothing else, and the document is public. The overview document holds the page's status level, its open incidents, its maintenance windows in progress or scheduled, and its components with their status, day bar and uptime unless the page hides them. Each day of a bar carries its downtime, observed time, mean response time, and the incidents and maintenance windows that ran on it.
+
+A document is the same in both languages: it carries the page's text in each language, its images and customization, and the install's clock and calendar.
+
+## Caching and errors
+
+Every output carries an `ETag` and `Cache-Control: public, max-age=0, must-revalidate`. Send `If-None-Match` with the ETag you hold and an unchanged output answers `304` with no body. An output changes when anything it shows changes, and at most five minutes after the clock moves today's figures.
+
+| Status | Meaning |
+| --- | --- |
+| `404` | No such page, view, month, incident or window on this page, the page is not published, or no database is open. |
+| `503` | The database did not answer. |
+
+An unpublished page's badge, feed and summary are not found by anyone. Its view documents answer only the signed-in operator, with `Cache-Control: no-store`.
+
+<Callout>
+Raaqeb sends no CORS headers, so a script on another site cannot read these outputs from a visitor's browser. Read them from a server, or embed the badge as an image.
+</Callout>

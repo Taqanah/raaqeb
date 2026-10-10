@@ -1,0 +1,11 @@
+{
+  "title": "Reference",
+  "pages": [
+    "releases",
+    "ai-assistants",
+    "[Commands](/en/docs/operate/commands)",
+    "[Boot settings](/en/docs/operate/boot-settings)",
+    "[Public endpoints](/en/docs/operate/public-endpoints)",
+    "[API](/en/docs/api)"
+  ]
+}

@@ -1,0 +1,48 @@
+---
+title: Custom domains
+description: How to give a status page its own domain in the admin area, what the domain serves, and which links use it.
+---
+
+A status page can have its own domain, such as `status.raaqeb.dev`, beside its address on the public address. This page covers the admin side. The DNS record, the reverse proxy and the TLS certificate are on [Operate: Custom domains](/en/docs/operate/custom-domains).
+
+## Set the domain
+
+1. Open the page's editor under **Status pages**.
+2. In the **Page** section, type the domain in **Custom domain**.
+3. Select **Save**.
+
+Type the domain name only, such as `status.raaqeb.dev`, with no scheme, path or port. Raaqeb stores it in lower case, drops a trailing dot, and stores an internationalized name in its ASCII form. A save is refused when:
+
+| Refusal | Why |
+| --- | --- |
+| "Type a domain name only, with no scheme, path or port." | The text holds a scheme, a path, a port, an IP address, or a name with no dot. |
+| "Another page uses this domain." | Each domain belongs to one page. |
+| "This is the public address's own domain, which serves the admin and the default page." | The [public address](/en/docs/get-started#onboarding)'s host cannot be a custom domain. |
+
+To remove the domain, empty the field and select **Save**.
+
+The domain works for visitors only while the page is published. An unpublished page is not found on its domain, and the proxy's certificate check, `GET /api/custom-domain`, answers that no page holds the domain, so no certificate is issued for it.
+
+## What the domain serves
+
+The domain serves its own page's views, badge, feed and summary alone, at `/`. For a page whose page language is Arabic on `status.raaqeb.dev`:
+
+| Address | Shows |
+| --- | --- |
+| `https://status.raaqeb.dev/` | The overview, in Arabic. |
+| `https://status.raaqeb.dev/en` | The overview, in English. |
+| `https://status.raaqeb.dev/history` | The history of the current month. |
+| `https://status.raaqeb.dev/incidents/<id>` | One incident. |
+| `https://status.raaqeb.dev/maintenance/<id>` | One maintenance window. |
+| `https://status.raaqeb.dev/badge.svg`, `/feed.atom` | The badge and the feed. Each also under `/en`. |
+| `https://status.raaqeb.dev/api/v2/summary.json` | The summary. |
+
+The JSON documents and images under `/api/pages/<id>/`, and the subscription pages under `/subscriptions/`, answer on every host, this domain included.
+
+The page also stays at `/status/<slug>` on the public address, and at `/` there if it is the default page. Both addresses serve the same page.
+
+## Links that use the domain
+
+Messages Raaqeb sends always link to the custom domain, with `https://`: the confirmation and every [subscriber notification](/en/docs/status-pages/subscriptions#what-subscribers-receive), including their unsubscribe links. Serve the domain over HTTPS, or those links fail.
+
+A view, the feed and the summary link to the host they were read on: read on the custom domain, they link to the custom domain; read on the public address, they link to the public address.

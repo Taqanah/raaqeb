@@ -1,0 +1,19 @@
+{
+  "title": "التشغيل",
+  "pages": [
+    "install",
+    "boot-settings",
+    "data-directory",
+    "commands",
+    "reverse-proxy",
+    "custom-domains",
+    "postgres",
+    "backups",
+    "export-import",
+    "upgrades",
+    "health-and-logs",
+    "public-endpoints",
+    "container-monitors",
+    "uninstall"
+  ]
+}

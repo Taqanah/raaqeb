@@ -1,0 +1,13 @@
+---
+title: Upgrades
+description: How Raaqeb migrates its database on start, and how to upgrade each kind of install.
+---
+
+Raaqeb migrates its database when it starts, and never starts half-migrated: a failed migration exits with its name. On SQLite it snapshots the file into `snapshots/` first. On Postgres, snapshot first yourself ([Postgres](/en/docs/operate/postgres)).
+
+- installer, on Linux, a Mac or Windows: run the same command again; it installs the latest stable release, or the one `RAAQEB_VERSION` names. It replaces the binary, restarts the service, and keeps the data and the env file.
+- Docker: pull or build the new image, then remove the container and run it again on the same volume.
+- Compose: change the image tag in `compose.yaml`, then `docker compose up -d`.
+- Fly.io: the Fly guide.
+
+The admin area shows a banner when a newer release exists. It never updates by itself.

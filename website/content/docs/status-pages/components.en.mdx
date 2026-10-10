@@ -1,0 +1,79 @@
+---
+title: Components
+description: How to create components, link monitors to them or set their status by hand, and arrange them in groups and in order on a status page.
+---
+
+A component is something your install reports on to visitors, such as "Website" or "API", with a status level. It belongs to the install, not to a page: any status page may show it, and its status is the same on all of them. A component is not a monitor. Link monitors to it and its status follows them, or link none and set its status by hand.
+
+## Create a component
+
+1. In the admin area, open **Components** and select **Add component**.
+2. Fill in **Name** and, if you want, **Description**, a line visitors read beside the name.
+3. Under **Linked monitors**, tick the monitors that drive its status. **Filter monitors** narrows the list.
+4. If you linked no monitor, choose its **Status set by hand**.
+5. Select **Save**.
+
+**Name** and **Description** have one input per language. The install language's name is required; the other language is optional, and a page in that language shows the install language's text where it is empty. A name is up to 100 characters, a description up to 500.
+
+The **Components** list shows each component's status now, how many monitors are linked (or **Set by hand**), how many status pages show it, its **Uptime over 90 days**, and a day bar of its last 30 days.
+
+## Linked monitors
+
+A link ties a monitor to a component. A monitor can be linked to any number of components, and a component to any number of monitors.
+
+A component with linked monitors has a derived status, worked out from its linked monitors that are not paused:
+
+| Linked monitors | Derived status |
+| --- | --- |
+| All down | Major outage |
+| Some down | Partial outage |
+| None down, any degraded | Degraded performance |
+| Otherwise | Operational |
+
+A paused monitor is ignored. When every linked monitor is paused, the derived status stays what it was when they were paused, so pausing all of them never turns a red component green.
+
+An open incident can make a linked component look worse than its monitors, never better: it shows the worse of the two. When the incident is resolved, the component follows its monitors again. A maintenance window in progress puts it under maintenance whatever its monitors say. See [A component's status and the page's level](/en/docs/status-pages#a-components-status-and-the-pages-level).
+
+## Status set by hand
+
+A component with no linked monitors shows its **Status set by hand**: **Operational**, **Degraded performance**, **Partial outage** or **Major outage**. Under maintenance cannot be set by hand; only a [maintenance window](/en/docs/status-pages/maintenance) sets it.
+
+While an open incident sets a status on such a component, the incident's status replaces the one set by hand. When the incident is resolved, the component returns to its own status set by hand, unless you chose to keep the incident's status when resolving. See [Resolve an incident](/en/docs/status-pages/incidents#resolve-an-incident).
+
+A status set by hand is not recorded over time, so it does not count in the component's day bar or uptime. Those count its linked monitors' outages and the time incidents held it at partial or major outage.
+
+Once you link a monitor, the status set by hand is kept but no longer shown.
+
+## The component's page
+
+Open a component from the list to edit it. Beside the form, the page shows:
+
+- **Status now**: its status as visitors see it.
+- **Open incidents that set its status**.
+- **Maintenance windows in progress that put it under maintenance**.
+- **Status pages that show it**.
+
+**Delete component** removes it from every status page that shows it, and from the incidents and maintenance windows that name it. An incident or maintenance window that names no other component is deleted with it. Its monitors stay as they are.
+
+## Put components on a page
+
+A page shows the components you place in its editor's **Components** section, in the order you set. A component appears at most once on a page.
+
+| Control | What it does |
+| --- | --- |
+| **Add a component…** | Places a component at the end of the list. |
+| **Add group** | Adds a component group. Type its name in **Group name**. |
+| **Move up**, **Move down** | Move a component or a group one place among its neighbours. |
+| **Move to** | Moves a component into a group, or out of one with **Outside groups**. |
+| **Remove from page** | Takes the component off this page. It stays on other pages. |
+| **Remove group** | Removes the group. Its components stay on the page, outside groups. |
+
+**Page status now** shows the level the page would have with the list as it stands. Select **Save** to apply the changes.
+
+## Component groups
+
+A component group is a folder of components on one page, one level deep. Groups belong to the page, so two pages can group the same components differently.
+
+A group shows the worst status among its components, as a page does. Its name is required in the page language, up to 100 characters. An empty group is not shown to visitors.
+
+In the [summary](/en/docs/status-pages/badge-and-feed#summary), a group is listed before its members with `group` set to `true`.

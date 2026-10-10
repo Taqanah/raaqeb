@@ -1,0 +1,62 @@
+# The Postgres and the Mailpit that `bun run test:postgres` targets. Data lives
+# on tmpfs or in memory: the services exist for the test run, and every run
+# starts from nothing. The operator's compose file is deploy/compose.yaml.
+# A project name of its own, so deploy/compose.yaml's `raaqeb` project never
+# replaces these containers on a developer's machine.
+name: raaqeb-test
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: raaqeb
+      POSTGRES_PASSWORD: raaqeb
+      POSTGRES_DB: raaqeb
+    ports:
+      - "127.0.0.1:5432:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raaqeb -d raaqeb"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+  # The email channel's end-to-end send. STARTTLS is offered
+  # with the self-signed test certificate, so a send that verifies it fails.
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    command:
+      - --smtp-tls-cert=/fixtures/tls-cert.pem
+      - --smtp-tls-key=/fixtures/tls-key.pem
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    volumes:
+      - ./src/server/checks/fixtures:/fixtures:ro
+  # The database monitors' real servers. Postgres is the service above.
+  # Each signs in with a password, so a wrong one fails as auth failed.
+  mysql:
+    image: mysql:8.4.11
+    environment:
+      MYSQL_ROOT_PASSWORD: raaqeb
+      MYSQL_DATABASE: raaqeb
+      MYSQL_USER: raaqeb
+      MYSQL_PASSWORD: raaqeb
+    ports:
+      - "127.0.0.1:3306:3306"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u raaqeb -praaqeb --silent"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  redis:
+    image: redis:8.10.2-alpine
+    command: ["redis-server", "--requirepass", "raaqeb", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "raaqeb", "--no-auth-warning", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15

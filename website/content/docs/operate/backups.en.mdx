@@ -1,0 +1,28 @@
+---
+title: Backups
+description: Back up the database and the install key together, on SQLite while Raaqeb runs or on Postgres with the provider's tools.
+---
+
+<Callout type="warn">
+Raaqeb has no backup command. Back up the database and the install key together: without the key, the monitor and channel credentials in the database cannot be opened.
+</Callout>
+
+On SQLite, `VACUUM INTO` copies the database to a new file while Raaqeb runs, consistent at one moment, with the `sqlite3` command line:
+
+```sh
+sqlite3 /var/lib/raaqeb/raaqeb.sqlite "VACUUM INTO '/root/raaqeb-$(date +%F).sqlite'"
+cp /var/lib/raaqeb/config.json /root/raaqeb-config-$(date +%F).json
+```
+
+Under Docker, through a short container on the same volume:
+
+```sh
+docker run --rm -v raaqeb-data:/data -v "$PWD":/backup alpine:3.22 sh -c \
+  "apk add --no-cache sqlite >/dev/null && sqlite3 /data/raaqeb.sqlite \"VACUUM INTO '/backup/raaqeb.sqlite'\" && cp /data/config.json /backup/"
+```
+
+To restore, stop Raaqeb, put the copy in place as `raaqeb.sqlite` with its `-wal` and `-shm` files deleted, put `config.json` back beside it, give both to the user Raaqeb runs as, and start Raaqeb. After the installer, as root: `chown raaqeb:raaqeb /var/lib/raaqeb/raaqeb.sqlite /var/lib/raaqeb/config.json && chmod 0600 /var/lib/raaqeb/raaqeb.sqlite /var/lib/raaqeb/config.json`. In the image the user is uid 65532. A copy of the whole data directory taken while Raaqeb is stopped is a backup too.
+
+On Postgres, use the provider's backups or point-in-time restore, or `pg_dump`. A free plan keeps little or none, so check what yours keeps; a scheduled `pg_dump` covers what it does not. Keep the install key: `RAAQEB_SECRET_KEY` if you set it, or `config.json` from the data directory.
+
+The size budget on the storage settings page keeps Raaqeb's history under a limit, and on SQLite Raaqeb keeps 64 MB of disk free by deleting its oldest history. Neither protects against another process filling the disk.

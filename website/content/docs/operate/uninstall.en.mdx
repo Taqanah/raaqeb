@@ -1,0 +1,33 @@
+---
+title: Uninstall
+description: Remove an installer's Raaqeb from Linux, a Mac or Windows, or a Docker install with its volume.
+---
+
+After the installer, as root:
+
+```sh
+systemctl disable --now raaqeb && rm /etc/systemd/system/raaqeb.service && systemctl daemon-reload   # systemd
+rc-service raaqeb stop && rc-update del raaqeb && rm -r /etc/init.d/raaqeb /var/log/raaqeb    # OpenRC
+rm /usr/local/bin/raaqeb
+rm -r /etc/raaqeb /var/lib/raaqeb    # the settings and the data: back them up first
+userdel raaqeb                        # deluser raaqeb on Alpine, which removes its group too
+```
+
+On a Mac, as root:
+
+```sh
+launchctl bootout system/raaqeb && rm /Library/LaunchDaemons/raaqeb.plist /usr/local/bin/raaqeb
+rm -r /usr/local/etc/raaqeb /usr/local/var/raaqeb /usr/local/var/log/raaqeb   # the settings and the data: back them up first
+dscl . -delete /Users/_raaqeb && dscl . -delete /Groups/_raaqeb
+```
+
+On Windows, in PowerShell as Administrator:
+
+```powershell
+Disable-ScheduledTask Raaqeb; Stop-ScheduledTask Raaqeb; Unregister-ScheduledTask Raaqeb -Confirm:$false
+Get-Process raaqeb -ErrorAction SilentlyContinue | Wait-Process -Timeout 30    # the stop ends the process a moment later
+Remove-Item -Recurse "$env:ProgramFiles\Raaqeb"
+Remove-Item -Recurse "$env:ProgramData\Raaqeb"    # the settings and the data: back them up first
+```
+
+Under Docker, remove the container, and the volume with `docker volume rm raaqeb-data` once its data is no longer needed.

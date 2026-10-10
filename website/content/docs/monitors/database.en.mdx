@@ -1,0 +1,78 @@
+---
+title: Database
+description: Watch a Postgres, MySQL or Redis server with a database monitor that signs in, runs a query and checks the answer.
+---
+
+A database monitor connects to a Postgres, MySQL or Redis server with its connection URL, signs in, runs `SELECT 1`, `PING` or your own query, and closes the connection. When you name an expected value, the first value of the answer must equal it. Use it when a server that accepts connections is not enough: a refused sign-in, a missing database or a failing query all show as down.
+
+## Add a database monitor
+
+Select **Add monitor**, choose **Database** as the **Check type**, then choose the **Database type**: **Postgres**, **MySQL** or **Redis**. The fields every check type shares are on [Monitors](/en/docs/monitors).
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Database type** | Which server the URL reaches. | Postgres. |
+| **Connection URL** | The server's address with the user and password, such as `postgres://user:password@db.example.com:5432/app`. | Required, up to 2048 characters. Must name a host. See the schemes below. |
+| **Query** (Postgres, MySQL) or **Command** (Redis) | What each check runs. | Empty, which runs `SELECT 1`, or `PING` for Redis. Up to 4000 characters. |
+| **Expected value** | Text the first value of the answer must equal. | Empty, which accepts any answer. Up to 200 characters. |
+
+The connection URL must start with one of its type's schemes:
+
+| Database type | Schemes | Port when the URL names none |
+|---|---|---|
+| Postgres | `postgres://`, `postgresql://` | `5432` |
+| MySQL | `mysql://`, `mariadb://` | `3306` |
+| Redis | `redis://`, `rediss://` for TLS | `6379` |
+
+A Redis URL's path may only be a database number, such as `/0`.
+
+The connection URL holds the password, so it is a credential: Raaqeb stores it encrypted with the install key and never shows it again. On edit, leave the field empty to keep the saved URL. **Duplicate** does not copy it. The monitors list shows only the URL's host and port.
+
+<Callout type="warn">
+Raaqeb runs the query as written, on every check. Keep it read-only, and sign in as a user that can only read.
+</Callout>
+
+### The query and the expected value
+
+For Postgres and MySQL, the first value is the first column of the first row; a query that returns no row answers empty text. For Redis, the command and its arguments are split on spaces, so an argument cannot hold a space, and the first value is the reply.
+
+The answer is compared as text: a string as it is, a date in ISO 8601, a number or a boolean as JSON (`1`, `true`, `false`), anything else as JSON. **Test now** shows the answer, so run it once to see the exact text to expect.
+
+### MySQL 8
+
+With MySQL 8's default sign-in, Raaqeb signs in only over an encrypted connection. Add `?sslmode=require` to the URL, for example `mysql://user:password@db.example.com:3306/app?sslmode=require`. Without it, the check is down with "The server signs in only over an encrypted connection; add ?sslmode=require to the URL".
+
+## Up, degraded and down
+
+Each check opens a new connection. The response time runs from connecting to the answer, capped by the timeout; one timer covers the connection, the sign-in and the query. A query still running at the timeout gets one second to end before the connection closes.
+
+- **Up**: the server signed in and answered, and the first value equals the expected value if one is set.
+- **Degraded**: as up, slower than the degraded threshold.
+- **Down**: any step failed, or the answer did not match, on the last attempt.
+
+The reasons a failed check reports:
+
+| Reason | What happened |
+|---|---|
+| Timed out | Connecting, signing in and the query took longer than the timeout together. |
+| Connection refused | Nothing accepted the connection. Shows the URL's host and port. For Postgres and MySQL, a host name that does not resolve reports this too. |
+| Connection failed | The driver gave up on the connection. The code is kept. For Redis, a refused port and a host that does not resolve both report this. |
+| The server refused the sign-in | A wrong user or password, or a database that does not exist. Shows the server's code, such as `28P01` or `1045`. |
+| The server refused the query | The server signed in and returned an error for the query. Shows its code, such as `42703` or `1054`. |
+| The server signs in only over an encrypted connection; add ?sslmode=require to the URL | MySQL 8, see above. |
+| Certificate invalid | The server's TLS certificate did not verify. |
+| An assertion failed | The first value does not equal the expected value. Shows both, up to 200 characters, with the URL and password masked. |
+| Unknown error | Anything else, including a saved URL the install key can no longer open. The raw error text is kept beside it, with the URL and password masked. |
+
+## Example
+
+To check that a Postgres primary has not become a replica, set **Database type** to Postgres, **Connection URL** to `postgres://monitor:secret@db.example.com:5432/app`, **Query** to `SELECT pg_is_in_recovery()` and **Expected value** to `false`.
+
+After a failover leaves this server as a replica, the check is down with "An assertion failed", expected `false`, observed `true`. If someone changes the `monitor` user's password, it is down with "The server refused the sign-in" and the code `28P01`.
+
+For Redis, the default `PING` answers `PONG`. To check a key instead, set **Command** to `GET maintenance:flag` and **Expected value** to `off`.
+
+## Related pages
+
+- [Monitors](/en/docs/monitors): the schedule, retries, events and retention.
+- [TCP](/en/docs/monitors/tcp): when you can only check the port.
