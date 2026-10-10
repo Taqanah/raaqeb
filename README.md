@@ -49,7 +49,7 @@ docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data
 
 Raaqeb (راقب, "keep watch") watches your sites, servers and databases and publishes a status page for your visitors. A monitoring tool that runs on your own server, Arabic first.
 
-<img src=".github/status-page.png" alt="A status page in Raaqeb" width="480">
+<img src=".github/status-page-en.png" alt="A status page in Raaqeb" width="480">
 
 ## Install
 
