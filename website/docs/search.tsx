@@ -10,9 +10,8 @@ import {
   type SharedProps,
 } from "@fumadocs/base-ui/components/dialog/search";
 import { useI18n } from "@fumadocs/base-ui/contexts/i18n";
-import { useDocsSearch } from "fumadocs-core/search/client";
-import { staticClient } from "fumadocs-core/search/client/orama-static";
-import { type ReactNode, useCallback, useState } from "react";
+import { useStaticSearch } from "fumadocs-core/search/client/orama-static";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { defaultLocale } from "@/shared/i18n/locale.ts";
 import { foldedPattern, searchText } from "./search-text.ts";
 import { searchIndexOf } from "./source.ts";
@@ -20,11 +19,13 @@ import { searchIndexOf } from "./source.ts";
 /** The docs search: the visitor's locale's pages, searched in the browser with no server. */
 export default function DocsSearch(props: SharedProps): ReactNode {
   const { locale } = useI18n();
-  const { query, setSearch } = useDocsSearch({
-    client: staticClient({
-      from: searchIndexOf(locale ?? defaultLocale),
-      locale,
-    }),
+  const {
+    data,
+    isLoading,
+    onSearchChange: setSearch,
+  } = useStaticSearch({
+    from: searchIndexOf(locale ?? defaultLocale),
+    locale,
   });
   // The box shows what the reader typed; the search gets it as the index holds text.
   const [typed, setTyped] = useState("");
@@ -35,7 +36,14 @@ export default function DocsSearch(props: SharedProps): ReactNode {
     },
     [setSearch]
   );
-  const results = query.data === "empty" ? null : query.data;
+  // The list gets the items itself: handing the dialog `data` would make its highlight query the folded text, not the typed. A table's rows are listed one by one, each its own result.
+  const results = useMemo(
+    () =>
+      data?.items.flatMap((item) =>
+        item.type === "table" ? item.rows : item
+      ) ?? null,
+    [data]
+  );
   // Fumadocs marks the typed text as typed, which misses a word typed without its diacritics; this marks what the search found, in Fumadocs' own highlight.
   const markFound = useCallback(
     (list: HTMLElement | null) => {
@@ -72,7 +80,7 @@ export default function DocsSearch(props: SharedProps): ReactNode {
   );
   return (
     <SearchDialog
-      isLoading={query.isLoading}
+      isLoading={isLoading}
       onSearchChange={onSearchChange}
       search={typed}
       {...props}
