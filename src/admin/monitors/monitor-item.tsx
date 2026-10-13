@@ -85,17 +85,17 @@ function useItem({
   };
 }
 
-/** The table's caps on a monitor's name and target by screen width: 12rem and 10rem, then 14 and 11 from lg, 18 and 14 from xl, 24 and 18 from 2xl, from xl never wider than the cell; on a phone the cell may shrink to its column so the name ends in an ellipsis. */
+/** The table's caps on a monitor's name and target by the space beside the sidebar: 12rem and 10rem, then 14 and 11 from 64rem, 18 and 14 from 72rem, 24 and 18 from 96rem, never wider than the cell; on a phone the cell may shrink to its column so the name ends in an ellipsis. */
 const nameCaps =
-  "[&_[data-slot=monitor-name]]:max-w-48 [&_[data-slot=token]]:max-w-40 lg:[&_[data-slot=monitor-name]]:max-w-56 lg:[&_[data-slot=token]]:max-w-44 xl:[&_[data-slot=monitor-name]]:max-w-[min(100%,18rem)] xl:[&_[data-slot=token]]:max-w-[min(100%,14rem)] 2xl:[&_[data-slot=monitor-name]]:max-w-[min(100%,24rem)] 2xl:[&_[data-slot=token]]:max-w-[min(100%,18rem)] max-sm:min-w-0 max-sm:[&_[data-slot=monitor-name]]:max-w-full";
+  "[&_[data-slot=monitor-name]]:max-w-[min(100%,12rem)] [&_[data-slot=token]]:max-w-[min(100%,10rem)] @5xl:[&_[data-slot=monitor-name]]:max-w-[min(100%,14rem)] @5xl:[&_[data-slot=token]]:max-w-[min(100%,11rem)] @6xl:[&_[data-slot=monitor-name]]:max-w-[min(100%,18rem)] @6xl:[&_[data-slot=token]]:max-w-[min(100%,14rem)] @min-[96rem]:[&_[data-slot=monitor-name]]:max-w-[min(100%,24rem)] @min-[96rem]:[&_[data-slot=token]]:max-w-[min(100%,18rem)] max-sm:min-w-0 max-sm:[&_[data-slot=monitor-name]]:max-w-full";
 
 /** The list's table on a phone, where a row is one line, the checkbox, the name, the state and the menu, the target left to a tablet and up. The name keeps at least 5rem. */
 export const phoneRows =
   "max-sm:[&_tr]:grid max-sm:[&_tr]:grid-cols-[auto_minmax(5rem,1fr)_auto_auto]";
 
-/** The state's badges wrap their words on a phone rather than squeeze the name. */
+/** The state's badges wrap their words under 56rem beside the sidebar, a phone included, rather than squeeze the name. */
 export const phoneState =
-  "max-sm:[&_[data-slot^=monitor-]]:h-auto max-sm:[&_[data-slot^=monitor-]]:min-h-5 max-sm:[&_[data-slot^=monitor-]]:shrink max-sm:[&_[data-slot^=monitor-]]:whitespace-normal max-sm:[&_[data-slot^=monitor-]]:text-center";
+  "@max-4xl:[&_[data-slot^=monitor-]]:h-auto @max-4xl:[&_[data-slot^=monitor-]]:min-h-5 @max-4xl:[&_[data-slot^=monitor-]]:shrink @max-4xl:[&_[data-slot^=monitor-]]:whitespace-normal @max-4xl:[&_[data-slot^=monitor-]]:text-center";
 
 export function MonitorTableRow(props: MonitorItemProps): ReactNode {
   const { covered, days, heard, monitor, selected, state } = props;
@@ -114,11 +114,11 @@ export function MonitorTableRow(props: MonitorItemProps): ReactNode {
         />
       </TableCell>
       {/* A long name and a long target end in an ellipsis, the name allowed a little more, both wider on a wider screen, so the bar and the tags keep their room. The name's column takes the row's spare width, so the state and its bar sit together before the tags; from xl it takes no more, so a target as long as its cap ends in an ellipsis rather than push the table past its frame. */}
-      <TableCell className={`w-full xl:max-w-0 ${nameCaps}`}>
+      <TableCell className={`w-full sm:max-w-0 ${nameCaps}`}>
         <Name monitor={monitor} />
       </TableCell>
       {/* The state now in its own column, so every bar lines up whatever the badge says; room after it, so the state, its bar and the tags read apart. */}
-      <TableCell className={`lg:pe-14 ${phoneState}`}>
+      <TableCell className={`@4xl:pe-14 ${phoneState}`}>
         <Status
           covered={covered}
           heard={heard}
@@ -127,11 +127,11 @@ export function MonitorTableRow(props: MonitorItemProps): ReactNode {
         />
       </TableCell>
       {/* The last 14 days, right after the state badge. */}
-      <TableCell className="ps-0 max-sm:hidden lg:pe-20">
+      <TableCell className="ps-0 @4xl:pe-20 max-sm:hidden">
         {days ? <MonitorBar days={days} /> : null}
       </TableCell>
-      {/* One line, capped so a long group or tag ends in an ellipsis rather than push the menu off the list: from xl the tags fit beside the caps; narrower, the type and the group alone, the toolbar still filtering by tag. */}
-      <TableCell className="max-sm:hidden [&>div]:max-w-30 [&>div]:flex-nowrap xl:[&>div]:max-w-80 max-xl:[&_[data-slot=monitor-tag]]:hidden">
+      {/* One line, capped so a long group or tag ends in an ellipsis rather than push the menu off the list: from 68rem the tags fit beside the caps; narrower, the type and the group, and under 40rem the type alone, the toolbar still filtering by group and tag. */}
+      <TableCell className="max-sm:hidden @min-[68rem]:[&>div]:max-w-80 [&>div]:max-w-30 [&>div]:flex-nowrap @max-[40rem]:[&_[data-slot=monitor-group]]:hidden @max-[68rem]:[&_[data-slot=monitor-tag]]:hidden">
         <Organization monitor={monitor} />
       </TableCell>
       <TableCell className="w-10">
@@ -222,7 +222,7 @@ function Status({
   );
 }
 
-/** The monitor's last 14 days, compact and with no caption, as wide as the row allows from 9rem up to slim days 8px wide; a screen under lg keeps the badge alone. */
+/** The monitor's last 14 days, compact and with no caption, as wide as the row allows from 9rem up to slim days 8px wide; under 56rem beside the sidebar the badge stands alone. */
 function MonitorBar({
   days,
 }: {
@@ -230,7 +230,7 @@ function MonitorBar({
 }): ReactNode {
   const calendar = useOperatorCalendar();
   return (
-    <div className="min-w-36 max-lg:hidden" data-slot="monitor-bar">
+    <div className="@max-4xl:hidden min-w-36" data-slot="monitor-bar">
       <UptimeBar
         calendar={calendar}
         caption={false}

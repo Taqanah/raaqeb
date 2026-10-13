@@ -79,3 +79,17 @@ export async function seedMonitors(storage: Storage): Promise<void> {
     await Bun.sleep(3);
   }
 }
+
+/** A monitor whose name, target, group and tag are each far longer than the list's caps, so a fit check sees the widest row. */
+export async function seedLongMonitor(storage: Storage): Promise<void> {
+  await storage.monitors.create(
+    monitor(
+      "A very long monitor name that keeps going to test the ellipsis in the list",
+      http(
+        "http://127.0.0.1:1/a/very/long/path/that/goes/on/and/on/to/test/the/target/ellipsis?with=query"
+      ),
+      ["a-rather-long-tag-name", "second"],
+      "A long group name for production services"
+    )
+  );
+}

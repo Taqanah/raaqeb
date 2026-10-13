@@ -10,7 +10,7 @@
 import type { Page } from "@playwright/test";
 import { gettingStartedClosed } from "@/server/settings/getting-started.ts";
 import { expect, expectPath, test } from "./support/fixtures.ts";
-import { seedMonitors } from "./support/monitors.ts";
+import { seedLongMonitor, seedMonitors } from "./support/monitors.ts";
 import {
   englishOrigin,
   operatorEmail,
@@ -114,6 +114,52 @@ test("eight monitors fit an 800 px screen, sorted by name, each with its target 
     await install.stop();
   }
 });
+
+// Beside the open sidebar, the frame is 256 px narrower than the screen, so a layout keyed to the screen overflows it between a tablet and a laptop.
+for (const language of ["en", "ar"] as const) {
+  test(`the list fits its frame beside the open sidebar from a tablet to a wide screen, in ${language}`, async ({
+    page,
+  }) => {
+    const install = await spawnInstall({
+      account: true,
+      language,
+      records: async (storage) => {
+        await storage.settings.set(gettingStartedClosed, true);
+        await seedMonitors(storage);
+        await seedLongMonitor(storage);
+      },
+    });
+    try {
+      await page.goto(`${install.origin}/sign-in`);
+      await page.fill("input[name=email]", operatorEmail);
+      await page.fill("input[name=password]", operatorPassword);
+      await page.click("form button[type=submit]");
+      await expectPath(page, "/admin/monitors");
+      const frame = page.locator(
+        "[data-slot=monitor-list] [data-slot=table-container]"
+      );
+      await expect(frame).toBeVisible();
+      for (const width of [768, 1024, 1060, 1100, 1180, 1280, 1366, 1440]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one width at a time, each measured after its own layout
+        await page.setViewportSize({ height: 800, width });
+        await expect
+          .poll(
+            () =>
+              frame.evaluate((element) => ({
+                frame: element.scrollWidth - element.clientWidth,
+                page:
+                  (document.scrollingElement?.scrollWidth ?? 0) -
+                  (document.scrollingElement?.clientWidth ?? 0),
+              })),
+            { message: `${width} px` }
+          )
+          .toEqual({ frame: 0, page: 0 });
+      }
+    } finally {
+      await install.stop();
+    }
+  });
+}
 
 // In order: the counts read the seeded rows before and after the delete, and the later tests open the Health monitor the form saves and renames.
 test.describe("the seeded list and the Health monitor, changed in order", () => {
