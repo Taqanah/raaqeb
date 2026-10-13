@@ -85,9 +85,9 @@ function useItem({
   };
 }
 
-/** The table's caps on a monitor's name and target by screen width: 12rem and 10rem, then 14 and 11 from lg, 18 and 14 from xl, 24 and 18 from 2xl; on a phone the cell may shrink to its column so the name ends in an ellipsis. */
+/** The table's caps on a monitor's name and target by screen width: 12rem and 10rem, then 14 and 11 from lg, 18 and 14 from xl, 24 and 18 from 2xl, from xl never wider than the cell; on a phone the cell may shrink to its column so the name ends in an ellipsis. */
 const nameCaps =
-  "[&_[data-slot=monitor-name]]:max-w-48 [&_[data-slot=token]]:max-w-40 lg:[&_[data-slot=monitor-name]]:max-w-56 lg:[&_[data-slot=token]]:max-w-44 xl:[&_[data-slot=monitor-name]]:max-w-72 xl:[&_[data-slot=token]]:max-w-56 2xl:[&_[data-slot=monitor-name]]:max-w-96 2xl:[&_[data-slot=token]]:max-w-72 max-sm:min-w-0 max-sm:[&_[data-slot=monitor-name]]:max-w-full";
+  "[&_[data-slot=monitor-name]]:max-w-48 [&_[data-slot=token]]:max-w-40 lg:[&_[data-slot=monitor-name]]:max-w-56 lg:[&_[data-slot=token]]:max-w-44 xl:[&_[data-slot=monitor-name]]:max-w-[min(100%,18rem)] xl:[&_[data-slot=token]]:max-w-[min(100%,14rem)] 2xl:[&_[data-slot=monitor-name]]:max-w-[min(100%,24rem)] 2xl:[&_[data-slot=token]]:max-w-[min(100%,18rem)] max-sm:min-w-0 max-sm:[&_[data-slot=monitor-name]]:max-w-full";
 
 /** The list's table on a phone, where a row is one line, the checkbox, the name, the state and the menu, the target left to a tablet and up. The name keeps at least 5rem. */
 export const phoneRows =
@@ -113,8 +113,8 @@ export function MonitorTableRow(props: MonitorItemProps): ReactNode {
           onCheckedChange={select}
         />
       </TableCell>
-      {/* A long name and a long target end in an ellipsis, the name allowed a little more, both wider on a wider screen, so the bar and the tags keep their room. The name's column takes the row's spare width, so the state and its bar sit together before the tags. */}
-      <TableCell className={`w-full ${nameCaps}`}>
+      {/* A long name and a long target end in an ellipsis, the name allowed a little more, both wider on a wider screen, so the bar and the tags keep their room. The name's column takes the row's spare width, so the state and its bar sit together before the tags; from xl it takes no more, so a target as long as its cap ends in an ellipsis rather than push the table past its frame. */}
+      <TableCell className={`w-full xl:max-w-0 ${nameCaps}`}>
         <Name monitor={monitor} />
       </TableCell>
       {/* The state now in its own column, so every bar lines up whatever the badge says; room after it, so the state, its bar and the tags read apart. */}

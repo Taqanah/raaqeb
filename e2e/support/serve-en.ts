@@ -25,10 +25,9 @@ import { gettingStartedClosed } from "@/server/settings/getting-started.ts";
 import { installLanguage } from "@/server/settings/language.ts";
 import { runSql } from "@/server/storage/fixture.ts";
 import { openStorage, type Storage } from "@/server/storage/storage.ts";
-import type { MonitorInput } from "@/shared/schemas/monitor.ts";
-import { monitorEventKinds } from "@/shared/schemas/monitor.ts";
 import { defaultCustomization } from "@/shared/schemas/page.ts";
 import { buildDir, builtMain } from "./built.ts";
+import { seedMonitors } from "./monitors.ts";
 import {
   noticesPage,
   operatorEmail,
@@ -267,72 +266,7 @@ await auth.api.signUpEmail({
     password: operatorPassword,
   },
 });
-// Eight monitors, so the list's 800 px target can be measured,
-// plus a ninth the monitors spec deletes; its name sorts last under "en".
-type Config = MonitorInput["config"];
-const http = (url: string): Config => ({
-  assertions: [{ codes: ["2xx"], kind: "status" }],
-  captureMode: "off",
-  followRedirects: true,
-  ignoreTlsErrors: false,
-  method: "GET",
-  type: "http",
-  url,
-});
-const tcp = (tcpHost: string, tcpPort: number): Config => ({
-  host: tcpHost,
-  port: tcpPort,
-  type: "tcp",
-});
-// Every target is a loopback port nothing listens on, and the DNS resolver
-// too, so the scheduler's checks of this install never leave the machine.
-const dns = (name: string): Config => ({
-  name,
-  recordType: "A",
-  resolver: "127.0.0.1:1",
-  type: "dns",
-});
-const beat: Config = {
-  schedule: { everyMs: 3_600_000, kind: "every" },
-  type: "heartbeat",
-};
-const monitor = (
-  name: string,
-  config: Config,
-  tags: string[],
-  group?: string
-): MonitorInput => ({
-  channels: [],
-  events: [...monitorEventKinds],
-  config,
-  group,
-  intervalMs: 60_000,
-  name,
-  retries: 2,
-  tags,
-  timeoutMs: 10_000,
-});
-const seeded: readonly MonitorInput[] = [
-  monitor("Website", http("http://127.0.0.1:1/"), ["public"], "Production"),
-  monitor(
-    "API",
-    http("http://127.0.0.1:1/health"),
-    ["public", "critical"],
-    "Production"
-  ),
-  monitor("Mail", tcp("127.0.0.1", 1), ["internal"], "Production"),
-  monitor("DNS", dns("example.com"), []),
-  monitor("Staging site", http("http://127.0.0.1:2/"), ["internal"], "Staging"),
-  monitor("Database", tcp("127.0.0.1", 2), ["internal", "critical"], "Staging"),
-  monitor("Nightly backup", beat, [], "Jobs"),
-  monitor("Docs", http("http://127.0.0.1:3/"), ["public"]),
-  monitor("Zz deletable", http("http://127.0.0.1:4/"), []),
-];
-for (const input of seeded) {
-  // biome-ignore lint/performance/noAwaitInLoops: one at a time, a few milliseconds apart, so the creation times are distinct and the newest sort is testable
-  await opened.storage.monitors.create(input);
-  await Bun.sleep(3);
-}
+await seedMonitors(opened.storage);
 await seedStatusPage(opened.storage);
 await opened.storage.close();
 // The repository makes random tokens; the spec knows each subscription by a fixed one.

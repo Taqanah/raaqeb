@@ -129,8 +129,11 @@ test("an incident's life as the visitor sees it: published, each stage, a new ti
     "[data-slot=incident-edit-form] [role=radio][data-value=critical]"
   );
   await page.click("[data-slot=save-incident]");
+  // The update form above still says its update is posted; this is the edit form's own line.
   await expect(
-    page.locator("[data-slot=save-outcome][data-state=saved]")
+    page.locator(
+      "[data-slot=incident-edit-form] [data-slot=save-outcome][data-state=saved]"
+    )
   ).toBeVisible();
   await page.reload();
   await expect(

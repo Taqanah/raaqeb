@@ -278,6 +278,8 @@ test("a bad slug, a script contact link and a footer link that is not web or mai
   await page.fill("input[name=slug]", `refusals-${run}`);
   await page.click("[data-slot=new-page-form] button[type=submit]");
   const pageId = await idOf(page, pagePath);
+  // The address changes before the editor shows; the new-page form has a slug field too.
+  await expect(page.locator("[data-slot=save-page]")).toBeVisible();
 
   await page.fill("input[name=slug]", "Bad Slug!");
   await page.fill("input[name=contactUrl]", "javascript:alert(1)");

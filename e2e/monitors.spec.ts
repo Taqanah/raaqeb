@@ -6,12 +6,15 @@
 // meanwhile, so every count here is of the rows this file knows by name.
 
 import type { Page } from "@playwright/test";
+import { gettingStartedClosed } from "@/server/settings/getting-started.ts";
 import { expect, expectPath, test } from "./support/fixtures.ts";
+import { seedMonitors } from "./support/monitors.ts";
 import {
   englishOrigin,
   operatorEmail,
   operatorPassword,
 } from "./support/servers.ts";
+import { spawnInstall } from "./support/spawn.ts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -48,38 +51,51 @@ async function signIn(page: Page, path = "/admin/monitors"): Promise<void> {
   await expect(page.locator("[data-slot=monitor-form]")).toBeVisible();
 }
 
+// On an install of its own: another spec's long group or tag widens the list's filters, which then wrap and push the rows down.
 test("eight monitors fit an 800 px screen, sorted by name, each with its target as a token", async ({
   page,
 }) => {
-  await page.setViewportSize({ height: 800, width: 1280 });
-  await signIn(page);
-  // The English server seeds every appearance setting away from its default; the table is judged at the default appearance.
-  await page.evaluate(() => {
-    document.documentElement.setAttribute("data-density", "comfortable");
-    document.documentElement.setAttribute("data-font-size", "medium");
+  const install = await spawnInstall({
+    account: true,
+    language: "en",
+    records: async (storage) => {
+      // Past getting started, as on the English install: the list is measured as an operator who dismissed the checklist sees it.
+      await storage.settings.set(gettingStartedClosed, true);
+      await seedMonitors(storage);
+    },
   });
-  await expect(page.locator("[data-slot=monitor-list] table")).toHaveCount(1);
-  await expect(knownRows(page)).toHaveCount(9);
-  const names = page.locator("[data-monitor] [data-slot=monitor-name]");
-  const texts = await names.allTextContents();
-  expect(texts).toEqual([...texts].sort((a, b) => a.localeCompare(b, "en")));
-  await Promise.all(
-    Array.from({ length: 8 }, (_, index) =>
-      expect(page.locator("[data-monitor]").nth(index)).toBeInViewport({
-        ratio: 1,
-      })
-    )
-  );
-  const website = page.locator("[data-monitor]", { hasText: "Website" });
-  await expect(website.locator("[data-slot=token]")).toHaveText(
-    "http://127.0.0.1:1/"
-  );
-  await expect(website.locator("[data-slot=monitor-group]")).toHaveText(
-    "Production"
-  );
-  await expect(website.locator("[data-slot=monitor-tag]")).toHaveText([
-    "public",
-  ]);
+  try {
+    await page.setViewportSize({ height: 800, width: 1280 });
+    await page.goto(`${install.origin}/sign-in`);
+    await page.fill("input[name=email]", operatorEmail);
+    await page.fill("input[name=password]", operatorPassword);
+    await page.click("form button[type=submit]");
+    await expectPath(page, "/admin/monitors");
+    await expect(page.locator("[data-slot=monitor-list] table")).toHaveCount(1);
+    await expect(knownRows(page)).toHaveCount(9);
+    const names = page.locator("[data-monitor] [data-slot=monitor-name]");
+    const texts = await names.allTextContents();
+    expect(texts).toEqual([...texts].sort((a, b) => a.localeCompare(b, "en")));
+    await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        expect(page.locator("[data-monitor]").nth(index)).toBeInViewport({
+          ratio: 1,
+        })
+      )
+    );
+    const website = page.locator("[data-monitor]", { hasText: "Website" });
+    await expect(website.locator("[data-slot=token]")).toHaveText(
+      "http://127.0.0.1:1/"
+    );
+    await expect(website.locator("[data-slot=monitor-group]")).toHaveText(
+      "Production"
+    );
+    await expect(website.locator("[data-slot=monitor-tag]")).toHaveText([
+      "public",
+    ]);
+  } finally {
+    await install.stop();
+  }
 });
 
 test("the search, the group filter, the tag filter and the sort live in the URL, and `/` focuses the search", async ({
