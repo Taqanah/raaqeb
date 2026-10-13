@@ -29,6 +29,7 @@ import {
 } from "@/shared/schemas/appearance.ts";
 import type { PublicView } from "@/shared/schemas/overview.ts";
 import { subscriptionTokenOf } from "@/shared/schemas/subscription.ts";
+import { raaqebIcons } from "@/shared/ui/app-icons.ts";
 import { appearanceAttributes } from "@/shared/ui/appearance.ts";
 import { DirectionProvider } from "@/shared/ui/direction.tsx";
 import plexMono from "@/shared/ui/fonts/plex-mono-regular.woff2?url";
@@ -152,6 +153,8 @@ export const Route = createRootRoute({
         : []),
       fontPreload(rubikLatin),
       fontPreload(plexMono),
+      // A status page's view writes its own icon links.
+      ...(loaderData?.view ? [] : raaqebIcons),
     ],
     meta: [
       { charSet: "utf-8" },

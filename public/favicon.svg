@@ -1,0 +1,13 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <title>Raaqeb</title>
+  <rect fill="#0f1a19" height="32" rx="8" width="32" />
+  <path
+    d="M27 16h-3.3a2.7 2.7 0 0 0-2.6 1.9l-3.1 11.1a.3.3 0 0 1-.6 0L13.1 3a.3.3 0 0 0-.6 0L9.4 14.1A2.7 2.7 0 0 1 6.8 16H5"
+    fill="none"
+    stroke="#5fd3c0"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="2.6"
+    transform="translate(16 16) scale(.72) translate(-16 -16)"
+  />
+</svg>

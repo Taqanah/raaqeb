@@ -51,6 +51,7 @@ import {
   type ViewFrame,
   viewFrameSchema,
 } from "@/shared/schemas/views.ts";
+import { faviconLinks } from "@/shared/ui/app-icons.ts";
 
 /** Which document a view asks for. */
 type ViewRequest =
@@ -379,9 +380,7 @@ export function viewHead(
       title: text(page.title),
       type: "application/atom+xml",
     },
-    ...(page.images.favicon
-      ? [{ href: page.images.favicon, rel: "icon" }]
-      : []),
+    ...faviconLinks(page.images.favicon),
   ];
   return {
     links,
@@ -398,9 +397,7 @@ export function missingHead(error: unknown) {
     return {};
   }
   return {
-    links: frame.page.images.favicon
-      ? [{ href: frame.page.images.favicon, rel: "icon" }]
-      : [],
+    links: faviconLinks(frame.page.images.favicon),
     meta: [
       {
         title: contentIn(

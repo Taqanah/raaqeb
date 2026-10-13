@@ -12,6 +12,7 @@ import {
 import { contentIn } from "@/shared/schemas/content.ts";
 import type { PublicView } from "@/shared/schemas/overview.ts";
 import { viewPath } from "@/shared/schemas/overview.ts";
+import { faviconLinks } from "@/shared/ui/app-icons.ts";
 
 /** What the page renders: the subscription and the page's frame, and the page the root resolved. */
 interface Loaded extends SubscriptionPageData {
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/subscriptions/$token/")({
   head: ({ loaderData }) =>
     loaderData
       ? {
+          links: faviconLinks(loaderData.frame.page.images.favicon),
           meta: [
             {
               title: contentIn(
