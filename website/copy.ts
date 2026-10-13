@@ -416,7 +416,7 @@ const ar: Copy = {
   command: { copied: "نُسخ", copy: "نسخ", runsOn: "يعمل على" },
   demo: demoAr,
   description:
-    "راقب نظام مراقبة تشغّله على خادومك: يفحص مواقعك وخواديمك وقواعد بياناتك، وينبّه فريقك عبر البريد وSlack وTelegram لحظة يتعطل شيء، وينشر صفحة حالة لعملائك.",
+    "راقب نظام مراقبة تشغّله على خادومك: يفحص مواقعك وخواديمك وقواعد بياناتك، وينبّه فريقك وينشر صفحة حالة لعملائك.",
   footer: {
     api: "الواجهة البرمجية",
     licence:
@@ -626,7 +626,7 @@ const en: Copy = {
   command: { copied: "Copied", copy: "Copy", runsOn: "Runs on" },
   demo: demoEn,
   description:
-    "Raaqeb is self-hosted uptime monitoring with status pages. It checks your sites, servers and databases, alerts your team on email, Slack or Telegram the moment something breaks, and keeps your customers informed.",
+    "Raaqeb is monitoring you run on your own server: it checks your sites, servers and databases, alerts your team and publishes a status page for your customers.",
   footer: {
     api: "API",
     licence:
