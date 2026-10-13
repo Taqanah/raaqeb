@@ -103,14 +103,14 @@ export function CodeLine({
   code,
   copied,
   copy,
-  wrap = false,
+  prompt = "$",
   ...rest
 }: ComponentProps<"div"> & {
   readonly code: string;
   readonly copied: string;
   readonly copy: string;
-  /** Whether a long command wraps onto more lines instead of scrolling within one. */
-  readonly wrap?: boolean;
+  /** What the shell shows before the command: `$`, or PowerShell's `PS>`. */
+  readonly prompt?: string;
 }): ReactNode {
   const [done, setDone] = useState(false);
   const onCopy = useCallback(() => {
@@ -122,13 +122,12 @@ export function CodeLine({
   const label = done ? copied : copy;
   return (
     <div
-      className="flex w-fit max-w-full items-center gap-4 rounded-lg bg-surface py-1.5 ps-4 pe-1.5 text-[14px] shadow-[0_8px_24px_-16px_oklch(0%_0_0/0.3)] ring-line"
+      className="flex w-fit max-w-full items-center gap-2 rounded-lg bg-surface py-1.5 ps-4 pe-1.5 text-[12.5px] shadow-[0_8px_24px_-16px_oklch(0%_0_0/0.3)] ring-line rtl:ps-0"
       {...rest}
     >
-      <pre
-        className={`token m-0 min-w-0 flex-1 select-all text-start ${wrap ? "wrap-anywhere whitespace-pre-wrap" : "overflow-x-auto whitespace-nowrap"} text-[12.5px] text-strong leading-[1.6] [scrollbar-width:none]`}
-      >
-        <span className="text-teal-text">$ </span>
+      {/* A command never wraps: it scrolls, and its last stretch fades into the end padding, so a cut-off command shows it goes on and a whole one shows no fade. */}
+      <pre className="token m-0 min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap pe-4 text-start text-strong leading-[1.6] [mask-image:linear-gradient(to_right,#000_calc(100%-1rem),transparent)] [scrollbar-width:none] rtl:ps-2 rtl:text-right">
+        <span className="text-teal-text">{prompt} </span>
         {code}
       </pre>
       <button

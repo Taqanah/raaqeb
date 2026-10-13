@@ -38,7 +38,7 @@ export function Admin({ copy }: { readonly copy: Copy }): ReactNode {
 }
 
 /** A screen in both themes; the stylesheet shows one. */
-export function Shot({
+function Shot({
   alt,
   className = "aspect-[16/10]",
   locale,

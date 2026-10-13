@@ -13,6 +13,13 @@ export const installCommand = `curl -fsSL ${site}/install.sh | sudo sh`;
 /** The docs' Docker command (website/content/docs/operate/install.en.mdx). */
 export const dockerCommand =
   "docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0";
+/** The ways to install the install section offers, each with its command and the prompt it is typed at. */
+export const installs = {
+  unix: { code: installCommand, prompt: "$" },
+  windows: { code: `irm ${site}/install.ps1 | iex`, prompt: "PS>" },
+  docker: { code: dockerCommand, prompt: "$" },
+} as const;
+export type InstallWay = keyof typeof installs;
 /** Each locale's docs. */
 export const docsPath: Readonly<Record<Locale, string>> = {
   ar: "/docs",
@@ -148,9 +155,11 @@ export interface Copy {
     readonly title: string;
   };
   readonly install: {
-    readonly docker: string;
+    /** Each way to install: its name on the choice, and the line that holds while it is chosen. */
+    readonly choices: Readonly<
+      Record<InstallWay, { readonly name: string; readonly note: string }>
+    >;
     readonly lead: string;
-    readonly script: string;
     readonly steps: readonly [Pair, Pair, Pair];
     readonly title: string;
   };
@@ -431,17 +440,29 @@ const ar: Copy = {
     title: "راقب مواقعك وخواديمك وقواعد بياناتك.",
   },
   install: {
-    docker: "أو في Docker",
+    choices: {
+      docker: {
+        name: "Docker",
+        note: "تُحفظ البيانات في وحدة تخزين منفصلة عن الصورة، فتبقى بعد كل ترقية.",
+      },
+      unix: {
+        name: "Linux و macOS",
+        note: "على Linux يعمل بـ systemd أو OpenRC، أو على Mac بمعالج Apple Silicon.",
+      },
+      windows: {
+        name: "Windows",
+        note: "في PowerShell يعمل بصفة المسؤول، على Windows 10 الإصدار 1809 أو أحدث.",
+      },
+    },
     lead: "ملف تنفيذي واحد، أو صورة Docker. ثلاث خطوات من خادوم فارغ إلى صفحة حالة منشورة.",
-    script: "على الخادوم",
     steps: [
       [
         "ثبّت",
-        "يختار المُثبِّت الملف التنفيذي المناسب لجهازك، ويتحقق من بصمته، ويشغّل راقب خدمةً تبدأ مع النظام.",
+        "شغّل الأمر على خادومك، فيعمل راقب ويعود وحده بعد كل إعادة تشغيل.",
       ],
       [
         "أكمل الإعداد",
-        "افتح العنوان الذي يطبعه المُثبِّت: اختر اللغة وقاعدة البيانات، وأنشئ حساب المشغّل.",
+        "افتح راقب في المتصفح، واختر اللغة وقاعدة البيانات، وأنشئ حساب المشغّل.",
       ],
       [
         "أضف أول مراقبة",
@@ -641,21 +662,33 @@ const en: Copy = {
     title: "Watch your sites, servers and databases.",
   },
   install: {
-    docker: "Or in Docker",
+    choices: {
+      docker: {
+        name: "Docker",
+        note: "The data lives in a volume apart from the image, so every upgrade keeps it.",
+      },
+      unix: {
+        name: "Linux and macOS",
+        note: "On Linux with systemd or OpenRC, or on a Mac with Apple Silicon.",
+      },
+      windows: {
+        name: "Windows",
+        note: "In PowerShell run as Administrator, on Windows 10 version 1809 or later.",
+      },
+    },
     lead: "A single binary or a Docker image. Three steps from an empty server to a status page your customers can read.",
-    script: "On the server",
     steps: [
       [
         "Install",
-        "The installer picks the binary for your machine, checks its checksum, and starts Raaqeb as a service that boots with the system.",
+        "Run the command on your server. Raaqeb starts, and comes back on its own after every reboot.",
       ],
       [
-        "Finish onboarding",
-        "Open the address it prints, pick a language and a database, and create your account. That is the whole setup.",
+        "Finish setup",
+        "Open Raaqeb in the browser, pick a language and a database, and create your account.",
       ],
       [
         "Add the first monitor",
-        "Paste a URL, choose where alerts go, and publish the page. You are watching.",
+        "Paste a URL, choose where alerts go, and publish the status page.",
       ],
     ],
     title: "One command. *Live in minutes.*",
