@@ -14,8 +14,6 @@ import {
   publicPage,
 } from "./support/servers.ts";
 
-test.describe.configure({ mode: "serial" });
-
 const waiting = /^(idle|importing)$/;
 const rangeOfDay = /range=24h$/;
 const historyFile = /^raaqeb-.+-24h\.jsonl\.zst$/;
@@ -58,35 +56,116 @@ async function upload(page: Page, origin: string, file: string) {
 
 let exported = "";
 
-test("the settings page downloads the export as one zstd file of JSON Lines, the header first with the configuration", async ({
-  page,
-}) => {
-  exported = await downloadExport(page);
-  const bytes = new Uint8Array(await Bun.file(exported).arrayBuffer());
-  const lines = new TextDecoder()
-    .decode(Bun.zstdDecompressSync(bytes))
-    .split("\n")
-    .filter((line) => line !== "");
-  const header = JSON.parse(lines[0] ?? "{}");
-  expect(header).toMatchObject({ mode: "full", raaqeb: "export", version: 1 });
-  expect(
-    header.configuration.statusPages.map((row: { slug: string }) => row.slug)
-  ).toContain(publicPage.slug);
-  // The history follows, each record tagged with its kind and one of the configuration's monitors.
-  const monitors = new Set(
-    header.configuration.monitors.map((row: { id: string }) => row.id)
-  );
-  for (const line of lines.slice(1)) {
-    const record = JSON.parse(line);
-    expect(["check", "hourly", "daily", "outage"]).toContain(record.kind);
-    expect(monitors.has(record.monitor)).toBe(true);
-  }
+// In order: the later tests read the file the first downloads, and the last two the empty install the import fills.
+test.describe("the full export, downloaded and then imported into the empty install", () => {
+  test.describe.configure({ lock: "english-export", mode: "serial" });
+
+  test("the settings page downloads the export as one zstd file of JSON Lines, the header first with the configuration", async ({
+    page,
+  }) => {
+    exported = await downloadExport(page);
+    const bytes = new Uint8Array(await Bun.file(exported).arrayBuffer());
+    const lines = new TextDecoder()
+      .decode(Bun.zstdDecompressSync(bytes))
+      .split("\n")
+      .filter((line) => line !== "");
+    const header = JSON.parse(lines[0] ?? "{}");
+    expect(header).toMatchObject({
+      mode: "full",
+      raaqeb: "export",
+      version: 1,
+    });
+    expect(
+      header.configuration.statusPages.map((row: { slug: string }) => row.slug)
+    ).toContain(publicPage.slug);
+    // The history follows, each record tagged with its kind and one of the configuration's monitors.
+    const monitors = new Set(
+      header.configuration.monitors.map((row: { id: string }) => row.id)
+    );
+    for (const line of lines.slice(1)) {
+      const record = JSON.parse(line);
+      expect(["check", "hourly", "daily", "outage"]).toContain(record.kind);
+      expect(monitors.has(record.monitor)).toBe(true);
+    }
+  });
+
+  test("the upload is refused without a session and from another site, and writes nothing", async ({
+    page,
+  }) => {
+    const body = new Uint8Array(await Bun.file(exported).arrayBuffer());
+    const signedOut = await page.request.post(`${emptyOrigin}/admin/import`, {
+      data: Buffer.from(body),
+      headers: { "content-type": "application/zstd", origin: emptyOrigin },
+    });
+    expect(signedOut.status()).toBe(401);
+    await signIn(page, emptyOrigin);
+    const crossSite = await page.request.post(`${emptyOrigin}/admin/import`, {
+      data: Buffer.from(body),
+      headers: {
+        "content-type": "application/zstd",
+        origin: "https://elsewhere.example",
+        "sec-fetch-site": "cross-site",
+      },
+    });
+    expect(crossSite.status()).toBe(403);
+    // The router matches a path whatever its case and a trailing slash, so the origin check must too.
+    for (const path of ["/ADMIN/IMPORT", "/admin/import/", "/Admin/Import/"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request after another is plenty for a test
+      const spelled = await page.request.post(`${emptyOrigin}${path}`, {
+        data: Buffer.from(body),
+        headers: {
+          "content-type": "application/zstd",
+          origin: "https://elsewhere.example",
+          "sec-fetch-site": "cross-site",
+        },
+      });
+      expect({ path, status: spelled.status() }).toEqual({ path, status: 403 });
+    }
+    // Submitting with no file chosen says so, and sends nothing.
+    await page.goto(`${emptyOrigin}/admin/settings/export`);
+    await page.click("[data-slot=import-submit]");
+    await expect(page.locator("[data-slot=import-answer]")).toHaveAttribute(
+      "data-state",
+      "no_file"
+    );
+    // Still empty: the list shows its empty state, whose link leads to the import.
+    await page.goto(`${emptyOrigin}/admin/monitors`);
+    await expect(page.locator("[data-slot=empty]")).toBeVisible();
+    await page.click("[data-slot=empty] a[href='/admin/settings/export']");
+    await expectPath(page, "/admin/settings/export");
+  });
+
+  test("the empty install imports the file, then shows the English install's monitors and its default status page", async ({
+    page,
+  }) => {
+    await signIn(page, emptyOrigin);
+    const answer = await upload(page, emptyOrigin, exported);
+    await expect(answer).toHaveAttribute("data-state", "ok");
+    await page.goto(`${emptyOrigin}/admin/monitors`);
+    await expect(
+      page.locator("[data-monitor] [data-slot=monitor-name]", {
+        hasText: "Nightly backup",
+      })
+    ).toBeVisible();
+    await page.goto(`${emptyOrigin}/`);
+    await expect(
+      page.locator("[data-slot=status-page][data-page]")
+    ).toContainText(publicPage.title);
+  });
+
+  test("an install that is no longer empty refuses a second import and says why", async ({
+    page,
+  }) => {
+    await signIn(page, emptyOrigin);
+    const answer = await upload(page, emptyOrigin, exported);
+    await expect(answer).toHaveAttribute("data-state", "not_empty");
+  });
 });
 
-test("the export without the check history holds the configuration alone", async ({
-  page,
-}) => {
-  // After the full download: the install serves one export at a time.
+// The install serves one export at a time, so this never overlaps the full download.
+test("the export without the check history holds the configuration alone", {
+  lock: "english-export",
+}, async ({ page }) => {
   await signIn(page, englishOrigin);
   await page.goto(`${englishOrigin}/admin/settings/export`);
   await page.click(
@@ -128,78 +207,6 @@ test("a damaged file and a file of another version are refused, each saying why,
   await expect(invalid).toHaveAttribute("data-state", "invalid");
   const version = await upload(page, englishOrigin, future);
   await expect(version).toHaveAttribute("data-state", "version");
-});
-
-test("the upload is refused without a session and from another site, and writes nothing", async ({
-  page,
-}) => {
-  const body = new Uint8Array(await Bun.file(exported).arrayBuffer());
-  const signedOut = await page.request.post(`${emptyOrigin}/admin/import`, {
-    data: Buffer.from(body),
-    headers: { "content-type": "application/zstd", origin: emptyOrigin },
-  });
-  expect(signedOut.status()).toBe(401);
-  await signIn(page, emptyOrigin);
-  const crossSite = await page.request.post(`${emptyOrigin}/admin/import`, {
-    data: Buffer.from(body),
-    headers: {
-      "content-type": "application/zstd",
-      origin: "https://elsewhere.example",
-      "sec-fetch-site": "cross-site",
-    },
-  });
-  expect(crossSite.status()).toBe(403);
-  // The router matches a path whatever its case and a trailing slash, so the origin check must too.
-  for (const path of ["/ADMIN/IMPORT", "/admin/import/", "/Admin/Import/"]) {
-    // biome-ignore lint/performance/noAwaitInLoops: one request after another is plenty for a test
-    const spelled = await page.request.post(`${emptyOrigin}${path}`, {
-      data: Buffer.from(body),
-      headers: {
-        "content-type": "application/zstd",
-        origin: "https://elsewhere.example",
-        "sec-fetch-site": "cross-site",
-      },
-    });
-    expect({ path, status: spelled.status() }).toEqual({ path, status: 403 });
-  }
-  // Submitting with no file chosen says so, and sends nothing.
-  await page.goto(`${emptyOrigin}/admin/settings/export`);
-  await page.click("[data-slot=import-submit]");
-  await expect(page.locator("[data-slot=import-answer]")).toHaveAttribute(
-    "data-state",
-    "no_file"
-  );
-  // Still empty: the list shows its empty state, whose link leads to the import.
-  await page.goto(`${emptyOrigin}/admin/monitors`);
-  await expect(page.locator("[data-slot=empty]")).toBeVisible();
-  await page.click("[data-slot=empty] a[href='/admin/settings/export']");
-  await expectPath(page, "/admin/settings/export");
-});
-
-test("the empty install imports the file, then shows the English install's monitors and its default status page", async ({
-  page,
-}) => {
-  await signIn(page, emptyOrigin);
-  const answer = await upload(page, emptyOrigin, exported);
-  await expect(answer).toHaveAttribute("data-state", "ok");
-  await page.goto(`${emptyOrigin}/admin/monitors`);
-  await expect(
-    page.locator("[data-monitor] [data-slot=monitor-name]", {
-      hasText: "Nightly backup",
-    })
-  ).toBeVisible();
-  await page.goto(`${emptyOrigin}/`);
-  await expect(
-    page.locator("[data-slot=status-page][data-page]")
-  ).toContainText(publicPage.title);
-});
-
-test("an install that is no longer empty refuses a second import and says why", async ({
-  page,
-}) => {
-  await signIn(page, emptyOrigin);
-  const answer = await upload(page, emptyOrigin, exported);
-  await expect(answer).toHaveAttribute("data-state", "not_empty");
 });
 
 test("a monitor's page downloads its history over the chart's range", async ({

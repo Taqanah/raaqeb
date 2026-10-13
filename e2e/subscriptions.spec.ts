@@ -2,8 +2,9 @@
 // built entry, on the English install, whose default page is seeded with
 // four email subscriptions under known tokens. The form, a subscription's
 // own page with its plain-form confirm and unsubscribe, an email client's
-// one-click unsubscribe, and the admin's list. The tests change the seeded
-// subscriptions and run in order.
+// one-click unsubscribe, and the admin's list. Each test changes a seeded
+// subscription no other test reads, but the pending one, read before it is
+// confirmed, in order.
 
 import type { Page } from "@playwright/test";
 import { runSql } from "@/server/storage/fixture.ts";
@@ -22,8 +23,6 @@ const submitButton = /<button[^>]*data-slot="subscribe-submit"[^>]*>/;
 
 /** The noscript block of a page's HTML. */
 const noscriptBlock = /<noscript>([\s\S]*?)<\/noscript>/;
-
-test.describe.configure({ mode: "serial" });
 
 const pageOf = (token: string) => `${englishOrigin}/subscriptions/${token}`;
 
@@ -71,50 +70,56 @@ test("the form refuses a webhook that is not https on the public internet, and s
   await expect(answer).not.toBeEmpty();
 });
 
-test("a subscription's page is never cached nor indexed, and opening its confirm link changes nothing", async ({
-  page,
-  request,
-}) => {
-  const { token } = seededSubscriptions.pending;
-  const answer = await request.get(pageOf(token));
-  expect(answer.status()).toBe(200);
-  expect(answer.headers()["cache-control"]).toBe("no-store");
-  const opened = await request.get(`${pageOf(token)}/confirm`, {
-    maxRedirects: 0,
-  });
-  expect(opened.status()).toBe(303);
-  expect(opened.headers().location).toBe(`/subscriptions/${token}`);
-  await page.goto(pageOf(token));
-  await expect(page.locator("[data-slot=subscription]")).toHaveAttribute(
-    "data-state",
-    "pending"
-  );
-  await expect(page.locator("meta[name=robots]")).toHaveAttribute(
-    "content",
-    "noindex"
-  );
-});
+test.describe("the pending subscription, read and then confirmed", () => {
+  test.describe.configure({ mode: "serial" });
 
-test("its buttons confirm, then unsubscribe, each landing back on the page", async ({
-  page,
-}) => {
-  const { address, token } = seededSubscriptions.pending;
-  await page.goto(pageOf(token));
-  const panel = page.locator("[data-slot=subscription]");
-  await expect(panel.locator("[data-slot=subscription-address]")).toHaveText(
-    address
-  );
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await page.click("[data-slot=subscription-confirm]");
-  await expectPath(page, `/subscriptions/${token}`);
-  await expect(panel).toHaveAttribute("data-state", "confirmed");
-  await expect(page.locator("[data-slot=subscription-confirm]")).toHaveCount(0);
-  await page.click("[data-slot=subscription-unsubscribe]");
-  await expectPath(page, `/subscriptions/${token}`);
-  await expect(panel).toHaveAttribute("data-state", "unsubscribed");
-  await expect(
-    page.locator("[data-slot=subscription-unsubscribe]")
-  ).toHaveCount(0);
+  test("a subscription's page is never cached nor indexed, and opening its confirm link changes nothing", async ({
+    page,
+    request,
+  }) => {
+    const { token } = seededSubscriptions.pending;
+    const answer = await request.get(pageOf(token));
+    expect(answer.status()).toBe(200);
+    expect(answer.headers()["cache-control"]).toBe("no-store");
+    const opened = await request.get(`${pageOf(token)}/confirm`, {
+      maxRedirects: 0,
+    });
+    expect(opened.status()).toBe(303);
+    expect(opened.headers().location).toBe(`/subscriptions/${token}`);
+    await page.goto(pageOf(token));
+    await expect(page.locator("[data-slot=subscription]")).toHaveAttribute(
+      "data-state",
+      "pending"
+    );
+    await expect(page.locator("meta[name=robots]")).toHaveAttribute(
+      "content",
+      "noindex"
+    );
+  });
+
+  test("its buttons confirm, then unsubscribe, each landing back on the page", async ({
+    page,
+  }) => {
+    const { address, token } = seededSubscriptions.pending;
+    await page.goto(pageOf(token));
+    const panel = page.locator("[data-slot=subscription]");
+    await expect(panel.locator("[data-slot=subscription-address]")).toHaveText(
+      address
+    );
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await page.click("[data-slot=subscription-confirm]");
+    await expectPath(page, `/subscriptions/${token}`);
+    await expect(panel).toHaveAttribute("data-state", "confirmed");
+    await expect(page.locator("[data-slot=subscription-confirm]")).toHaveCount(
+      0
+    );
+    await page.click("[data-slot=subscription-unsubscribe]");
+    await expectPath(page, `/subscriptions/${token}`);
+    await expect(panel).toHaveAttribute("data-state", "unsubscribed");
+    await expect(
+      page.locator("[data-slot=subscription-unsubscribe]")
+    ).toHaveCount(0);
+  });
 });
 
 test("a subscription's page is in its subscription language, inside its status page's frame", async ({

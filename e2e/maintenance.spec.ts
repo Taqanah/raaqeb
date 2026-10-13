@@ -1,6 +1,6 @@
 // The maintenance screens, on the built entry, signed in on the
-// English server, whose scheduler ticks every second. The tests build on
-// one another and run in order.
+// English server, whose scheduler ticks every second. The two windows on
+// one component run in order; the refusals need no window.
 
 import type { Page } from "@playwright/test";
 import { expect, expectPath, test } from "./support/fixtures.ts";
@@ -10,8 +10,6 @@ import {
   operatorPassword,
 } from "./support/servers.ts";
 import { startingNow, wallTime } from "./support/status-page.ts";
-
-test.describe.configure({ mode: "serial" });
 
 const run = Date.now().toString(36);
 const componentName = `Payments ${run}`;
@@ -53,108 +51,116 @@ async function stageBecomes(
 let componentId = "";
 let monitorId = "";
 
-test("a window scheduled for later lists as scheduled, takes every field, and may be cancelled", async ({
-  page,
-}) => {
-  await signIn(page);
-  await page.goto(`${englishOrigin}/admin/components/new`);
-  await page.fill("input[name=name-en]", componentName);
-  const website = page.locator("[data-slot=component-monitor]", {
-    hasText: "Website",
+test.describe("two windows on one component", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test("a window scheduled for later lists as scheduled, takes every field, and may be cancelled", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`${englishOrigin}/admin/components/new`);
+    await page.fill("input[name=name-en]", componentName);
+    const website = page.locator("[data-slot=component-monitor]", {
+      hasText: "Website",
+    });
+    monitorId = (await website.getAttribute("data-monitor")) ?? "";
+    await website.locator("label").click();
+    await page.click("[data-slot=save-component]");
+    componentId = await idOf(page, componentPath);
+
+    await page.goto(`${englishOrigin}/admin/maintenance/new`);
+    await page.fill("input[name=title-en]", `Database upgrade ${run}`);
+    await page.fill("textarea[name=message-en]", "We move the database.");
+    await page
+      .locator(
+        `[data-slot=window-component][data-component="${componentId}"] label`
+      )
+      .click();
+    await page.click("[data-slot=create-window]");
+    await idOf(page, windowPath);
+    const path = new URL(page.url()).pathname;
+    await expect(
+      page.locator("[data-slot=window-summary] [data-slot=window-stage]")
+    ).toHaveAttribute("data-stage", "scheduled");
+
+    await page.fill("input[name=title-en]", `Database upgrade, renamed ${run}`);
+    await page.click("[data-slot=save-window]");
+    await expect(
+      page.locator("[data-slot=save-outcome][data-state=saved]")
+    ).toBeVisible();
+
+    await page.goto(`${englishOrigin}/admin/maintenance`);
+    await expect(page.locator(`[data-window] a[href="${path}"]`)).toHaveText(
+      `Database upgrade, renamed ${run}`
+    );
+
+    await page.goto(`${englishOrigin}${path}`);
+    await page.click("[data-slot=cancel-window]");
+    await page.click("[data-slot=confirm-cancel]");
+    await expectPath(page, "/admin/maintenance");
+    await expect(page.locator(`a[href="${path}"]`)).toHaveCount(0);
   });
-  monitorId = (await website.getAttribute("data-monitor")) ?? "";
-  await website.locator("label").click();
-  await page.click("[data-slot=save-component]");
-  componentId = await idOf(page, componentPath);
 
-  await page.goto(`${englishOrigin}/admin/maintenance/new`);
-  await page.fill("input[name=title-en]", `Database upgrade ${run}`);
-  await page.fill("textarea[name=message-en]", "We move the database.");
-  await page
-    .locator(
-      `[data-slot=window-component][data-component="${componentId}"] label`
-    )
-    .click();
-  await page.click("[data-slot=create-window]");
-  await idOf(page, windowPath);
-  const path = new URL(page.url()).pathname;
-  await expect(
-    page.locator("[data-slot=window-summary] [data-slot=window-stage]")
-  ).toHaveAttribute("data-stage", "scheduled");
+  test("a window from now starts at the scheduler's next tick: its component is under maintenance and its monitor shows it; ending it now completes it", async ({
+    page,
+  }) => {
+    // Two scheduler waits of up to 20 s each pass the default 30 s.
+    test.setTimeout(60_000);
+    await signIn(page);
+    await page.goto(`${englishOrigin}/admin/maintenance/new`);
+    const zone =
+      (await page
+        .locator("[data-slot=window-zone]")
+        .getAttribute("data-zone")) ?? "UTC";
+    await page.fill("input[name=title-en]", `Network work ${run}`);
+    await page.fill("textarea[name=message-en]", "We replace a switch.");
+    await page.fill("input[name=starts]", startingNow(zone));
+    await page.fill(
+      "input[name=ends]",
+      wallTime(Date.now() + 30 * 60_000, zone)
+    );
+    await page
+      .locator(
+        `[data-slot=window-component][data-component="${componentId}"] label`
+      )
+      .click();
+    await page.click("[data-slot=create-window]");
+    await idOf(page, windowPath);
+    const path = new URL(page.url()).pathname;
+    await stageBecomes(page, path, "in_progress");
+    await expect(page.locator("[data-slot=window-locked]")).toBeVisible();
+    // Started, the start is no longer a field; the summary above shows it.
+    await expect(page.locator("input[name=starts]")).toHaveCount(0);
+    await expect(page.locator("input[name=ends]")).toBeEnabled();
 
-  await page.fill("input[name=title-en]", `Database upgrade, renamed ${run}`);
-  await page.click("[data-slot=save-window]");
-  await expect(
-    page.locator("[data-slot=save-outcome][data-state=saved]")
-  ).toBeVisible();
+    await page.goto(`${englishOrigin}/admin/components/${componentId}`);
+    await expect(
+      page.locator("[data-slot=component-status][data-level=under_maintenance]")
+    ).toBeVisible();
+    await expect(
+      page.locator(`[data-slot=component-maintenance] a[href="${path}"]`)
+    ).toBeVisible();
 
-  await page.goto(`${englishOrigin}/admin/maintenance`);
-  await expect(page.locator(`[data-window] a[href="${path}"]`)).toHaveText(
-    `Database upgrade, renamed ${run}`
-  );
+    await page.goto(`${englishOrigin}/admin/monitors`);
+    await expect(
+      page.locator(
+        `[data-monitor="${monitorId}"] [data-slot=monitor-maintenance]`
+      )
+    ).toBeVisible();
 
-  await page.goto(`${englishOrigin}${path}`);
-  await page.click("[data-slot=cancel-window]");
-  await page.click("[data-slot=confirm-cancel]");
-  await expectPath(page, "/admin/maintenance");
-  await expect(page.locator(`a[href="${path}"]`)).toHaveCount(0);
-});
+    await page.goto(`${englishOrigin}${path}`);
+    await page.click("[data-slot=end-window]");
+    await page.click("[data-slot=confirm-end]");
+    await stageBecomes(page, path, "completed");
+    await expect(page.locator("input[name=ends]")).toHaveCount(0);
 
-test("a window from now starts at the scheduler's next tick: its component is under maintenance and its monitor shows it; ending it now completes it", async ({
-  page,
-}) => {
-  // Two scheduler waits of up to 20 s each pass the default 30 s.
-  test.setTimeout(60_000);
-  await signIn(page);
-  await page.goto(`${englishOrigin}/admin/maintenance/new`);
-  const zone =
-    (await page.locator("[data-slot=window-zone]").getAttribute("data-zone")) ??
-    "UTC";
-  await page.fill("input[name=title-en]", `Network work ${run}`);
-  await page.fill("textarea[name=message-en]", "We replace a switch.");
-  await page.fill("input[name=starts]", startingNow(zone));
-  await page.fill("input[name=ends]", wallTime(Date.now() + 30 * 60_000, zone));
-  await page
-    .locator(
-      `[data-slot=window-component][data-component="${componentId}"] label`
-    )
-    .click();
-  await page.click("[data-slot=create-window]");
-  await idOf(page, windowPath);
-  const path = new URL(page.url()).pathname;
-  await stageBecomes(page, path, "in_progress");
-  await expect(page.locator("[data-slot=window-locked]")).toBeVisible();
-  // Started, the start is no longer a field; the summary above shows it.
-  await expect(page.locator("input[name=starts]")).toHaveCount(0);
-  await expect(page.locator("input[name=ends]")).toBeEnabled();
-
-  await page.goto(`${englishOrigin}/admin/components/${componentId}`);
-  await expect(
-    page.locator("[data-slot=component-status][data-level=under_maintenance]")
-  ).toBeVisible();
-  await expect(
-    page.locator(`[data-slot=component-maintenance] a[href="${path}"]`)
-  ).toBeVisible();
-
-  await page.goto(`${englishOrigin}/admin/monitors`);
-  await expect(
-    page.locator(
-      `[data-monitor="${monitorId}"] [data-slot=monitor-maintenance]`
-    )
-  ).toBeVisible();
-
-  await page.goto(`${englishOrigin}${path}`);
-  await page.click("[data-slot=end-window]");
-  await page.click("[data-slot=confirm-end]");
-  await stageBecomes(page, path, "completed");
-  await expect(page.locator("input[name=ends]")).toHaveCount(0);
-
-  await page.goto(`${englishOrigin}/admin/monitors`);
-  await expect(
-    page.locator(
-      `[data-monitor="${monitorId}"] [data-slot=monitor-maintenance]`
-    )
-  ).toHaveCount(0);
+    await page.goto(`${englishOrigin}/admin/monitors`);
+    await expect(
+      page.locator(
+        `[data-monitor="${monitorId}"] [data-slot=monitor-maintenance]`
+      )
+    ).toHaveCount(0);
+  });
 });
 
 test("a window that ends before it starts, or starts in the past, is refused on that field and not stored", async ({

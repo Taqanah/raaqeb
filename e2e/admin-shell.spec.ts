@@ -490,9 +490,8 @@ test("a click to the export page after the session ended lands on sign-in", asyn
 });
 
 // The settings saves run on an install of their own: the English install's public address, clock and retention are read by other specs.
+// Each worker starts its own install, so no two of these tests save at once, and each puts back what it changes.
 test.describe("the settings saves, on an install of their own", () => {
-  test.describe.configure({ mode: "serial" });
-
   let install: Install | undefined;
   let origin = "";
 

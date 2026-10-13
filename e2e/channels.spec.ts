@@ -1,8 +1,8 @@
 // The notification channels pages and the monitor
 // form's channel selection, on the built entry, signed in on the English
 // server, with the webhook pointed at the run's receiver
-// (e2e/support/sink.ts). The tests build on one channel and run in order;
-// after them, one case per chat channel type fills its declared fields, and
+// (e2e/support/sink.ts). The tests that build on one channel run in order;
+// beside them, one case per chat channel type fills its declared fields, and
 // two tests with channels of their own pin the switches and the refusals.
 
 import type { Page } from "@playwright/test";
@@ -14,8 +14,6 @@ import {
   sinkOrigin,
   sinkPort,
 } from "./support/servers.ts";
-
-test.describe.configure({ mode: "serial" });
 
 // A token in the URL's path, as a Slack or Discord webhook carries one; the channel's name must not repeat it.
 const run = Date.now().toString(36);
@@ -80,127 +78,131 @@ async function openChannel(page: Page): Promise<string> {
   return new URL(page.url()).pathname;
 }
 
-test("a new webhook channel stores its URL out of sight, and its page shows the signing secret and the URL's host", async ({
-  page,
-}) => {
-  await signIn(page);
-  await page.goto(`${englishOrigin}/admin/channels`);
-  await page.click("[data-slot=add-channel]");
-  await expectPath(page, "/admin/channels/new");
-  await page.fill("[data-slot=channel-form] input[name=name]", channelName);
-  await page.fill(
-    "[data-slot=channel-form] input[name=url]",
-    `${sinkOrigin}/ok/${token}`
-  );
-  await page.click("[data-slot=channel-form] button[type=submit]");
-  await expect.poll(() => new URL(page.url()).pathname).toMatch(channelPath);
-  await expect(page.locator("[data-slot=signing-secret]")).toHaveText(
-    signingSecret
-  );
-  await expect(page.locator("[data-slot=channel-summary]")).toHaveText(
-    `127.0.0.1:${sinkPort}`
-  );
-  await expect(
-    page.locator("[data-slot=channel-form] input[name=url]")
-  ).toHaveValue("");
-  expect(await page.content()).not.toContain(token);
-});
+test.describe("one webhook channel, from its creation to its deletion", () => {
+  test.describe.configure({ mode: "serial" });
 
-test("the channel page previews each notification's body as a sample and sends nothing", async ({
-  page,
-}) => {
-  await openChannel(page);
-  const preview = page.locator("[data-slot=notification-preview]");
-  await expect(preview.locator("[data-slot=preview-sample]")).toBeVisible();
-  await expect(preview.locator("[data-preview]")).toHaveCount(6);
-  await expect(
-    preview.locator("[data-preview='monitor.down'] [data-slot=preview-body]")
-  ).toContainText('"type": "monitor.down"');
-  await expect(page.locator("[data-slot=recent-sends]")).toHaveCount(0);
-  expect(await receivedAt(`/ok/${token}`)).toEqual([]);
-});
+  test("a new webhook channel stores its URL out of sight, and its page shows the signing secret and the URL's host", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`${englishOrigin}/admin/channels`);
+    await page.click("[data-slot=add-channel]");
+    await expectPath(page, "/admin/channels/new");
+    await page.fill("[data-slot=channel-form] input[name=name]", channelName);
+    await page.fill(
+      "[data-slot=channel-form] input[name=url]",
+      `${sinkOrigin}/ok/${token}`
+    );
+    await page.click("[data-slot=channel-form] button[type=submit]");
+    await expect.poll(() => new URL(page.url()).pathname).toMatch(channelPath);
+    await expect(page.locator("[data-slot=signing-secret]")).toHaveText(
+      signingSecret
+    );
+    await expect(page.locator("[data-slot=channel-summary]")).toHaveText(
+      `127.0.0.1:${sinkPort}`
+    );
+    await expect(
+      page.locator("[data-slot=channel-form] input[name=url]")
+    ).toHaveValue("");
+    expect(await page.content()).not.toContain(token);
+  });
 
-test("send test posts one signed channel.test to the receiver and lists it as sent", async ({
-  page,
-}) => {
-  await openChannel(page);
-  const secret =
-    (await page.locator("[data-slot=signing-secret]").textContent()) ?? "";
-  await page.click("[data-slot=send-test]");
-  await expect(
-    page.locator("[data-slot=test-result][data-status=sent]")
-  ).toBeVisible({ timeout: 15_000 });
-  await expect(
-    page.locator("[data-slot=recent-sends] [data-send][data-status=sent]")
-  ).toHaveCount(1);
-  const [got] = await receivedAt(`/ok/${token}`);
-  expect(JSON.parse(got?.body ?? "{}").type).toBe("channel.test");
-  expect(await signedBy(secret, got)).toBe(true);
-});
+  test("the channel page previews each notification's body as a sample and sends nothing", async ({
+    page,
+  }) => {
+    await openChannel(page);
+    const preview = page.locator("[data-slot=notification-preview]");
+    await expect(preview.locator("[data-slot=preview-sample]")).toBeVisible();
+    await expect(preview.locator("[data-preview]")).toHaveCount(6);
+    await expect(
+      preview.locator("[data-preview='monitor.down'] [data-slot=preview-body]")
+    ).toContainText('"type": "monitor.down"');
+    await expect(page.locator("[data-slot=recent-sends]")).toHaveCount(0);
+    expect(await receivedAt(`/ok/${token}`)).toEqual([]);
+  });
 
-test("a receiver that answers an error shows the failed send with its reason", async ({
-  page,
-}) => {
-  await openChannel(page);
-  await page.fill(
-    "[data-slot=channel-form] input[name=url]",
-    `${sinkOrigin}/broken/${token}`
-  );
-  await page.click("[data-slot=channel-form] button[type=submit]");
-  await expect(
-    page.locator("[data-slot=save-outcome][data-state=saved]")
-  ).toBeVisible();
-  await page.click("[data-slot=send-test]");
-  await expect(
-    page.locator("[data-slot=test-result][data-status=failed]")
-  ).toBeVisible({ timeout: 15_000 });
-  await expect(
-    page.locator("[data-slot=test-result] [data-reason=unexpected_status]")
-  ).toBeVisible();
-  await expect(
-    page.locator("[data-slot=recent-sends] [data-send]")
-  ).toHaveCount(2);
-});
+  test("send test posts one signed channel.test to the receiver and lists it as sent", async ({
+    page,
+  }) => {
+    await openChannel(page);
+    const secret =
+      (await page.locator("[data-slot=signing-secret]").textContent()) ?? "";
+    await page.click("[data-slot=send-test]");
+    await expect(
+      page.locator("[data-slot=test-result][data-status=sent]")
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.locator("[data-slot=recent-sends] [data-send][data-status=sent]")
+    ).toHaveCount(1);
+    const [got] = await receivedAt(`/ok/${token}`);
+    expect(JSON.parse(got?.body ?? "{}").type).toBe("channel.test");
+    expect(await signedBy(secret, got)).toBe(true);
+  });
 
-test("the list shows the channel with its host and its newest send", async ({
-  page,
-}) => {
-  await signIn(page);
-  await page.goto(`${englishOrigin}/admin/channels`);
-  const row = page.locator("[data-channel]", { hasText: channelName });
-  await expect(row.locator("[data-slot=channel-summary]")).toHaveText(
-    `127.0.0.1:${sinkPort}`
-  );
-  await expect(row.locator("[data-slot=last-send]")).toHaveAttribute(
-    "data-status",
-    "failed"
-  );
-});
+  test("a receiver that answers an error shows the failed send with its reason", async ({
+    page,
+  }) => {
+    await openChannel(page);
+    await page.fill(
+      "[data-slot=channel-form] input[name=url]",
+      `${sinkOrigin}/broken/${token}`
+    );
+    await page.click("[data-slot=channel-form] button[type=submit]");
+    await expect(
+      page.locator("[data-slot=save-outcome][data-state=saved]")
+    ).toBeVisible();
+    await page.click("[data-slot=send-test]");
+    await expect(
+      page.locator("[data-slot=test-result][data-status=failed]")
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.locator("[data-slot=test-result] [data-reason=unexpected_status]")
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-slot=recent-sends] [data-send]")
+    ).toHaveCount(2);
+  });
 
-test("a new monitor starts with the channel that applies to new monitors, and the operator can clear it", async ({
-  page,
-}) => {
-  const path = await openChannel(page);
-  const id = path.split("/").at(-1) ?? "";
-  await page.goto(`${englishOrigin}/admin/monitors/new`);
-  const choice = page.locator(
-    `[data-slot=monitor-channels] [role=checkbox][data-channel="${id}"]`
-  );
-  await expect(choice).toHaveAttribute("aria-checked", "true");
-  await choice.click();
-  await expect(choice).toHaveAttribute("aria-checked", "false");
-});
+  test("the list shows the channel with its host and its newest send", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`${englishOrigin}/admin/channels`);
+    const row = page.locator("[data-channel]", { hasText: channelName });
+    await expect(row.locator("[data-slot=channel-summary]")).toHaveText(
+      `127.0.0.1:${sinkPort}`
+    );
+    await expect(row.locator("[data-slot=last-send]")).toHaveAttribute(
+      "data-status",
+      "failed"
+    );
+  });
 
-test("deleting a channel asks first, then removes it from the list", async ({
-  page,
-}) => {
-  await openChannel(page);
-  await page.click("[data-slot=delete-channel]");
-  await page.click("[data-slot=confirm-delete]");
-  await expectPath(page, "/admin/channels");
-  await expect(
-    page.locator("[data-channel]", { hasText: channelName })
-  ).toHaveCount(0);
+  test("a new monitor starts with the channel that applies to new monitors, and the operator can clear it", async ({
+    page,
+  }) => {
+    const path = await openChannel(page);
+    const id = path.split("/").at(-1) ?? "";
+    await page.goto(`${englishOrigin}/admin/monitors/new`);
+    const choice = page.locator(
+      `[data-slot=monitor-channels] [role=checkbox][data-channel="${id}"]`
+    );
+    await expect(choice).toHaveAttribute("aria-checked", "true");
+    await choice.click();
+    await expect(choice).toHaveAttribute("aria-checked", "false");
+  });
+
+  test("deleting a channel asks first, then removes it from the list", async ({
+    page,
+  }) => {
+    await openChannel(page);
+    await page.click("[data-slot=delete-channel]");
+    await page.click("[data-slot=confirm-delete]");
+    await expectPath(page, "/admin/channels");
+    await expect(
+      page.locator("[data-channel]", { hasText: channelName })
+    ).toHaveCount(0);
+  });
 });
 
 interface ChatCase {
