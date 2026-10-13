@@ -190,6 +190,29 @@ describe("an email over SMTP", () => {
     );
     expect((error as { code?: unknown } | undefined)?.code).toBe("ENOTFOUND");
   });
+
+  test("a server whose certificate no authority signed rejects with the platform's certificate code", async () => {
+    const fixtures = `${import.meta.dir}/../checks/fixtures`;
+    const server = Bun.listen({
+      hostname: "127.0.0.1",
+      port: 0,
+      socket: { data: () => undefined },
+      tls: {
+        cert: Bun.file(`${fixtures}/tls-cert.pem`),
+        key: Bun.file(`${fixtures}/tls-key.pem`),
+      },
+    });
+    try {
+      const error = await rejection(
+        sendSmtp({ ...plain(server.port), security: "tls" }, message, 5000)
+      );
+      expect((error as { code?: unknown } | undefined)?.code).toBe(
+        "DEPTH_ZERO_SELF_SIGNED_CERT"
+      );
+    } finally {
+      server.stop(true);
+    }
+  });
 });
 
 describe("a subscriber's email over SMTP", () => {

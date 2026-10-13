@@ -172,6 +172,11 @@
   padding-inline: 1rem;
 }
 
+/* A search result that is a table row is a table alone in its item; prose's margins would leave a blank band above and below it. */
+[role="listbox"] .prose > table {
+  margin-block: 0;
+}
+
 /* ---- Tables: rows divided by hairlines, the header in ink, cells at the text's size, wide ones scrolling on their own. ---- */
 #nd-page .prose table {
   width: 100%;

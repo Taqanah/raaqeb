@@ -4,8 +4,7 @@
  * a protected connection. nodemailer is imported only when an email channel
  * sends over SMTP, so an install without one never loads it (about 25 MB).
  * Its errors are turned into the ones the base maps onto the reason
- * dictionary: a reply code outside 2xx, a timeout, or the socket's own code,
- * which nodemailer replaces with its own and keeps only in the message.
+ * dictionary: a reply code outside 2xx, a timeout, or the socket's own code.
  */
 import type { MailMessage, SmtpServer } from "./channel.ts";
 
@@ -19,21 +18,7 @@ export class SmtpReplyError extends Error {
   }
 }
 
-/** The platform's certificate codes, which nodemailer leaves only in the message. */
-const certificateCodes: readonly (readonly [RegExp, string])[] = [
-  [/expired/i, "CERT_HAS_EXPIRED"],
-  [
-    /self.signed certificate in certificate chain/i,
-    "SELF_SIGNED_CERT_IN_CHAIN",
-  ],
-  [/self.signed/i, "DEPTH_ZERO_SELF_SIGNED_CERT"],
-  [/does not match certificate|altnames/i, "ERR_TLS_CERT_ALTNAME_INVALID"],
-  [/unable to (get|verify)/i, "UNABLE_TO_VERIFY_LEAF_SIGNATURE"],
-];
-/** A socket's code as the platform words it: `connect ECONNREFUSED 127.0.0.1:25`, `getaddrinfo ENOTFOUND nope.invalid`. */
-const socketCode = /\b(E[A-Z]{3,})\b/;
-
-/** The error as the channel base reads it. */
+/** The error as the channel base reads it: a refusal by its reply code, anything else by the socket's own code, which nodemailer keeps as `originalCode` under its own. */
 function normalized(error: unknown): unknown {
   if (!(error instanceof Error) || error instanceof DOMException) {
     return error;
@@ -41,13 +26,9 @@ function normalized(error: unknown): unknown {
   if ("responseCode" in error && typeof error.responseCode === "number") {
     return new SmtpReplyError(error.responseCode, error.message);
   }
-  // The socket's code first: a host name in the message may hold a certificate word.
-  const named =
-    socketCode.exec(error.message)?.[1] ??
-    certificateCodes.find(([shape]) => shape.test(error.message))?.[1];
-  return named === undefined
-    ? error
-    : Object.assign(new Error(error.message), { code: named });
+  return "originalCode" in error && typeof error.originalCode === "string"
+    ? Object.assign(new Error(error.message), { code: error.originalCode })
+    : error;
 }
 
 /** Sends one message and closes the connection; rejects with an `SmtpReplyError` for a refusal, or the connection's own error. */

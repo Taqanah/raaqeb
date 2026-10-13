@@ -161,7 +161,7 @@ export const libraries: Library[] = [
     repo: "biomejs/website",
   },
   {
-    // The docs site is its own repo with no release tags; the installed source in node_modules/nodemailer answers for 10.0.10.
+    // The docs site is its own repo with no release tags; the installed source in node_modules/nodemailer answers for the installed version.
     branch: "master",
     name: "nodemailer",
     paths: ["docs"],
