@@ -86,7 +86,7 @@ export function Hero({
       <div className="relative mx-auto grid max-w-[1200px] grid-cols-[minmax(33rem,1fr)_1.35fr] items-center gap-x-16 px-6 pt-28 pb-56 max-lg:grid-cols-1 max-lg:gap-y-14 max-lg:pt-24 max-lg:pb-28">
         <div>
           <h1
-            className="rise max-w-[11em] text-balance font-medium text-[clamp(40px,4.6vw,64px)] leading-[1.02] tracking-[-0.035em] [overflow-wrap:anywhere] [&:lang(ar)]:text-[clamp(38px,4.2vw,58px)] [&:lang(ar)]:leading-[1.3]"
+            className="rise max-w-[11em] text-balance font-medium text-[clamp(40px,4.6vw,64px)] leading-[1.02] tracking-[-0.035em] [overflow-wrap:anywhere] [&:lang(ar)]:text-[clamp(38px,4.2vw,58px)] [&:lang(ar)]:leading-[1.3] [&:lang(ar)]:tracking-normal"
             style={step(0)}
           >
             {before}

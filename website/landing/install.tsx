@@ -88,7 +88,7 @@ function Step({
   return (
     <li className="flex flex-col">
       <div className="h-[260px]">{children}</div>
-      <h3 className="mt-7 font-medium text-[24px] tracking-[-0.01em]">
+      <h3 className="mt-7 font-medium text-[24px] tracking-[-0.01em] [&:lang(ar)]:tracking-normal">
         {title}
       </h3>
       <p className="mt-2 max-w-[30em] text-[16px] text-strong">{text}</p>

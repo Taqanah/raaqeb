@@ -57,7 +57,7 @@ export function ArabicFirst({ copy }: { readonly copy: Copy }): ReactNode {
           {dates.map(([date, name], n) => (
             <div key={name}>
               <dd
-                className={`whitespace-nowrap font-medium text-[clamp(24px,2.3vw,32px)] leading-tight tracking-[-0.02em] ${n ? "text-muted" : ""}`}
+                className={`whitespace-nowrap font-medium text-[clamp(24px,2.3vw,32px)] leading-tight tracking-[-0.02em] [&:lang(ar)]:tracking-normal ${n ? "text-muted" : ""}`}
               >
                 {date}
               </dd>

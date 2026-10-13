@@ -45,7 +45,7 @@ export function Section({
       id={id}
     >
       <div className="mx-auto max-w-[1200px] px-6">
-        <h2 className="max-w-[13em] text-balance font-medium text-[clamp(36px,5.2vw,72px)] leading-[1.06] tracking-[-0.035em] [&:lang(ar)]:leading-[1.3]">
+        <h2 className="max-w-[13em] text-balance font-medium text-[clamp(36px,5.2vw,72px)] leading-[1.06] tracking-[-0.035em] [&:lang(ar)]:leading-[1.3] [&:lang(ar)]:tracking-normal">
           {title.split("*").map((part, n) =>
             // The words between asterisks take the brand's colour, as «راقب» does in the hero.
             n % 2 ? (
