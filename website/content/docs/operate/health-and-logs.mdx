@@ -14,3 +14,18 @@ description: عنوان الصحة، ومتى يخرج راقب ليعيد مد�
 - macOS: `/usr/local/var/log/raaqeb/raaqeb.log`
 - Windows: لا شيء، فلا يحفظ راقب سجلًا هناك. أوقف المهمة وشغّل `serve` يدويًا في وحدة التحكم لتقرأه ([التثبيت على Windows](/docs/operate/install#windows))
 - Docker: `docker logs raaqeb`
+
+## سجل الطلبات
+
+شغّل سجل الطلبات في صفحة الإعدادات العامة لترى كل طلب يجيب عنه الخادوم. وهو مطفأ افتراضيًا، ويعمل بمجرد الحفظ دون إعادة تشغيل. عندها يكتب كل طلب سطرًا واحدًا حين تجهز إجابته:
+
+```
+raaqeb: request method=GET path=/admin/monitors status=200 ms=9 ip=203.0.113.9 kind=page browser="Firefox 131 on Linux"
+raaqeb: request method=POST path=/_serverFn/routes.admin.settings.index--save status=200 ms=4 ip=203.0.113.9 kind=function browser="Firefox 131 on Linux"
+raaqeb: request method=GET path=/ status=200 ms=0 ip=203.0.113.9 kind=status-page cached=true browser="Safari 18 on iOS"
+raaqeb: request method=POST path=/api/auth/sign-in/email status=closed ms=8 ip=203.0.113.9 kind=auth browser=curl/8.5
+```
+
+كل سطر أزواج `key=value` بصيغة logfmt، تقرؤها أدوات جمع السجلات كما هي. `method` الطريقة؛ و`path` المسار دون الاستعلام، ويُكتب أي رمز فيه `<token>`، وفي استدعاءات الإدارة للخادوم يسمّي الوحدة النمطية والدالّة المستدعاة؛ و`status` رمز الحالة، أو `closed` إذا غادر العميل قبل الإجابة؛ و`ms` المدة حتى جهزت الإجابة؛ و`ip` عنوان العميل كما يحدده الوكلاء الموثوقون؛ و`kind` ما أجاب: `page` أو `function` (استدعاءات الإدارة للخادوم) أو `api` أو `auth` (تسجيل الدخول) أو `status-page`، وبعدها `cached=true` إذا جاءت الإجابة من الذاكرة؛ و`browser` اسم قصير للمتصفح أو الأداة. وإذا استغرق الطلب أكثر من ثانية، أو أجاب برمز من فئة 5xx، أُضيف `rss_mb`، وهو ذاكرة العملية بالميغابايت في تلك اللحظة. وتوضع بين علامتي تنصيص كل قيمة فيها مسافة أو علامة تنصيص، فلا تُقرأ قيمة على أنها مفتاح آخر.
+
+لا تصل إلى السجل ملفات التطبيق نفسه (البرامج النصية وأنماط التنسيق والخطوط والأيقونات)، ولا فحص صحة أُجيب بالرمز 200 في أقل من ثانية، كي لا يملأ فحص الصحة السجل. أما الفحص الذي يفشل أو يبطئ فيُكتب.

@@ -3,6 +3,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defaultServerConditions, defineConfig, type Plugin } from "vite";
 import packageJson from "./package.json" with { type: "json" };
+import { serverFunctionIds } from "./scripts/server-function-id.ts";
 
 const migrationsDir = "src/server/storage/migrations";
 
@@ -122,6 +123,8 @@ export default defineConfig({
       },
       // Start's default server entry is src/server.ts, the Bun.serve entry here.
       server: { build: { inlineCss: true }, entry: "handler.ts" },
+      // A server function's URL names it, so the request log reads which one ran; the build ships browser and server together.
+      serverFns: { generateFunctionId: serverFunctionIds() },
     }),
     // Before Start reads the chunks, which it does last.
     transitiveImports(),

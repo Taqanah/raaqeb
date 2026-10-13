@@ -364,6 +364,7 @@ const writes: readonly (readonly [string, Write, Setup?])[] = [
           installLanguage: "en",
           publicAddress: "https://status.example.test",
           releaseCheck: false,
+          requestLog: false,
           timeZone: "Asia/Riyadh",
         },
         { trustedProxies: [] }

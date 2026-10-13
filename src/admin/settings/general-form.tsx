@@ -2,7 +2,7 @@
  * The general settings page: install language, time
  * zone with the host's named, clock format, calendar, public address, the trusted
  * proxies, locked when `RAAQEB_TRUSTED_PROXIES` set them, the release check
- * switch, and the database row, locked when `DATABASE_URL` set it.
+ * and request log switches, and the database row, locked when `DATABASE_URL` set it.
  * A saved language reloads the document, since the catalog is inlined per
  * document.
  */
@@ -93,6 +93,7 @@ export function GeneralForm({
 }: GeneralFormProps): ReactNode {
   const { locale, t } = useMessages();
   const [releaseCheck, setReleaseCheck] = useState(settings.releaseCheck);
+  const [requestLog, setRequestLog] = useState(settings.requestLog);
   const [timeZone, setTimeZone] = useState(settings.timeZone);
   const [clock, setClock] = useState<Clock>(settings.clock);
   const [calendar, setCalendar] = useState<Calendar>(settings.calendar);
@@ -110,10 +111,19 @@ export function GeneralForm({
       clock,
       installLanguage,
       releaseCheck,
+      requestLog,
       timeZone,
       ...typed,
     }),
-    [calendar, clock, installLanguage, releaseCheck, timeZone, typed]
+    [
+      calendar,
+      clock,
+      installLanguage,
+      releaseCheck,
+      requestLog,
+      timeZone,
+      typed,
+    ]
   );
   const saving = useDraftSave(save, draft, { onSaved });
   const { fail, line, submit } = saving;
@@ -168,6 +178,7 @@ export function GeneralForm({
         installLanguage: form.get("installLanguage"),
         publicAddress: String(form.get("publicAddress") ?? "").trim(),
         releaseCheck,
+        requestLog,
         timeZone: form.get("timeZone"),
         // Left out while the variable manages it, so the stored entries stay.
         trustedProxies: settings.trustedProxies.managedByEnvironment
@@ -180,7 +191,7 @@ export function GeneralForm({
       }
       submit(parsed.data);
     },
-    [fail, releaseCheck, settings.trustedProxies, submit]
+    [fail, releaseCheck, requestLog, settings.trustedProxies, submit]
   );
   return (
     <form
@@ -319,6 +330,22 @@ export function GeneralForm({
                 </FieldLabel>
                 <FieldDescription>
                   {t("setting_release_check_hint")}
+                </FieldDescription>
+              </div>
+            </Field>
+            <Field orientation="horizontal">
+              <Switch
+                checked={requestLog}
+                id="requestLog"
+                name="requestLog"
+                onCheckedChange={setRequestLog}
+              />
+              <div className="flex flex-col gap-0.5">
+                <FieldLabel htmlFor="requestLog">
+                  {t("setting_request_log")}
+                </FieldLabel>
+                <FieldDescription>
+                  {t("setting_request_log_hint")}
                 </FieldDescription>
               </div>
             </Field>

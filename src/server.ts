@@ -49,6 +49,7 @@ import { liveIo } from "./server/checks/io.ts";
 import { error as logError, info as logInfo } from "./server/log.ts";
 import { createPublicMemo } from "./server/memo/public.ts";
 import type { PublicTarget } from "./server/pages/public.ts";
+import { closed, type MemoAnswer, requestLine } from "./server/request-log.ts";
 import { healthCommand, healthUrl } from "./server/scheduler/health.ts";
 import type { MonitorEvent } from "./server/scheduler/schedule.ts";
 import {
@@ -57,6 +58,7 @@ import {
 } from "./server/scheduler/scheduler.ts";
 import { setAddressCommand } from "./server/settings/command.ts";
 import { heldTrustedProxies } from "./server/settings/proxies.ts";
+import { heldRequestLog } from "./server/settings/request-log.ts";
 import {
   type DatabaseOpener,
   databaseOpener,
@@ -376,20 +378,26 @@ export function serve(
   });
   // Held in memory, read again only when the change counter moves.
   const proxies = heldTrustedProxies(settings.trustedProxies);
+  const requestLog = heldRequestLog();
   const server: Bun.Server<undefined> = Bun.serve({
     development: false,
     fetch: async (request) => {
-      if (oversized(request)) {
-        return new Response("Payload Too Large", { status: 413 });
-      }
+      const started = performance.now();
       const storage = holder.current;
-      // A GET or HEAD reads the change counter once, for the memo and for the trusted proxies; any other request keeps what the last one read.
+      // A GET or HEAD reads the change counter once, for the memo, the trusted proxies and the request log switch; any other request keeps what the last one read.
       const counter =
         storage && (request.method === "GET" || request.method === "HEAD")
           ? memo.read(storage)
           : undefined;
       const trusted = await proxies(storage, await counter);
+      const logging = await requestLog(storage, await counter);
       const resolved = withClientAddress(request, server, trusted);
+      if (oversized(request)) {
+        if (logging) {
+          logRequest(resolved, 413, started, undefined);
+        }
+        return new Response("Payload Too Large", { status: 413 });
+      }
       const context = (publicTarget: PublicTarget | undefined) => ({
         boot: settings,
         // The entry's own request: the one Bun's idle timer belongs to.
@@ -408,19 +416,43 @@ export function serve(
         storage,
         unpublished: () => memo.unpublished(resolved),
       });
-      const memoised = await memo.answer(
-        resolved,
-        storage,
-        async (target) =>
-          // A HEAD renders as a GET, so the stored entry has its body.
-          await handler.fetch(new Request(resolved, { method: "GET" }), {
-            context: context(target),
-          }),
-        counter
-      );
-      const response =
-        memoised ??
-        (await handler.fetch(resolved, { context: context(undefined) }));
+      // Whether a status page's answer was rendered for this request rather than served from the memo.
+      let rendered = false;
+      let memoised: Response | undefined;
+      let response: Response;
+      try {
+        memoised = await memo.answer(
+          resolved,
+          storage,
+          async (target) => {
+            rendered = true;
+            // A HEAD renders as a GET, so the stored entry has its body.
+            return await handler.fetch(
+              new Request(resolved, { method: "GET" }),
+              {
+                context: context(target),
+              }
+            );
+          },
+          counter
+        );
+        response =
+          memoised ??
+          (await handler.fetch(resolved, { context: context(undefined) }));
+      } catch (thrown) {
+        if (logging) {
+          logRequest(resolved, 500, started, undefined);
+        }
+        throw thrown;
+      }
+      if (logging) {
+        logRequest(
+          resolved,
+          response.status,
+          started,
+          memoAnswer(memoised, rendered)
+        );
+      }
       if (!isHtml(response)) {
         return response;
       }
@@ -443,6 +475,36 @@ export function serve(
     routes,
   });
   return server;
+}
+
+/** How a status page's answer was made, or nothing when the memo did not answer. */
+function memoAnswer(
+  memoised: Response | undefined,
+  rendered: boolean
+): MemoAnswer | undefined {
+  if (memoised === undefined) {
+    return;
+  }
+  return rendered ? "rendered" : "cached";
+}
+
+/** Writes the request log's line for a request, timed from `started` to now; a request whose client left is named closed, whatever was answered. */
+function logRequest(
+  request: Request,
+  status: number,
+  started: number,
+  memo: MemoAnswer | undefined
+): void {
+  const line = requestLine(
+    request,
+    request.signal.aborted ? closed : status,
+    performance.now() - started,
+    memo,
+    process.memoryUsage.rss
+  );
+  if (line !== undefined) {
+    logInfo(line);
+  }
 }
 
 /**

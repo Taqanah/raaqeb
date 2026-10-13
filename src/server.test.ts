@@ -9,6 +9,7 @@ import { createPage } from "./server/pages/pages.ts";
 import { publicAddress } from "./server/settings/address.ts";
 import { saveGeneralSettings } from "./server/settings/general.ts";
 import { trustedProxies } from "./server/settings/proxies.ts";
+import { requestLogEnabled } from "./server/settings/request-log.ts";
 import { runSql } from "./server/storage/fixture.ts";
 import {
   localMigrations,
@@ -1608,6 +1609,7 @@ describe("the trusted proxies saved on the general page", () => {
             installLanguage: "ar",
             publicAddress: origin,
             releaseCheck: true,
+            requestLog: false,
             timeZone: "UTC",
             trustedProxies: ["127.0.0.1"],
           },
@@ -1629,5 +1631,178 @@ describe("the trusted proxies saved on the general page", () => {
       "raaqeb: sign-in refused from 127.0.0.1",
       "raaqeb: sign-in refused from 203.0.113.9",
     ]);
+  });
+});
+
+const answerTime = / ms=\d+ /;
+const memory = / rss_mb=\d+$/;
+
+describe("the request log", () => {
+  /** A handler that answers each path as the test needs: slow, abandoned, a failing probe, or a page the memo may keep. */
+  const handler = [
+    "export default { fetch: async (r, o) => {",
+    "const path = new URL(r.url).pathname;",
+    "if (path === '/slow') await Bun.sleep(1100);",
+    // Start ends an abandoned request by throwing the abort's reason.
+    "if (path === '/left') return await new Promise((_, reject) => r.signal.addEventListener('abort', () => reject(r.signal.reason)));",
+    "if (path === '/health' && r.headers.has('x-fail')) return new Response('', { status: 503 });",
+    "return new Response('ok', { headers: o?.context?.publicTarget ? { 'cache-control': 'public, max-age=0' } : {} });",
+    "} };",
+  ].join(" ");
+
+  /** A server over a fresh SQLite file, the switch saved on or left off; `lines` reads the request lines it wrote, the time to the answer and the memory each as `<n>`. */
+  async function withLog(
+    on: boolean,
+    body: (
+      at: (path: string, init?: RequestInit) => Promise<Response>,
+      lines: () => string[],
+      storage: Storage
+    ) => Promise<void>
+  ): Promise<void> {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "client/assets/app-Bx1c9d2e.js": "console.log(1);",
+      "server/handler.js": handler,
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir);
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    const written: string[] = [];
+    const stdout = spyOn(process.stdout, "write").mockImplementation(
+      (chunk) => {
+        written.push(String(chunk));
+        return true;
+      }
+    );
+    const at = (path: string, init: RequestInit = {}) =>
+      fetch(`http://127.0.0.1:${result.server.port}${path}`, {
+        ...init,
+        headers: { "user-agent": "curl/8.5.0", ...init.headers },
+      });
+    const lines = () =>
+      written
+        .join("")
+        .split("\n")
+        .filter((line) => line.startsWith("raaqeb: request "))
+        .map((line) =>
+          line.replace(answerTime, " ms=<n> ").replace(memory, " rss_mb=<n>")
+        );
+    try {
+      if (on) {
+        await result.storage.settings.set(requestLogEnabled, true);
+        await result.storage.bump();
+      }
+      await body(at, lines, result.storage);
+    } finally {
+      stdout.mockRestore();
+      await result.stop();
+    }
+  }
+
+  test("while the switch is off, no request writes a line", async () => {
+    await withLog(false, async (at, lines) => {
+      expect(await (await at("/admin")).text()).toBe("ok");
+      await at("/api/v2/monitors", { body: "{}", method: "POST" });
+      await at("/sign-in", {
+        body: new Uint8Array(9 * 1024 * 1024),
+        method: "POST",
+      });
+      const leaving = new AbortController();
+      const left = at("/left", { signal: leaving.signal }).catch(
+        () => undefined
+      );
+      await Bun.sleep(50);
+      leaving.abort();
+      await left;
+      await Bun.sleep(100);
+      expect(lines()).toEqual([]);
+    });
+  });
+
+  test("once the switch is saved on and the change counter moves, each request that reaches the handler writes one line naming its kind; a static file writes none", async () => {
+    await withLog(true, async (at, lines) => {
+      await at("/admin/monitors?page=2");
+      await at("/_serverFn/4f2a9c", { body: "{}", method: "POST" });
+      await at("/api/auth/get-session");
+      await at("/api/v2/monitors");
+      await at("/api/heartbeat/s3cret", { method: "POST" });
+      await at("/assets/app-Bx1c9d2e.js");
+      expect(
+        (
+          await at("/sign-in", {
+            body: new Uint8Array(9 * 1024 * 1024),
+            method: "POST",
+          })
+        ).status
+      ).toBe(413);
+      expect(lines()).toEqual([
+        "raaqeb: request method=GET path=/admin/monitors status=200 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
+        "raaqeb: request method=POST path=/_serverFn/4f2a9c status=200 ms=<n> ip=127.0.0.1 kind=function browser=curl/8.5",
+        "raaqeb: request method=GET path=/api/auth/get-session status=200 ms=<n> ip=127.0.0.1 kind=auth browser=curl/8.5",
+        "raaqeb: request method=GET path=/api/v2/monitors status=200 ms=<n> ip=127.0.0.1 kind=api browser=curl/8.5",
+        "raaqeb: request method=POST path=/api/heartbeat/<token> status=200 ms=<n> ip=127.0.0.1 kind=api browser=curl/8.5",
+        "raaqeb: request method=POST path=/sign-in status=413 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
+      ]);
+    });
+  });
+
+  test("a status page's view is logged as a status page, and as cached once the memo holds it", async () => {
+    await withLog(true, async (at, lines, storage) => {
+      const created = await createPage(storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(storage, created.page.id);
+      await at("/");
+      await at("/");
+      expect(lines()).toEqual([
+        "raaqeb: request method=GET path=/ status=200 ms=<n> ip=127.0.0.1 kind=status-page browser=curl/8.5",
+        "raaqeb: request method=GET path=/ status=200 ms=<n> ip=127.0.0.1 kind=status-page cached=true browser=curl/8.5",
+      ]);
+    });
+  });
+
+  test("a health probe answered 200 within a second writes no line; a failing one writes one with the process's memory", async () => {
+    await withLog(true, async (at, lines) => {
+      await at("/health");
+      await at("/health", { headers: { "x-fail": "1" } });
+      expect(lines()).toEqual([
+        "raaqeb: request method=GET path=/health status=503 ms=<n> ip=127.0.0.1 kind=api browser=curl/8.5 rss_mb=<n>",
+      ]);
+    });
+  });
+
+  test("a request slower than a second carries the process's memory", async () => {
+    await withLog(true, async (at, lines) => {
+      await at("/slow");
+      expect(lines()).toEqual([
+        "raaqeb: request method=GET path=/slow status=200 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5 rss_mb=<n>",
+      ]);
+    });
+  });
+
+  test("a client that leaves before the answer still gets a line, its status named closed", async () => {
+    await withLog(true, async (at, lines) => {
+      const leaving = new AbortController();
+      const left = at("/left", { signal: leaving.signal }).catch(
+        () => undefined
+      );
+      await Bun.sleep(100);
+      leaving.abort();
+      await left;
+      const deadline = Date.now() + 2000;
+      while (lines().length === 0 && Date.now() < deadline) {
+        // biome-ignore lint/performance/noAwaitInLoops: polling for the line the server writes once the client left
+        await Bun.sleep(20);
+      }
+      expect(lines()).toEqual([
+        "raaqeb: request method=GET path=/left status=closed ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
+      ]);
+    });
   });
 });

@@ -979,6 +979,14 @@ msgid "setting_release_check_hint"
 msgstr "Once a day the server asks GitHub for a newer release and shows a banner in the admin area; it never updates itself."
 
 #. js-lingui-explicit-id
+msgid "setting_request_log"
+msgstr "Request log"
+
+#. js-lingui-explicit-id
+msgid "setting_request_log_hint"
+msgstr "The server writes one line to its log for each page or API request, with its status code, response time, and the visitor's address and browser."
+
+#. js-lingui-explicit-id
 msgid "setting_database"
 msgstr "Database backend"
 

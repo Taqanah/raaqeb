@@ -14,6 +14,7 @@ import {
 import { installLanguage } from "./language.ts";
 import { operatorLanguage } from "./operator.ts";
 import { trustedProxies } from "./proxies.ts";
+import { requestLogEnabled } from "./request-log.ts";
 
 let open: { storage: Storage; cleanup: () => Promise<void> } | undefined;
 
@@ -42,6 +43,7 @@ const input = {
   installLanguage: "en",
   publicAddress: "https://status.example.test",
   releaseCheck: false,
+  requestLog: false,
   timeZone: "Asia/Riyadh",
 } as const;
 
@@ -102,6 +104,7 @@ describe("the general settings page", () => {
       operatorLanguage: undefined,
       publicAddress: "",
       releaseCheck: true,
+      requestLog: false,
       timeZone: hostTimeZone(),
       trustedProxies: { entries: [], managedByEnvironment: false },
     });
@@ -135,6 +138,16 @@ describe("the general settings page", () => {
     expect(await store.settings.get(clock)).toBe("24h");
     expect(await store.settings.get(calendar)).toBe("hijri");
     expect(await store.settings.get(releaseCheckEnabled)).toBe(false);
+  });
+
+  test("the request log switch is off until saved on, and the entry reads the row it is saved to", async () => {
+    const store = await storage();
+    expect((await readGeneralSettings(store, boot)).requestLog).toBe(false);
+    await saveGeneralSettings(store, { ...input, requestLog: true }, boot);
+    expect((await readGeneralSettings(store, boot)).requestLog).toBe(true);
+    expect(await store.settings.get(requestLogEnabled)).toBe(true);
+    await saveGeneralSettings(store, input, boot);
+    expect((await readGeneralSettings(store, boot)).requestLog).toBe(false);
   });
 
   test("saving moves the change counter: the time zone reads a heartbeat monitor's cron schedule, so the scheduler reads the settings again", async () => {

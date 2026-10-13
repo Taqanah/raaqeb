@@ -34,6 +34,7 @@ export interface GeneralSettings {
   readonly operatorLanguage: Locale | undefined;
   readonly publicAddress: string;
   readonly releaseCheck: boolean;
+  readonly requestLog: boolean;
   readonly timeZone: string;
   /** The zones the server knows, so the document and the browser offer the same names. */
   readonly timeZones: readonly string[];
@@ -51,6 +52,7 @@ export const generalSettingsSchema = z.object({
   installLanguage: localeSchema,
   publicAddress: publicAddressSchema,
   releaseCheck: z.boolean(),
+  requestLog: z.boolean(),
   timeZone: timeZoneSchema,
   /** Absent when the variable manages the field; each entry is judged on the server by the rule the variable's are. */
   trustedProxies: z.array(z.string()).optional(),

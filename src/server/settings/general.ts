@@ -1,8 +1,8 @@
 /**
  * The general settings page: the install language,
  * time zone, clock format, calendar, public address, the trusted proxies (managed by
- * environment when `RAAQEB_TRUSTED_PROXIES` is set) and the release check
- * switch, plus the database backend as a read-only row, managed by
+ * environment when `RAAQEB_TRUSTED_PROXIES` is set), the release check
+ * switch and the request log switch, plus the database backend as a read-only row, managed by
  * environment when `DATABASE_URL` is set. Every function answers a result
  * and never throws.
  */
@@ -24,21 +24,30 @@ import { calendar, clock, readClock, readSetting, timeZone } from "./clock.ts";
 import { installLanguage, readInstallLanguage } from "./language.ts";
 import { operatorLanguage } from "./operator.ts";
 import { trustedProxies } from "./proxies.ts";
+import { requestLogEnabled } from "./request-log.ts";
 
 export async function readGeneralSettings(
   storage: Pick<Storage, "backend" | "settings">,
   boot: Pick<BootSettings, "databaseUrlFromEnvironment" | "trustedProxies">
 ): Promise<GeneralSettings> {
   const managed = boot.trustedProxies.length > 0;
-  const [language, ownLanguage, clockSettings, address, releaseCheck, proxies] =
-    await Promise.all([
-      readInstallLanguage(storage),
-      readSetting<Locale | undefined>(storage, operatorLanguage, undefined),
-      readClock(storage),
-      readSetting(storage, publicAddress, ""),
-      readSetting(storage, releaseCheckEnabled, true),
-      managed ? boot.trustedProxies : readSetting(storage, trustedProxies, []),
-    ]);
+  const [
+    language,
+    ownLanguage,
+    clockSettings,
+    address,
+    releaseCheck,
+    requestLog,
+    proxies,
+  ] = await Promise.all([
+    readInstallLanguage(storage),
+    readSetting<Locale | undefined>(storage, operatorLanguage, undefined),
+    readClock(storage),
+    readSetting(storage, publicAddress, ""),
+    readSetting(storage, releaseCheckEnabled, true),
+    readSetting(storage, requestLogEnabled, false),
+    managed ? boot.trustedProxies : readSetting(storage, trustedProxies, []),
+  ]);
   return {
     calendar: clockSettings.calendar,
     clock: clockSettings.clock,
@@ -52,6 +61,7 @@ export async function readGeneralSettings(
     operatorLanguage: ownLanguage,
     publicAddress: address,
     releaseCheck,
+    requestLog,
     timeZone: clockSettings.timeZone,
     timeZones: timeZones(),
     // The variable wins where it is set.
@@ -93,7 +103,7 @@ async function servedAsPageDomain(
   return host !== undefined && pages.some((page) => page.customDomain === host);
 }
 
-/** Stores the general settings and moves the change counter: the time zone reads a heartbeat monitor's cron schedule and renders every public timestamp, and the entry reads the trusted proxies again when it moves. Trusted proxies left out keep the stored ones; while `RAAQEB_TRUSTED_PROXIES` manages them, any the save carries are ignored, so the lock holds on the server and not in the form alone. */
+/** Stores the general settings and moves the change counter: the time zone reads a heartbeat monitor's cron schedule and renders every public timestamp, and the entry reads the trusted proxies and the request log switch again when it moves. Trusted proxies left out keep the stored ones; while `RAAQEB_TRUSTED_PROXIES` manages them, any the save carries are ignored, so the lock holds on the server and not in the form alone. */
 export async function saveGeneralSettings(
   storage: Pick<Storage, "bump" | "pages" | "settings">,
   input: GeneralSettingsInput,
@@ -115,6 +125,7 @@ export async function saveGeneralSettings(
     await storage.settings.set(calendar, input.calendar);
     await storage.settings.set(publicAddress, input.publicAddress);
     await storage.settings.set(releaseCheckEnabled, input.releaseCheck);
+    await storage.settings.set(requestLogEnabled, input.requestLog);
     if (proxies !== undefined) {
       await storage.settings.set(trustedProxies, proxies);
     }

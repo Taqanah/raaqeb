@@ -186,7 +186,9 @@ test.describe("on an install of its own", () => {
     page,
   }) => {
     await open(page, "/admin/settings");
-    const releaseCheck = page.locator(`${general} [role=switch]`);
+    const releaseCheck = page.locator(
+      `${general} [role=switch][aria-labelledby=releaseCheck-label]`
+    );
     await expect(releaseCheck).toHaveAttribute("aria-checked", "true");
     await releaseCheck.click();
     await page.click(saveGeneral);
@@ -224,6 +226,22 @@ test.describe("on an install of its own", () => {
         `${overrides} [data-name=calendar] [role=radio][data-value=hijri]`
       )
     ).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("the request log switch is off on a new install, and turned on it stays on after a reload", async ({
+    page,
+  }) => {
+    await open(page, "/admin/settings");
+    const requestLog = page.locator(
+      `${general} [role=switch][aria-labelledby=requestLog-label]`
+    );
+    await expect(requestLog).toHaveAttribute("aria-checked", "false");
+    await requestLog.click();
+    await page.click(saveGeneral);
+    await expect(page.locator(savedGeneral)).toHaveCount(1);
+    await page.reload();
+    await expectPath(page, "/admin/settings");
+    await expect(requestLog).toHaveAttribute("aria-checked", "true");
   });
 
   test("trusted proxies that are not addresses are refused and nothing is stored", async ({

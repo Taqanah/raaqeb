@@ -979,6 +979,14 @@ msgid "setting_release_check_hint"
 msgstr "يسأل الخادوم GitHub مرة يوميًا عن إصدار أحدث، ويعرض لافتة في الإدارة، ولا يرقّي نفسه أبدًا."
 
 #. js-lingui-explicit-id
+msgid "setting_request_log"
+msgstr "سجل الطلبات"
+
+#. js-lingui-explicit-id
+msgid "setting_request_log_hint"
+msgstr "يكتب الخادوم في سجله سطرًا لكل طلب صفحة أو طلب للواجهة البرمجية، فيه رمز الحالة ومدة الاستجابة وعنوان الزائر ومتصفحه."
+
+#. js-lingui-explicit-id
 msgid "setting_database"
 msgstr "نوع قاعدة البيانات"
 

@@ -29,6 +29,7 @@ describe("what the general page posts", () => {
       installLanguage: "en",
       publicAddress: "https://status.example.test",
       releaseCheck: false,
+      requestLog: false,
       timeZone: "Asia/Riyadh",
     } as const;
     expect(generalSettingsSchema.parse(input)).toEqual(input);
@@ -41,6 +42,7 @@ describe("what the general page posts", () => {
         installLanguage: "en",
         publicAddress: "https://status.example.test/path",
         releaseCheck: true,
+        requestLog: false,
         timeZone: "Asia/Riyadh",
       }).success
     ).toBe(false);
@@ -50,6 +52,7 @@ describe("what the general page posts", () => {
         installLanguage: "en",
         publicAddress: "https://status.example.test",
         releaseCheck: true,
+        requestLog: false,
         timeZone: "Asia/Riyadh",
       }).success
     ).toBe(false);

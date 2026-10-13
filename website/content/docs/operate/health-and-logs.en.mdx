@@ -14,3 +14,18 @@ Raaqeb logs one plain line per event to standard output, errors to standard erro
 - macOS: `/usr/local/var/log/raaqeb/raaqeb.log`
 - Windows: none; Raaqeb keeps no log there. Stop the task and run `serve` by hand in a console to read it ([install on Windows](/en/docs/operate/install#windows))
 - Docker: `docker logs raaqeb`
+
+## Request log
+
+Turn on the request log on the general settings page to see every request the server answers. It is off by default and takes effect when saved, with no restart. Each request then writes one line once its answer is ready:
+
+```
+raaqeb: request method=GET path=/admin/monitors status=200 ms=9 ip=203.0.113.9 kind=page browser="Firefox 131 on Linux"
+raaqeb: request method=POST path=/_serverFn/routes.admin.settings.index--save status=200 ms=4 ip=203.0.113.9 kind=function browser="Firefox 131 on Linux"
+raaqeb: request method=GET path=/ status=200 ms=0 ip=203.0.113.9 kind=status-page cached=true browser="Safari 18 on iOS"
+raaqeb: request method=POST path=/api/auth/sign-in/email status=closed ms=8 ip=203.0.113.9 kind=auth browser=curl/8.5
+```
+
+Each line is `key=value` pairs (logfmt), which a log collector reads as they are. `method`; `path`, without its query, a token in it written `<token>`, and for the admin area's calls to the server the module and the function called; `status`, the status code, or `closed` when the client left before the answer; `ms`, the time until the answer was ready; `ip`, the client address as the trusted proxies resolve it; `kind`, what answered: `page`, `function` (the admin area's calls to the server), `api`, `auth` (sign-in) or `status-page`, followed by `cached=true` when the answer came from memory; and `browser`, a short name of the browser or tool. A request that took over a second, or answered with a 5xx code, adds `rss_mb`, the process's memory in megabytes at that moment. A value that holds a space or a quote is quoted, so no value can pass for another key.
+
+The app's own files (scripts, styles, fonts and icons) never reach the log, and neither does a health probe answered 200 within a second, so the health check does not fill it. A probe that fails or is slow is logged.
