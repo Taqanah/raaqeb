@@ -27,7 +27,7 @@
     "start": "bun dist/server/server.js",
     "test": "bun run catalog && bun test src scripts bench website --parallel",
     "test:postgres": "bun scripts/test-postgres.ts",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p website",
+    "typecheck": "bun --check && bun --cwd=website --check",
     "upgrade:check": "bun scripts/upgrade-check.ts",
     "website": "vite dev --config website/vite.config.ts",
     "website:build": "vite build --config website/vite.config.ts",

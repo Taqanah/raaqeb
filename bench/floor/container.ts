@@ -11,7 +11,7 @@
 import { type DatabaseUrls, targetPorts } from "./fleet.ts";
 
 /** The stand-in: the Bun release the repo pins, on Debian slim. */
-export const standInImage = "oven/bun:1.4.2-slim";
+export const standInImage = "oven/bun:1.4.3-slim";
 
 /** The load generator, pinned exactly. */
 export const ohaImage = "ghcr.io/hatoo/oha:1.16.0";

@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  BUN_VERSION: 1.4.2
+  BUN_VERSION: 1.4.3
 
 jobs:
   # Compiles the seven binaries once, checks them and the image on Linux, and

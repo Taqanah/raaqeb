@@ -132,13 +132,14 @@ describe("a request to the Docker daemon", () => {
     expect(error.message).toContain(unix);
   });
 
-  test("rejects with ECONNREFUSED when the path is no listening socket", async () => {
+  test("rejects with ECONNREFUSED, naming the path, when the path is no listening socket", async () => {
     const unix = `${directory}/plain-file`;
     await Bun.write(unix, "not a socket");
     const error = await failure(
       requestDocker({ endpoint: unix, path: "/x", timeoutMs: 1000 })
     );
     expect(error.code).toBe("ECONNREFUSED");
+    expect(error.message).toContain(unix);
   });
 
   test("rejects with a TimeoutError when the daemon never answers", async () => {

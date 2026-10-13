@@ -7,7 +7,7 @@ import {
   hijriWallTime,
 } from "./hijri.ts";
 
-// Pinned against Bun 1.4.2's ICU: Intl writes these days as these Hijri dates.
+// Pinned against Bun 1.4.3's ICU: Intl writes these days as these Hijri dates.
 const ramadan1447 = { day: 1, month: 9, year: 1447 };
 const muharram1448 = { day: 1, month: 1, year: 1448 };
 

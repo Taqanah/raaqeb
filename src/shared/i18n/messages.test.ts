@@ -10,7 +10,7 @@ describe("a locale's messages", () => {
   });
 
   test("have the locale active, so plural categories follow it", () => {
-    // The id is a real one: an unknown id fails tsc, which is the point of the union.
+    // The id is a real one: an unknown id fails the type check, which is the point of the union.
     const i18n = createMessages("ar", {
       app_name:
         "{count, plural, zero {لا مراقبات} one {مراقبة واحدة} two {مراقبتان} few {# مراقبات} many {# مراقبة} other {# مراقبة}}",

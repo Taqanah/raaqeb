@@ -31,5 +31,5 @@ export const bench = {
   /** From start to answering, in ms. */
   coldStartMs: 444,
   /** The Linux binary, in MB. */
-  binaryMb: 86,
+  binaryMb: 96,
 } as const;

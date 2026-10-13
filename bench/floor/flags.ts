@@ -1,7 +1,7 @@
 /**
  * The harness's command line: its own flags, parsed here rather
  * than after `--`, because `bun run script -- a b` strips two separators on
- * Bun 1.4.2. A bare `--` is ignored; every other word the harness does not
+ * Bun 1.4.3. A bare `--` is ignored; every other word the harness does not
  * know passes through, in order, to the `raaqeb serve` command in the
  * container. A run shorter than the full phases is a wiring run.
  */

@@ -21,9 +21,10 @@ export interface Target {
 /**
  * The four Linux targets, macOS on Apple Silicon only (Intel Macs are no
  * longer sold and no hardware tests them), and Windows on x64 and arm64. Bun
- * 1.4.2 has one x64 build, which picks its CPU paths at runtime, so there is
- * no baseline target. Bun signs the macOS binary ad hoc as it compiles it,
- * which Apple Silicon needs.
+ * 1.4.3 has one x64 build, which picks its CPU paths at runtime (its
+ * `-baseline` archives hold the same binary), so there is no baseline target.
+ * Bun signs the macOS binary ad hoc as it compiles it, which Apple Silicon
+ * needs.
  */
 export const targets: readonly Target[] = [
   { bun: "bun-linux-x64", file: "raaqeb-linux-x64", platform: "linux/amd64" },

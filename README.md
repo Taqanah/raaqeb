@@ -32,7 +32,7 @@ docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data
 
 ## الحجم
 
-يعمل على نواة واحدة و240 ميغابايت من الذاكرة، في ملف تنفيذي واحد، ولا يحتاج إلى خدمة خارجية. في آخر قياس تحمّل 800 مراقبة تُفحص كل 20 ثانية وبلغت ذروة الذاكرة 107 ميغابايت، وحجم الملف التنفيذي لنظام Linux نحو 86 ميغابايت.
+يعمل على نواة واحدة و240 ميغابايت من الذاكرة، في ملف تنفيذي واحد، ولا يحتاج إلى خدمة خارجية. في آخر قياس تحمّل 800 مراقبة تُفحص كل 20 ثانية وبلغت ذروة الذاكرة 107 ميغابايت، وحجم الملف التنفيذي لنظام Linux نحو 96 ميغابايت.
 
 ## المزيد
 
@@ -77,7 +77,7 @@ HTTP sites, TCP ports, DNS records, Postgres, MySQL and Redis databases, Docker 
 
 ## Size
 
-It runs on 1 vCPU and 240 MB of RAM as one binary, with no outside service. In the last benchmark it held 800 monitors checked every 20 seconds at a memory peak of 107 MB, and the Linux binary is about 86 MB.
+It runs on 1 vCPU and 240 MB of RAM as one binary, with no outside service. In the last benchmark it held 800 monitors checked every 20 seconds at a memory peak of 107 MB, and the Linux binary is about 96 MB.
 
 ## More
 

@@ -96,7 +96,7 @@ function open(
   });
   return {
     ask: async () => firstValue(await sql.unsafe(query.query)),
-    // A query still running past the timeout gets a second to end before the socket closes (probed on Bun 1.4.2: `timeout: 0` waits for it).
+    // A query still running past the timeout gets a second to end before the socket closes (probed on Bun 1.4.3: `timeout: 0` waits for it).
     close: () => {
       sql.close({ timeout: 1 }).catch(() => undefined);
     },

@@ -51,7 +51,7 @@ SQLite and Postgres work under one rule: a feature works on both or on neither.
 
 Anything with logic is written test first, one commit per step, so a reviewer can replay the work (ADR-0008). Tests are committed before the code they test.
 
-1. **Interface.** Exported signatures and types, no bodies. Done when `tsc` accepts the file and every name is a `CONTEXT.md` word.
+1. **Interface.** Exported signatures and types, no bodies. Done when `bun run typecheck` accepts the file and every name is a `CONTEXT.md` word.
 2. **Red** (`test:`). Tests against that interface, named by the behaviour they pin in glossary words, never by the function they call. Done when each fails for the reason its name gives.
 3. **Green.** The smallest code that passes, test files untouched. Done when the suite is green.
 4. **Audit** (`test:`). Re-read every test against the issue, not the code. A test changes only when it asserts something the issue never asked for or contradicts `CONTEXT.md`; list each changed assertion with its reason in the pull request body.

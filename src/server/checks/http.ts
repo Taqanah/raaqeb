@@ -128,7 +128,7 @@ function requestInit(
 }
 
 const redirectStatuses = new Set([301, 302, 303, 307, 308]);
-/** What fetch takes off a request when a redirect leaves the origin (probed on Bun 1.4.2). */
+/** What fetch takes off a request when a redirect leaves the origin (probed on Bun 1.4.3). */
 const crossOriginHeaders = ["authorization", "cookie", "proxy-authorization"];
 /** The headers that describe a body, dropped with it (Fetch standard, HTTP-redirect fetch). */
 const bodyHeaders = [

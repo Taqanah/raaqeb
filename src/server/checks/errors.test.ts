@@ -61,8 +61,8 @@ describe("the reason of a fetch error", () => {
       "ENETUNREACH",
       "EPIPE",
       "FailedToOpenSocket",
-      // A TLS handshake that ended before any certificate, as Bun's fetch names it.
-      "UNKNOWN_CERTIFICATE_VERIFICATION_ERROR",
+      // A TLS handshake the server answered without TLS, as Bun's fetch names it.
+      "EPROTO",
     ]) {
       expect(reasonForError(coded(code), target)).toMatchObject({
         params: { code, reason: "connection_failed" },
@@ -91,6 +91,8 @@ describe("the reason of a fetch error", () => {
       "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
       "CERT_UNTRUSTED",
       "HOSTNAME_MISMATCH",
+      // A verification code Bun has no name for.
+      "UNKNOWN_CERTIFICATE_VERIFICATION_ERROR",
     ]) {
       expect(reasonForError(coded(code), target)).toMatchObject({
         params: { code, reason: "certificate_invalid" },
@@ -134,6 +136,18 @@ describe("the reason of a fetch error", () => {
         target
       ).error
     ).toBe("The socket connection was closed unexpectedly.");
+  });
+
+  test("the error text leaves out the code Bun writes before its sentence, which the reason already names", () => {
+    expect(
+      reasonForError(
+        coded(
+          "ECONNREFUSED",
+          "ECONNREFUSED: Unable to connect. Is the computer able to access the url?"
+        ),
+        target
+      ).error
+    ).toBe("Unable to connect. Is the computer able to access the url?");
   });
 
   test("the advice is left out before the text is cut, so a long URL never leaves a piece of it", () => {
@@ -248,7 +262,7 @@ describe("the reason of a resolver error", () => {
 
 describe("the reason of a database driver's error", () => {
   const server = { host: "db.example.test", port: 5432, timeoutMs: 10_000 };
-  /** A driver error as Bun 1.4.2 throws one: its own code, and the server's in `errno`. */
+  /** A driver error as Bun 1.4.3 throws one: its own code, and the server's in `errno`. */
   const driver = (code: string, errno?: string | number, message = code) =>
     Object.assign(new Error(message), { code, errno });
 
