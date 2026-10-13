@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { notFound } from "@tanstack/react-router";
 import { plainPage, september, viewIn } from "@/public/fixture.tsx";
+import type {
+  OverviewDocument,
+  OverviewPage,
+} from "@/shared/schemas/overview.ts";
 import { historyHead, missingHead, overviewHead } from "./-public.ts";
 
 const raaqebIcon = {
@@ -25,10 +29,21 @@ describe("a history view's title", () => {
 
 describe("a status page's favicon", () => {
   const view = viewIn("en");
+  const documentOf = (page: OverviewPage): OverviewDocument => ({
+    calendar: september.calendar,
+    clock: september.clock,
+    incidents: [],
+    items: [],
+    level: "operational",
+    maintenance: [],
+    page,
+    subscribe: [],
+    timeZone: september.timeZone,
+  });
 
   test("falls back to Raaqeb's mark when the page has none", () => {
     const head = overviewHead(
-      { document: { page: plainPage }, view },
+      { document: documentOf(plainPage), view },
       undefined
     );
     expect(head.links).toContainEqual(raaqebIcon);
@@ -36,7 +51,7 @@ describe("a status page's favicon", () => {
 
   test("is the page's own when it has one, and Raaqeb's mark stays out", () => {
     const page = { ...plainPage, images: { favicon: own.href } };
-    const head = overviewHead({ document: { page }, view }, undefined);
+    const head = overviewHead({ document: documentOf(page), view }, undefined);
     expect(head.links).toContainEqual(own);
     expect(head.links).not.toContainEqual(raaqebIcon);
   });
