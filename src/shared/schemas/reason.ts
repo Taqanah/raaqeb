@@ -35,6 +35,8 @@ export const reasons = {
   container_dead: 20,
   container_unhealthy: 21,
   tls_required: 22,
+  smtp_no_greeting: 23,
+  smtp_stalled: 24,
 } as const;
 
 export type ReasonName = keyof typeof reasons;
@@ -123,5 +125,9 @@ export const reasonParamsSchema = z.discriminatedUnion("reason", [
   z.object({ reason: z.literal("container_unhealthy") }),
   /** The database server signs in only over an encrypted connection and the URL asked for none: MySQL 8's default sign-in over a plain one. */
   z.object({ reason: z.literal("tls_required") }),
+  /** The SMTP server accepted the connection and never sent its greeting. */
+  z.object({ reason: z.literal("smtp_no_greeting") }),
+  /** The SMTP server greeted and then went quiet for the whole wait, mid-send. */
+  z.object({ reason: z.literal("smtp_stalled") }),
 ]);
 export type ReasonParams = z.infer<typeof reasonParamsSchema>;

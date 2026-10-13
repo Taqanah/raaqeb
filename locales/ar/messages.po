@@ -1367,6 +1367,14 @@ msgid "reason_tls_required"
 msgstr "لا يقبل الخادوم تسجيل الدخول إلا عبر اتصال معمّى، فأضف ⁦?sslmode=require⁩ إلى رابط الاتصال"
 
 #. js-lingui-explicit-id
+msgid "reason_smtp_no_greeting"
+msgstr "لم يرسل خادوم SMTP تحيته خلال المهلة"
+
+#. js-lingui-explicit-id
+msgid "reason_smtp_stalled"
+msgstr "توقف خادوم SMTP عن الإجابة أثناء الإرسال"
+
+#. js-lingui-explicit-id
 msgid "monitor_status_up"
 msgstr "يعمل"
 

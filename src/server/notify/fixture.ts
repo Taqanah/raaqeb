@@ -182,9 +182,11 @@ export function recordPosts(now = Date.parse("2026-09-25T18:49:05.000Z")): {
 }
 
 export interface FakeSmtpOptions {
+  /** Never answer this command (by its verb) after the greeting and the EHLO, as a server that goes quiet mid-send. */
+  readonly mute?: string;
   /** Offer AUTH PLAIN and LOGIN in the EHLO answer, and accept any credentials. */
   readonly offerAuth?: boolean;
-  /** Offer STARTTLS in the EHLO answer; the server cannot upgrade, so a client that asks gets 454. */
+  /** Offer STARTTLS in the EHLO answer; the server cannot upgrade, so a client that asks gets 454 unless `replies.STARTTLS` says otherwise. */
   readonly offerStartTls?: boolean;
   /** Refuse RCPT TO for this one address with 550, and accept the others. */
   readonly refuseRecipient?: string;
@@ -192,6 +194,8 @@ export interface FakeSmtpOptions {
   readonly replies?: Readonly<Record<string, string>>;
   /** Never send the greeting. */
   readonly silent?: boolean;
+  /** Answer EHLO with a reply that never ends: one more line every 20 ms, so the connection is never quiet. */
+  readonly trickle?: boolean;
 }
 
 export interface FakeSmtp {
@@ -211,6 +215,9 @@ const verbEnd = /[\s:]/;
 interface Session {
   buffer: string;
   data: string[] | undefined;
+  /** After a STARTTLS the server agreed to: the handshake's bytes are not commands, and nothing answers them. */
+  handshake?: boolean;
+  ticker?: ReturnType<typeof setInterval>;
 }
 
 export function fakeSmtp(options: FakeSmtpOptions = {}): FakeSmtp {
@@ -245,8 +252,14 @@ export function fakeSmtp(options: FakeSmtpOptions = {}): FakeSmtp {
     }
     commands.push(line);
     const verb = line.split(verbEnd)[0]?.toUpperCase() ?? "";
+    if (verb === options.mute) {
+      return undefined;
+    }
     switch (verb) {
       case "EHLO":
+        if (options.trickle) {
+          return "250-fake.example.test\r\n";
+        }
         return [
           "250-fake.example.test",
           ...(options.offerStartTls ? ["250-STARTTLS"] : []),
@@ -258,8 +271,11 @@ export function fakeSmtp(options: FakeSmtpOptions = {}): FakeSmtp {
         return "235 2.7.0 accepted\r\n";
       case "HELO":
         return "250 fake.example.test\r\n";
-      case "STARTTLS":
-        return "454 4.7.0 TLS not available\r\n";
+      case "STARTTLS": {
+        const answered = reply("STARTTLS", "454 4.7.0 TLS not available");
+        session.handshake = answered.startsWith("220");
+        return answered;
+      }
       case "MAIL":
         return reply("MAIL", "250 2.1.0 ok");
       case "RCPT":
@@ -284,8 +300,14 @@ export function fakeSmtp(options: FakeSmtpOptions = {}): FakeSmtp {
     hostname: "127.0.0.1",
     port: 0,
     socket: {
-      close: () => resolveClosed(),
+      close: (socket) => {
+        clearInterval(socket.data.ticker);
+        resolveClosed();
+      },
       data: (socket, chunk) => {
+        if (socket.data.handshake) {
+          return;
+        }
         socket.data.buffer += chunk.toString();
         let end = socket.data.buffer.indexOf("\r\n");
         while (end !== -1) {
@@ -294,6 +316,12 @@ export function fakeSmtp(options: FakeSmtpOptions = {}): FakeSmtp {
           const answered = answer(socket.data, line);
           if (answered !== undefined) {
             socket.write(answered);
+          }
+          if (options.trickle && line.toUpperCase().startsWith("EHLO")) {
+            socket.data.ticker = setInterval(
+              () => socket.write("250-more\r\n"),
+              20
+            );
           }
           if (line.toUpperCase() === "QUIT") {
             socket.end();

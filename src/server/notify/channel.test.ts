@@ -446,14 +446,49 @@ describe("one email delivery over SMTP through the channel base", () => {
     }
   });
 
-  test("an SMTP attempt gets thirty seconds", async () => {
+  test("an SMTP server that never greeted is a failed attempt of its own reason", async () => {
+    const sends = spyOn(smtp, "sendSmtp").mockRejectedValue(
+      new smtp.SmtpTimeoutError("greeting", "Greeting never received")
+    );
+    try {
+      const outcome = await deliver(emailChannel, values(1), payload, live);
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.failure.reason).toBe("smtp_no_greeting");
+        expect(outcome.failure.params).toEqual({ reason: "smtp_no_greeting" });
+        expect(outcome.failure.error).toBe("Greeting never received");
+      }
+    } finally {
+      sends.mockRestore();
+    }
+  });
+
+  test("an SMTP server that went quiet mid-send is a failed attempt of its own reason", async () => {
+    const sends = spyOn(smtp, "sendSmtp").mockRejectedValue(
+      new smtp.SmtpTimeoutError("stalled", "Timeout")
+    );
+    try {
+      const outcome = await deliver(emailChannel, values(1), payload, live);
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.failure.reason).toBe("smtp_stalled");
+        expect(outcome.failure.params).toEqual({ reason: "smtp_stalled" });
+      }
+    } finally {
+      sends.mockRestore();
+    }
+  });
+
+  test("an SMTP attempt gets thirty seconds, and each wait in it twenty", async () => {
     const server = fakeSmtp();
     const sends = spyOn(smtp, "sendSmtp");
     try {
       expect(
         await deliver(emailChannel, values(server.port), payload, live)
       ).toEqual({ ok: true });
-      expect(sends.mock.calls.map((call) => call[2])).toEqual([30_000]);
+      expect(sends.mock.calls.map((call) => call.slice(2))).toEqual([
+        [30_000, 20_000],
+      ]);
     } finally {
       sends.mockRestore();
       server.stop();

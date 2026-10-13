@@ -18,7 +18,20 @@ export class SmtpReplyError extends Error {
   }
 }
 
-/** The error as the channel base reads it: a refusal by its reply code, anything else by the socket's own code, which nodemailer keeps as `originalCode` under its own. */
+/** An SMTP wait nodemailer ended that names what the server did: it never sent its greeting, or it went quiet during the send. */
+export class SmtpTimeoutError extends Error {
+  readonly kind: "greeting" | "stalled";
+  constructor(kind: "greeting" | "stalled", text: string) {
+    super(text);
+    this.name = "SmtpTimeoutError";
+    this.kind = kind;
+  }
+}
+
+/** nodemailer starts its quiet-socket timer and its greeting timer together; at the same length they race, and a server that never greets read as stalled in every rerun. The socket's is this much longer, so the greeting is the one that fires. */
+const raceMarginMs = 250;
+
+/** The error as the channel base reads it: a refusal by its reply code, a timeout by the wait it ended (`timeoutType`), anything else by the socket's own code, which nodemailer keeps as `originalCode` under its own. */
 function normalized(error: unknown): unknown {
   if (!(error instanceof Error) || error instanceof DOMException) {
     return error;
@@ -26,16 +39,27 @@ function normalized(error: unknown): unknown {
   if ("responseCode" in error && typeof error.responseCode === "number") {
     return new SmtpReplyError(error.responseCode, error.message);
   }
+  if ("timeoutType" in error) {
+    if (error.timeoutType === "GREETING_TIMEOUT") {
+      return new SmtpTimeoutError("greeting", error.message);
+    }
+    if (error.timeoutType === "SOCKET_TIMEOUT") {
+      return new SmtpTimeoutError("stalled", error.message);
+    }
+    // Connecting and the TLS upgrade say no more than that time ran out.
+    return new DOMException(error.message, "TimeoutError");
+  }
   return "originalCode" in error && typeof error.originalCode === "string"
     ? Object.assign(new Error(error.message), { code: error.originalCode })
     : error;
 }
 
-/** Sends one message and closes the connection; rejects with an `SmtpReplyError` for a refusal, or the connection's own error. */
+/** Sends one message and closes the connection, giving up at `timeoutMs`; rejects with an `SmtpReplyError` for a refusal, an `SmtpTimeoutError` when the server never greeted or then stayed quiet for `waitMs`, or the connection's own error. */
 export async function sendSmtp(
   server: SmtpServer,
   message: MailMessage,
-  timeoutMs: number
+  timeoutMs: number,
+  waitMs: number
 ): Promise<void> {
   const { createTransport } = await import("nodemailer");
   const { address, name } = message.from;
@@ -46,7 +70,7 @@ export async function sendSmtp(
       server.username === undefined || server.security === "none"
         ? undefined
         : { pass: server.password ?? "", user: server.username },
-    connectionTimeout: timeoutMs,
+    connectionTimeout: waitMs,
     disableFileAccess: true,
     disableUrlAccess: true,
     host: server.host,
@@ -57,10 +81,10 @@ export async function sendSmtp(
     port: server.port,
     requireTLS: server.security === "starttls",
     secure: server.security === "tls",
-    socketTimeout: timeoutMs,
+    socketTimeout: waitMs + raceMarginMs,
   });
   let timer: ReturnType<typeof setTimeout> | undefined;
-  // nodemailer has no overall timeout, only one per phase; the attempt has one, started before any of nodemailer's, so it is the one that fires.
+  // nodemailer has no overall timeout, only one per phase; the attempt has one, longer than each of nodemailer's waits (`waitMs`), so a wait nodemailer ends names itself and the deadline catches a server that trickles, goes quiet late or has a lookup that never ends.
   // ponytail: a server that trickles keeps its socket open after the attempt fails; drive nodemailer's SMTPConnection to close it if that shows.
   const deadline = new Promise<never>((_, reject) => {
     timer = setTimeout(

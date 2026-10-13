@@ -33,6 +33,8 @@ describe("the reason dictionary", () => {
       container_dead: 20,
       container_unhealthy: 21,
       tls_required: 22,
+      smtp_no_greeting: 23,
+      smtp_stalled: 24,
     });
   });
 

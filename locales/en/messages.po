@@ -1367,6 +1367,14 @@ msgid "reason_tls_required"
 msgstr "The server signs in only over an encrypted connection; add ?sslmode=require to the URL"
 
 #. js-lingui-explicit-id
+msgid "reason_smtp_no_greeting"
+msgstr "The SMTP server sent no greeting in time"
+
+#. js-lingui-explicit-id
+msgid "reason_smtp_stalled"
+msgstr "The SMTP server stopped answering during the send"
+
+#. js-lingui-explicit-id
 msgid "monitor_status_up"
 msgstr "Up"
 

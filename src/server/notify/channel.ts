@@ -25,7 +25,7 @@ import type {
 } from "@/shared/schemas/notification.ts";
 import { reasonParamsSchema } from "@/shared/schemas/reason.ts";
 import type { HostLookup } from "./destination.ts";
-import { SmtpReplyError, sendSmtp } from "./smtp.ts";
+import { SmtpReplyError, SmtpTimeoutError, sendSmtp } from "./smtp.ts";
 
 /** One attempt gives up after this long. */
 export const sendTimeoutMs = 10_000;
@@ -41,6 +41,9 @@ export const jsonHeaders: Readonly<Record<string, string>> = {
 
 /** One SMTP attempt gives up after this long: a relay may hold its greeting for seconds. */
 export const smtpTimeoutMs = 30_000;
+
+/** The longest one SMTP wait may take, setting the session up or a quiet socket: under the attempt's limit, so a server that never greets, or goes quiet in the send's first `smtpTimeoutMs - smtpWaitMs` seconds, is named before the limit takes it. */
+export const smtpWaitMs = 20_000;
 
 /** The SMTP server an email channel sends through. */
 export interface SmtpServer {
@@ -187,7 +190,7 @@ export async function attempt(
         port: server.port,
         timeoutMs: smtpTimeoutMs,
       };
-      return sendSmtp(server, message, smtpTimeoutMs);
+      return sendSmtp(server, message, smtpTimeoutMs, smtpWaitMs);
     },
   };
   try {
@@ -244,6 +247,16 @@ function failureOf(
         reason: "unexpected_status",
       },
       reason: "unexpected_status",
+    };
+  }
+  // An SMTP wait that named itself: the server never greeted, or went quiet mid-send.
+  if (error instanceof SmtpTimeoutError) {
+    const reason =
+      error.kind === "greeting" ? "smtp_no_greeting" : "smtp_stalled";
+    return {
+      error: withoutSecrets(error.message, secrets).slice(0, errorMaxLength),
+      params: { reason },
+      reason,
     };
   }
   const mapped = reasonForError(error, target);
