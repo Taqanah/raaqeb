@@ -49,8 +49,6 @@ export async function sendSmtp(
     connectionTimeout: timeoutMs,
     disableFileAccess: true,
     disableUrlAccess: true,
-    dnsTimeout: timeoutMs,
-    greetingTimeout: timeoutMs,
     host: server.host,
     // Without STARTTLS, nodemailer would take a server's word that it has none and send the password in clear.
     ignoreTLS: server.security === "none",
