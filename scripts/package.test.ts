@@ -103,16 +103,18 @@ describe("the image labels", () => {
     version: "0.1.0",
   };
 
-  test("the OCI labels name the version, the commit, the time of the build, the license and the source repository", () => {
+  test("the OCI labels name the version, the commit, the time of the build, the license, the website and the source repository", () => {
     expect(imageLabels(build)).toEqual({
       "org.opencontainers.image.created": "2026-09-29T08:30:00.000Z",
       "org.opencontainers.image.description":
         "Self-hosted monitoring and status pages, Arabic first",
+      "org.opencontainers.image.documentation": "https://raaqeb.dev/docs",
       "org.opencontainers.image.licenses": "FSL-1.1-ALv2",
       "org.opencontainers.image.revision":
         "e7fec3e0000000000000000000000000000000000",
       "org.opencontainers.image.source": "https://github.com/Taqanah/raaqeb",
       "org.opencontainers.image.title": "raaqeb",
+      "org.opencontainers.image.url": "https://raaqeb.dev",
       "org.opencontainers.image.version": "0.1.0",
     });
   });

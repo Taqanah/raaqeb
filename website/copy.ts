@@ -4,9 +4,10 @@
  * own case: Arabic first in Arabic, the size in English.
  */
 import type { Locale } from "@/shared/i18n/locale.ts";
+import { website } from "@/shared/ui/website.ts";
 
 /** Where the website lives and the project's repository. */
-export const site = "https://raaqeb.dev";
+export const site = website;
 export const repository = "https://github.com/Taqanah/raaqeb";
 export const installCommand = `curl -fsSL ${site}/install.sh | sudo sh`;
 /** The docs' Docker command (website/content/docs/operate/install.en.mdx). */

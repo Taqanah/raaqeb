@@ -8,6 +8,7 @@
  * version is package.json's; publishing belongs to the release workflow.
  */
 import { isVersion } from "@/server/release/version.ts";
+import { website } from "@/shared/ui/website.ts";
 
 /** One target: Bun's compile target, the binary's file name, and the image platform it serves. */
 export interface Target {
@@ -85,12 +86,14 @@ export function imageLabels(build: Provenance): Record<string, string> {
     "org.opencontainers.image.created": build.created.toISOString(),
     "org.opencontainers.image.description":
       "Self-hosted monitoring and status pages, Arabic first",
+    "org.opencontainers.image.documentation": `${website}/docs`,
     "org.opencontainers.image.licenses": "FSL-1.1-ALv2",
     "org.opencontainers.image.revision": build.dirty
       ? `${build.revision}-dirty`
       : build.revision,
     "org.opencontainers.image.source": "https://github.com/Taqanah/raaqeb",
     "org.opencontainers.image.title": "raaqeb",
+    "org.opencontainers.image.url": website,
     "org.opencontainers.image.version": build.version,
   };
 }
