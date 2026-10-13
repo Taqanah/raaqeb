@@ -69,6 +69,12 @@ function detail(captureMode: CaptureMode): MonitorDetail {
     ],
     outagesTotal: 1,
     recent: [check("down", now - minute), check("up", now - 2 * minute)],
+    spanChecks: {
+      checks: [check("down", now - minute), check("up", now - 2 * minute)],
+      from: now - 30 * 1440 * minute,
+      kept: true,
+      more: false,
+    },
     state: "down",
     uptime: [],
   };
@@ -220,13 +226,15 @@ describe("the uptime hover", () => {
 
 describe("the recent checks' response time", () => {
   test("a check under 1 ms reads less than 1 ms, not 0 ms", () => {
+    const recent = [{ ...check("up", now - minute), responseMs: 0 }];
     const html = render(
       "en",
       <MonitorDetailView
         clock={clock}
         detail={{
           ...detail("off"),
-          recent: [{ ...check("up", now - minute), responseMs: 0 }],
+          recent,
+          spanChecks: { checks: recent, from: 0, kept: true, more: false },
         }}
         onRange={noRange}
         openRecord={noRecord}
@@ -263,5 +271,117 @@ describe("the operator's calendar", () => {
     );
     expect(html).toMatch(hijriCell);
     expect(html).toMatch(hijriOutage);
+  });
+});
+
+describe("the checks of a zoomed span", () => {
+  const span = { from: now - 60 * minute, to: now - 30 * minute };
+  const inSpan = [
+    check("up", now - 31 * minute),
+    check("down", now - 32 * minute),
+  ];
+  const noPage = () =>
+    Promise.resolve({ ok: false, reason: "unavailable" } as const);
+
+  function zoomed(spanChecks: MonitorDetail["spanChecks"]): string {
+    return render(
+      "en",
+      <MonitorDetailView
+        clock={clock}
+        detail={{
+          ...detail("off"),
+          // The read zoomed the chart too, as it does for a span it lists.
+          chart: {
+            bucketMs: minute,
+            buckets: [],
+            from: span.from,
+            gapLimitMs: 5 * minute,
+            range: "24h",
+            to: span.to,
+          },
+          spanChecks,
+        }}
+        onRange={noRange}
+        openRecord={noRecord}
+        readSpanChecks={noPage}
+        zoom={span}
+      />
+    );
+  }
+  const rows = (html: string) =>
+    [...html.matchAll(/data-check="(\d+)"/g)].map(([, at]) => Number(at));
+  const showMore = 'data-slot="span-checks-more"';
+
+  test("the list holds the span's checks instead of the newest, and offers more while older ones remain", () => {
+    const html = zoomed({
+      checks: inSpan,
+      from: span.from,
+      kept: true,
+      more: true,
+    });
+    expect(rows(html)).toEqual(inSpan.map((each) => each.startedAt));
+    expect(html).toContain(showMore);
+  });
+
+  test("each check of a span inside one day reads its clock time to the second, never a relative time", () => {
+    const html = zoomed({
+      checks: inSpan,
+      from: span.from,
+      kept: true,
+      more: false,
+    });
+    // 31 minutes before now is 21:42:20 UTC on the operator's 24-hour clock.
+    expect(html).toContain(">21:42:20<");
+    expect(html).not.toContain("minutes ago");
+  });
+
+  test("once the span holds no older checks, the list offers no more", () => {
+    expect(
+      zoomed({ checks: inSpan, from: span.from, kept: true, more: false })
+    ).not.toContain(showMore);
+  });
+
+  test("a span with no checks says so, not that none ran yet", () => {
+    const html = zoomed({
+      checks: [],
+      from: span.from,
+      kept: true,
+      more: false,
+    });
+    expect(html).toContain('data-slot="span-checks-none"');
+    expect(rows(html)).toEqual([]);
+  });
+
+  test("a span whose checks are no longer kept says only summaries remain, and lists no check", () => {
+    const html = zoomed({ kept: false });
+    expect(html).toContain('data-slot="span-checks-gone"');
+    expect(rows(html)).toEqual([]);
+    expect(html).not.toContain(showMore);
+  });
+
+  test("unzoomed, the list holds the newest checks in relative time, and offers more while older ones remain", () => {
+    const html = render(
+      "en",
+      <MonitorDetailView
+        clock={clock}
+        detail={{
+          ...detail("off"),
+          spanChecks: {
+            checks: detail("off").recent,
+            from: 0,
+            kept: true,
+            more: true,
+          },
+        }}
+        onRange={noRange}
+        openRecord={noRecord}
+        readSpanChecks={noPage}
+      />
+    );
+    expect(rows(html)).toEqual(
+      detail("off").recent.map((each) => each.startedAt)
+    );
+    expect(html).toContain("1 minute ago");
+    expect(html).toContain(showMore);
   });
 });

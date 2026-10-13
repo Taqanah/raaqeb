@@ -2175,6 +2175,18 @@ msgid "monitor_recent_checks"
 msgstr "Recent checks"
 
 #. js-lingui-explicit-id
+msgid "monitor_span_checks"
+msgstr "Checks"
+
+#. js-lingui-explicit-id
+msgid "monitor_span_checks_gone"
+msgstr "Checks this old are no longer kept; only their summaries remain."
+
+#. js-lingui-explicit-id
+msgid "monitor_span_checks_more"
+msgstr "Show more"
+
+#. js-lingui-explicit-id
 msgid "monitor_check_time"
 msgstr "Time"
 

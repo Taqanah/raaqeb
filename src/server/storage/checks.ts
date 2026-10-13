@@ -107,8 +107,8 @@ export interface ChecksRepository {
     from: ReadonlyMap<string, number>,
     to: number
   ) => Promise<Map<string, Check[]>>;
-  /** The newest checks of one monitor, newest first, at most `limit`. */
-  recent: (monitorId: string, limit: number) => Promise<Check[]>;
+  /** The newest checks of one monitor, newest first, at most `limit`; with a span, only those with `from <= startedAt < to`. */
+  recent: (monitorId: string, limit: number, span?: Span) => Promise<Check[]>;
   /** Stores a check with its detail and capture as one write. */
   record: (outcome: CheckOutcome) => Promise<void>;
   /** The rollups of one monitor over one span with `from <= at < to`, oldest first. */
@@ -519,16 +519,20 @@ export function checksRepository(executor: Executor): ChecksRepository {
         return rows;
       }),
     range: merged,
-    recent: async (monitorId, limit) => {
+    recent: async (
+      monitorId,
+      limit,
+      { from, to } = { from: 0, to: Number.MAX_SAFE_INTEGER }
+    ) => {
       const head = (
         await executor.rows<CheckRow>(
-          sql`SELECT ${columns} FROM ${checks} WHERE ${checks.monitorId} = ${monitorId} ORDER BY ${checks.startedAt} DESC LIMIT ${limit}`
+          sql`SELECT ${columns} FROM ${checks} WHERE ${checks.monitorId} = ${monitorId} AND ${checks.startedAt} >= ${from} AND ${checks.startedAt} < ${to} ORDER BY ${checks.startedAt} DESC LIMIT ${limit}`
         )
       ).map(checkOf);
       const sealed: Check[] = [];
       if (head.length < limit) {
         const days = await executor.rows<{ day: number }>(
-          sql`SELECT ${sealedDays.day} AS ${sql.identifier("day")} FROM ${sealedDays} WHERE ${sealedDays.monitorId} = ${monitorId} ORDER BY ${sealedDays.day} DESC`
+          sql`SELECT ${sealedDays.day} AS ${sql.identifier("day")} FROM ${sealedDays} WHERE ${sealedDays.monitorId} = ${monitorId} AND ${sealedDays.day} >= ${dayOf(from)} AND ${sealedDays.day} < ${to} ORDER BY ${sealedDays.day} DESC`
         );
         // Newest day first, one chunk at a time, until the head and the days hold enough.
         for (const { day } of days) {
@@ -537,7 +541,11 @@ export function checksRepository(executor: Executor): ChecksRepository {
           }
           // biome-ignore lint/performance/noAwaitInLoops: one chunk at a time, only as far back as needed
           const [row] = await sealedRange(executor, monitorId, day, day + 1);
-          sealed.push(...(row ? checksOfDay(row) : []));
+          sealed.push(
+            ...(row ? checksOfDay(row) : []).filter(
+              (check) => check.startedAt >= from && check.startedAt < to
+            )
+          );
         }
       }
       return union(sealed, head).toReversed().slice(0, limit);

@@ -2,7 +2,8 @@
  * The monitor detail's reads: one monitor with its state,
  * its uptime over the four windows, the response-time series of the chart,
  * its day bar's days with the outages that ran on each, the recent
- * checks, the outages, the certificate record and, for a heartbeat monitor,
+ * checks, a page at a time back through the raw checks' window or, zoomed,
+ * the span, the outages, the certificate record and, for a heartbeat monitor,
  * its URL and last heartbeat; one check's failure detail and capture;
  * "check now", which hands the monitor to the scheduler; and acknowledging
  * the open outage, which stops its reminders. Uptime reads the checks over
@@ -17,6 +18,7 @@ import type {
   OutageRequests,
 } from "@/server/scheduler/scheduler.ts";
 import { readClock } from "@/server/settings/clock.ts";
+import { readRetentionDays } from "@/server/settings/retention.ts";
 import { coveredMonitors, coveredSpans } from "@/server/status/maintenance.ts";
 import { CertificateShapeError } from "@/server/storage/certificates.ts";
 import { CheckShapeError } from "@/server/storage/checks.ts";
@@ -24,6 +26,7 @@ import { MonitorShapeError } from "@/server/storage/monitors.ts";
 import { OutageShapeError } from "@/server/storage/outages.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { zoomedChart } from "@/shared/domain/chart.ts";
+import { retentionBounds } from "@/shared/domain/retention.ts";
 import {
   rawFromOf,
   rawWindowMs,
@@ -44,6 +47,9 @@ import {
   monitorBarDays,
   outagesShown,
   recentChecksShown,
+  type SpanChecks,
+  type SpanChecksPage,
+  type SpanChecksResult,
 } from "@/shared/schemas/detail.ts";
 import type { Monitor } from "@/shared/schemas/monitor.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
@@ -128,23 +134,27 @@ export async function readMonitorDetail(
         : Math.floor((now - chartRangeMs[range]) / bucketMs) * bucketMs);
     const chartTo = zoom?.to ?? now;
     const heartbeat = monitor.config.type === "heartbeat";
+    const rawFrom = rawChecksFrom(storage, monitor, now);
     const [
       coverage,
       hours,
       outages,
-      recent,
+      newest,
       buckets,
       certificate,
       beats,
       reach,
       barDays,
+      rawStartsAt,
+      zoomedChecks,
     ] = await Promise.all([
       // A check just before the raw window covers its start, so the read reaches one gap limit further back.
       storage.checks.coverage(id, rawStart - limit, now, limit),
       // An hour the longest window's start cuts counts in part, so the read starts an hour early; it runs to now, since a size-budget delete may have left only rollups inside the raw window.
       storage.checks.rollups(id, "hour", since - 3_600_000, now),
       storage.outages.list(id, since),
-      storage.checks.recent(id, recentChecksShown),
+      // One check past the page says whether older ones remain.
+      storage.checks.recent(id, recentChecksShown + 1),
       heartbeat
         ? undefined
         : storage.checks.series(id, chartFrom, chartTo, bucketMs, tier),
@@ -153,7 +163,14 @@ export async function readMonitorDetail(
       readReach(storage, since),
       // One read of each kind for the bar's 90 days, never one a day.
       readMonitorDays(storage, [monitor], { days: monitorBarDays, now }),
+      rawFrom,
+      // The list follows the chart: zoomed only where the chart zoomed.
+      span === undefined || zoom === undefined || heartbeat
+        ? undefined
+        : firstSpanPage(storage, id, span, rawFrom),
     ]);
+    const recent = newest.slice(0, recentChecksShown);
+    const older = newest.at(recentChecksShown)?.startedAt;
     const { components, windows } = reach;
     return {
       detail: {
@@ -177,6 +194,13 @@ export async function readMonitorDetail(
         outages: outages.slice(0, outagesShown),
         outagesTotal: outages.length,
         recent,
+        // Unzoomed, the list is the span from the raw checks' window to now.
+        spanChecks: zoomedChecks ?? {
+          checks: recent,
+          from: rawStartsAt,
+          kept: true,
+          more: older !== undefined && older >= rawStartsAt,
+        },
         state: recent[0]?.result,
         uptime: uptimeReadings({
           coverage,
@@ -195,6 +219,61 @@ export async function readMonitorDetail(
     return corrupt === undefined
       ? unavailable
       : { id: corrupt, ok: false, reason: "corrupt" };
+  }
+}
+
+/** One page of a span's checks; one check past the page says whether older ones remain. */
+async function spanPage(
+  storage: DetailStorage,
+  id: string,
+  span: ChartSpan
+): Promise<SpanChecksPage> {
+  const checks = await storage.checks.recent(id, recentChecksShown + 1, span);
+  return {
+    checks: checks.slice(0, recentChecksShown),
+    more: checks.length > recentChecksShown,
+  };
+}
+
+/** Where the monitor's raw checks start, by its retention or the install's; the nightly job empties what lies before. */
+async function rawChecksFrom(
+  storage: DetailStorage,
+  monitor: Monitor,
+  now: number
+): Promise<number> {
+  const retention = monitor.retentionDays ?? (await readRetentionDays(storage));
+  return retentionBounds(retention, now).raw;
+}
+
+/** A zoomed span's first page, or none kept once the span ended before the raw checks' window. */
+async function firstSpanPage(
+  storage: DetailStorage,
+  id: string,
+  span: ChartSpan,
+  rawFrom: Promise<number>
+): Promise<SpanChecks> {
+  if (span.to <= (await rawFrom)) {
+    return { kept: false };
+  }
+  return {
+    from: span.from,
+    kept: true,
+    ...(await spanPage(storage, id, span)),
+  };
+}
+
+/** One page of a zoomed span's checks, newest first, at most `recentChecksShown`, and whether older ones remain in the span. */
+export async function readSpanChecks(
+  storage: DetailStorage,
+  id: string,
+  span: ChartSpan
+): Promise<SpanChecksResult> {
+  try {
+    return { ok: true, ...(await spanPage(storage, id, span)) };
+  } catch (error) {
+    return error instanceof CheckShapeError
+      ? { ok: false, reason: "corrupt" }
+      : unavailable;
   }
 }
 

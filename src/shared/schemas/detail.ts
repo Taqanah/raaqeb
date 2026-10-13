@@ -99,10 +99,27 @@ export interface MonitorDetail {
   readonly outagesTotal: number;
   /** The newest checks, newest first. */
   readonly recent: readonly Check[];
+  /** The checks list's first page: the span the chart is zoomed into or, unzoomed, the raw checks' window. */
+  readonly spanChecks: SpanChecks;
   /** The latest check's result; none before the first check. */
   readonly state: CheckResult | undefined;
   readonly uptime: readonly UptimeReading[];
 }
+
+/** A page of a zoomed span's checks, newest first, and whether older ones remain in the span. */
+export interface SpanChecksPage {
+  readonly checks: readonly Check[];
+  readonly more: boolean;
+}
+
+/** The checks list's first page, with the start of the span a later page reads up to the oldest check shown; or none kept when a zoomed span ended before the raw checks' window, where only rollups remain. */
+export type SpanChecks =
+  | ({ readonly kept: true; readonly from: number } & SpanChecksPage)
+  | { readonly kept: false };
+
+export type SpanChecksResult =
+  | ({ readonly ok: true } & SpanChecksPage)
+  | { readonly ok: false; readonly reason: "unavailable" | "corrupt" };
 
 export type MonitorDetailResult =
   | { readonly ok: true; readonly detail: MonitorDetail }
@@ -128,6 +145,12 @@ export const monitorDetailSearchSchema = z.object({
   from: z.int().nonnegative().optional().catch(undefined),
   range: chartRangeSchema.optional().catch(undefined),
   to: z.int().nonnegative().optional().catch(undefined),
+});
+
+/** A page of a zoomed span's checks: the next is the span up to the oldest check the page shows. */
+export const spanChecksReadSchema = z.object({
+  id: z.string().min(1),
+  span: chartSpanSchema,
 });
 
 export const checkRecordReadSchema = z.object({

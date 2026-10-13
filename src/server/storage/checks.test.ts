@@ -887,6 +887,63 @@ describe("sealed days", () => {
     ]);
   });
 
+  test("the newest checks of a span are newest first, at most the limit, from its head rows and sealed days alike", async () => {
+    const { checks, monitors } = await repositories();
+    const a = await monitors.create(site);
+    const sealedRows = every(a.id, d, 72, 20 * minuteMs);
+    const openRows = [
+      up(a.id, d + dayMs + 10 * minuteMs),
+      up(a.id, d + dayMs + 30 * minuteMs),
+    ];
+    await recorded(checks, [...sealedRows, ...openRows]);
+    await checks.seal(a.id, d, limit, []);
+    const span = { from: d + 12 * hourMs, to: d + dayMs + 20 * minuteMs };
+    expect(await checks.recent(a.id, 5, span)).toEqual([
+      ...openRows.slice(0, 1),
+      ...sealedRows.slice(68).toReversed(),
+    ]);
+  });
+
+  test("a span holds the checks from its start up to its end, never one outside it", async () => {
+    const { checks, monitors } = await repositories();
+    const a = await monitors.create(site);
+    const older = every(a.id, d - dayMs, 24, hourMs);
+    const sealedRows = every(a.id, d, 72, 20 * minuteMs);
+    const openRows = every(a.id, d + dayMs, 3, 20 * minuteMs);
+    await recorded(checks, [...older, ...sealedRows, ...openRows]);
+    await checks.seal(a.id, d - dayMs, limit, []);
+    await checks.seal(a.id, d, limit, []);
+    expect(
+      await checks.recent(a.id, 100, { from: d + 23 * hourMs, to: d + dayMs })
+    ).toEqual(sealedRows.slice(69).toReversed());
+    expect(
+      await checks.recent(a.id, 100, {
+        from: d + dayMs + 20 * minuteMs,
+        to: d + dayMs + hourMs,
+      })
+    ).toEqual(openRows.slice(1).toReversed());
+    expect(await checks.recent(a.id, 100, { from: d - hourMs, to: d })).toEqual(
+      older.slice(23)
+    );
+  });
+
+  test("a span that ends inside a sealed day leaves out that day's later checks, and a span that starts inside one its earlier checks", async () => {
+    const { checks, monitors } = await repositories();
+    const a = await monitors.create(site);
+    const sealedRows = every(a.id, d, 72, 20 * minuteMs);
+    await recorded(checks, sealedRows);
+    await checks.seal(a.id, d, limit, []);
+    expect(await checks.recent(a.id, 100, { from: d, to: d + hourMs })).toEqual(
+      sealedRows.slice(0, 3).toReversed()
+    );
+    expect(
+      await checks.recent(a.id, 2, {
+        from: d + 22 * hourMs + 20 * minuteMs,
+        to: d + dayMs,
+      })
+    ).toEqual(sealedRows.slice(70).toReversed());
+  });
+
   test("a read that starts inside a sealed day leaves out that day's earlier checks", async () => {
     const { checks, monitors } = await repositories();
     const a = await monitors.create(site);

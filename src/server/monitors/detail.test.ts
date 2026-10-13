@@ -3,6 +3,7 @@ import type {
   CheckRequests,
   OutageRequests,
 } from "@/server/scheduler/scheduler.ts";
+import { retentionDays } from "@/server/settings/retention.ts";
 import { runSql, scratchDatabase } from "@/server/storage/fixture.ts";
 import {
   type DatabaseLocation,
@@ -19,6 +20,7 @@ import {
   checkNow,
   readCheckRecord,
   readMonitorDetail,
+  readSpanChecks,
 } from "./detail.ts";
 
 let open:
@@ -755,6 +757,209 @@ describe("the monitor detail's read", () => {
         options(monitor.updatedAt + minute)
       )
     ).toEqual({ id: monitor.id, ok: false, reason: "corrupt" });
+  });
+});
+
+describe("the checks of a zoomed span", () => {
+  async function zoomedRead(
+    store: Storage,
+    id: string,
+    now: number,
+    span: { from: number; to: number } | undefined
+  ) {
+    const read = await readMonitorDetail(store, id, { ...options(now), span });
+    if (!read.ok) {
+      throw new Error(read.reason);
+    }
+    return read.detail;
+  }
+
+  test("a zoomed span lists its newest twenty checks, newest first, and says older ones remain; the recent checks and the state stay the latest", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    const base = monitor.updatedAt + 1000;
+    await minutes(store, monitor.id, base, 45, [44]);
+    const detail = await zoomedRead(store, monitor.id, base + hour, {
+      from: base,
+      to: base + 40 * minute,
+    });
+    if (!detail.spanChecks.kept) {
+      throw new Error("the span's checks are kept");
+    }
+    expect(detail.spanChecks.more).toBe(true);
+    expect(detail.spanChecks.checks.map((each) => each.startedAt)).toEqual(
+      Array.from({ length: 20 }, (_, index) => base + (39 - index) * minute)
+    );
+    expect(detail.recent[0]?.startedAt).toBe(base + 44 * minute);
+    expect(detail.state).toBe("down");
+  });
+
+  test("a span with twenty checks or fewer says none remain", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    const base = monitor.updatedAt + 1000;
+    await minutes(store, monitor.id, base, 30);
+    const detail = await zoomedRead(store, monitor.id, base + hour, {
+      from: base + 10 * minute,
+      to: base + 30 * minute,
+    });
+    expect(detail.spanChecks).toMatchObject({ kept: true, more: false });
+    if (!detail.spanChecks.kept) {
+      throw new Error("the span's checks are kept");
+    }
+    expect(detail.spanChecks.checks).toHaveLength(20);
+  });
+
+  test("the next page is the span's twenty checks before the oldest shown, and the last page says none remain", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    const base = monitor.updatedAt + 1000;
+    await minutes(store, monitor.id, base, 45);
+    const next = await readSpanChecks(store, monitor.id, {
+      from: base,
+      to: base + 21 * minute,
+    });
+    if (!next.ok) {
+      throw new Error(next.reason);
+    }
+    expect(next.more).toBe(true);
+    expect(next.checks.map((each) => each.startedAt)).toEqual(
+      Array.from({ length: 20 }, (_, index) => base + (20 - index) * minute)
+    );
+    expect(
+      await readSpanChecks(store, monitor.id, {
+        from: base,
+        to: base + 20 * minute,
+      })
+    ).toMatchObject({ more: false, ok: true });
+  });
+
+  test("a span that ended before the raw checks' window says its checks are no longer kept, by the monitor's retention when shorter than 30 days", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create({ ...site, retentionDays: 7 });
+    const now = monitor.updatedAt + hour;
+    await minutes(store, monitor.id, now - 8 * day, 10);
+    expect(
+      (
+        await zoomedRead(store, monitor.id, now, {
+          from: now - 9 * day,
+          to: now - 8 * day,
+        })
+      ).spanChecks
+    ).toEqual({ kept: false });
+    const longer = await store.monitors.create({ ...site, name: "Longer" });
+    expect(
+      (
+        await zoomedRead(store, longer.id, now, {
+          from: now - 32 * day,
+          to: now - 31 * day,
+        })
+      ).spanChecks
+    ).toEqual({ kept: false });
+    expect(
+      (
+        await zoomedRead(store, longer.id, now, {
+          from: now - 9 * day,
+          to: now - 8 * day,
+        })
+      ).spanChecks
+    ).toEqual({ checks: [], from: now - 9 * day, kept: true, more: false });
+  });
+
+  test("the install's retention bounds the window of a monitor without its own, and the window starts at a UTC day's start", async () => {
+    const store = await storage();
+    await store.settings.set(retentionDays, 5);
+    const monitor = await store.monitors.create(site);
+    const now = monitor.updatedAt + hour;
+    const windowStart = Math.floor(now / day) * day - 5 * day;
+    const read = (to: number) =>
+      zoomedRead(store, monitor.id, now, { from: to - hour, to });
+    expect((await read(windowStart)).spanChecks).toEqual({ kept: false });
+    expect((await read(windowStart + 1)).spanChecks).toEqual({
+      checks: [],
+      from: windowStart + 1 - hour,
+      kept: true,
+      more: false,
+    });
+  });
+
+  test("a span that reaches into the raw checks' window lists the checks it holds", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create({ ...site, retentionDays: 7 });
+    const now = monitor.updatedAt + hour;
+    await minutes(store, monitor.id, now - 8 * day, 2);
+    await minutes(store, monitor.id, now - 6 * day, 2);
+    const detail = await zoomedRead(store, monitor.id, now, {
+      from: now - 9 * day,
+      to: now - 5 * day,
+    });
+    if (!detail.spanChecks.kept) {
+      throw new Error("the span's checks are kept");
+    }
+    expect(detail.spanChecks.checks.map((each) => each.startedAt)).toEqual([
+      now - 6 * day + minute,
+      now - 6 * day,
+      now - 8 * day + minute,
+      now - 8 * day,
+    ]);
+  });
+
+  test("unzoomed, under a span narrower than the smallest zoom and on a heartbeat monitor, the list is the newest twenty, paging back from the raw checks' window", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    const backup = await store.monitors.create(beat);
+    const now = monitor.updatedAt + hour;
+    const windowStart = Math.floor(now / day) * day - 30 * day;
+    await minutes(store, monitor.id, now - 30 * minute, 25);
+    const newest = Array.from(
+      { length: 20 },
+      (_, index) => now - 30 * minute + (24 - index) * minute
+    );
+    for (const span of [undefined, { from: now - 2 * minute, to: now }]) {
+      // biome-ignore lint/performance/noAwaitInLoops: two reads, one a case
+      const { spanChecks } = await zoomedRead(store, monitor.id, now, span);
+      if (!spanChecks.kept) {
+        throw new Error("the newest checks are kept");
+      }
+      expect(spanChecks.from).toBe(windowStart);
+      expect(spanChecks.more).toBe(true);
+      expect(spanChecks.checks.map((each) => each.startedAt)).toEqual(newest);
+    }
+    expect(
+      (
+        await zoomedRead(store, backup.id, now, {
+          from: now - hour,
+          to: now,
+        })
+      ).spanChecks
+    ).toEqual({ checks: [], from: windowStart, kept: true, more: false });
+  });
+
+  test("unzoomed, older checks remain only while they are inside the raw checks' window", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create({ ...site, retentionDays: 7 });
+    const now = monitor.updatedAt + hour;
+    await minutes(store, monitor.id, now - 8 * day, 1);
+    await minutes(store, monitor.id, now - 20 * minute, 20);
+    const { spanChecks } = await zoomedRead(store, monitor.id, now, undefined);
+    expect(spanChecks).toMatchObject({
+      from: Math.floor(now / day) * day - 7 * day,
+      kept: true,
+      more: false,
+    });
+  });
+
+  test("a database that cannot answer is unavailable, and never throws", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    const failing = () => Promise.reject(new Error("database gone"));
+    expect(
+      await readSpanChecks(
+        { ...store, checks: { ...store.checks, recent: failing } },
+        monitor.id,
+        { from: 0, to: monitor.updatedAt }
+      )
+    ).toEqual({ ok: false, reason: "unavailable" });
   });
 });
 

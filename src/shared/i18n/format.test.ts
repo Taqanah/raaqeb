@@ -13,6 +13,7 @@ import {
   formatMonth,
   formatNumber,
   formatPercent,
+  formatSpanTime,
   formatTimeSpan,
   formatUnit,
   formatUptime,
@@ -524,5 +525,57 @@ describe("the calendar dates are written in", () => {
     expect(formatDayAndMonth("en", newYear, "hijri_gregorian")).toBe(
       "Raj. 12 (Jan 1)"
     );
+  });
+});
+
+describe("a check's time in a zoomed list", () => {
+  // 07:42:15 UTC, 10:42:15 in Riyadh.
+  const at = Date.parse("2026-09-11T07:42:15Z");
+
+  test("a span inside one day reads the clock to the second, in the clock format", () => {
+    const span = {
+      from: Date.parse("2026-09-11T06:00:00Z"),
+      to: Date.parse("2026-09-11T09:00:00Z"),
+    };
+    expect(formatSpanTime("ar", at, span, riyadh)).toBe("10:42:15 ص");
+    expect(formatSpanTime("en", at, span, riyadh)).toBe("10:42:15 AM");
+    expect(formatSpanTime("ar", at, span, { ...riyadh, clock: "24h" })).toBe(
+      "10:42:15"
+    );
+  });
+
+  test("a span whose ends fall on two days in the zone puts the date before the clock", () => {
+    const late = Date.parse("2026-09-11T20:30:00Z");
+    const span = {
+      from: Date.parse("2026-09-11T20:00:00Z"),
+      to: Date.parse("2026-09-11T22:00:00Z"),
+    };
+    expect(formatSpanTime("ar", late, span, riyadh)).toBe(
+      "11 سبتمبر 2026، 11:30:00 م"
+    );
+    expect(formatSpanTime("en", late, span, riyadh)).toBe(
+      "Sep 11, 2026, 11:30:00 PM"
+    );
+    expect(
+      formatSpanTime("ar", late, span, { ...riyadh, calendar: "hijri" })
+    ).toContain("هـ");
+  });
+
+  test("the zone's days decide, not UTC's: a span over UTC midnight inside one Riyadh day reads the clock alone", () => {
+    const span = {
+      from: Date.parse("2026-09-11T23:00:00Z"),
+      to: Date.parse("2026-09-12T01:00:00Z"),
+    };
+    expect(
+      formatSpanTime("en", Date.parse("2026-09-12T00:10:05Z"), span, riyadh)
+    ).toBe("3:10:05 AM");
+  });
+
+  test("a span of one whole day, ending at the next midnight, is one day", () => {
+    const span = {
+      from: Date.parse("2026-09-10T21:00:00Z"),
+      to: Date.parse("2026-09-11T21:00:00Z"),
+    };
+    expect(formatSpanTime("en", at, span, riyadh)).toBe("10:42:15 AM");
   });
 });

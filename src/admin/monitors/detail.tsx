@@ -4,13 +4,14 @@
  * and observed time on hover, its day bar whose day card lists the
  * day's outages and zooms the chart to the day, one large response-time
  * chart (a heartbeat monitor shows its URL instead), the recent checks
- * with the failure detail and capture a down check kept, the outages with
+ * with "show more" (zoomed, the span's checks at their clock time) with the failure detail and capture a down check kept, the outages with
  * "detected at", and the certificate record. Every time is in the operator's time zone, relative
  * to the moment the server read the page, so hydration sees the same text.
  */
 import { type ReactNode, useCallback, useState } from "react";
 import { certificateExpiresWithin } from "@/shared/domain/certificates.ts";
 import { dayZoom, zoomedChart } from "@/shared/domain/chart.ts";
+import { spanChecksShown } from "@/shared/domain/checks.ts";
 import {
   displayedUptime,
   type UptimeReading,
@@ -20,6 +21,7 @@ import {
   formatDateTimeWithZone,
   formatDuration,
   formatNumber,
+  formatSpanTime,
   formatTimeSpan,
   formatUnit,
   formatUptime,
@@ -38,6 +40,8 @@ import {
   chartRanges,
   type MonitorDay,
   type MonitorDetail,
+  type SpanChecksPage,
+  type SpanChecksResult,
 } from "@/shared/schemas/detail.ts";
 import type { CaptureMode, Monitor } from "@/shared/schemas/monitor.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
@@ -103,6 +107,8 @@ export interface MonitorDetailViewProps {
   readonly onZoom?: (span: ChartSpan) => void;
   readonly onZoomOut?: () => void;
   readonly openRecord: (startedAt: number) => Promise<CheckRecordResult>;
+  /** Reads a page of a zoomed span's checks for "show more"; without it the list keeps its first page. */
+  readonly readSpanChecks?: (span: ChartSpan) => Promise<SpanChecksResult>;
   /** The span the address asks the chart to zoom into, if any. */
   readonly zoom?: ChartSpan;
 }
@@ -114,6 +120,7 @@ export function MonitorDetailView({
   onZoom,
   onZoomOut,
   openRecord,
+  readSpanChecks,
   zoom,
 }: MonitorDetailViewProps): ReactNode {
   const { locale, t } = useMessages();
@@ -181,7 +188,15 @@ export function MonitorDetailView({
       ) : (
         <HeartbeatPanel clock={clock} heartbeat={detail.heartbeat} />
       )}
-      <RecentChecks clock={clock} detail={detail} openRecord={openRecord} />
+      <RecentChecks
+        clock={clock}
+        detail={detail}
+        // A new span starts its list again at the first page.
+        key={zoomed ? `${zoomed.from}-${zoomed.to}` : "recent"}
+        openRecord={openRecord}
+        readSpanChecks={readSpanChecks}
+        span={zoomed}
+      />
       <OutageList clock={clock} detail={detail} />
       {detail.certificate ? (
         <CertificateCard
@@ -529,27 +544,86 @@ function RangeButton({
   );
 }
 
+/** The newest checks or, zoomed, the span's checks, a page at a time, older pages loaded with "show more". */
 function RecentChecks({
   clock,
   detail,
   openRecord,
+  readSpanChecks,
+  span,
 }: {
   readonly clock: TimeOptions;
   readonly detail: MonitorDetail;
   readonly openRecord: (startedAt: number) => Promise<CheckRecordResult>;
+  readonly readSpanChecks:
+    | ((span: ChartSpan) => Promise<SpanChecksResult>)
+    | undefined;
+  /** The span zoomed into, whose checks read their clock time; none lists the newest in relative time. */
+  readonly span: ChartSpan | undefined;
 }): ReactNode {
-  const { t } = useMessages();
+  const { locale, t } = useMessages();
+  const { spanChecks } = detail;
+  // Every check shown once "show more" ran, so a refresh that brings newer checks leaves no gap.
+  const [loaded, setLoaded] = useState<SpanChecksPage | undefined>();
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState<"corrupt" | "unavailable" | undefined>(
+    undefined
+  );
+  const zoomed = span !== undefined;
+  let checks = detail.recent;
+  let more = false;
+  if (spanChecks.kept) {
+    checks = spanChecksShown(spanChecks.checks, loaded?.checks ?? []);
+    more = loaded?.more ?? spanChecks.more;
+  }
+  const from = spanChecks.kept ? spanChecks.from : undefined;
+  const oldest = checks.at(-1)?.startedAt;
+  const showMore = useCallback(async () => {
+    if (!readSpanChecks || from === undefined || oldest === undefined) {
+      return;
+    }
+    setLoading(true);
+    setFailed(undefined);
+    const page = await readSpanChecks({ from, to: oldest }).catch(
+      () => ({ ok: false, reason: "unavailable" }) as const
+    );
+    setLoading(false);
+    if (page.ok) {
+      setLoaded({ checks: [...checks, ...page.checks], more: page.more });
+    } else {
+      setFailed(page.reason);
+    }
+  }, [checks, from, oldest, readSpanChecks]);
+  let empty: ReactNode;
+  if (!spanChecks.kept) {
+    empty = (
+      <p className="text-muted-foreground text-sm" data-slot="span-checks-gone">
+        {t("monitor_span_checks_gone")}
+      </p>
+    );
+  } else if (checks.length === 0) {
+    empty = zoomed ? (
+      <p className="text-muted-foreground text-sm" data-slot="span-checks-none">
+        {t("monitor_chart_empty")}
+      </p>
+    ) : (
+      <p className="text-muted-foreground text-sm">{t("monitor_no_checks")}</p>
+    );
+  }
   return (
     <Card data-slot="recent-checks">
       <CardHeader>
-        <CardTitle>{t("monitor_recent_checks")}</CardTitle>
+        <CardTitle>
+          {zoomed ? t("monitor_span_checks") : t("monitor_recent_checks")}
+        </CardTitle>
+        {zoomed ? (
+          <CardDescription className="tabular-nums">
+            {formatTimeSpan(locale, span.from, span.to, clock)}
+          </CardDescription>
+        ) : null}
       </CardHeader>
-      <CardContent>
-        {detail.recent.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            {t("monitor_no_checks")}
-          </p>
-        ) : (
+      <CardContent className="flex flex-col gap-4">
+        {empty ?? (
           <Table stacked>
             <TableHeader>
               <TableRow>
@@ -562,7 +636,7 @@ function RecentChecks({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {detail.recent.map((check) => (
+              {checks.map((check) => (
                 <CheckRow
                   captureMode={
                     detail.monitor.config.type === "http"
@@ -574,11 +648,33 @@ function RecentChecks({
                   key={check.startedAt}
                   now={detail.now}
                   openRecord={openRecord}
+                  span={span}
                 />
               ))}
             </TableBody>
           </Table>
         )}
+        {failed ? (
+          <DetailRefused
+            refusal={
+              failed === "corrupt"
+                ? { id: detail.monitor.id, reason: "corrupt" }
+                : { reason: "unavailable" }
+            }
+          />
+        ) : null}
+        {more && readSpanChecks ? (
+          <Button
+            className="self-center"
+            data-slot="span-checks-more"
+            disabled={loading}
+            onClick={showMore}
+            type="button"
+            variant="outline"
+          >
+            {t("monitor_span_checks_more")}
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -595,12 +691,15 @@ function CheckRow({
   clock,
   now,
   openRecord,
+  span,
 }: {
   readonly captureMode: CaptureMode;
   readonly check: Check;
   readonly clock: TimeOptions;
   readonly now: number;
   readonly openRecord: (startedAt: number) => Promise<CheckRecordResult>;
+  /** The span zoomed into, whose checks read their clock time. */
+  readonly span: ChartSpan | undefined;
 }): ReactNode {
   const { locale, t } = useMessages();
   const [record, setRecord] = useState<RecordState>({ kind: "closed" });
@@ -630,7 +729,9 @@ function CheckRow({
             dateTime={new Date(check.startedAt).toISOString()}
             title={formatDateTimeWithZone(locale, check.startedAt, clock)}
           >
-            {formatWhen(locale, check.startedAt, { ...clock, now })}
+            {span
+              ? formatSpanTime(locale, check.startedAt, span, clock)
+              : formatWhen(locale, check.startedAt, { ...clock, now })}
           </time>
         </TableCell>
         <TableCell>

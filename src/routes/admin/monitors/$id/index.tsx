@@ -16,6 +16,7 @@ import {
   readCheckRecordFn,
   readMonitorDetailFn,
   readOperatorClockFn,
+  readSpanChecksFn,
   resumeMonitorsFn,
 } from "@/routes/-monitors.ts";
 import { askedCheckLanded, longestCheckMs } from "@/shared/domain/checks.ts";
@@ -88,6 +89,7 @@ function MonitorDetailPage(): ReactNode {
   const router = useRouter();
   const navigate = Route.useNavigate();
   const recordFn = useServerFn(readCheckRecordFn);
+  const spanChecksFn = useServerFn(readSpanChecksFn);
   const checkNow = useServerFn(checkNowFn);
   const pause = useServerFn(pauseMonitorsFn);
   const resume = useServerFn(resumeMonitorsFn);
@@ -153,6 +155,12 @@ function MonitorDetailPage(): ReactNode {
       (await recordFn({ data: { id, startedAt } })) ??
       ({ ok: false, reason: "unavailable" } as const),
     [id, recordFn]
+  );
+  const readSpanChecks = useCallback(
+    async (span: ChartSpan) =>
+      (await spanChecksFn({ data: { id, span } })) ??
+      ({ ok: false, reason: "unavailable" } as const),
+    [id, spanChecksFn]
   );
   const askCheck = useCallback(async () => {
     if (!detail) {
@@ -293,6 +301,7 @@ function MonitorDetailPage(): ReactNode {
         onZoom={onZoom}
         onZoomOut={onZoomOut}
         openRecord={openRecord}
+        readSpanChecks={readSpanChecks}
         zoom={
           search.from === undefined || search.to === undefined
             ? undefined

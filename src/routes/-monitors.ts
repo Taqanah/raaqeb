@@ -1,7 +1,7 @@
 /**
  * The monitor server functions: create, edit, pause, resume
  * and delete, the selection bar's change of a channel, the group or a tag, the list read, the form read, "test now", a Docker daemon's containers for the form, the detail read,
- * one check's record, "check now", acknowledging an outage and dismissing the
+ * a zoomed span's next checks, one check's record, "check now", acknowledging an outage and dismissing the
  * getting-started checklist, each behind the
  * operator session check. Not a route file (the leading dash); the list
  * route and the form share them. A function parses with the Zod schema and
@@ -21,6 +21,7 @@ import {
   checkNow,
   readCheckRecord,
   readMonitorDetail,
+  readSpanChecks,
 } from "@/server/monitors/detail.ts";
 import {
   changeMonitors,
@@ -47,6 +48,8 @@ import {
   checkRecordReadSchema,
   type MonitorDetailResult,
   monitorDetailReadSchema,
+  type SpanChecksResult,
+  spanChecksReadSchema,
 } from "@/shared/schemas/detail.ts";
 import {
   type ContainerListResult,
@@ -200,6 +203,15 @@ export const readMonitorDetailFn = createServerFn({ method: "GET" })
           new Headers(getRequestHeaders()).get(requestOriginHeader) ??
           undefined,
       })
+  );
+
+/** The next page of a zoomed span's checks, read when the operator asks for more. */
+export const readSpanChecksFn = createServerFn({ method: "GET" })
+  .middleware([operatorMiddleware])
+  .validator(spanChecksReadSchema)
+  .handler(
+    ({ context, data }): Promise<SpanChecksResult> =>
+      readSpanChecks(context.storage, data.id, data.span)
   );
 
 /** One recent check's failure detail and capture, read when the operator opens it. */

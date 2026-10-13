@@ -306,6 +306,24 @@ export function formatTimeSpan(
   return `${span} (${zoneLabel(locale, from, options.timeZone)})`;
 }
 
+/** A check's time in a zoomed span's list: the clock to the second (`10:42:15 ص`), with the date before it when the span's ends fall on different days in the zone. */
+export function formatSpanTime(
+  locale: Locale,
+  ms: number,
+  span: { readonly from: number; readonly to: number },
+  options: TimeOptions
+): string {
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: options.timeZone });
+  // The span's last instant, so a span that ends at midnight stays on its day.
+  const oneDay = day.format(span.from) === day.format(span.to - 1);
+  return calendarFormat(locale, options.calendar, {
+    ...(oneDay ? {} : { day: "numeric", month: "short", year: "numeric" }),
+    timeZone: options.timeZone,
+    ...clockParts(options.clock),
+    second: "2-digit",
+  })(ms);
+}
+
 /** The largest unit under a day that fits the distance, with its size in milliseconds. */
 function relativeUnit(distance: number): [Intl.RelativeTimeFormatUnit, number] {
   if (distance < minuteMs) {

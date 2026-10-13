@@ -2175,6 +2175,18 @@ msgid "monitor_recent_checks"
 msgstr "أحدث الفحوص"
 
 #. js-lingui-explicit-id
+msgid "monitor_span_checks"
+msgstr "الفحوص"
+
+#. js-lingui-explicit-id
+msgid "monitor_span_checks_gone"
+msgstr "لم تعد فحوص هذه المدة محفوظة، وبقيت ملخّصاتها فقط."
+
+#. js-lingui-explicit-id
+msgid "monitor_span_checks_more"
+msgstr "اعرض المزيد"
+
+#. js-lingui-explicit-id
 msgid "monitor_check_time"
 msgstr "الوقت"
 

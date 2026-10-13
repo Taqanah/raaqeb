@@ -8,7 +8,7 @@ import { authFor, operatorName } from "@/server/auth/auth.ts";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { publicAddress } from "@/server/settings/address.ts";
 import { installLanguage } from "@/server/settings/language.ts";
-import { openStorage } from "@/server/storage/storage.ts";
+import { openStorage, type Storage } from "@/server/storage/storage.ts";
 import type { Locale } from "@/shared/i18n/locale.ts";
 import { operatorEmail, operatorPassword } from "./servers.ts";
 import { waitForOrigin } from "./wait.ts";
@@ -21,6 +21,8 @@ export interface InstallSeed {
   readonly language?: Locale;
   /** False starts the server without `--trusted-proxies`, so the settings page may edit them; every sign-in then spends the one budget of 127.0.0.1. */
   readonly proxyFlag?: boolean;
+  /** Writes the spec's own records, such as a monitor and its checks, before the server starts. */
+  readonly records?: (storage: Storage) => Promise<void>;
 }
 
 /** A running install: its origin, and `stop`, which kills the server by its PID, removes its data directory and answers what the server wrote to standard error, a line each. */
@@ -68,6 +70,7 @@ async function seed(
         },
       });
     }
+    await what.records?.(opened.storage);
   } finally {
     await opened.storage.close();
   }
@@ -85,7 +88,7 @@ export async function spawnInstall(what: InstallSeed = {}): Promise<Install> {
   const dataDir = `test-results/spawn-${port}`;
   const origin = `http://127.0.0.1:${port}`;
   await Bun.$`rm -rf ${dataDir} && mkdir -p ${dataDir}`.quiet();
-  if (what.account || what.language) {
+  if (what.account || what.language || what.records) {
     await seed(dataDir, origin, what);
   }
   const server = Bun.spawn(
