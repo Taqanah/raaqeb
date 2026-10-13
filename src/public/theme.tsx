@@ -3,7 +3,7 @@
  * the browser's local storage and never sent to the server, so each locale
  * is one rendered document. An inline script sets it on `<html>` before the
  * first paint, falling back to the page's own default; the switch in the
- * footer changes it after mount.
+ * footer changes it after mount, one icon for each theme.
  */
 import {
   type ChangeEvent,
@@ -16,6 +16,7 @@ import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import { type Theme, themes } from "@/shared/schemas/appearance.ts";
 import { cn } from "@/shared/ui/cn.ts";
+import { MonitorIcon, MoonIcon, SunIcon } from "@/shared/ui/icons.tsx";
 
 /** Where the browser keeps the visitor's choice. */
 export const themeStorageKey = "raaqeb-theme";
@@ -32,6 +33,8 @@ const themeWords: Readonly<Record<Theme, MessageId>> = {
   system: "setting_theme_system",
 };
 
+const themeIcons = { dark: MoonIcon, light: SunIcon, system: MonitorIcon };
+
 function storedTheme(): Theme | undefined {
   try {
     const stored = localStorage.getItem(themeStorageKey);
@@ -42,7 +45,7 @@ function storedTheme(): Theme | undefined {
   }
 }
 
-/** The three themes as one choice; the page's default shows chosen until the browser's own choice is read after mount. */
+/** The three themes as one choice of icons, each named by its word; the page's default shows chosen until the browser's own choice is read after mount. */
 export function ThemeSwitch({
   fallback,
 }: {
@@ -68,29 +71,34 @@ export function ThemeSwitch({
   }, []);
   return (
     <fieldset
-      className="inline-flex rounded-lg bg-subtle p-0.5"
+      className="inline-flex gap-0.5 rounded-full bg-subtle p-0.5"
       data-slot="page-theme"
     >
       <legend className="sr-only">{t("public_theme")}</legend>
-      {themes.map((theme) => (
-        <label
-          className={cn(
-            "inline-flex h-control cursor-pointer items-center rounded-md px-3 text-muted-foreground text-xs transition-colors has-focus-visible:ring-4 has-focus-visible:ring-ring-soft",
-            chosen === theme && "bg-segment text-foreground shadow-xs"
-          )}
-          key={theme}
-        >
-          <input
-            checked={chosen === theme}
-            className="sr-only"
-            name="page-theme"
-            onChange={choose}
-            type="radio"
-            value={theme}
-          />
-          {t(themeWords[theme])}
-        </label>
-      ))}
+      {themes.map((theme) => {
+        const Icon = themeIcons[theme];
+        return (
+          <label
+            className={cn(
+              "grid size-8 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground has-focus-visible:ring-4 has-focus-visible:ring-ring-soft",
+              chosen === theme && "bg-segment text-foreground shadow-xs"
+            )}
+            key={theme}
+            title={t(themeWords[theme])}
+          >
+            <input
+              checked={chosen === theme}
+              className="sr-only"
+              name="page-theme"
+              onChange={choose}
+              type="radio"
+              value={theme}
+            />
+            <span className="sr-only">{t(themeWords[theme])}</span>
+            <Icon className="size-[18px]" />
+          </label>
+        );
+      })}
     </fieldset>
   );
 }
