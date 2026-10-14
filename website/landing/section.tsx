@@ -122,11 +122,15 @@ export function CodeLine({
   const label = done ? copied : copy;
   return (
     <div
-      className="flex w-fit max-w-full items-center gap-2 rounded-lg bg-surface py-1.5 ps-4 pe-1.5 text-[12.5px] shadow-[0_8px_24px_-16px_oklch(0%_0_0/0.3)] ring-line rtl:ps-0"
+      className="flex w-fit max-w-full items-center gap-2 rounded-lg bg-surface py-1.5 ps-4 pe-1.5 text-[12.5px] shadow-[0_8px_24px_-16px_oklch(0%_0_0/0.3)] ring-line has-[pre:focus-visible]:ring-2 has-[pre:focus-visible]:ring-focus rtl:ps-0"
       {...rest}
     >
-      {/* A command never wraps: it scrolls, and its last stretch fades into the end padding, so a cut-off command shows it goes on and a whole one shows no fade. */}
-      <pre className="token m-0 min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap pe-4 text-start text-strong leading-[1.6] [mask-image:linear-gradient(to_right,#000_calc(100%-1rem),transparent)] [scrollbar-width:none] rtl:ps-2 rtl:text-right">
+      {/* A command never wraps: it scrolls, and its last stretch fades into the end padding, so a cut-off command shows it goes on and a whole one shows no fade. A tab stop, so the keyboard scrolls it too; the frame shows its focus, since the fade would cut an outline. */}
+      <pre
+        className="token m-0 min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap pe-4 text-start text-strong leading-[1.6] [mask-image:linear-gradient(to_right,#000_calc(100%-1rem),transparent)] [scrollbar-width:none] focus-visible:outline-none rtl:ps-2 rtl:text-right"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region the keyboard must reach (WCAG 2.1.1)
+        tabIndex={0}
+      >
         <span className="text-teal-text">{prompt} </span>
         {code}
       </pre>

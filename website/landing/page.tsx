@@ -66,7 +66,7 @@ export function Landing({ locale }: { readonly locale: Locale }): ReactNode {
             lang={other}
           >
             <LanguagesIcon className="size-3.5" />
-            <span className="max-md:hidden">{copy.other}</span>
+            <span className="max-md:sr-only">{copy.other}</span>
           </a>
           <ThemeSwitch copy={copy.theme} />
           <a
@@ -78,8 +78,8 @@ export function Landing({ locale }: { readonly locale: Locale }): ReactNode {
           </a>
         </nav>
       </header>
-      <Hero copy={copy} locale={locale} />
       <main>
+        <Hero copy={copy} locale={locale} />
         {copy.order.map((name) => (
           <div key={name}>{sections[name]}</div>
         ))}

@@ -51,6 +51,8 @@ export type Pair = readonly [string, string];
 export interface Demo {
   readonly banner: string;
   readonly bannerDegraded: string;
+  /** What joins a day's date and its status in a bar cell's name. */
+  readonly comma: string;
   readonly components: readonly [string, string, string, string];
   readonly dayCard: {
     readonly downtime: string;
@@ -213,6 +215,7 @@ const demoAr: Demo = {
   banner: "كل المكوّنات تعمل",
   bannerDegraded: "بعض المكوّنات متعثّرة",
   components: ["المتجر الإلكتروني", "بوابة الدفع", "تطبيق الجوال", "الإشعارات"],
+  comma: "، ",
   dayCard: {
     downtime: "مدة التعطّل",
     incident: "حادثة",
@@ -258,6 +261,7 @@ const demoEn: Demo = {
   banner: "All components operational",
   bannerDegraded: "Some components degraded",
   components: ["Storefront", "Payments", "Mobile app", "Notifications"],
+  comma: ", ",
   dayCard: {
     downtime: "Downtime",
     incident: "Incident",

@@ -8,6 +8,7 @@
 import {
   type CSSProperties,
   type FocusEvent,
+  type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
   useCallback,
@@ -254,7 +255,7 @@ function Notices({
       </div>
       <article className="mt-5 border-line border-t pt-4">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h4 className="font-medium text-[16px]">{demo.incidentTitle}</h4>
+          <h3 className="font-medium text-[16px]">{demo.incidentTitle}</h3>
           <span
             className={`font-medium text-[13px] ${resolved ? "text-up-text" : "text-degraded-text"}`}
           >
@@ -282,7 +283,7 @@ function Notices({
       <article className="mt-4 flex items-start gap-3 border-line border-t pt-4">
         <CalendarIcon className="mt-0.5 size-4 shrink-0 text-maintenance" />
         <div>
-          <h4 className="font-medium text-[15px]">{demo.maintenanceTitle}</h4>
+          <h3 className="font-medium text-[15px]">{demo.maintenanceTitle}</h3>
           <p className="text-[13px] text-strong">{demo.maintenanceWhen}</p>
         </div>
       </article>
@@ -390,6 +391,31 @@ function Row({
     }
   }, []);
   const leave = useCallback(() => setOpened(null), []);
+  // Days run in the reading direction, so the arrow toward the line's end is the next day; Escape closes the card.
+  const key = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Escape") {
+        setOpened(null);
+        return;
+      }
+      const forward = lang === "ar" ? "ArrowLeft" : "ArrowRight";
+      const back = lang === "ar" ? "ArrowRight" : "ArrowLeft";
+      const cell = e.target instanceof HTMLElement ? e.target : null;
+      if (!(cell?.dataset.index && (e.key === forward || e.key === back))) {
+        return;
+      }
+      const index = Number(cell.dataset.index) + (e.key === forward ? 1 : -1);
+      const next = cell.parentElement?.querySelector<HTMLElement>(
+        `[data-index="${index}"]`
+      );
+      // A day this screen hides is never reached.
+      if (next?.checkVisibility()) {
+        e.preventDefault();
+        next.focus();
+      }
+    },
+    [lang]
+  );
   const day = opened ? shown[opened.index] : null;
   const format = new Intl.DateTimeFormat(
     lang === "ar" ? `ar-SA-u-ca-${calendar}-nu-latn` : `en-GB-u-ca-${calendar}`,
@@ -415,26 +441,33 @@ function Row({
         className="relative mt-2"
         onBlur={blur}
         onFocus={focus}
+        onKeyDown={key}
         onPointerLeave={leave}
         onPointerOver={enter}
       >
-        <div
-          className={`bar flex gap-0.75 ${shown.length === 90 ? "bar-90 h-6" : "h-9"}`}
+        <fieldset
+          className={`bar flex min-w-0 gap-0.75 ${shown.length === 90 ? "bar-90 h-6" : "h-9"}`}
         >
-          {shown.map((each, i) => (
-            <button
-              aria-expanded={opened?.index === i}
-              data-cell={
-                degraded && i === shown.length - 1 ? "degraded" : each.level
-              }
-              data-index={i}
-              // biome-ignore lint/suspicious/noArrayIndexKey: a day's place in the bar is its identity.
-              key={i}
-              style={{ "--i": i }}
-              type="button"
-            />
-          ))}
-        </div>
+          <legend className="sr-only">{name}</legend>
+          {shown.map((each, i) => {
+            const level =
+              degraded && i === shown.length - 1 ? "degraded" : each.level;
+            return (
+              <button
+                aria-expanded={opened?.index === i}
+                aria-label={`${format.format(today - (shown.length - 1 - i) * dayMs)}${demo.comma}${demo.levels[level]}`}
+                data-cell={level}
+                data-index={i}
+                // biome-ignore lint/suspicious/noArrayIndexKey: a day's place in the bar is its identity.
+                key={i}
+                style={{ "--i": i }}
+                // One day takes the tab stop, today's or the open one; the arrows move between the rest.
+                tabIndex={i === (opened?.index ?? shown.length - 1) ? 0 : -1}
+                type="button"
+              />
+            );
+          })}
+        </fieldset>
         {day && opened ? (
           <Card place={opened.place}>
             <div className="arrive rounded-lg bg-surface p-3.5 text-[13px] shadow-[0_12px_32px_-16px_oklch(0%_0_0/0.4)] ring-line">
