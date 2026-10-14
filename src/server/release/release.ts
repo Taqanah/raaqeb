@@ -67,7 +67,10 @@ export interface RefreshOptions {
 }
 
 // What the API answers for /releases/latest; the rest of the body is ignored.
-const apiReleaseSchema = z.object({ html_url: z.url(), tag_name: z.string() });
+const apiReleaseSchema = z.object({
+  html_url: releaseSchema.shape.url,
+  tag_name: z.string(),
+});
 
 // One check in flight per storage, so admin requests landing together share it.
 const inFlight = new WeakMap<Pick<Storage, "settings">, Promise<void>>();

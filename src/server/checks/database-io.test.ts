@@ -81,7 +81,9 @@ describe("one query over the drivers", () => {
         url: postgres.url,
       },
     ]);
-    expect(queries).toEqual(["SELECT 1"]);
+    expect(queries).toEqual([
+      "SELECT * FROM (\nSELECT 1\n) AS raaqeb_check LIMIT 1",
+    ]);
     expect(closed()).toBe(1);
   });
 
@@ -103,6 +105,44 @@ describe("one query over the drivers", () => {
       Array.isArray(options) ? undefined : options.password()
     );
     expect(passwords).toEqual(["s3cr/t", ""]);
+  });
+
+  test("a Postgres SELECT or WITH query is asked for its first row alone, its trailing semicolon dropped, and any other statement or one holding a semicolon as it came", async () => {
+    const { fake, queries } = drivers(() => Promise.resolve([]));
+    for (const query of [
+      "select name from items;",
+      "  WITH a AS (SELECT 1) SELECT * FROM a ; ",
+      "SHOW server_version",
+      "SELECT 1; -- a note after the statement",
+    ]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one query after another
+      await queryOnce({ ...postgres, query }, fake);
+    }
+    expect(queries).toEqual([
+      "SELECT * FROM (\nselect name from items\n) AS raaqeb_check LIMIT 1",
+      "SELECT * FROM (\nWITH a AS (SELECT 1) SELECT * FROM a\n) AS raaqeb_check LIMIT 1",
+      "SHOW server_version",
+      // A semicolon inside could close the wrapper's parenthesis early: asked as it came.
+      "SELECT 1; -- a note after the statement",
+    ]);
+  });
+
+  test("a MySQL connection limits every SELECT to one row before it asks the query as it came", async () => {
+    const { fake, queries } = drivers(() => Promise.resolve([{ one: 1 }]));
+    const answer = await queryOnce(
+      {
+        ...postgres,
+        query: "SELECT a.id, b.id FROM a JOIN b",
+        type: "mysql",
+        url: "mysql://u:p@db.example.test/app",
+      },
+      fake
+    );
+    expect(queries).toEqual([
+      "SET SESSION sql_select_limit = 1",
+      "SELECT a.id, b.id FROM a JOIN b",
+    ]);
+    expect(answer).toBe(1);
   });
 
   test("a MySQL query does not name the prepare option, which Bun's MySQL driver refuses", async () => {
@@ -403,3 +443,34 @@ for (const type of ["postgres", "mysql", "redis"] as const) {
     });
   });
 }
+
+describe.if(servers.postgres !== undefined)(
+  "a Postgres query of many rows",
+  () => {
+    test("reads its first row alone: a second row that would fail is never read", async () => {
+      const outcome = await check("postgres", servers.postgres ?? "", {
+        expected: "1",
+        query: "SELECT 1 / (2 - g) FROM generate_series(1, 3) AS g;",
+      });
+      expect(outcome.check.result).toBe("up");
+    });
+
+    test("that ends in a line comment reads its first row as it did unwrapped", async () => {
+      const outcome = await check("postgres", servers.postgres ?? "", {
+        expected: "1",
+        query: "SELECT 1 -- the one row",
+      });
+      expect(outcome.check.result).toBe("up");
+    });
+  }
+);
+
+describe.if(servers.mysql !== undefined)("a MySQL query", () => {
+  test("runs with every SELECT limited to one row", async () => {
+    const outcome = await check("mysql", servers.mysql ?? "", {
+      expected: "1",
+      query: "SELECT @@session.sql_select_limit",
+    });
+    expect(outcome.check.result).toBe("up");
+  });
+});

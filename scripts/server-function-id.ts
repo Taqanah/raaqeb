@@ -15,7 +15,7 @@ export interface ServerFunctionSource {
  * A generator of ids, one per build: the module path under `src/` with dots
  * for slashes, `--`, and the variable the function is assigned to. The same
  * function always gets the same id; two functions that would share one, or a
- * file outside the project, fail the build.
+ * file outside the project or outside `src/`, fail the build.
  */
 export function serverFunctionIds(): (source: ServerFunctionSource) => string {
   // Each id with the source it was given, so a second asker gets the same and a clash is caught.
@@ -25,6 +25,11 @@ export function serverFunctionIds(): (source: ServerFunctionSource) => string {
     if (outsideProject.test(file)) {
       throw new Error(
         `a server function in a file outside the project: ${functionName}`
+      );
+    }
+    if (!sourceRoot.test(file)) {
+      throw new Error(
+        `a server function in a file outside src: ${file}#${functionName}`
       );
     }
     const module = file

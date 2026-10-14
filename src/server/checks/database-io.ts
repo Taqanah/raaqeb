@@ -95,7 +95,14 @@ function open(
     ...(query.type === "postgres" && { prepare: false }),
   });
   return {
-    ask: async () => firstValue(await sql.unsafe(query.query)),
+    // One row is all the check reads, and Bun's drivers hold a whole result set: MySQL caps every SELECT on the connection, Postgres wraps a SELECT in a LIMIT.
+    ask: async () => {
+      if (query.type === "mysql") {
+        await sql.unsafe("SET SESSION sql_select_limit = 1");
+        return firstValue(await sql.unsafe(query.query));
+      }
+      return firstValue(await sql.unsafe(firstRowOf(query.query)));
+    },
     // A query still running past the timeout gets a second to end before the socket closes (probed on Bun 1.4.3: `timeout: 0` waits for it).
     close: () => {
       sql.close({ timeout: 1 }).catch(() => undefined);
@@ -104,6 +111,17 @@ function open(
 }
 
 const spaces = /\s+/;
+const readsRows = /^\s*(select|with)\b/i;
+const trailingSemicolons = /[\s;]+$/;
+
+/** A Postgres SELECT or WITH query asked for its first row alone; any other statement, such as SHOW, as it came. A subquery keeps duplicate column names on Postgres, which MySQL would refuse. */
+function firstRowOf(query: string): string {
+  const statement = query.trim().replace(trailingSemicolons, "");
+  // A semicolon left inside could end the statement before the wrapper's parenthesis; the line breaks keep a trailing comment off it.
+  return readsRows.test(statement) && !statement.includes(";")
+    ? `SELECT * FROM (\n${statement}\n) AS raaqeb_check LIMIT 1`
+    : query;
+}
 
 /** The first value of a SQL answer: the first column of the first row, or nothing when no row came back. */
 export function firstValue(rows: unknown): unknown {

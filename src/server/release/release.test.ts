@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { z } from "zod";
 import { scratchDatabase } from "@/server/storage/fixture.ts";
 import { openStorage, type Storage } from "@/server/storage/storage.ts";
 import {
@@ -208,6 +209,40 @@ describe("the release check", () => {
       }),
     ]);
     expect(api.requests).toHaveLength(1);
+  });
+
+  test("a release whose link is not https stores the time only, so the banner never links to it", async () => {
+    const store = await storage();
+    for (const [index, link] of [
+      "javascript:alert(document.cookie)",
+      "http://github.com/example/raaqeb/releases/tag/v9.0.0",
+    ].entries()) {
+      const api = github(() =>
+        Response.json({ html_url: link, tag_name: "v9.0.0" })
+      );
+      // biome-ignore lint/performance/noAwaitInLoops: one day after another
+      await refreshRelease(store, {
+        fetch: api.fetch,
+        now: () => at + index * day,
+        repository: named,
+      });
+      expect(await store.settings.get(releaseCheckResult)).toEqual({
+        checkedAt: at + index * day,
+      });
+    }
+    expect(await readNewerRelease(store, "1.0.0")).toBeUndefined();
+  });
+
+  test("a stored release whose link is not https shows no banner", async () => {
+    const store = await storage();
+    await store.settings.set(
+      { key: releaseCheckResult.key, schema: z.unknown() },
+      {
+        checkedAt: at,
+        latest: { url: "javascript:alert(1)", version: "9.0.0" },
+      }
+    );
+    expect(await readNewerRelease(store, "1.0.0")).toBeUndefined();
   });
 
   test("a stored answer that no longer fits is refreshed rather than thrown", async () => {

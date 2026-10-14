@@ -34,7 +34,7 @@ Raaqeb runs the query as written, on every check. Keep it read-only, and sign in
 
 ### The query and the expected value
 
-For Postgres and MySQL, the first value is the first column of the first row; a query that returns no row answers empty text. For Redis, the command and its arguments are split on spaces, so an argument cannot hold a space, and the first value is the reply.
+For Postgres and MySQL, the first value is the first column of the first row; a query that returns no row answers empty text. Raaqeb reads that row alone: on Postgres a query that starts with `SELECT` or `WITH` and holds no `;` before its end runs inside `SELECT * FROM (...) LIMIT 1`, and on MySQL every `SELECT` on the check's connection returns one row at most. For Redis, the command and its arguments are split on spaces, so an argument cannot hold a space, and the first value is the reply.
 
 The answer is compared as text: a string as it is, a date in ISO 8601, a number or a boolean as JSON (`1`, `true`, `false`), anything else as JSON. **Test now** shows the answer, so run it once to see the exact text to expect.
 

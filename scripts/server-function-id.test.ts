@@ -83,4 +83,17 @@ describe("a server function's id", () => {
       })
     ).toThrow("outside the project");
   });
+
+  test("a file in the project but outside src, whose id would not name a module, fails the build too", () => {
+    const id = serverFunctionIds();
+    for (const filename of [
+      "website/routes/a.ts",
+      "node_modules/some-lib/dist/a.js",
+      "src-copy/a.ts",
+    ]) {
+      expect(() => id({ filename, functionName: handler("read") })).toThrow(
+        "outside src"
+      );
+    }
+  });
 });

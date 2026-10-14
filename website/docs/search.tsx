@@ -16,6 +16,9 @@ import { defaultLocale } from "@/shared/i18n/locale.ts";
 import { foldedPattern, searchText } from "./search-text.ts";
 import { searchIndexOf } from "./source.ts";
 
+/** The longest query the search box takes, in characters. */
+const searchMaxLength = 100;
+
 /** The docs search: the visitor's locale's pages, searched in the browser with no server. */
 export default function DocsSearch(props: SharedProps): ReactNode {
   const { locale } = useI18n();
@@ -89,7 +92,8 @@ export default function DocsSearch(props: SharedProps): ReactNode {
       <SearchDialogContent>
         <SearchDialogHeader>
           <SearchDialogIcon />
-          <SearchDialogInput />
+          {/* The box takes a query's length and no more, so a paste never builds a highlight pattern of thousands of letters to walk the results with on every key. */}
+          <SearchDialogInput maxLength={searchMaxLength} />
           <SearchDialogClose />
         </SearchDialogHeader>
         <div className="contents" ref={markFound}>
