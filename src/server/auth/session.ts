@@ -5,6 +5,7 @@
  * (src/routes/-admin.ts) is its one caller; the preview of an unpublished
  * page reads the session through `isOperator`, which refreshes nothing.
  */
+import { answerLimitMs, withinLimit } from "@/server/storage/deadline.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { type Auth, type AuthBoot, authFor } from "./auth.ts";
 
@@ -28,12 +29,14 @@ export interface OperatorContext extends OperatorSession {
 /** The operator whose session the request's cookies name, or nothing. */
 export async function readOperator(
   auth: Auth,
-  headers: Headers
+  headers: Headers,
+  answerMs: number = answerLimitMs
 ): Promise<OperatorSession | undefined> {
   // A database that cannot answer is no session; the guard sends the request to sign-in rather than an error page.
-  const read = await auth.api
-    .getSession({ headers, returnHeaders: true })
-    .catch(() => undefined);
+  const read = await withinLimit(
+    auth.api.getSession({ headers, returnHeaders: true }),
+    answerMs
+  ).catch(() => undefined);
   const session = read?.response;
   if (!session) {
     return;
@@ -94,17 +97,18 @@ export async function operatorFor(
 export async function isOperator(
   storage: Storage | undefined,
   boot: AuthBoot,
-  headers: Headers
+  headers: Headers,
+  answerMs: number = answerLimitMs
 ): Promise<boolean> {
   if (!storage) {
     return false;
   }
   try {
     const auth = await authFor(storage, boot);
-    const session = await auth.api.getSession({
-      headers,
-      query: { disableRefresh: true },
-    });
+    const session = await withinLimit(
+      auth.api.getSession({ headers, query: { disableRefresh: true } }),
+      answerMs
+    );
     return session !== null;
   } catch {
     // A database that cannot answer is no session, as for the guard.

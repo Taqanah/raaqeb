@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
+  type PostgresPool,
+  postgresExecutor,
+} from "@/server/storage/connection.ts";
+import { readChangeCounter } from "@/server/storage/counter.ts";
+import {
   exitAfterMs,
   healthCommand,
   healthReport,
@@ -63,6 +68,24 @@ describe("the health report", () => {
       ok: false,
       scheduler: "ok",
     });
+  });
+
+  test("a database that never answers makes the report not ok within the limit, rather than hanging", async () => {
+    const silent = () => new Promise<Iterable<never>>(() => undefined);
+    const pool: PostgresPool = {
+      execute: silent,
+      transaction: (work) => work({ execute: silent }),
+    };
+    const run = postgresExecutor(pool, pool, 30);
+    const started = performance.now();
+    expect(
+      await healthReport(
+        { changeCounter: () => readChangeCounter(run) },
+        fresh,
+        t0 + 1000
+      )
+    ).toEqual({ database: "unreachable", ok: false, scheduler: "ok" });
+    expect(performance.now() - started).toBeLessThan(500);
   });
 
   test("a stale tick makes the report not ok, naming the scheduler", async () => {

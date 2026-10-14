@@ -12,6 +12,7 @@ import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite";
 import type { PgTable } from "drizzle-orm/pg-core";
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
+import { answerLimitMs, NoAnswerError, withinLimit } from "./deadline.ts";
 // biome-ignore lint/performance/noNamespaceImport: the table map is every table the schema file exports
 import * as postgresSchema from "./schema/postgres.ts";
 // biome-ignore lint/performance/noNamespaceImport: the table map is every table the schema file exports
@@ -58,17 +59,22 @@ export interface Executor {
 }
 
 /** What a Postgres query runs on: the pool or a transaction inside it. */
-interface PostgresRunner {
+export interface PostgresRunner {
   execute: <T extends Record<string, unknown>>(
     query: SQL
   ) => Promise<Iterable<T>>;
+}
+
+/** The pool as the executor uses it: a runner that also opens a transaction. */
+export interface PostgresPool extends PostgresRunner {
+  transaction: <T>(work: (tx: PostgresRunner) => Promise<T>) => Promise<T>;
 }
 
 export function executor(connection: Connection): Executor {
   if (connection.backend === "sqlite") {
     return sqliteExecutor(connection.db);
   }
-  return postgresExecutor(connection.db);
+  return postgresExecutor(connection.db, connection.db, answerLimitMs);
 }
 
 /**
@@ -114,19 +120,41 @@ function sqliteExecutor(db: SQLiteBunDatabase): Executor {
   return self;
 }
 
-function postgresExecutor(
-  db: BunSQLDatabase,
-  runner: PostgresRunner = db
+/** The Postgres executor over `runner`; with a limit, a statement the database does not answer in time fails. A transaction's statements pass none: work inside one may legitimately run long. */
+export function postgresExecutor(
+  db: PostgresPool,
+  runner: PostgresRunner,
+  limitMs: number | undefined
 ): Executor {
+  // A database that missed one answer is treated as down for one more limit, so a request fails at once instead of waiting again for each of its reads; the first statement after it asks again.
+  let silentUntil = 0;
+  const answered = async <T>(start: () => Promise<T>): Promise<T> => {
+    if (limitMs === undefined) {
+      return await start();
+    }
+    if (Date.now() < silentUntil) {
+      throw new NoAnswerError(limitMs);
+    }
+    try {
+      return await withinLimit(start(), limitMs);
+    } catch (thrown) {
+      if (thrown instanceof NoAnswerError) {
+        silentUntil = Date.now() + limitMs;
+      }
+      throw thrown;
+    }
+  };
   return {
     backend: "postgres",
     exclusive: async (work) => await work(),
     rows: async <T>(query: SQL) => {
-      const result = await runner.execute<Record<string, unknown>>(query);
+      const result = await answered(() =>
+        runner.execute<Record<string, unknown>>(query)
+      );
       return Array.from(result, (row) => plainNumbers(row) as T);
     },
     run: async (query) => {
-      const result = await runner.execute(query);
+      const result = await answered(() => runner.execute(query));
       // Bun's driver answers the changed rows as `count` beside the rows; Drizzle's type names only the rows.
       return "count" in result && typeof result.count === "number"
         ? result.count
@@ -135,7 +163,7 @@ function postgresExecutor(
     tables: tables.postgres,
     // Drizzle holds one pool connection for the whole callback; a nested transaction is a savepoint.
     transaction: (work) =>
-      db.transaction((tx) => work(postgresExecutor(db, tx))),
+      db.transaction((tx) => work(postgresExecutor(db, tx, undefined))),
   };
 }
 

@@ -6,6 +6,8 @@ import {
   type Connection,
   closeConnection,
   executor,
+  type PostgresPool,
+  postgresExecutor,
   tables,
 } from "./connection.ts";
 import { connectTo, scratchDatabase } from "./fixture.ts";
@@ -130,6 +132,64 @@ describe("a statement on the connection", () => {
         sql`DELETE FROM ${run.tables.groups} WHERE ${sql.identifier("created_at")} = 1`
       )
     ).toBe(0);
+  });
+});
+
+describe("a statement the Postgres database does not answer", () => {
+  // Answers long after the limit, as a database that never answers would.
+  const silent = () =>
+    new Promise<Iterable<never>>((resolve) => setTimeout(resolve, 400, []));
+  const poolOf = (answers: () => Promise<Iterable<never>>): PostgresPool => ({
+    execute: answers,
+    transaction: (work) => work({ execute: answers }),
+  });
+
+  test("a read fails at the limit instead of waiting for good", async () => {
+    const run = postgresExecutor(poolOf(silent), poolOf(silent), 30);
+    await expect(run.rows(sql`SELECT 1`)).rejects.toThrow("did not answer");
+  });
+
+  test("a write fails at the limit too", async () => {
+    const run = postgresExecutor(poolOf(silent), poolOf(silent), 30);
+    await expect(run.run(sql`DELETE FROM x`)).rejects.toThrow("did not answer");
+  });
+
+  test("after one miss the next statements fail at once, without asking the database again", async () => {
+    let asked = 0;
+    const counting = () => {
+      asked += 1;
+      return silent();
+    };
+    const run = postgresExecutor(poolOf(counting), poolOf(counting), 30);
+    await expect(run.rows(sql`SELECT 1`)).rejects.toThrow("did not answer");
+    const started = performance.now();
+    await expect(run.rows(sql`SELECT 1`)).rejects.toThrow("did not answer");
+    await expect(run.run(sql`DELETE FROM x`)).rejects.toThrow("did not answer");
+    expect(performance.now() - started).toBeLessThan(20);
+    expect(asked).toBe(1);
+  });
+
+  test("once the limit has passed again the database is asked, and a database that is back is read as before", async () => {
+    const database: { back: boolean } = { back: false };
+    const flaky = () => (database.back ? Promise.resolve([]) : silent());
+    const run = postgresExecutor(poolOf(flaky), poolOf(flaky), 30);
+    await expect(run.rows(sql`SELECT 1`)).rejects.toThrow("did not answer");
+    database.back = true;
+    await Bun.sleep(40);
+    expect(await run.rows(sql`SELECT 1`)).toEqual([]);
+  });
+
+  test("a slow statement inside a transaction is left to finish", async () => {
+    const slow = () =>
+      new Promise<Iterable<never>>((resolve) => setTimeout(resolve, 80, []));
+    const run = postgresExecutor(poolOf(slow), poolOf(slow), 20);
+    expect(await run.transaction((tx) => tx.rows(sql`SELECT 1`))).toEqual([]);
+  });
+
+  test("an answer inside the limit is read as before", async () => {
+    const quick = () => Promise.resolve([]);
+    const run = postgresExecutor(poolOf(quick), poolOf(quick), 30);
+    expect(await run.rows(sql`SELECT 1`)).toEqual([]);
   });
 });
 

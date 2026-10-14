@@ -115,6 +115,24 @@ describe("the signed-in operator behind a request", () => {
     expect(await readOperator(auth2, new Headers({ cookie }))).toBeUndefined();
   });
 
+  test("is nothing, within the limit, when the database never answers the session read", async () => {
+    // The same instance, but its session read never settles.
+    const silent = new Proxy(auth, {
+      get: (target, key) =>
+        key === "api"
+          ? new Proxy(target.api, {
+              get: (api, name) =>
+                name === "getSession"
+                  ? () => new Promise(() => undefined)
+                  : Reflect.get(api, name),
+            })
+          : Reflect.get(target, key),
+    });
+    const started = performance.now();
+    expect(await readOperator(silent, new Headers(), 30)).toBeUndefined();
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
   test("is nothing for a cookie naming a session that does not exist", async () => {
     const forged = "raaqeb.session_token=nope.nope";
     expect(
@@ -204,6 +222,33 @@ describe("the operator for a request context", () => {
     expect(await isOperator(undefined, boot, new Headers({ cookie }))).toBe(
       false
     );
+  });
+
+  test("a preview's read is no session, within the limit, when the database never answers", async () => {
+    // The open storage with an auth adapter whose every call stays pending.
+    const silent = {
+      ...opened.storage,
+      authDatabase: (
+        options: Parameters<typeof opened.storage.authDatabase>[0]
+      ) =>
+        new Proxy(opened.storage.authDatabase(options), {
+          get: (target, key) =>
+            typeof Reflect.get(target, key) === "function"
+              ? () => new Promise(() => undefined)
+              : Reflect.get(target, key),
+        }),
+    };
+    const own = await authFor(opened.storage, boot);
+    const signedIn = await own.api.signInEmail({
+      body: { email, password },
+      returnHeaders: true,
+    });
+    const cookie = signedIn.headers.get("set-cookie")?.split(";")[0] ?? "";
+    const started = performance.now();
+    expect(await isOperator(silent, boot, new Headers({ cookie }), 30)).toBe(
+      false
+    );
+    expect(performance.now() - started).toBeLessThan(500);
   });
 
   test("is nothing with no database, and nothing when the database cannot answer, never a thrown error", async () => {
