@@ -164,8 +164,9 @@ export function ExportCard({
 }
 
 const importRefusals: Readonly<
-  Record<ImportRefusal | "too_large" | "no_file", MessageId>
+  Record<ImportRefusal | "too_large" | "no_file" | "empty_file", MessageId>
 > = {
+  empty_file: "setting_import_empty_file",
   invalid: "setting_import_invalid",
   line_too_large: "setting_import_line_too_large",
   no_file: "setting_import_no_file",
@@ -179,7 +180,10 @@ type ImportState =
   | { readonly kind: "idle" }
   | { readonly kind: "importing" }
   | { readonly kind: "done"; readonly answer: ImportAnswer }
-  | { readonly kind: "failed"; readonly reason: "too_large" | "no_file" };
+  | {
+      readonly kind: "failed";
+      readonly reason: "too_large" | "no_file" | "empty_file";
+    };
 
 /** What the upload's answer says, or why it has none. */
 async function upload(file: File): Promise<ImportState> {
@@ -226,8 +230,12 @@ export function ImportCard(): ReactNode {
   const onSubmit = useCallback((event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const file = new FormData(event.currentTarget).get("file");
-    if (!(file instanceof File) || file.size === 0) {
+    if (!(file instanceof File) || file.name === "") {
       setState({ kind: "failed", reason: "no_file" });
+      return;
+    }
+    if (file.size === 0) {
+      setState({ kind: "failed", reason: "empty_file" });
       return;
     }
     setState({ kind: "importing" });

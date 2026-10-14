@@ -82,6 +82,7 @@ const unreachableMessage: Readonly<Record<string, MessageId>> = {
   refused: "onboarding_unreachable_refused",
   timeout: "onboarding_unreachable_timeout",
   tls: "onboarding_unreachable_tls",
+  unresolved: "onboarding_unreachable_unresolved",
   unknown: "onboarding_unreachable_unknown",
 };
 

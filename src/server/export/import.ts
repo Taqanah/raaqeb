@@ -55,6 +55,7 @@ import type { Outage } from "@/shared/schemas/outage.ts";
 import { pageImageMaxBytes } from "@/shared/schemas/page.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import type { Rollup } from "@/shared/schemas/rollup.ts";
+import { forgetExportSizes } from "./export.ts";
 import { LongLineError, readLines, UnreadableFileError } from "./lines.ts";
 
 /** Records gathered before one statement writes them. */
@@ -74,9 +75,14 @@ export function importInstall(
     file.cancel().catch(() => undefined);
     return Promise.resolve({ ok: false, reason: "unavailable" });
   }
-  const turn = (chains.get(storage) ?? Promise.resolve()).then(() =>
-    importOnce(storage, key, file, now)
-  );
+  const turn = (chains.get(storage) ?? Promise.resolve()).then(async () => {
+    const answer = await importOnce(storage, key, file, now);
+    if (answer.ok) {
+      // The export page's size estimate would show the empty install's for five minutes.
+      forgetExportSizes(storage);
+    }
+    return answer;
+  });
   chains.set(
     storage,
     turn.catch(() => undefined)

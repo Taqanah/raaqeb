@@ -10,6 +10,8 @@ import type { PostgresConnection } from "./connection.ts";
 /** Why a connection did not happen. A code, never the driver's text. */
 export type ConnectFailure =
   | "refused"
+  /** The host name has no address; the driver reports it as a refusal too, so the opener tells them apart. */
+  | "unresolved"
   | "timeout"
   | "authentication"
   | "tls"
@@ -37,7 +39,11 @@ const retryPauseMs = 1000;
 const poolerPorts = new Set(["6543", "6432"]);
 
 /** Failures worth another attempt inside the window: the server may still be starting. */
-const transient: ReadonlySet<ConnectFailure> = new Set(["refused", "timeout"]);
+const transient: ReadonlySet<ConnectFailure> = new Set([
+  "refused",
+  "unresolved",
+  "timeout",
+]);
 
 const failureByCode: Readonly<Record<string, ConnectFailure>> = {
   "28000": "authentication",
@@ -172,12 +178,31 @@ async function connectOnce(url: string): Promise<PostgresOpenResult> {
     await client.unsafe("SELECT 1");
   } catch (error) {
     await client.close().catch(() => undefined);
-    return { failure: classifyConnectError(error), ok: false };
+    const failure = classifyConnectError(error);
+    return {
+      failure:
+        failure === "refused" && !(await hostResolves(url))
+          ? "unresolved"
+          : failure,
+      ok: false,
+    };
   }
   return {
     connection: { backend: "postgres", client, db: drizzle({ client }) },
     ok: true,
   };
+}
+
+/** Whether the URL's host has an address; the driver words a name with none as a refusal, which sends the operator to the wrong place. An IP literal always has one. */
+async function hostResolves(url: string): Promise<boolean> {
+  const host = parseUrl(url)?.hostname.replace(/^\[|\]$/g, "");
+  if (!host) {
+    return true;
+  }
+  return await Bun.dns.lookup(host).then(
+    () => true,
+    () => false
+  );
 }
 
 function parseUrl(url: string): URL | undefined {

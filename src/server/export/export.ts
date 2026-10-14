@@ -270,6 +270,11 @@ export async function exportSizes(
   return answer;
 }
 
+/** Drops an install's kept sizes, for a write that changes what the file holds at once (an import). */
+export function forgetExportSizes(storage: Storage): void {
+  keptSizes.delete(storage);
+}
+
 const sizesKeptMs = 5 * 60_000;
 // ponytail: one answer per open storage, in memory; a restart reads it again.
 const keptSizes = new WeakMap<

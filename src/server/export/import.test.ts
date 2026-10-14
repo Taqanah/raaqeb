@@ -19,7 +19,7 @@ import {
   timeoutMaxMs,
 } from "@/shared/schemas/monitor.ts";
 import { pageImageKinds, pageImageMaxBytes } from "@/shared/schemas/page.ts";
-import { exportInstall } from "./export.ts";
+import { exportInstall, exportSizes } from "./export.ts";
 import {
   checksEvery,
   day,
@@ -361,6 +361,21 @@ describe("an import", () => {
       now
     );
     expect(await into.storage.changeCounter()).toBe(before + 1);
+  });
+
+  test("makes the export size read again, so the page after an import does not show the empty install's", async () => {
+    const from = await source();
+    const into = await target();
+    const before = await exportSizes(into.storage, into.key, now);
+    await importInstall(
+      into.storage,
+      into.key,
+      fileOf(await exportLines(from)),
+      now
+    );
+    // A minute later: the kept answer of five would still hold.
+    const filled = await exportSizes(into.storage, into.key, now + minute);
+    expect(before.ok && filled.ok && filled.full > before.full).toBe(true);
   });
 
   test("of the configuration mode writes the configuration and no history", async () => {

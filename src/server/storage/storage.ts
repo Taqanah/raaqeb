@@ -173,6 +173,7 @@ const failureText: Readonly<Record<ConnectFailure, string>> = {
   refused: "connection refused",
   timeout: "connection timed out",
   tls: "TLS failed",
+  unresolved: "the host name was not found",
   unknown: "the driver failed",
 };
 

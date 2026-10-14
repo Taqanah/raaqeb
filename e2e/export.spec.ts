@@ -128,6 +128,17 @@ test.describe("the full export, downloaded and then imported into the empty inst
       "data-state",
       "no_file"
     );
+    // A file with nothing in it is not "no file": it is chosen, and empty.
+    await page.setInputFiles("input[name=file]", {
+      buffer: Buffer.alloc(0),
+      mimeType: "application/zstd",
+      name: "raaqeb-export.jsonl.zst",
+    });
+    await page.click("[data-slot=import-submit]");
+    await expect(page.locator("[data-slot=import-answer]")).toHaveAttribute(
+      "data-state",
+      "empty_file"
+    );
     // Still empty: the list shows its empty state, whose link leads to the import.
     await page.goto(`${emptyOrigin}/admin/monitors`);
     await expect(page.locator("[data-slot=empty]")).toBeVisible();

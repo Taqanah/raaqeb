@@ -287,6 +287,10 @@ msgid "onboarding_unreachable_refused"
 msgstr "تعذّر الاتصال: رفض الخادوم الاتصال."
 
 #. js-lingui-explicit-id
+msgid "onboarding_unreachable_unresolved"
+msgstr "تعذّر الاتصال: لم يُعثر على اسم المضيف."
+
+#. js-lingui-explicit-id
 msgid "onboarding_unreachable_timeout"
 msgstr "تعذّر الاتصال: انتهت مهلة الانتظار."
 
@@ -453,6 +457,18 @@ msgstr "تعذّر عرض الصفحة"
 #. js-lingui-explicit-id
 msgid "app_error_description"
 msgstr "حدث خطأ أثناء تحميل هذه الصفحة. أعد المحاولة بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "app_not_found_title"
+msgstr "لم يُعثر على الصفحة"
+
+#. js-lingui-explicit-id
+msgid "app_not_found_description"
+msgstr "لا شيء في الإدارة بهذا العنوان. ربما حُذف، أو كُتب العنوان خطأً."
+
+#. js-lingui-explicit-id
+msgid "app_not_found_back"
+msgstr "العودة إلى المراقبات"
 
 #. js-lingui-explicit-id
 msgid "app_try_again"
@@ -4743,6 +4759,10 @@ msgstr "الملف أكبر مما يقبله الاستيراد (4 GB)."
 #. js-lingui-explicit-id
 msgid "setting_import_line_too_large"
 msgstr "في الملف سطر أكبر مما يقرؤه الاستيراد (⁦8 MB⁩). لم يُستورد شيء."
+
+#. js-lingui-explicit-id
+msgid "setting_import_empty_file"
+msgstr "الملف فارغ. اختر ملف التصدير."
 
 #. js-lingui-explicit-id
 msgid "setting_import_no_file"

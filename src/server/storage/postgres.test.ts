@@ -229,6 +229,17 @@ describe("connecting", () => {
     expect(Date.now() - started).toBeLessThan(600);
   });
 
+  test("a host name with no address is reported as unresolved, not as refused", async () => {
+    // .invalid never resolves (RFC 2606); the driver words it as a refusal.
+    const result = await openPostgres(
+      "postgres://u:p@no-such-host.invalid/raaqeb",
+      {
+        windowMs: 300,
+      }
+    );
+    expect(result).toEqual({ failure: "unresolved", ok: false });
+  });
+
   test("a failure that a retry cannot mend stops at once", async () => {
     const fake = refusingPostgres("28P01");
     try {

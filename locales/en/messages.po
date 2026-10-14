@@ -236,7 +236,7 @@ msgstr "A Postgres server"
 
 #. js-lingui-explicit-id
 msgid "onboarding_database_postgres_note"
-msgstr "A server you run, or Neon or Supabase. Needs a connection address."
+msgstr "A server you run, or Neon or Supabase. Needs a connection URL."
 
 #. js-lingui-explicit-id
 msgid "onboarding_database_url"
@@ -285,6 +285,10 @@ msgstr "It holds another application's migration record; refused. Raaqeb cannot 
 #. js-lingui-explicit-id
 msgid "onboarding_unreachable_refused"
 msgstr "Could not connect: the server refused the connection."
+
+#. js-lingui-explicit-id
+msgid "onboarding_unreachable_unresolved"
+msgstr "Could not connect: the host name was not found."
 
 #. js-lingui-explicit-id
 msgid "onboarding_unreachable_timeout"
@@ -453,6 +457,18 @@ msgstr "This page could not be shown"
 #. js-lingui-explicit-id
 msgid "app_error_description"
 msgstr "Something failed while loading this page. Try again in a moment."
+
+#. js-lingui-explicit-id
+msgid "app_not_found_title"
+msgstr "Page not found"
+
+#. js-lingui-explicit-id
+msgid "app_not_found_description"
+msgstr "Nothing in the admin has this address. It may have been deleted, or the address mistyped."
+
+#. js-lingui-explicit-id
+msgid "app_not_found_back"
+msgstr "Back to the monitors"
 
 #. js-lingui-explicit-id
 msgid "app_try_again"
@@ -4743,6 +4759,10 @@ msgstr "The file is larger than an import takes (4 GB)."
 #. js-lingui-explicit-id
 msgid "setting_import_line_too_large"
 msgstr "A line of the file is larger than an import reads (8 MB). Nothing was imported."
+
+#. js-lingui-explicit-id
+msgid "setting_import_empty_file"
+msgstr "The file is empty. Choose the export file."
 
 #. js-lingui-explicit-id
 msgid "setting_import_no_file"

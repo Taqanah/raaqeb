@@ -48,7 +48,7 @@ function SegmentedItem({
         {children}
       </span>
       {hint ? (
-        <span className="font-normal text-muted-foreground text-xs tabular-nums">
+        <span className="text-balance font-normal text-muted-foreground text-xs tabular-nums">
           {hint}
         </span>
       ) : null}

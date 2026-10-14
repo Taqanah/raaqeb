@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import { publicAddress } from "@/server/settings/address.ts";
@@ -687,6 +687,23 @@ describe("Better Auth's own log lines", () => {
     expect(
       lines.some((line) => line.startsWith("better-auth: Invalid origin"))
     ).toBe(true);
+  });
+
+  test("never reach the console beside them: a refused request writes no second line of Better Auth's own", async () => {
+    const auth = await authWithOperator();
+    const written = spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await signIn(auth, { origin: "https://evil.example" });
+      await signIn(auth, { body: { email, password: "wrong password" } });
+      // An error the auth hooks throw, as the second step's codes do for a signed-in session.
+      const cookie = cookieOf(await signIn(auth));
+      await call(auth, "/two-factor/send-otp", { body: {}, cookie });
+      expect(written.mock.calls.flat().join("\n")).not.toContain(
+        "[Better Auth]"
+      );
+    } finally {
+      written.mockRestore();
+    }
   });
 
   test("telemetry is off", async () => {

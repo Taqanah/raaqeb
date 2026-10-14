@@ -104,6 +104,16 @@ test("the arrow keys move the palette's highlight, Enter opens the highlighted p
   await expectPath(page, "/admin/monitors/new");
 });
 
+test("an admin address nothing matches shows the shell with a title and a way back to the monitors", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto(`${englishOrigin}/admin/no-such-page`);
+  await expect(page.locator("[data-slot=page] h1")).toHaveCount(1);
+  await page.click("[data-slot=missing-back]");
+  await expectPath(page, "/admin/monitors");
+});
+
 test("the question mark opens the shortcut sheet and Escape closes it", async ({
   page,
 }) => {

@@ -21,7 +21,7 @@ import { betterAuth } from "better-auth/minimal";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import type { BootSettings } from "@/server/boot/settings.ts";
-import { error as logError, info as logInfo } from "@/server/log.ts";
+import { error as logError, info as logInfo, reasonOf } from "@/server/log.ts";
 import { readPublicAddress } from "@/server/settings/address.ts";
 import type { AuthDatabase } from "@/server/storage/auth.ts";
 import type { Storage } from "@/server/storage/storage.ts";
@@ -354,6 +354,14 @@ export function createAuth(input: CreateAuthInput) {
           context: { ...ctx, body: { ...ctx.body, revokeOtherSessions: true } },
         };
       }),
+    },
+    // The router writes every refused request through a process-wide logger whose default prints its own line beside ours, ignoring `logger.log`. A refusal is already a line of Raaqeb's; only a failure is written.
+    onAPIError: {
+      onError: (thrown) => {
+        if (!isAPIError(thrown) || thrown.status === "INTERNAL_SERVER_ERROR") {
+          log(`better-auth: ${reasonOf(thrown)}`);
+        }
+      },
     },
     // Better Auth's info and warn lines print addresses or repeat the sign-in events above; errors carry neither.
     logger: {

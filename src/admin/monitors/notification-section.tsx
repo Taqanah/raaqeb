@@ -200,8 +200,10 @@ function EventSwitch({
         id={id}
         onCheckedChange={change}
       />
-      <div className={cn("flex flex-col gap-0.5", disabled && "opacity-50")}>
-        <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <div className="flex flex-col gap-0.5">
+        <FieldLabel className={cn(disabled && "opacity-50")} htmlFor={id}>
+          {label}
+        </FieldLabel>
         {hint ? <FieldDescription>{hint}</FieldDescription> : null}
       </div>
     </Field>
