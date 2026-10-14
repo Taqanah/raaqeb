@@ -420,7 +420,11 @@ function Footer({ page }: { readonly page: OverviewPage }): ReactNode {
   return (
     <footer className="flex flex-col gap-4 border-border border-t pt-6 text-muted-foreground text-sm">
       {page.footerLinks.length > 0 || page.contactUrl ? (
-        <nav className="flex flex-wrap gap-x-5 gap-y-2" data-slot="page-links">
+        <nav
+          aria-label={t("public_footer_links")}
+          className="flex flex-wrap gap-x-5 gap-y-2"
+          data-slot="page-links"
+        >
           {page.footerLinks.map((each, place) => {
             const label = shown(each.label);
             return (

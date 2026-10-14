@@ -300,7 +300,10 @@ export function History({
             </ul>
           </Card>
         )}
-        <nav className="flex items-center justify-between gap-4 text-sm">
+        <nav
+          aria-label={t("public_history_months")}
+          className="flex items-center justify-between gap-4 text-sm"
+        >
           <span>
             {document.previous
               ? month(

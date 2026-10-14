@@ -6,6 +6,7 @@ import { StatusPage } from "./status-page.tsx";
 
 const cellName = /aria-label="([^"]+)"/;
 const focusablePre = /<pre[^>]*tabindex="0"/;
+const ltrPre = /<pre[^>]*dir="ltr"/;
 
 /** Each day cell of the rendered bars, as its opening tag. */
 function cells(html: string): string[] {
@@ -52,4 +53,11 @@ test("a command too long for its line is a tab stop, so the keyboard scrolls it"
     <CodeLine code="curl -fsSL https://example.com | sh" copied="" copy="" />
   );
   expect(html).toMatch(focusablePre);
+});
+
+test("a command reads left to right on an Arabic page too, its end fading where it scrolls", () => {
+  const html = renderToString(
+    <CodeLine code="curl -fsSL https://example.com | sh" copied="" copy="" />
+  );
+  expect(html).toMatch(ltrPre);
 });

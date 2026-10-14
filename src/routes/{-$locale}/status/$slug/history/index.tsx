@@ -16,7 +16,8 @@ export const Route = createFileRoute("/{-$locale}/status/$slug/history/")({
   component: ViewRoute,
   // A failed refresh keeps the view it showed; the next one mends it.
   errorComponent: ViewRoute,
-  head: ({ loaderData, match }) => historyHead(loaderData, match.error),
+  head: ({ loaderData, match, matches }) =>
+    historyHead(loaderData, match.error, matches[0]?.loaderData),
   headers: publicHeaders,
   loader: async ({ parentMatchPromise }: ViewLoaderOptions) =>
     await loadHistory((await parentMatchPromise).loaderData?.view),

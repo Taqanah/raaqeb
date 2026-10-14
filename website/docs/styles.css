@@ -13,6 +13,9 @@
 @source "../landing/theme.tsx";
 @source "../landing/icons.tsx";
 @source "../landing/logos.tsx";
+/* Fumadocs' search marks, which highlight.css paints instead: Tailwind's optimizer warns on ::highlight(). */
+@source not inline("[&_::highlight(fd-search)]:text-fd-primary");
+@source not inline("[&_::highlight(fd-search)]:underline");
 
 /* Tailwind's compiler turns light-dark() into variables keyed on color-scheme declarations, not on what the theme script writes; these key them on the switch's class. */
 :root.light {

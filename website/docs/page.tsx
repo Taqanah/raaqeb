@@ -35,6 +35,7 @@ import { mdxComponents } from "./mdx.tsx";
 import { docs } from "./source.ts";
 // Imported by the component, not the route, so only docs pages carry Fumadocs' styles.
 import "./styles.css";
+import "./highlight.css";
 
 // The dialog, its engine and its index weigh more than the page, so they load when the visitor first opens search.
 const DocsSearch = lazy(() => import("./search.tsx"));

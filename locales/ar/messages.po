@@ -4157,6 +4157,18 @@ msgid "public_current_status"
 msgstr "الحالة الآن"
 
 #. js-lingui-explicit-id
+msgid "public_not_found_title"
+msgstr "الصفحة غير موجودة"
+
+#. js-lingui-explicit-id
+msgid "public_history_months"
+msgstr "أشهر السجل"
+
+#. js-lingui-explicit-id
+msgid "public_footer_links"
+msgstr "روابط أسفل الصفحة"
+
+#. js-lingui-explicit-id
 msgid "public_not_found"
 msgstr "لا يوجد في هذه الصفحة ما يطابق هذا العنوان"
 

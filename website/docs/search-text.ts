@@ -10,17 +10,41 @@ export function searchText(text: string): string {
   return text.replace(/[\u064B-\u065F\u0670\u0640]/g, "").replaceAll("ة", "ه");
 }
 
-/** The search's tokenizer: every word of the index passes through searchText. */
+/**
+ * Each word as the docs' search indexes it: searchText's folding, then the
+ * article and a feminine plural's ending cut off an Arabic word, so
+ * "التنبيه", "تنبيه" and "تنبيهات" are one word to the search. The index
+ * holds stems, and the dialog stems each query once before it searches.
+ */
+export function searchStem(text: string): string {
+  return searchText(text).split(whitespace).filter(Boolean).map(stem).join(" ");
+}
+
+/** A folded word without its article and its ending; a cut never leaves fewer than two letters. */
+function stem(word: string): string {
+  return word.replace(article, "").replace(plural, "").replace(finalHa, "");
+}
+
+/** The article, with a conjunction or preposition joined before it. */
+const article = /^(?:[وفبك]?ال|لل)(?=\p{L}{2})/u;
+/** A feminine plural's ending. */
+const plural = /(?<=\p{L}{2})ات$/u;
+/** A ta marbuta, folded to ha, or a ha: "حالة" and "حالات" share "حال". */
+const finalHa = /(?<=\p{L}{2})ه$/u;
+
+/** The search's tokenizer: every word of the index passes through searchStem. */
 export const searchTokenizer = {
   language: "multilingual",
-  stemmer: searchText,
+  stemmer: searchStem,
 } as const;
 
 /**
  * What the reader typed as a pattern over the content as written, for the
  * dialog's highlight: each letter with any diacritics or tatweel after it,
  * every alef form for an alef, a ta marbuta for a ha and an alef maqsura for
- * a ya, so a highlight finds what the search found. Words are alternatives.
+ * a ya, so a highlight finds what the search found. Each word is its stem,
+ * then the rest of an Arabic word, and the article when the reader typed one.
+ * Words are alternatives.
  */
 export function foldedPattern(typed: string): RegExp | undefined {
   const words = searchText(typed).split(whitespace).filter(Boolean);
@@ -29,10 +53,12 @@ export function foldedPattern(typed: string): RegExp | undefined {
   }
   const letter = (c: string) =>
     (letterForms[c] ?? c.replace(reserved, "\\$&")) + marks;
-  return new RegExp(
-    words.map((word) => [...word].map(letter).join("")).join("|"),
-    "gi"
-  );
+  const pattern = (word: string) => {
+    const lead = article.test(word) ? articleForms : "";
+    const tail = arabic.test(word) ? arabicTail : "";
+    return lead + [...stem(word)].map(letter).join("") + tail;
+  };
+  return new RegExp(words.map(pattern).join("|"), "gi");
 }
 
 const whitespace = /\s+/;
@@ -43,6 +69,11 @@ const marks = "[\\u064B-\\u065F\\u0670\\u0640]*";
 const alef = "[اأإآ]";
 const ha = "[هة]";
 const ya = "[يى]";
+const arabic = /[\u0621-\u064A]/;
+/** The article in the content, which may be there or not. */
+const articleForms = `(?:[وفبك]?${alef}ل${marks}|لل${marks})?`;
+/** The rest of an Arabic word after its stem: an ending the search cut off. */
+const arabicTail = "[\\u0621-\\u064A\\u064B-\\u065F\\u0670\\u0640]*";
 const letterForms: Readonly<Record<string, string>> = {
   ا: alef,
   أ: alef,

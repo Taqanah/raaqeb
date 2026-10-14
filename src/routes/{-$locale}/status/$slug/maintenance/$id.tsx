@@ -18,7 +18,8 @@ export const Route = createFileRoute(
   component: ViewRoute,
   // A failed refresh keeps the view it showed; the next one mends it.
   errorComponent: ViewRoute,
-  head: ({ loaderData, match }) => maintenanceHead(loaderData, match.error),
+  head: ({ loaderData, match, matches }) =>
+    maintenanceHead(loaderData, match.error, matches[0]?.loaderData),
   headers: publicHeaders,
   loader: async ({
     params,

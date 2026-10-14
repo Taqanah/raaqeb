@@ -124,7 +124,10 @@ export function Hero({
               copy={copy.command.copy}
             />
             <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-muted leading-none">
-              <span className="text-faint">{copy.command.runsOn}</span>
+              {/* On a phone the label takes its own line, so no platform is left alone on the next. */}
+              <span className="text-faint max-sm:basis-full">
+                {copy.command.runsOn}
+              </span>
               <Platform brand="linux" name="Linux" />
               <Platform brand="apple" name="macOS" />
               <span>Windows</span>

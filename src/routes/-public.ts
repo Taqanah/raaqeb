@@ -24,7 +24,8 @@ import {
   type ViewResult,
 } from "@/server/pages/views.ts";
 import { formatMonth } from "@/shared/i18n/format.ts";
-import { locales } from "@/shared/i18n/locale.ts";
+import { localeSchema, locales } from "@/shared/i18n/locale.ts";
+import { catalogFromJson, createMessages } from "@/shared/i18n/messages.ts";
 import { type Content, contentIn } from "@/shared/schemas/content.ts";
 import {
   feedUrl,
@@ -347,9 +348,13 @@ export function viewHead(
     contentIn(content, view.locale, page.locale);
   const heading = title ? `${title} · ${text(page.title)}` : text(page.title);
   const description = page.description && text(page.description);
+  const canonical = absolute(viewPath(view.paths, view.locale, suffix));
   const meta = [
     { title: heading },
     { content: heading, property: "og:title" },
+    { content: "website", property: "og:type" },
+    // Open Graph wants an absolute address, which only a known origin gives.
+    ...(view.paths.origin ? [{ content: canonical, property: "og:url" }] : []),
     ...(description
       ? [
           { content: description, name: "description" },
@@ -361,14 +366,11 @@ export function viewHead(
           { content: absolute(page.images.cover), property: "og:image" },
           { content: "summary_large_image", name: "twitter:card" },
         ]
-      : []),
+      : [{ content: "summary", name: "twitter:card" }]),
     ...(page.noindex ? [{ content: "noindex", name: "robots" }] : []),
   ];
   const links = [
-    {
-      href: absolute(viewPath(view.paths, view.locale, suffix)),
-      rel: "canonical",
-    },
+    { href: canonical, rel: "canonical" },
     ...locales.map((locale) => ({
       href: absolute(viewPath(view.paths, locale, suffix)),
       hrefLang: locale,
@@ -389,22 +391,28 @@ export function viewHead(
   };
 }
 
-/** A not-found view's head: the page's title and favicon, never indexed, and the theme script. */
-export function missingHead(error: unknown) {
+/** A not-found view's head: "page not found" in the document's words before the page's title, its favicon, never indexed, and the theme script. `root` is the root match's data, whose catalog holds the words. */
+export function missingHead(error: unknown, root?: unknown) {
   const missing = isNotFound(error) ? missingOf(error.data) : undefined;
   const frame = missing?.frame;
   if (!frame) {
     return {};
   }
+  const words = rootWordsSchema.safeParse(root);
+  // The page's title in the view's language, else the document's, else the page's own.
+  const pageTitle = contentIn(
+    frame.page.title,
+    missing?.view?.locale ??
+      (words.success ? words.data.locale : frame.page.locale),
+    frame.page.locale
+  );
   return {
     links: faviconLinks(frame.page.images.favicon),
     meta: [
       {
-        title: contentIn(
-          frame.page.title,
-          missing?.view?.locale ?? frame.page.locale,
-          frame.page.locale
-        ),
+        title: words.success
+          ? `${createMessages(words.data.locale, catalogFromJson(words.data.catalog))._("public_not_found_title")} · ${pageTitle}`
+          : pageTitle,
       },
       { content: "noindex", name: "robots" },
     ],
@@ -412,10 +420,14 @@ export function missingHead(error: unknown) {
   };
 }
 
+/** The part of the root match's data a not-found's title reads: the document's locale and its catalog. */
+const rootWordsSchema = z.object({ catalog: z.string(), locale: localeSchema });
+
 /** The history's head: the month by name before the page's title; its canonical address names the month, `/history` included. */
 export function historyHead(
   data: ViewData<HistoryDocument> | undefined,
-  error: unknown
+  error: unknown,
+  root?: unknown
 ) {
   return data
     ? viewHead(
@@ -427,12 +439,13 @@ export function historyHead(
           data.document.calendar
         )
       )
-    : missingHead(error);
+    : missingHead(error, root);
 }
 
 export function incidentHead(
   data: ViewData<IncidentDocument> | undefined,
-  error: unknown
+  error: unknown,
+  root?: unknown
 ) {
   const incident = data?.document.incident;
   return data && incident
@@ -441,12 +454,13 @@ export function incidentHead(
         `/incidents/${encodeURIComponent(incident.id)}`,
         contentIn(incident.title, data.view.locale, data.document.page.locale)
       )
-    : missingHead(error);
+    : missingHead(error, root);
 }
 
 export function maintenanceHead(
   data: ViewData<MaintenanceDocument> | undefined,
-  error: unknown
+  error: unknown,
+  root?: unknown
 ) {
   const window = data?.document.window;
   return data && window
@@ -455,10 +469,14 @@ export function maintenanceHead(
         `/maintenance/${encodeURIComponent(window.id)}`,
         contentIn(window.title, data.view.locale, data.document.page.locale)
       )
-    : missingHead(error);
+    : missingHead(error, root);
 }
 
 /** The overview's head, which the two overview routes write; a not-found's where no page is at the address. */
-export function overviewHead(data: OverviewData | undefined, error: unknown) {
-  return data ? viewHead(data, "") : missingHead(error);
+export function overviewHead(
+  data: OverviewData | undefined,
+  error: unknown,
+  root?: unknown
+) {
+  return data ? viewHead(data, "") : missingHead(error, root);
 }

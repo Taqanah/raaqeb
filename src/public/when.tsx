@@ -53,11 +53,13 @@ export function When({
   const { locale } = useMessages();
   const ms = Date.parse(at);
   const zone = time.visitor?.timeZone ?? time.timeZone;
-  const absolute = formatDateTimeWithZone(locale, ms, {
-    calendar: time.calendar,
-    clock: time.clock,
-    timeZone: zone,
-  });
+  const absolute = heldTogether(
+    formatDateTimeWithZone(locale, ms, {
+      calendar: time.calendar,
+      clock: time.clock,
+      timeZone: zone,
+    })
+  );
   const shown =
     relative && time.visitor
       ? (relativeTime(locale, ms, time.visitor.now) ?? absolute)
@@ -67,4 +69,12 @@ export function When({
       {shown}
     </time>
   );
+}
+
+/** The time and zone after the date's last comma joined by no-break spaces, so a narrow screen wraps the date and never leaves the zone or the time's half of the day alone on a line. */
+function heldTogether(text: string): string {
+  const cut = Math.max(text.lastIndexOf(", "), text.lastIndexOf("، ")) + 2;
+  return cut < 2
+    ? text
+    : text.slice(0, cut) + text.slice(cut).replaceAll(" ", "\u00A0");
 }

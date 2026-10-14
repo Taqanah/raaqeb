@@ -11,3 +11,26 @@ describe("a history view's month", () => {
     expect(html).toContain("Rabiʻ I – Rabiʻ II 1448 AH (September 2026)");
   });
 });
+
+const navTag = /<nav\b[^>]*>/g;
+
+describe("a history view's landmarks", () => {
+  test("every nav is named, the months' and the footer links' among them", () => {
+    const page = {
+      ...september.page,
+      footerLinks: [{ label: { en: "Home" }, url: "https://example.com" }],
+    };
+    const html = render(
+      "en",
+      <History
+        document={{ ...september, next: "2026-10", page, previous: "2026-08" }}
+        view={viewIn("en")}
+      />
+    );
+    const navs = html.match(navTag) ?? [];
+    expect(navs.length).toBeGreaterThanOrEqual(3);
+    for (const nav of navs) {
+      expect(nav).toContain("aria-label=");
+    }
+  });
+});

@@ -13,7 +13,7 @@ import { useI18n } from "@fumadocs/base-ui/contexts/i18n";
 import { useStaticSearch } from "fumadocs-core/search/client/orama-static";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { defaultLocale } from "@/shared/i18n/locale.ts";
-import { foldedPattern, searchText } from "./search-text.ts";
+import { foldedPattern, searchStem } from "./search-text.ts";
 import { searchIndexOf } from "./source.ts";
 
 /** The longest query the search box takes, in characters. */
@@ -30,12 +30,12 @@ export default function DocsSearch(props: SharedProps): ReactNode {
     from: searchIndexOf(locale ?? defaultLocale),
     locale,
   });
-  // The box shows what the reader typed; the search gets it as the index holds text.
+  // The box shows what the reader typed; the search gets it as the index holds words, stemmed once.
   const [typed, setTyped] = useState("");
   const onSearchChange = useCallback(
     (text: string) => {
       setTyped(text);
-      setSearch(searchText(text));
+      setSearch(searchStem(text));
     },
     [setSearch]
   );

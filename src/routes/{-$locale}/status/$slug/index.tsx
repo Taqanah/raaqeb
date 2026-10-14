@@ -16,7 +16,8 @@ export const Route = createFileRoute("/{-$locale}/status/$slug/")({
   component: OverviewRoute,
   // A failed refresh keeps the view it showed; the next one mends it.
   errorComponent: OverviewRoute,
-  head: ({ loaderData, match }) => overviewHead(loaderData, match.error),
+  head: ({ loaderData, match, matches }) =>
+    overviewHead(loaderData, match.error, matches[0]?.loaderData),
   headers: publicHeaders,
   loader: async ({
     parentMatchPromise,

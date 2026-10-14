@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { createSearchAPI } from "fumadocs-core/search/server";
-import { foldedPattern, searchText, searchTokenizer } from "./search-text.ts";
+import {
+  foldedPattern,
+  searchStem,
+  searchText,
+  searchTokenizer,
+} from "./search-text.ts";
 
 describe("the docs' search", () => {
   test("matches an Arabic word typed without its diacritics", () => {
@@ -96,5 +101,75 @@ describe("the docs' search marks what it found", () => {
 
   test("nothing typed marks nothing", () => {
     expect(foldedPattern("  ")).toBeUndefined();
+  });
+});
+
+describe("the docs' search finds an Arabic word with or without its article, singular or plural", () => {
+  test("the article and a feminine plural's ending make no other word", () => {
+    expect(searchStem("التنبيه")).toBe(searchStem("تنبيه"));
+    expect(searchStem("تنبيهات")).toBe(searchStem("تنبيه"));
+    expect(searchStem("الحالة")).toBe(searchStem("حالات"));
+    expect(searchStem("والتنبيهات")).toBe(searchStem("تنبيه"));
+  });
+
+  test("each word of a query is cut on its own", () => {
+    expect(searchStem("التنبيهات  البريد")).toBe(
+      `${searchStem("تنبيه")} ${searchStem("بريد")}`
+    );
+  });
+
+  test("a word too short to hold an article or an ending keeps its letters", () => {
+    expect(searchStem("الي")).toBe("الي");
+    expect(searchStem("له")).toBe("له");
+  });
+
+  test("leaves Latin text as it is", () => {
+    expect(searchStem("Docker webhooks")).toBe("Docker webhooks");
+  });
+
+  const search = createSearchAPI("advanced", {
+    indexes: [
+      {
+        id: "one",
+        structuredData: {
+          contents: [{ content: "يصل التنبيه إلى البريد", heading: undefined }],
+          headings: [],
+        },
+        title: "البريد",
+        url: "/one",
+      },
+      {
+        id: "many",
+        structuredData: {
+          contents: [{ content: "عدة تنبيهات في الساعة", heading: undefined }],
+          headings: [],
+        },
+        title: "الحدود",
+        url: "/many",
+      },
+    ],
+    tokenizer: searchTokenizer,
+  });
+  // The dialog stems what the reader typed before it reaches the index.
+  const found = async (typed: string) =>
+    (await search.search(searchStem(typed))).map((r) => r.url);
+
+  test.each(["التنبيه", "تنبيه", "تنبيهات", "التنبيهات"])(
+    "%s finds the page with the singular and the page with the plural",
+    async (typed) => {
+      const urls = await found(typed);
+      expect(urls).toContain("/one");
+      expect(urls).toContain("/many");
+    }
+  );
+
+  test("marks the word it found, plural or singular, with the article when typed", () => {
+    const marked = (typed: string, content: string) => {
+      const pattern = foldedPattern(typed);
+      return pattern ? [...content.matchAll(pattern)].map((m) => m[0]) : [];
+    };
+    expect(marked("تنبيهات", "يصل التنبيه")).toEqual(["تنبيه"]);
+    expect(marked("التنبيه", "عدة تنبيهات")).toEqual(["تنبيهات"]);
+    expect(marked("التنبيه", "يصل التنبيه")).toEqual(["التنبيه"]);
   });
 });

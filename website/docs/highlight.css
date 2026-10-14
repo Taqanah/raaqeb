@@ -1,0 +1,9 @@
+/*
+ * The search's marks (search.tsx paints them in this highlight). Kept out of
+ * styles.css, whose Tailwind optimizer does not know ::highlight() and warns on
+ * every build; Fumadocs' own classes for it are left out there.
+ */
+::highlight(fd-search) {
+  color: var(--color-fd-primary);
+  text-decoration-line: underline;
+}
