@@ -71,6 +71,23 @@ test("a public address with a path is refused and nothing is stored", async ({
   await expect(address).toHaveValue(stored);
 });
 
+test("a new public address other than the page's own warns before the save that sign-in and sign-out move with it", async ({
+  page,
+}) => {
+  await signIn(page, englishOrigin);
+  await page.goto(`${englishOrigin}/admin/settings`);
+  const address = page.locator("input#publicAddress");
+  const warning = page.locator(
+    "[data-slot=general-form] [data-slot=address-elsewhere]"
+  );
+  await expect(warning).toHaveCount(0);
+  await address.fill("https://status.example.com");
+  await expect(warning).toBeVisible();
+  // The address the page is open at keeps sign-in working here.
+  await address.fill(englishOrigin);
+  await expect(warning).toHaveCount(0);
+});
+
 test("a public address the page refuses is marked on its own field, in the page's language", async ({
   page,
 }) => {

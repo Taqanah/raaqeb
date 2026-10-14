@@ -959,6 +959,10 @@ msgid "setting_public_address_hint"
 msgstr "العنوان الذي يصل منه الزوار والمشغّل إلى التثبيت، وتستخدمه روابط إعادة التعيين وفحص المصدر عند تسجيل الدخول."
 
 #. js-lingui-explicit-id
+msgid "setting_address_elsewhere"
+msgstr "هذه الصفحة مفتوحة من عنوان آخر. بعد الحفظ لن يعمل تسجيل الدخول ولا تسجيل الخروج إلا حين يُفتح راقب من العنوان الجديد."
+
+#. js-lingui-explicit-id
 msgid "setting_trusted_proxies"
 msgstr "الوكلاء الموثوقون"
 

@@ -16,6 +16,7 @@ import type {
   SignInFailure,
   SignInInput,
   SignInOutcome,
+  SignOutFailure,
 } from "@/shared/schemas/auth.ts";
 import {
   backupCodeSchema,
@@ -88,12 +89,24 @@ export async function signIn(input: SignInInput): Promise<SignInResult> {
   return { failure: "unavailable", ok: false };
 }
 
-/** Ends the session; true when the server confirmed it. */
-export async function signOut(): Promise<boolean> {
+export type SignOutResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly failure: SignOutFailure };
+
+/** Ends the session; ok only when the server confirmed it. */
+export async function signOut(): Promise<SignOutResult> {
   try {
-    return (await post("/sign-out", {})).ok;
+    const response = await post("/sign-out", {});
+    if (response.ok) {
+      return { ok: true };
+    }
+    // 403 is the origin check: the page is open at another address than the public one.
+    return {
+      failure: response.status === 403 ? "origin_refused" : "unavailable",
+      ok: false,
+    };
   } catch {
-    return false;
+    return { failure: "unavailable", ok: false };
   }
 }
 

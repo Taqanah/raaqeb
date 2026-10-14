@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isOrigin, publicAddressSchema } from "./address.ts";
+import { isOrigin, movesSignInAway, publicAddressSchema } from "./address.ts";
 
 describe("an origin", () => {
   test.each([
@@ -26,5 +26,37 @@ describe("an origin", () => {
   ])("refuses %s", (_label, value) => {
     expect(isOrigin(value)).toBe(false);
     expect(publicAddressSchema.safeParse(value).success).toBe(false);
+  });
+});
+
+describe("a public address that moves sign-in away from this page", () => {
+  const here = "http://192.0.2.10:3210";
+  const stored = "https://status.example.test";
+
+  test("is a new address that is not where the browser is", () => {
+    expect(movesSignInAway("https://other.example.test", stored, here)).toBe(
+      true
+    );
+  });
+
+  test("is not the address the browser is at, which sign-in keeps working from", () => {
+    expect(movesSignInAway(here, stored, here)).toBe(false);
+  });
+
+  test("is not the stored address, which sign-in already follows", () => {
+    expect(movesSignInAway(stored, stored, here)).toBe(false);
+  });
+
+  test("is not a text that is no origin, which the field refuses on its own", () => {
+    expect(movesSignInAway("https://other.example.test/", stored, here)).toBe(
+      false
+    );
+    expect(movesSignInAway("", stored, here)).toBe(false);
+  });
+
+  test("reads the typed address without its surrounding space, as the save does", () => {
+    expect(movesSignInAway(" https://other.example.test ", stored, here)).toBe(
+      true
+    );
   });
 });

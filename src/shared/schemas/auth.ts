@@ -95,3 +95,6 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 /** Why the password did not change: the link is used, expired or not one, too many calls, or the server did not answer. */
 export type ResetFailure = "invalid_link" | "rate_limited" | "unavailable";
+
+/** Why a sign-out did not end the session: the origin check refused the page's address, or the server did not answer. */
+export type SignOutFailure = "origin_refused" | "unavailable";

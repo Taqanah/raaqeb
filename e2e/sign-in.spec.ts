@@ -113,6 +113,34 @@ test("a sign-in the origin check refuses says the page is not at the public addr
   await expectPath(page, "/sign-in");
 });
 
+test("a sign-out the origin check refuses says the page is not at the public address, and the session stays", async ({
+  context,
+  page,
+}) => {
+  await page.goto(`${englishOrigin}/sign-in`);
+  await page.fill(emailField, operatorEmail);
+  await page.fill(passwordField, operatorPassword);
+  await page.click(submit);
+  await expectPath(page, "/admin/monitors");
+  await page.route(`${englishOrigin}/api/auth/sign-out`, async (route) => {
+    const response = await route.fetch({
+      headers: { ...route.request().headers(), origin: "https://evil.example" },
+    });
+    await route.fulfill({ response });
+  });
+  await page.goto(`${englishOrigin}/sign-out`);
+  await page.click(submit);
+  await expect(page.locator(failure)).toHaveText(
+    "This address is not the install's public address. Open Raaqeb at its public address."
+  );
+  await expect(page.locator("[data-slot=set-address-command]")).toHaveText(
+    `raaqeb set-address ${englishOrigin}`
+  );
+  await expectPath(page, "/sign-out");
+  const cookies = await context.cookies(englishOrigin);
+  expect(cookies.some((c) => c.name === "raaqeb.session_token")).toBe(true);
+});
+
 test("the admin area sends a visitor without a session to the sign-in page", async ({
   page,
 }) => {

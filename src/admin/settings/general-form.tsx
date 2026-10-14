@@ -11,6 +11,7 @@ import {
   type ReactNode,
   type SubmitEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -21,7 +22,7 @@ import { useFocusRefused } from "@/admin/shell/use-focus-refused.ts";
 import { isLocale, type Locale, locales } from "@/shared/i18n/locale.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
-import { isOrigin } from "@/shared/schemas/address.ts";
+import { isOrigin, movesSignInAway } from "@/shared/schemas/address.ts";
 import {
   type Calendar,
   type Clock,
@@ -35,6 +36,7 @@ import {
   generalSettingsSchema,
   proxyEntries,
 } from "@/shared/schemas/settings.ts";
+import { Alert, AlertDescription } from "@/shared/ui/alert.tsx";
 import { Card, CardContent } from "@/shared/ui/card.tsx";
 import {
   Field,
@@ -133,6 +135,11 @@ export function GeneralForm({
   const proxiesRefused = refusal === "trusted_proxy_invalid";
   const formRef = useRef<HTMLFormElement>(null);
   useFocusRefused(formRef, line);
+  // Where the browser is, which auth origin checks stop accepting once another address is saved; read after mount (ADR-0006).
+  const [here, setHere] = useState("");
+  useEffect(() => {
+    setHere(window.location.origin);
+  }, []);
   const onTyped = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.currentTarget;
     setTyped((current) => ({ ...current, [name]: value }));
@@ -284,6 +291,17 @@ export function GeneralForm({
                 <FieldError data-error-for="publicAddress">
                   {t(addressRefusal)}
                 </FieldError>
+              ) : null}
+              {movesSignInAway(
+                typed.publicAddress,
+                settings.publicAddress,
+                here
+              ) ? (
+                <Alert data-slot="address-elsewhere" variant="warning">
+                  <AlertDescription>
+                    {t("setting_address_elsewhere")}
+                  </AlertDescription>
+                </Alert>
               ) : null}
             </Field>
             {settings.trustedProxies.managedByEnvironment ? (

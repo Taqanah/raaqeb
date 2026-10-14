@@ -959,6 +959,10 @@ msgid "setting_public_address_hint"
 msgstr "The URL visitors and the operator reach the install at; reset links and the sign-in origin check use it."
 
 #. js-lingui-explicit-id
+msgid "setting_address_elsewhere"
+msgstr "This page is open at another address. Once you save, signing in and signing out work only when Raaqeb is opened at the new address."
+
+#. js-lingui-explicit-id
 msgid "setting_trusted_proxies"
 msgstr "Trusted proxies"
 

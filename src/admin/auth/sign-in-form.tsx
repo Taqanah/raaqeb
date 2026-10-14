@@ -34,9 +34,9 @@ import {
   FieldLabel,
 } from "@/shared/ui/field.tsx";
 import { Input } from "@/shared/ui/input.tsx";
-import { Token } from "@/shared/ui/token.tsx";
 import { AuthPage } from "./auth-page.tsx";
 import { CodeForm } from "./code-form.tsx";
+import { SetAddressCommand } from "./set-address-command.tsx";
 
 export interface SignInFormProps {
   /** An email channel exists, so the second step can email a code. */
@@ -59,8 +59,6 @@ export function SignInForm({ email, onSignedIn }: SignInFormProps): ReactNode {
   const { t } = useMessages();
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<SignInFailure | undefined>();
-  // The address the browser is at, read when the origin check refuses it; never during render (ADR-0006).
-  const [here, setHere] = useState("");
   // The second step is due: the app's code is asked, or whether the first emailed code went out.
   const [secondStep, setSecondStep] = useState<
     { app: boolean; sent: boolean } | undefined
@@ -91,7 +89,6 @@ export function SignInForm({ email, onSignedIn }: SignInFormProps): ReactNode {
         onSignedIn();
       } else {
         setPending(false);
-        setHere(window.location.origin);
         setFailure(result.failure);
       }
     },
@@ -175,18 +172,7 @@ export function SignInForm({ email, onSignedIn }: SignInFormProps): ReactNode {
           {failure ? (
             <FieldError>{t(failureMessage[failure])}</FieldError>
           ) : null}
-          {failure === "origin_refused" ? (
-            <div className="flex flex-col gap-2 text-muted-foreground text-sm">
-              <p>{t("auth_origin_set_address")}</p>
-              {/* One click selects the whole command for copying, as the no-email page's does. */}
-              <Token
-                className="block select-all whitespace-pre px-3 py-2"
-                data-slot="set-address-command"
-              >
-                {`raaqeb set-address ${here}`}
-              </Token>
-            </div>
-          ) : null}
+          {failure === "origin_refused" ? <SetAddressCommand /> : null}
           <Button disabled={pending} type="submit">
             {pending ? t("auth_signing_in") : t("auth_sign_in")}
           </Button>

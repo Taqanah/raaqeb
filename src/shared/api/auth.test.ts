@@ -116,12 +116,23 @@ describe("signing in from the browser", () => {
 describe("signing out from the browser", () => {
   test("posts to Better Auth's sign-out endpoint and answers whether the server confirmed", async () => {
     answer = () => Promise.resolve(json(200, { success: true }));
-    expect(await signOut()).toBe(true);
+    expect(await signOut()).toEqual({ ok: true });
     expect(calls[0]?.url).toBe(`${authBasePath}/sign-out`);
     expect(calls[0]?.init?.method).toBe("POST");
     expect(calls[0]?.init?.credentials).toBe("same-origin");
     answer = () => Promise.reject(new TypeError("Failed to fetch"));
-    expect(await signOut()).toBe(false);
+    expect(await signOut()).toEqual({ failure: "unavailable", ok: false });
+  });
+
+  test("a 403 is the origin check refusing the page's address, as at sign-in, not a server out of reach", async () => {
+    answer = () =>
+      Promise.resolve(json(403, { code: "INVALID_ORIGIN", message: "x" }));
+    expect(await signOut()).toEqual({ failure: "origin_refused", ok: false });
+  });
+
+  test("any other refusal is the server unavailable", async () => {
+    answer = () => Promise.resolve(json(500, {}));
+    expect(await signOut()).toEqual({ failure: "unavailable", ok: false });
   });
 });
 

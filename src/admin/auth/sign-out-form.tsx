@@ -12,7 +12,9 @@ import {
   useState,
 } from "react";
 import { signOut } from "@/shared/api/auth.ts";
+import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
+import type { SignOutFailure } from "@/shared/schemas/auth.ts";
 import { Button, buttonVariants } from "@/shared/ui/button.tsx";
 import { cn } from "@/shared/ui/cn.ts";
 import {
@@ -22,6 +24,13 @@ import {
   FieldGroup,
 } from "@/shared/ui/field.tsx";
 import { AuthPage } from "./auth-page.tsx";
+import { SetAddressCommand } from "./set-address-command.tsx";
+
+/** The origin check's refusal is worded as at sign-in, with the same way back in. */
+const failureMessage = {
+  origin_refused: "auth_origin_refused",
+  unavailable: "auth_unavailable",
+} as const satisfies Record<SignOutFailure, MessageId>;
 
 export interface SignOutFormProps {
   readonly onSignedOut: () => void;
@@ -30,25 +39,25 @@ export interface SignOutFormProps {
 export function SignOutForm({ onSignedOut }: SignOutFormProps): ReactNode {
   const { t } = useMessages();
   const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<SignOutFailure | undefined>();
   const submit = useCallback(
     (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
-      setFailed(false);
+      setFailure(undefined);
       setPending(true);
       // Only a confirmed sign-out moves on: the cookie is still a session until the server says otherwise.
       signOut().then(
         (done) => {
           setPending(false);
-          if (done) {
+          if (done.ok) {
             onSignedOut();
           } else {
-            setFailed(true);
+            setFailure(done.failure);
           }
         },
         () => {
           setPending(false);
-          setFailed(true);
+          setFailure("unavailable");
         }
       );
     },
@@ -73,7 +82,10 @@ export function SignOutForm({ onSignedOut }: SignOutFormProps): ReactNode {
           <Field>
             <FieldDescription>{t("auth_sign_out_question")}</FieldDescription>
           </Field>
-          {failed ? <FieldError>{t("auth_unavailable")}</FieldError> : null}
+          {failure ? (
+            <FieldError>{t(failureMessage[failure])}</FieldError>
+          ) : null}
+          {failure === "origin_refused" ? <SetAddressCommand /> : null}
           {/* A way back beside the confirm, red as the sidebar's sign-out is. */}
           <div className="flex gap-2">
             <Link
