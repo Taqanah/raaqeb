@@ -76,6 +76,8 @@ export interface Transport {
   readonly post: (
     url: string,
     request: {
+      /** The address checked before the POST, which it connects to; the URL's host still names the server, in the Host header and the certificate. */
+      readonly address?: string;
       readonly body: string;
       readonly headers: Readonly<Record<string, string>>;
     }
@@ -159,6 +161,28 @@ async function startOf(
   return { cut, text: text.trim() };
 }
 
+/** The URL with its host swapped for the address, and the name the server is still asked by: the Host header and the certificate's name (Bun checks it against `serverName`). Nothing changes without an address, or when the host already is it. */
+function pinnedTo(
+  url: string,
+  address: string | undefined
+): {
+  readonly headers: Readonly<Record<string, string>>;
+  readonly serverName?: string;
+  readonly url: string;
+} {
+  if (address === undefined) {
+    return { headers: {}, url };
+  }
+  const target = new URL(url);
+  const { host, hostname } = target;
+  const pinned = address.includes(":") ? `[${address}]` : address;
+  if (pinned === hostname) {
+    return { headers: {}, url };
+  }
+  target.hostname = pinned;
+  return { headers: { host }, serverName: hostname, url: target.href };
+}
+
 /** Runs one send over a transport on the platform and answers its outcome, every secret taken out of a failure's text; never throws. Auth mail sends through it without a channel payload. */
 export async function attempt(
   io: DeliverIo,
@@ -170,12 +194,16 @@ export async function attempt(
     now: io.now,
     post: async (url, request) => {
       target = { ...targetOf(url), timeoutMs: sendTimeoutMs };
-      const response = await io.fetch(url, {
+      const pin = pinnedTo(url, request.address);
+      const response = await io.fetch(pin.url, {
         body: request.body,
-        headers: request.headers,
+        headers: { ...request.headers, ...pin.headers },
         method: "POST",
         redirect: "manual",
         signal: AbortSignal.timeout(sendTimeoutMs),
+        ...(pin.serverName === undefined
+          ? {}
+          : { tls: { serverName: pin.serverName } }),
       });
       if (!response.ok) {
         // A refusal's body often says why: Slack's invalid_token, Telegram's description.

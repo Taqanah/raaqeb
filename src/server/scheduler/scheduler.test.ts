@@ -2700,7 +2700,10 @@ describe("subscriber notifications on the scheduler", () => {
   function receiver() {
     const requests: { body: string; url: string }[] = [];
     const fetcher = ((resource: string | URL | Request, init?: RequestInit) => {
-      requests.push({ body: String(init?.body ?? ""), url: String(resource) });
+      // The POST connects to the checked address and names the webhook's host in its Host header.
+      const url = new URL(String(resource));
+      url.host = new Headers(init?.headers).get("host") ?? url.host;
+      requests.push({ body: String(init?.body ?? ""), url: url.href });
       return Promise.resolve(new Response(""));
     }) as typeof fetch;
     return {

@@ -802,9 +802,13 @@ describe("the queue's drain delivers subscriber notifications", () => {
     const queue = queueOver(store, { ...net.io, lookup: internet });
     await queue.enqueueSubscribers([subscription.id], confirmation(pageId), t0);
     await tickAt(queue, net, t0);
-    expect(net.seen.map((each) => each.url)).toEqual([
-      "https://hooks.example.com/a",
-    ]);
+    // The POST connects to the checked address and names the webhook's host.
+    expect(
+      net.seen.map(
+        (each) =>
+          `https://${each.headers.get("host")}${new URL(each.url).pathname}`
+      )
+    ).toEqual(["https://hooks.example.com/a"]);
     const last = await store.notifications.lastSends([subscription.id]);
     expect(last.get(subscription.id)).toMatchObject({
       attempts: 1,

@@ -3,7 +3,8 @@
  * type the address, so Raaqeb posts only to https on the public internet.
  * A name is resolved and every address it answers must be outside the
  * loopback, private, link-local, shared, multicast, documentation and
- * reserved ranges; the check runs at sign-up and again before each POST.
+ * reserved ranges; the check runs at sign-up and again before each POST,
+ * which connects to the address the check accepted, never resolving again.
  * The operator's own channels are not held to it.
  */
 import { inRanges } from "@/server/boot/proxies.ts";
@@ -23,10 +24,10 @@ export const lookupHost: HostLookup = async (hostname) =>
  * this network, private, shared, loopback, link-local, protocol assignments,
  * documentation, 6to4 relays, benchmarking, multicast, reserved and
  * broadcast; in IPv6 the unspecified, loopback and IPv4-compatible
- * addresses, IPv4-translated ones, NAT64,
- * discard, protocol assignments (Teredo among them), documentation, 6to4,
- * unique local, link-local and multicast. IPv4 mapped into IPv6 is read as
- * IPv4, so `::ffff:10.0.0.1` is private.
+ * addresses, IPv4-translated ones, NAT64 and local-use NAT64, discard,
+ * protocol assignments (Teredo among them), documentation, 6to4, unique
+ * local, link-local, the old site-local and multicast. IPv4 mapped into
+ * IPv6 is read as IPv4, so `::ffff:10.0.0.1` is private.
  */
 const blocked = [
   "0.0.0.0/8",
@@ -47,12 +48,14 @@ const blocked = [
   "::/96",
   "::ffff:0:0:0/96",
   "64:ff9b::/96",
+  "64:ff9b:1::/48",
   "100::/64",
   "2001::/23",
   "2001:db8::/32",
   "2002::/16",
   "fc00::/7",
   "fe80::/10",
+  "fec0::/10",
   "ff00::/8",
 ];
 
@@ -87,28 +90,37 @@ async function withinTime<T>(answer: Promise<T>, ms: number): Promise<T> {
   }
 }
 
+/** The address a subscriber's webhook is posted to: its host when that is an internet address, else the first address its name resolves to when every one is; nothing when it may not be posted to. Never throws. */
+export async function webhookAddress(
+  url: string,
+  lookup: HostLookup,
+  timeoutMs: number = lookupTimeoutMs
+): Promise<string | undefined> {
+  if (!URL.canParse(url)) {
+    return;
+  }
+  const { hostname, protocol } = new URL(url);
+  if (protocol !== "https:") {
+    return;
+  }
+  const host = hostname.replace(bracketed, "$1");
+  if (anyAddress(host)) {
+    return isInternetAddress(host) ? host : undefined;
+  }
+  try {
+    const addresses = await withinTime(lookup(host), timeoutMs);
+    return addresses.every(isInternetAddress) ? addresses[0] : undefined;
+  } catch {
+    // A name that does not resolve reaches nothing Raaqeb may post to.
+    return undefined;
+  }
+}
+
 /** Whether a subscriber's webhook may be posted to: an https URL whose host is, or resolves only to, internet addresses. A name that does not resolve is refused. Never throws. */
 export async function webhookReachable(
   url: string,
   lookup: HostLookup,
   timeoutMs: number = lookupTimeoutMs
 ): Promise<boolean> {
-  if (!URL.canParse(url)) {
-    return false;
-  }
-  const { hostname, protocol } = new URL(url);
-  if (protocol !== "https:") {
-    return false;
-  }
-  const host = hostname.replace(bracketed, "$1");
-  if (anyAddress(host)) {
-    return isInternetAddress(host);
-  }
-  try {
-    const addresses = await withinTime(lookup(host), timeoutMs);
-    return addresses.length > 0 && addresses.every(isInternetAddress);
-  } catch {
-    // A name that does not resolve reaches nothing Raaqeb may post to.
-    return false;
-  }
+  return (await webhookAddress(url, lookup, timeoutMs)) !== undefined;
 }

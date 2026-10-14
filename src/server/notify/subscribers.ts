@@ -66,7 +66,7 @@ import {
   secretsOf,
   urlSecrets,
 } from "./channel.ts";
-import { lookupHost, webhookReachable } from "./destination.ts";
+import { lookupHost, webhookAddress } from "./destination.ts";
 import { emailChannel, sendMail } from "./email.ts";
 import { mailHtml } from "./html.ts";
 import type { NotificationQueue } from "./queue.ts";
@@ -564,8 +564,8 @@ export async function sendToSubscriber(
     if (url === undefined) {
       return { failure: unreadableSecrets, ok: false };
     }
-    // ponytail: the POST resolves the name again, so an answer that changes between the two (DNS rebinding) is not caught; pin the checked address if an install is probed so.
-    if (!(await webhookReachable(url, io.lookup ?? lookupHost))) {
+    const address = await webhookAddress(url, io.lookup ?? lookupHost);
+    if (address === undefined) {
       return { failure: notOnInternet, ok: false };
     }
     const origin = URL.canParse(payload.page.url)
@@ -580,6 +580,8 @@ export async function sendToSubscriber(
     const secrets = urlSecrets(url).toSorted((a, b) => b.length - a.length);
     return await attempt(io, secrets, (transport) =>
       transport.post(url, {
+        // The POST connects to the address just checked, so a name that answers otherwise now (DNS rebinding) reaches nothing internal.
+        address,
         body,
         headers: {
           ...jsonHeaders,

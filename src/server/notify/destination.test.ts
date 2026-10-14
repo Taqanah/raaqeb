@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   type HostLookup,
   isInternetAddress,
+  webhookAddress,
   webhookReachable,
 } from "./destination.ts";
 
@@ -41,12 +42,14 @@ describe("where a visitor's webhook may point", () => {
     ["::127.0.0.1"],
     ["::ffff:0:a00:1"],
     ["64:ff9b::a00:1"],
+    ["64:ff9b:1::a00:1"],
     ["100::1"],
     ["2001:db8::1"],
     ["2002:a00:1::"],
     ["fc00::1"],
     ["fd12:3456::1"],
     ["fe80::1"],
+    ["fec0::1"],
     ["ff02::1"],
   ])("%s is not on the public internet", (address) => {
     expect(isInternetAddress(address)).toBe(false);
@@ -144,5 +147,45 @@ describe("where a visitor's webhook may point", () => {
       false
     );
     expect(await webhookReachable("not a url", lookup)).toBe(false);
+  });
+});
+
+describe("the address a subscriber's webhook is posted to", () => {
+  test("a name's first answer, when every answer is on the public internet", async () => {
+    const lookup = resolver({
+      "hooks.example.com": ["104.20.23.154", "2606:4700:10::6814:179a"],
+    });
+    expect(
+      await webhookAddress("https://hooks.example.com/raaqeb?key=1", lookup)
+    ).toBe("104.20.23.154");
+  });
+
+  test("an address typed as a public IP is itself, without a lookup", async () => {
+    const lookup = resolver({});
+    expect(await webhookAddress("https://8.8.8.8/hook", lookup)).toBe(
+      "8.8.8.8"
+    );
+    expect(
+      await webhookAddress("https://[2a00:1450:4001::200e]:8443/hook", lookup)
+    ).toBe("2a00:1450:4001::200e");
+  });
+
+  test("none for a name with one private answer, an address that is not public, a name that does not resolve or plain http", async () => {
+    const lookup = resolver({
+      "hooks.example.com": ["104.20.23.154"],
+      "mixed.example.com": ["104.20.23.154", "fec0::1"],
+    });
+    expect(await webhookAddress("https://mixed.example.com/", lookup)).toBe(
+      undefined
+    );
+    expect(await webhookAddress("https://[64:ff9b:1::a00:1]/", lookup)).toBe(
+      undefined
+    );
+    expect(await webhookAddress("https://nowhere.example.com/", lookup)).toBe(
+      undefined
+    );
+    expect(await webhookAddress("http://hooks.example.com/", lookup)).toBe(
+      undefined
+    );
   });
 });

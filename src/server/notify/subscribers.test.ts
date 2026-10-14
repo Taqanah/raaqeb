@@ -1421,15 +1421,21 @@ describe("a subscriber's webhook body", () => {
 
 /** A fetch that records each request and answers from the script, 200 by default. */
 function receiver(answer: (url: string) => Response = () => new Response("")) {
-  const requests: { body: string; headers: Headers; url: string }[] = [];
+  const requests: {
+    body: string;
+    headers: Headers;
+    serverName: string | undefined;
+    url: string;
+  }[] = [];
   const fetcher = (async (
     input: string | URL | Request,
-    init?: RequestInit
+    init?: BunFetchRequestInit
   ) => {
     const url = String(input);
     requests.push({
       body: String(init?.body ?? ""),
       headers: new Headers(init?.headers),
+      serverName: init?.tls?.serverName,
       url,
     });
     return await Promise.resolve(answer(url));
@@ -1579,7 +1585,9 @@ describe("one attempt to a subscriber", () => {
     );
     expect(outcome).toEqual({ ok: true });
     const request = defined(net.requests[0]);
-    expect(request.url).toMatch(sealedHook);
+    expect(
+      `https://${request.headers.get("host")}${new URL(request.url).pathname}${new URL(request.url).search}`
+    ).toMatch(sealedHook);
     expect(request.headers.get("webhook-id")).toBe(notification.id);
     expect(request.headers.get("webhook-timestamp")).toBe(
       String(Math.floor(now / 1000))
@@ -1617,6 +1625,30 @@ describe("one attempt to a subscriber", () => {
     expect(body.confirmUrl).toBe(
       subscriptionLinks(testAddress, hook.token).page
     );
+  });
+
+  test("a webhook's POST goes to the address checked before it, under its name, so a name that answers otherwise at the POST is never asked again", async () => {
+    const w = await world();
+    const hook = await subscriber(w.s, w.main, "webhook", "confirmed");
+    const net = receiver();
+    const answers = [["93.184.216.34"], ["127.0.0.1"]];
+    let asked = 0;
+    const rebinding: HostLookup = () => {
+      asked += 1;
+      return Promise.resolve(answers.shift() ?? ["127.0.0.1"]);
+    };
+    const outcome = await sendToSubscriber(
+      w.s.storage,
+      key,
+      io(net.fetch, rebinding),
+      queuedFor(hook.id, await publishedFor(w))
+    );
+    expect(outcome).toEqual({ ok: true });
+    expect(asked).toBe(1);
+    const request = defined(net.requests[0]);
+    expect(new URL(request.url).hostname).toBe("93.184.216.34");
+    expect(request.headers.get("host")).toBe("hooks.example.com");
+    expect(request.serverName).toBe("hooks.example.com");
   });
 
   test("a webhook whose host is not on the public internet fails without a POST", async () => {

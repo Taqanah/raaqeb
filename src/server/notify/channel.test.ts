@@ -529,3 +529,61 @@ describe("one send over the platform, without a channel", () => {
     ).toEqual({ ok: true });
   });
 });
+
+describe("a POST to the address checked before it", () => {
+  const fixtures = `${import.meta.dir}/../checks/fixtures`;
+  /** What each request named: its Host header, path and query. */
+  const named: string[] = [];
+  /** A receiver over TLS whose certificate names localhost and 127.0.0.1. */
+  const tlsReceiver: Bun.Server<undefined> = Bun.serve({
+    fetch: (request) => {
+      const { pathname, search } = new URL(request.url);
+      named.push(`${request.headers.get("host")}${pathname}${search}`);
+      return new Response("fine");
+    },
+    hostname: "127.0.0.1",
+    port: 0,
+    tls: {
+      cert: Bun.file(`${fixtures}/tls-cert.pem`),
+      key: Bun.file(`${fixtures}/tls-key.pem`),
+    },
+  });
+  afterAll(() => tlsReceiver.stop(true));
+  /** The platform's fetch, trusting the receiver's certificate as it would a public one. */
+  const trusting = scripted(async (input, init) =>
+    fetch(input, {
+      ...init,
+      tls: {
+        ...(init as BunFetchRequestInit | undefined)?.tls,
+        ca: await Bun.file(`${fixtures}/tls-cert.pem`).text(),
+      },
+    })
+  );
+  const postTo = async (url: string, address: string) => {
+    const { attempt } = await import("./channel.ts");
+    return attempt(trusting, [], (transport) =>
+      transport.post(url, { address, body: "{}", headers: {} })
+    );
+  };
+
+  test("connects to the address and names the URL's host to the server", async () => {
+    named.length = 0;
+    const url = `https://localhost:${tlsReceiver.port}/hook?key=1`;
+    expect(await postTo(url, "127.0.0.1")).toEqual({ ok: true });
+    expect(named).toEqual([`localhost:${tlsReceiver.port}/hook?key=1`]);
+  });
+
+  test("never resolves the name, and holds the certificate to the name rather than the address", async () => {
+    named.length = 0;
+    // The name resolves nowhere, and the certificate names the address but not the name.
+    const outcome = await postTo(
+      `https://hooks.invalid:${tlsReceiver.port}/hook`,
+      "127.0.0.1"
+    );
+    expect(outcome).toMatchObject({
+      failure: { reason: "certificate_invalid" },
+      ok: false,
+    });
+    expect(named).toEqual([]);
+  });
+});
