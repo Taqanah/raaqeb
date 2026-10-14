@@ -29,23 +29,11 @@ async function idOf(page: Page, pattern: RegExp): Promise<string> {
   return new URL(page.url()).pathname.split("/").at(-1) ?? "";
 }
 
-/** Reads the window's page until its stage is the one given; the scheduler moves it at its next tick. */
-async function stageBecomes(
-  page: Page,
-  path: string,
-  stage: string
-): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        await page.goto(`${englishOrigin}${path}`);
-        return await page
-          .locator("[data-slot=window-summary] [data-slot=window-stage]")
-          .getAttribute("data-stage");
-      },
-      { timeout: 20_000 }
-    )
-    .toBe(stage);
+/** Waits, without a reload, until the open page shows the window at the stage given; the scheduler moves it at its next tick. */
+async function stageShows(page: Page, stage: string): Promise<void> {
+  await expect(
+    page.locator("[data-slot=window-summary] [data-slot=window-stage]")
+  ).toHaveAttribute("data-stage", stage, { timeout: 20_000 });
 }
 
 let componentId = "";
@@ -101,7 +89,7 @@ test.describe("two windows on one component", () => {
     await expect(page.locator(`a[href="${path}"]`)).toHaveCount(0);
   });
 
-  test("a window from now starts at the scheduler's next tick: its component is under maintenance and its monitor shows it; ending it now completes it", async ({
+  test("a window from now starts at the scheduler's next tick and its open page follows: its component is under maintenance and its monitor shows it; ending it now completes it on the same page", async ({
     page,
   }) => {
     // Two scheduler waits of up to 20 s each pass the default 30 s.
@@ -127,7 +115,8 @@ test.describe("two windows on one component", () => {
     await page.click("[data-slot=create-window]");
     await idOf(page, windowPath);
     const path = new URL(page.url()).pathname;
-    await stageBecomes(page, path, "in_progress");
+    // The page the create landed on follows the window as it starts.
+    await stageShows(page, "in_progress");
     await expect(page.locator("[data-slot=window-locked]")).toBeVisible();
     // Started, the start is no longer a field; the summary above shows it.
     await expect(page.locator("input[name=starts]")).toHaveCount(0);
@@ -151,7 +140,7 @@ test.describe("two windows on one component", () => {
     await page.goto(`${englishOrigin}${path}`);
     await page.click("[data-slot=end-window]");
     await page.click("[data-slot=confirm-end]");
-    await stageBecomes(page, path, "completed");
+    await stageShows(page, "completed");
     await expect(page.locator("input[name=ends]")).toHaveCount(0);
 
     await page.goto(`${englishOrigin}/admin/monitors`);

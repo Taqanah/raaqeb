@@ -3973,6 +3973,10 @@ msgid "maintenance_refused_end_past"
 msgstr "مضت هذه النهاية. اختر الآن أو وقتًا لاحقًا."
 
 #. js-lingui-explicit-id
+msgid "maintenance_moved"
+msgstr "بدأ وقت الصيانة أو انتهى منذ فتحت الصفحة، والصفحة تعرضه الآن."
+
+#. js-lingui-explicit-id
 msgid "maintenance_refused_changed"
 msgstr "بدأ وقت الصيانة أو انتهى منذ فتحت الصفحة، والصفحة تعرضه الآن. راجع تعديلك واحفظه مجددًا."
 

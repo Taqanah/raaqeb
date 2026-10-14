@@ -4,6 +4,7 @@ import {
   editInputOf,
   newWindowDraftOf,
   newWindowInputOf,
+  stageReadIn,
   type WindowDraft,
   windowDraftOf,
 } from "./window-draft.ts";
@@ -290,5 +291,43 @@ describe("a new window's start in the first pass of a repeated hour", () => {
         "ar"
       ).ok
     ).toBe(true);
+  });
+});
+
+describe("when a window's page reads its stage again", () => {
+  const tick = 1000;
+  const window = {
+    endsAt: utc(12),
+    stage: "scheduled" as const,
+    startsAt: utc(11),
+  };
+
+  test("a scheduled window's page reads again a tick after its start", () => {
+    expect(stageReadIn(window, now)).toBe(utc(11) - now + tick);
+  });
+
+  test("a window in progress's page reads again a tick after its end", () => {
+    expect(stageReadIn({ ...window, stage: "in_progress" }, now)).toBe(
+      utc(12) - now + tick
+    );
+  });
+
+  test("a window whose edge has passed, as after End now, reads again at the next tick", () => {
+    expect(
+      stageReadIn({ ...window, endsAt: now, stage: "in_progress" }, now)
+    ).toBe(tick);
+    expect(
+      stageReadIn({ ...window, stage: "in_progress" }, utc(12) + 5 * tick)
+    ).toBe(tick);
+  });
+
+  test("a window months away reads again within a day, which a timer can hold", () => {
+    expect(
+      stageReadIn({ ...window, startsAt: now + 90 * 86_400_000 }, now)
+    ).toBe(86_400_000);
+  });
+
+  test("a completed window's page has nothing left to follow", () => {
+    expect(stageReadIn({ ...window, stage: "completed" }, now)).toBeUndefined();
   });
 });

@@ -7,6 +7,8 @@
  * field while scheduled (a new window is scheduled), the text and the end
  * while in progress, the text once completed. Pure: the form holds one
  * draft in state and calls these, with `now` read when the operator saves.
+ * The window's page also learns here when to read the window again, so it
+ * follows the stage the scheduler moves it to.
  */
 import type { z } from "zod";
 import {
@@ -31,6 +33,11 @@ import {
   runningEditSchema,
   textEditSchema,
 } from "@/shared/schemas/maintenance.ts";
+
+/** The scheduler's tick: a window moves at the first tick past its edge. */
+const tickMs = 1000;
+/** A timer's longest wait is about 24.8 days; a day keeps every read inside it. */
+const dayMs = 86_400_000;
 
 export interface WindowDraft {
   /** The affected components, in the order they were chosen. */
@@ -208,4 +215,16 @@ export function editInputOf(
     language,
     times
   );
+}
+
+/** How long after `now` the window's page reads it again to show its stage moved: a scheduler tick past its start while scheduled, past its end while in progress, at most a day; nothing once completed. */
+export function stageReadIn(
+  window: Pick<MaintenanceWindow, "endsAt" | "stage" | "startsAt">,
+  now: number
+): number | undefined {
+  if (window.stage === "completed") {
+    return;
+  }
+  const edge = window.stage === "scheduled" ? window.startsAt : window.endsAt;
+  return Math.min(Math.max(edge - now, 0) + tickMs, dayMs);
 }

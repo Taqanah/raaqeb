@@ -10,7 +10,13 @@
  * keeps the text typed.
  */
 import { Link } from "@tanstack/react-router";
-import { type ReactNode, type SubmitEvent, useCallback, useState } from "react";
+import {
+  type ReactNode,
+  type SubmitEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { When } from "@/admin/incidents/incident-words.tsx";
 import {
   ContentField,
@@ -72,6 +78,7 @@ import {
   editInputOf,
   newWindowDraftOf,
   newWindowInputOf,
+  stageReadIn,
   type WindowDraft,
   type WindowFieldErrors,
   windowDraftOf,
@@ -226,6 +233,15 @@ export function WindowPage({
   const { t } = useMessages();
   const text = useContentIn();
   const { window } = page;
+  // The page reads itself again once the scheduler has moved the window, so it shows the stage it is at.
+  useEffect(() => {
+    const wait = stageReadIn(window, page.now);
+    if (wait === undefined) {
+      return;
+    }
+    const timer = setTimeout(onChanged, wait);
+    return () => clearTimeout(timer);
+  }, [onChanged, page.now, window]);
   // The stage's action sits beside the stage in the summary, at every width (the screenshot run).
   let action: ReactNode = null;
   if (window.stage === "in_progress") {
@@ -728,6 +744,7 @@ function Confirmed({
   const confirmed = useCallback(async () => {
     const outcome = outcomeOf(await action().catch(() => undefined));
     if (outcome.kind === "saved") {
+      setRefused(undefined);
       onDone();
       return;
     }
@@ -745,7 +762,9 @@ function Confirmed({
       </Button>
       {refused ? (
         <p className="text-destructive text-sm" role="alert">
-          {t(refusalWords[refused])}
+          {t(
+            refused === "changed" ? "maintenance_moved" : refusalWords[refused]
+          )}
         </p>
       ) : null}
       <AlertDialog onOpenChange={setOpen} open={open}>

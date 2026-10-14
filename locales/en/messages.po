@@ -3973,6 +3973,10 @@ msgid "maintenance_refused_end_past"
 msgstr "This end has passed. Choose now or a later time."
 
 #. js-lingui-explicit-id
+msgid "maintenance_moved"
+msgstr "The window started or ended since you opened the page, which now shows it."
+
+#. js-lingui-explicit-id
 msgid "maintenance_refused_changed"
 msgstr "The window started or ended since you opened the page, which now shows it. Check your edit and save it again."
 
