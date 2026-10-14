@@ -462,7 +462,8 @@ test("a page whose read failed shows the error inside the shell, never its text,
   await expect(page.locator("[data-slot=page] h1")).toHaveCount(1);
   await expect(page.getByText("a private failure")).toHaveCount(0);
 
-  await page.unroute("**/_serverFn/**");
+  // Waits for a read still inside its handler, which would otherwise fulfill a route unroute already let through.
+  await page.unrouteAll({ behavior: "wait" });
   await page.click("[data-slot=page-error] button[name=retry]");
   await expect(page.locator("[data-slot=add-channel]")).toBeVisible();
   await expect(page.locator("[data-slot=page-error]")).toHaveCount(0);
