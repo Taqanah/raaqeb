@@ -19,8 +19,9 @@ export const Route = createFileRoute("/sign-out")({
 
 function SignOutPage() {
   const navigate = useNavigate();
+  // A new document: the root reads its language once, and the sign-in page's is the install's, not the operator's.
   const done = useCallback(() => {
-    navigate({ to: "/sign-in" }).catch(() => undefined);
+    navigate({ reloadDocument: true, to: "/sign-in" }).catch(() => undefined);
   }, [navigate]);
   return <SignOutForm onSignedOut={done} />;
 }

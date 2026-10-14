@@ -24,8 +24,9 @@ export const Route = createFileRoute("/sign-in")({
 
 function SignInPage() {
   const navigate = useNavigate();
+  // A new document: the root reads its language once, and the admin's is the operator's, not this page's.
   const done = useCallback(() => {
-    navigate({ to: "/admin" }).catch(() => undefined);
+    navigate({ reloadDocument: true, to: "/admin" }).catch(() => undefined);
   }, [navigate]);
   return <SignInForm email={Route.useLoaderData()} onSignedIn={done} />;
 }

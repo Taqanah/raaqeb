@@ -78,14 +78,14 @@ export const test = base.extend<{ address: string }>({
 export const expect = baseExpect;
 
 /**
- * Asserts the URL path, retrying. Never `toHaveURL(/regex/)`: it matches the
- * whole URL and passes on the page you started from.
+ * Asserts the URL path, retrying, then waits for the document there to
+ * hydrate: signing in and signing out land on a new document, and a key or a
+ * click before hydration does nothing. Never `toHaveURL(/regex/)`: it matches
+ * the whole URL and passes on the page you started from.
  */
-export function expectPath(
-  page: Pick<Page, "url">,
-  pathname: string
-): Promise<void> {
-  return baseExpect.poll(() => new URL(page.url()).pathname).toBe(pathname);
+export async function expectPath(page: Page, pathname: string): Promise<void> {
+  await baseExpect.poll(() => new URL(page.url()).pathname).toBe(pathname);
+  await page.waitForFunction(() => window.__reactCommitted === true);
 }
 
 /**

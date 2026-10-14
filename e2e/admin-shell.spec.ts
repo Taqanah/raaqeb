@@ -444,21 +444,29 @@ async function openChannelWithSecret(page: Page): Promise<void> {
   await expect(page.locator("[data-slot=signing-secret]")).toBeVisible();
 }
 
-/** Records, from now on, whether the admin shell or a signing secret is ever on screen, even for one frame. */
+/** Records, from now on and in every document the tab loads, whether the admin shell or a signing secret is ever on screen, even for one frame. */
 async function watchAdminData(page: Page): Promise<() => Promise<boolean>> {
-  await page.evaluate(() => {
-    const seen = () =>
-      document.querySelector(
-        "[data-slot=signing-secret], [data-slot=sidebar]"
-      ) !== null;
-    const record = window as unknown as { sawAdmin: boolean };
-    record.sawAdmin = seen();
-    new MutationObserver(() => {
-      record.sawAdmin ||= seen();
-    }).observe(document.body, { childList: true, subtree: true });
-  });
-  return () =>
-    page.evaluate(() => (window as unknown as { sawAdmin: boolean }).sawAdmin);
+  // Signing out and Back each load a new document; the tab's session storage outlives them.
+  const watch = () => {
+    const record = () => {
+      if (
+        document.querySelector(
+          "[data-slot=signing-secret], [data-slot=sidebar]"
+        ) !== null
+      ) {
+        sessionStorage.setItem("sawAdmin", "yes");
+      }
+    };
+    record();
+    new MutationObserver(record).observe(document, {
+      childList: true,
+      subtree: true,
+    });
+  };
+  await page.addInitScript(watch);
+  await page.evaluate(watch);
+  return async () =>
+    (await page.evaluate(() => sessionStorage.getItem("sawAdmin"))) === "yes";
 }
 
 test("cancelling a sign-out goes back to the page it was asked from", async ({

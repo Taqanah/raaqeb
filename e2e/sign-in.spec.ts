@@ -2,6 +2,7 @@
 // English server holds the operator account; the Arabic server stays in
 // onboarding, where e2e/onboarding.spec.ts pins that sign-in goes there.
 
+import { operatorLanguage } from "@/server/settings/operator.ts";
 import {
   clientAddress,
   expect,
@@ -14,6 +15,7 @@ import {
   operatorEmail,
   operatorPassword,
 } from "./support/servers.ts";
+import { type Install, spawnInstall } from "./support/spawn.ts";
 
 const emailField = "input[name=email]";
 const passwordField = "input[name=password]";
@@ -303,4 +305,36 @@ test("a page outside the admin whose read failed shows the error in the catalog'
   // The English install has no email channel: its forgot page leads back to sign-in.
   await expect(page.locator("a[href='/sign-in']")).toBeVisible();
   await expect(page.locator("[data-slot=page-error]")).toHaveCount(0);
+});
+
+test.describe("the language either side of signing in", () => {
+  // An Arabic install whose operator reads English: the signed-out pages are Arabic, the admin English.
+  let install: Install | undefined;
+  test.beforeAll(async () => {
+    install = await spawnInstall({
+      account: true,
+      records: (storage) => storage.settings.set(operatorLanguage, "en"),
+    });
+  });
+  test.afterAll(async () => {
+    await install?.stop();
+  });
+
+  test("the first admin page after sign-in is in the operator's language, and the sign-in page after sign-out in the install's", async ({
+    page,
+  }) => {
+    const origin = install?.origin ?? "";
+    await page.goto(`${origin}/sign-in`);
+    await expect(page.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
+    await page.fill(emailField, operatorEmail);
+    await page.fill(passwordField, operatorPassword);
+    await page.click(submit);
+    await expectPath(page, "/admin/monitors");
+    await expect(page.locator("html[lang=en][dir=ltr]")).toHaveCount(1);
+    await page.click("[data-slot=sidebar-footer] a[href='/sign-out']");
+    await expectPath(page, "/sign-out");
+    await page.click(submit);
+    await expectPath(page, "/sign-in");
+    await expect(page.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
+  });
 });
