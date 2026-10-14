@@ -6,6 +6,8 @@
  * Its errors are turned into the ones the base maps onto the reason
  * dictionary: a reply code outside 2xx, a timeout, or the socket's own code.
  */
+// biome-ignore lint/style/noRestrictedImports: nodemailer drives a node:net socket, and Bun.connect gives none it can take
+import { Socket } from "node:net";
 import type { MailMessage, SmtpServer } from "./channel.ts";
 
 /** A reply code outside 2xx from the server, with the reply's text. */
@@ -64,6 +66,8 @@ export async function sendSmtp(
   const { createTransport } = await import("nodemailer");
   const { address, name } = message.from;
   const domain = address.slice(address.lastIndexOf("@") + 1);
+  // The attempt owns the socket, so a failed one closes it even when nodemailer still waits on the server.
+  const socket = new Socket();
   const transport = createTransport({
     // AUTH never crosses a plain connection, whoever calls.
     auth:
@@ -81,11 +85,11 @@ export async function sendSmtp(
     port: server.port,
     requireTLS: server.security === "starttls",
     secure: server.security === "tls",
+    socket,
     socketTimeout: waitMs + raceMarginMs,
   });
   let timer: ReturnType<typeof setTimeout> | undefined;
   // nodemailer has no overall timeout, only one per phase; the attempt has one, longer than each of nodemailer's waits (`waitMs`), so a wait nodemailer ends names itself and the deadline catches a server that trickles, goes quiet late or has a lookup that never ends.
-  // ponytail: a server that trickles keeps its socket open after the attempt fails; drive nodemailer's SMTPConnection to close it if that shows.
   const deadline = new Promise<never>((_, reject) => {
     timer = setTimeout(
       () =>
@@ -116,5 +120,6 @@ export async function sendSmtp(
     throw normalized(error);
   } finally {
     clearTimeout(timer);
+    socket.destroy();
   }
 }

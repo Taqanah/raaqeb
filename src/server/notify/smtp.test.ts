@@ -196,6 +196,16 @@ describe("an email over SMTP", () => {
     expect(performance.now() - started).toBeLessThan(1000);
   });
 
+  test("an attempt that fails at the limit closes its connection, so a server that keeps answering holds no socket", async () => {
+    const server = serve({ trickle: true });
+    await rejection(send(plain(server.port), message, 400, 200));
+    const closed = await Promise.race([
+      server.closed().then(() => true),
+      Bun.sleep(500).then(() => false),
+    ]);
+    expect(closed).toBe(true);
+  });
+
   test("a server that agrees to STARTTLS and never answers the handshake fails as a plain timeout", async () => {
     const server = serve({
       offerStartTls: true,
