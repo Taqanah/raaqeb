@@ -2,18 +2,11 @@
 
 One Fly machine runs Raaqeb, and Fly's proxy in front of it ends TLS, so no Caddy is needed. `fly.toml` beside this file is the sample; this guide says how to fill it in and why each line is there.
 
-You need `flyctl` signed in, Docker, and a checkout of Raaqeb with Bun, on an amd64 host.
+You need `flyctl` signed in.
 
-## 1. Build the image
+## 1. The image
 
-The image is `ghcr.io/taqanah/raaqeb:<version>`. Until a release publishes it, you deploy the one you build:
-
-```sh
-bun install
-bun run image          # loads ghcr.io/taqanah/raaqeb:<version> into the local Docker
-```
-
-`bun run image` loads the image of the host's platform, and Fly runs amd64 machines only, so build on an amd64 host. `[build]` in `fly.toml` names that image, so once a release publishes it Fly can pull it and the build step is not needed.
+`[build]` in `fly.toml` names a released image, `ghcr.io/taqanah/raaqeb:<version>`, which Fly pulls from the registry. To deploy a build of your own instead, run `bun run image` in a checkout with Bun on an amd64 host (Fly runs amd64 machines only, and the command loads the host's platform into the local Docker), then deploy with `--local-only` added.
 
 ## 2. Create the app and its addresses
 
@@ -68,10 +61,10 @@ Only the machine reaches the volume. With `RAAQEB_SECRET_KEY` set as a secret, `
 ## 4. Deploy
 
 ```sh
-fly deploy --local-only --ha=false
+fly deploy --ha=false
 ```
 
-`--local-only` deploys the image from the local Docker. `--ha=false` keeps it to one machine: two machines would run two schedulers, each checking every monitor and sending every notification. Never scale the app above one machine.
+`--ha=false` keeps it to one machine: two machines would run two schedulers, each checking every monitor and sending every notification. Never scale the app above one machine.
 
 `fly.toml` keeps that machine running: `auto_stop_machines = "off"` and `min_machines_running = 1`, since a stopped machine runs no checks. `h2_backend = true` has Fly's proxy speak HTTP/2 to the machine, which Raaqeb answers on the same port as HTTP/1.1. Fly ignores the image's Docker `HEALTHCHECK`, so `[[http_service.checks]]` asks `/health` instead, and `fly status` shows the machine failing while it answers 503. When the scheduler has not ticked for five minutes, Raaqeb exits and Fly's restart policy, `on-failure`, starts it again.
 
@@ -101,4 +94,4 @@ fly ssh console -C "raaqeb reset-password"                            # prints a
 
 ## Upgrades
 
-Build the new version with `bun run image`, change the tag in `[build]`, and run `fly deploy --local-only --ha=false` again. Migrations run on start, with a snapshot first on SQLite.
+Change the tag in `[build]` to the new release and run `fly deploy --ha=false` again. Migrations run on start, with a snapshot first on SQLite.

@@ -5,8 +5,8 @@ app = "<app>"
 primary_region = "<region>"
 
 [build]
-  # The image `bun run image` loads, deployed with `fly deploy --local-only --ha=false`;
-  # it is also the name a release publishes.
+  # The released image Fly pulls; change the tag to upgrade. A build of your own
+  # is `bun run image`, deployed with `fly deploy --local-only --ha=false`.
   image = "ghcr.io/taqanah/raaqeb:0.1.0"
 
 [env]

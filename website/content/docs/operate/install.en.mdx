@@ -14,7 +14,7 @@ These are Bun's minimums, macOS 13 and Windows 10 version 1809 (`docs/installati
 
 Each binary holds everything it serves: the pages, the migrations and the email client. Nothing else is installed beside it. None is signed by a publisher: the macOS binary carries the ad-hoc signature Apple Silicon needs to run it, and the Windows binaries carry none, so the first run of a browser download asks once (below).
 
-Releases are published at [github.com/Taqanah/raaqeb/releases](https://github.com/Taqanah/raaqeb/releases). Until the first one is, the installer finds no release, and you build from a checkout with Bun: `bun install`, then `bun run binaries` writes the binaries to `dist/bin`, and `bun run image` builds the image and loads it into Docker as `ghcr.io/taqanah/raaqeb:<version>`. Install from the `dist/bin` folder with `RAAQEB_DOWNLOAD_URL` (next section).
+Releases are published at [github.com/Taqanah/raaqeb/releases](https://github.com/Taqanah/raaqeb/releases), and each release's image at `ghcr.io/taqanah/raaqeb:<version>`. To install a build of your own, build from a checkout with Bun: `bun install`, then `bun run binaries` writes the binaries to `dist/bin`, and `bun run image` builds the image and loads it into Docker as `ghcr.io/taqanah/raaqeb:<version>`. Install from the `dist/bin` folder with `RAAQEB_DOWNLOAD_URL` (next section).
 
 Every install path ends at the onboarding page, which asks three questions: the language, the database and the operator account. Open Raaqeb at the address you mean to keep. The account screen stores that address as the public address, and sign-in works only there.
 

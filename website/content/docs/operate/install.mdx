@@ -14,7 +14,7 @@ description: ثبّت راقب بالمُثبِّت على Linux أو macOS أو
 
 يحمل كل ملف تنفيذي كل ما يقدّمه: الصفحات وملفات الترحيل وعميل البريد. ولا يُثبَّت بجانبه شيء آخر. لا يحمل أي منها توقيع ناشر: يحمل ملف macOS توقيعًا بلا هوية (ad hoc) تحتاجه أجهزة Apple Silicon لتشغيله، ولا تحمل ملفات Windows أي توقيع، لذا يسألك النظام مرة واحدة عند أول تشغيل لملف نزّلته بالمتصفح (انظر أدناه).
 
-تُنشر الإصدارات في [github.com/Taqanah/raaqeb/releases](https://github.com/Taqanah/raaqeb/releases). وإلى أن يُنشر أولها لا يجد المُثبِّت إصدارًا، فابنِ من نسخة من المستودع باستخدام Bun: شغّل `bun install`، ثم يكتب `bun run binaries` الملفات التنفيذية في `dist/bin`، ويبني `bun run image` الصورة ويحمّلها في Docker باسم `ghcr.io/taqanah/raaqeb:<version>`. وثبّت من المجلد `dist/bin` بالمتغير `RAAQEB_DOWNLOAD_URL` (القسم التالي).
+تُنشر الإصدارات في [github.com/Taqanah/raaqeb/releases](https://github.com/Taqanah/raaqeb/releases)، وصورة كل إصدار في `ghcr.io/taqanah/raaqeb:<version>`. ولتثبيت ما تبنيه بنفسك، ابنِ من نسخة من المستودع باستخدام Bun: شغّل `bun install`، ثم يكتب `bun run binaries` الملفات التنفيذية في `dist/bin`، ويبني `bun run image` الصورة ويحمّلها في Docker باسم `ghcr.io/taqanah/raaqeb:<version>`. وثبّت من المجلد `dist/bin` بالمتغير `RAAQEB_DOWNLOAD_URL` (القسم التالي).
 
 تنتهي كل طريقة تثبيت في صفحة مرحلة الإعداد، وتسألك ثلاثة أسئلة: اللغة وقاعدة البيانات وحساب المشغّل. افتح راقب على العنوان الذي تنوي الإبقاء عليه. تحفظ شاشة الحساب ذلك العنوان عنوانًا عامًا، ولا يعمل تسجيل الدخول إلا عليه.
 
