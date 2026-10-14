@@ -7,7 +7,7 @@
  * dist/server/handler.js, and starts the scheduler over the open storage.
  * SIGTERM and SIGINT, and SIGHUP on Windows, stop scheduler and server, wait for auth
  * mail still sending, then close storage.
- * `health` calls GET /health at the boot address and exits 0 or 1; `reset-password` mints a reset link over the same database, and `set-address` stores the public address there.
+ * `--version` and `--help` print and exit 0 before anything is read. `health` calls GET /health at the boot address and exits 0 or 1; `reset-password` mints a reset link over the same database, and `set-address` stores the public address there.
  * Vite builds this file into dist/server/server.js beside the
  * handler, so the two share one module tree, and `bun run start`,
  * the e2e servers and the compiled binary all run that build; the build
@@ -31,7 +31,11 @@ import {
   type Terminal,
 } from "./server/auth/command.ts";
 import { isOperator } from "./server/auth/session.ts";
-import { parseCommandLine } from "./server/boot/commandline.ts";
+import {
+  type CommandLine,
+  helpText,
+  parseCommandLine,
+} from "./server/boot/commandline.ts";
 import type { InstallKey } from "./server/boot/installkey.ts";
 import {
   clientAddress,
@@ -49,6 +53,7 @@ import { liveIo } from "./server/checks/io.ts";
 import { error as logError, info as logInfo } from "./server/log.ts";
 import { createPublicMemo } from "./server/memo/public.ts";
 import type { PublicTarget } from "./server/pages/public.ts";
+import { currentVersion } from "./server/release/release.ts";
 import { closed, type MemoAnswer, requestLine } from "./server/request-log.ts";
 import { healthCommand, healthUrl } from "./server/scheduler/health.ts";
 import type { MonitorEvent } from "./server/scheduler/schedule.ts";
@@ -135,14 +140,14 @@ export async function main(
     logError(line.message);
     return 2;
   }
-  if (line.command === "health") {
-    // Only the address is needed: no data directory is created and no install key minted.
-    const address = resolveAddress(line.flags, env);
-    if (!address.ok) {
-      logError(address.message);
-      return 2;
-    }
-    return await healthCommand(healthUrl(address.host, address.port), fetch);
+  // These need no data directory and mint no install key.
+  const answered = await beforeBoot(
+    line,
+    env,
+    options.terminal ?? processTerminal()
+  );
+  if (answered !== undefined) {
+    return answered;
   }
   const booted = await resolveBootSettings(line.flags, env);
   if (!booted.ok) {
@@ -228,6 +233,31 @@ export async function main(
       return holder.current;
     },
   };
+}
+
+/** The commands that answer before the boot settings resolve: the version, the help and `health`, which needs only the address. Nothing for the rest. */
+async function beforeBoot(
+  line: Extract<CommandLine, { ok: true }>,
+  env: Readonly<Record<string, string | undefined>>,
+  terminal: Terminal
+): Promise<number | undefined> {
+  if (line.command === "version" || line.command === "help") {
+    terminal.out(
+      line.command === "version"
+        ? `raaqeb ${currentVersion}`
+        : helpText(currentVersion)
+    );
+    return 0;
+  }
+  if (line.command !== "health") {
+    return;
+  }
+  const address = resolveAddress(line.flags, env);
+  if (!address.ok) {
+    logError(address.message);
+    return 2;
+  }
+  return await healthCommand(healthUrl(address.host, address.port), fetch);
 }
 
 /**

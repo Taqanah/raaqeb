@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseCommandLine } from "./commandline.ts";
+import { commands, helpText, parseCommandLine } from "./commandline.ts";
 
 function accepted(args: string[]) {
   const line = parseCommandLine(args);
@@ -173,5 +173,39 @@ describe("flags mirror the boot setting variables", () => {
     expect(message).not.toContain("hunter2");
     const missing = refused(["--secret-key=hunter2", "--port"]);
     expect(missing).not.toContain("hunter2");
+  });
+});
+
+describe("--version and --help", () => {
+  test("--version is the version command, --help the help command, wherever they stand", () => {
+    expect(accepted(["--version"])).toEqual({
+      command: "version",
+      flags: {},
+      interactive: false,
+      ok: true,
+    });
+    expect(accepted(["--help"]).command).toBe("help");
+    expect(accepted(["health", "--help"]).command).toBe("help");
+    expect(accepted(["--port", "1", "--version"]).command).toBe("version");
+  });
+
+  test("the first of the two on the line answers", () => {
+    expect(accepted(["--help", "--version"]).command).toBe("help");
+    expect(accepted(["--version", "--help"]).command).toBe("version");
+  });
+
+  test("they answer before a refusal of the rest of the line", () => {
+    expect(accepted(["--help", "--nope"]).command).toBe("help");
+    expect(accepted(["set-address", "--version"]).command).toBe("version");
+  });
+
+  test("the help text names the version, each command, and the two flags, one line each", () => {
+    const lines = helpText("1.2.3").split("\n");
+    expect(lines[0]).toContain("1.2.3");
+    for (const word of [...commands, "--version", "--help"]) {
+      expect(
+        lines.filter((line) => line.trimStart().startsWith(word)).length
+      ).toBe(1);
+    }
   });
 });

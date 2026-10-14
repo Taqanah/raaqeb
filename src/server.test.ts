@@ -6,6 +6,7 @@ import { resolveBootSettings } from "./server/boot/settings.ts";
 import { createOperatorAccount } from "./server/onboarding/onboarding.ts";
 import { publish } from "./server/pages/fixture.ts";
 import { createPage } from "./server/pages/pages.ts";
+import { currentVersion } from "./server/release/release.ts";
 import { publicAddress } from "./server/settings/address.ts";
 import { saveGeneralSettings } from "./server/settings/general.ts";
 import { trustedProxies } from "./server/settings/proxies.ts";
@@ -613,6 +614,26 @@ describe("the raaqeb command", () => {
     const freePort = idle.port;
     await idle.stop(true);
     expect(await main(["health", "--port", String(freePort)], {}, "")).toBe(1);
+  });
+
+  test("--version prints the version and --help the commands, both exit 0 and touch no data directory", async () => {
+    const dataDir = `${await clientBuild({})}/untouched`;
+    for (const flag of ["--version", "--help"]) {
+      const out: string[] = [];
+      const terminal: Terminal = {
+        askHidden: () => Promise.resolve(""),
+        err: (line) => out.push(`err: ${line}`),
+        interactive: false,
+        out: (line) => out.push(line),
+      };
+      // biome-ignore lint/performance/noAwaitInLoops: each flag is its own run
+      const code = await main([flag], { RAAQEB_DATA_DIR: dataDir }, "", {
+        terminal,
+      });
+      expect(code).toBe(0);
+      expect(out.join("\n")).toContain(currentVersion);
+    }
+    expect(await Bun.file(dataDir).exists()).toBe(false);
   });
 
   test("health exits 1 on a 503", async () => {

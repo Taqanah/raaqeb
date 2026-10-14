@@ -1,7 +1,8 @@
 /**
  * The `raaqeb` command line: one optional subcommand, `serve` by
  * default, flags that mirror the boot setting variables, reset-password's
- * `--interactive` and set-address's one argument, nothing more.
+ * `--interactive` and set-address's one argument, and the `--version` and
+ * `--help` answers, nothing more.
  */
 import { isOrigin } from "@/shared/schemas/address.ts";
 import type { BootValues, BootVariable } from "./settings.ts";
@@ -12,7 +13,8 @@ export const commands = [
   "reset-password",
   "set-address",
 ] as const;
-export type Command = (typeof commands)[number];
+/** The four commands, and the two answers a flag gives in place of running one. */
+export type Command = (typeof commands)[number] | "help" | "version";
 
 export type CommandLine =
   | {
@@ -36,9 +38,34 @@ const flagVariables: Readonly<Record<string, BootVariable>> = {
   "--trusted-proxies": "RAAQEB_TRUSTED_PROXIES",
 };
 
-function isCommand(word: string): word is Command {
+/** What `raaqeb --help` prints: the version, then each command and the two flags with one line each. */
+export function helpText(version: string): string {
+  return `raaqeb ${version}
+
+usage: raaqeb [command] [flags]
+
+commands:
+  serve                 run the server; the default
+  health                exit 0 when the server answers at its address
+  reset-password        print a reset link for the operator account
+  set-address <url>     store the public address, as https://status.example.com
+
+flags:
+  --version             print the version
+  --help                print this text
+
+The boot settings also take flags, each the lowercase name of its RAAQEB_ variable (--port, --data-dir).`;
+}
+
+function isCommand(word: string): word is (typeof commands)[number] {
   return (commands as readonly string[]).includes(word);
 }
+
+/** The flag that answers before the line is read any further. */
+const answers: Readonly<Record<string, Command>> = {
+  "--help": "help",
+  "--version": "version",
+};
 
 function refuse(message: string): CommandLine {
   return { message, ok: false };
@@ -49,6 +76,15 @@ function refuse(message: string): CommandLine {
  * `--flag=value`. The message of a failed parse names the flag, never a value.
  */
 export function parseCommandLine(args: readonly string[]): CommandLine {
+  const answer = args.find((arg) => arg in answers);
+  if (answer !== undefined) {
+    return {
+      command: answers[answer] ?? "help",
+      flags: {},
+      interactive: false,
+      ok: true,
+    };
+  }
   // The one flag that is not a boot setting; its place on the line does not matter.
   const interactive = args.includes("--interactive");
   const line = parseWords(args.filter((arg) => arg !== "--interactive"));

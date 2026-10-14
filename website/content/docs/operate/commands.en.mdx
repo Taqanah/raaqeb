@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: The four commands the raaqeb binary takes, and how to run reset-password and set-address beside a running server.
+description: The four commands the raaqeb binary takes, its version and help, and how to run reset-password and set-address beside a running server.
 ---
 
 The binary takes four commands:
@@ -9,6 +9,8 @@ The binary takes four commands:
 - `raaqeb health` asks the server's `/health` and exits 0 when it answers 200, 1 otherwise.
 - `raaqeb reset-password` prints a reset link for the operator account. `raaqeb reset-password --interactive` asks for the new password with hidden input instead. Either way it switches the second step off and removes the authenticator app and its backup codes; turn it on again on the sign-in settings page.
 - `raaqeb set-address <url>` stores the public address, the way back in when the stored one refuses every sign-in. It exits 0 when stored, 1 when refused or there is no database yet, 2 when the text is not an origin.
+
+`raaqeb --version` prints the version and `raaqeb --help` prints the commands with one line each. Both exit 0 and read nothing: no data directory is opened or created.
 
 `reset-password` and `set-address` run beside the server, on the same data directory and boot settings. Run them as the user the server runs as, so every file they write keeps its owner:
 
