@@ -14,6 +14,7 @@ import {
   sinkOrigin,
   sinkPort,
 } from "./support/servers.ts";
+import { type Install, spawnInstall } from "./support/spawn.ts";
 
 // A token in the URL's path, as a Slack or Discord webhook carries one; the channel's name must not repeat it.
 const run = Date.now().toString(36);
@@ -57,8 +58,8 @@ async function signedBy(
   );
 }
 
-async function signIn(page: Page): Promise<void> {
-  await page.goto(`${englishOrigin}/sign-in`);
+async function signIn(page: Page, origin = englishOrigin): Promise<void> {
+  await page.goto(`${origin}/sign-in`);
   await page.fill("input[name=email]", operatorEmail);
   await page.fill("input[name=password]", operatorPassword);
   await page.click("form button[type=submit]");
@@ -305,6 +306,100 @@ for (const chat of chats) {
     ).toHaveLength(1);
   });
 }
+
+interface SavedTwiceCase {
+  /** Each field and its value, in the order the form draws them: the email's password shows once a user name is typed. */
+  readonly fields: readonly (readonly [string, string])[];
+  /** The fields that empty after a save, whose stored value an empty field keeps. */
+  readonly secrets: readonly string[];
+  readonly type: string;
+}
+
+const savedTwice: readonly SavedTwiceCase[] = [
+  {
+    fields: [
+      ["server", sinkOrigin],
+      ["topic", `twice-${run}`],
+      ["token", `tk_${run}`],
+    ],
+    secrets: ["topic", "token"],
+    type: "ntfy",
+  },
+  {
+    fields: [
+      ["from", "alerts@example.com"],
+      ["to", "ops@example.com"],
+      ["host", "smtp.example.test"],
+      ["port", "2525"],
+      ["username", "alerts"],
+      ["password", `pw-${run}`],
+    ],
+    secrets: ["password"],
+    type: "email",
+  },
+  {
+    fields: [
+      ["botToken", "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw"],
+      ["chatId", "-1009876543210"],
+    ],
+    secrets: ["botToken"],
+    type: "telegram",
+  },
+];
+
+// On an install of its own: an email channel on the English install would pass the setup check another spec reads.
+test.describe("a channel saved twice", () => {
+  let install: Install | undefined;
+  test.beforeAll(async () => {
+    install = await spawnInstall({ account: true });
+  });
+  test.afterAll(async () => {
+    await install?.stop();
+  });
+
+  for (const saved of savedTwice) {
+    test(`a ${saved.type} channel saved twice without a reload keeps every field it stored, its secrets kept`, async ({
+      page,
+    }) => {
+      const origin = install?.origin ?? "";
+      await signIn(page, origin);
+      await page.goto(`${origin}/admin/channels/new`);
+      await page.click(`[role=radio][data-value=${saved.type}]`);
+      const form = page.locator("[data-slot=channel-form]");
+      const name = form.locator("input[name=name]");
+      await name.fill(`Twice ${saved.type} ${run}`);
+      // Filled one after another; the form redraws its fields on each input.
+      await saved.fields.reduce(async (before, [field, value]) => {
+        await before;
+        await form.locator(`input[name=${field}]`).fill(value);
+      }, Promise.resolve());
+      await form.locator("button[type=submit]").click();
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toMatch(channelPath);
+
+      const saveAs = async (renamed: string) => {
+        await name.fill(renamed);
+        await form.locator("button[type=submit]").click();
+        await expect(
+          page.locator("[data-slot=save-outcome][data-state=saved]")
+        ).toBeVisible();
+      };
+      await saveAs(`Once ${saved.type} ${run}`);
+      await saveAs(`Twice ${saved.type} ${run}`);
+
+      await page.reload();
+      await expect(name).toHaveValue(`Twice ${saved.type} ${run}`);
+      await Promise.all(
+        saved.fields.map(([field, value]) =>
+          expect(form.locator(`input[name=${field}]`)).toHaveValue(
+            saved.secrets.includes(field) ? "" : value
+          )
+        )
+      );
+    });
+  }
+});
 
 test("a channel that does not apply to new monitors starts unticked on the new-monitor form, and a renewed signing secret signs the next send", async ({
   page,

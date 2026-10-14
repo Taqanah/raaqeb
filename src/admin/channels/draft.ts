@@ -68,6 +68,17 @@ export function channelDraftOf(
   };
 }
 
+/** The draft a save leaves on the page: every value as saved, each typed secret emptied (empty keeps it), and no renewal pending. */
+export function savedChannelDraft(draft: ChannelDraft): ChannelDraft {
+  const values = { ...draft.values };
+  for (const field of typedFields(draft.type)) {
+    if (field.secret) {
+      values[field.name] = "";
+    }
+  }
+  return { ...draft, renewGenerated: false, values };
+}
+
 /** What the form posts, or the refusal of every field that does not fit. Only the fields that apply to the typed values are posted; `kept` names the secrets an empty field keeps. */
 export function channelInputOf(
   draft: ChannelDraft,

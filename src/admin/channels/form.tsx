@@ -94,6 +94,7 @@ import {
   type ChannelFieldErrors,
   channelDraftOf,
   channelInputOf,
+  savedChannelDraft,
   withChannelField,
 } from "./draft.ts";
 import { NotificationPreviewCard } from "./preview.tsx";
@@ -218,12 +219,7 @@ export function ChannelForm({
         return;
       }
       // A saved secret is never shown again: its field empties, and empty keeps it.
-      const next = {
-        ...channelDraftOf(undefined, draft.type),
-        appliesToNew: draft.appliesToNew,
-        locale: draft.locale,
-        name: draft.name,
-      };
+      const next = savedChannelDraft(draft);
       setDraft(next);
       report({ draft: next, kind: "saved" });
       onSaved(result.channel);

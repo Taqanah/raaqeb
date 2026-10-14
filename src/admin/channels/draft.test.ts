@@ -4,6 +4,7 @@ import {
   type ChannelDraft,
   channelDraftOf,
   channelInputOf,
+  savedChannelDraft,
   withChannelField,
 } from "./draft.ts";
 
@@ -307,6 +308,93 @@ describe("a chat channel's draft", () => {
         chatId: "channel_refused_chat_id",
       },
       ok: false,
+    });
+  });
+});
+
+describe("a channel's draft after a save", () => {
+  test("an ntfy channel keeps its server, and its topic and access token empty to keep the stored ones", () => {
+    const saved = savedChannelDraft({
+      ...channelDraftOf(undefined, "ntfy"),
+      name: "Phones",
+      values: {
+        server: "https://ntfy.example.test",
+        token: "tk_private",
+        topic: "raaqeb-ops",
+      },
+    });
+    expect(saved.values).toEqual({
+      server: "https://ntfy.example.test",
+      token: "",
+      topic: "",
+    });
+    expect(saved.name).toBe("Phones");
+  });
+
+  test("an email channel keeps its sender, recipients, host, security, port and user name, and its password empties", () => {
+    const values = {
+      from: "Raaqeb <alerts@example.com>",
+      host: "smtp.example.com",
+      port: "465",
+      security: "tls",
+      to: "ops@example.com",
+      username: "alerts",
+    };
+    const saved = savedChannelDraft({
+      ...channelDraftOf(undefined, "email"),
+      values: { ...values, password: "hunter2" },
+    });
+    expect(saved.values).toEqual({ ...values, password: "" });
+  });
+
+  test("a Telegram channel keeps its chat ID, and its bot token empties", () => {
+    const saved = savedChannelDraft({
+      ...channelDraftOf(undefined, "telegram"),
+      values: {
+        botToken: "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw",
+        chatId: "-1001234567890",
+      },
+    });
+    expect(saved.values).toEqual({ botToken: "", chatId: "-1001234567890" });
+  });
+
+  test("the name, the language and applying to new monitors stay as saved, and a renewed generated secret is renewed once", () => {
+    const draft = typed({
+      appliesToNew: false,
+      locale: "en",
+      renewGenerated: true,
+      values: { url: "https://hooks.example.test/x" },
+    });
+    expect(savedChannelDraft(draft)).toEqual({
+      ...draft,
+      renewGenerated: false,
+      values: { url: "" },
+    });
+  });
+
+  test("a second save posts the saved values, its secrets kept", () => {
+    const first: ChannelDraft = {
+      ...channelDraftOf(undefined, "ntfy"),
+      name: "Phones",
+      values: {
+        server: "https://ntfy.example.test",
+        token: "tk_private",
+        topic: "raaqeb-ops",
+      },
+    };
+    const second = withChannelField(
+      savedChannelDraft(first),
+      "name",
+      "Phones 2"
+    );
+    expect(channelInputOf(second, ["topic", "token"])).toEqual({
+      input: {
+        appliesToNew: true,
+        name: "Phones 2",
+        type: "ntfy",
+        values: { server: "https://ntfy.example.test" },
+      },
+      ok: true,
     });
   });
 });
