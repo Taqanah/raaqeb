@@ -177,6 +177,13 @@ describe("the release version", () => {
 describe("the image and the compose file", () => {
   const repo = `${import.meta.dir}/..`;
 
+  test("the Dockerfile makes /data private to the runtime user, so a fresh install logs no mode warning", async () => {
+    const dockerfile = await Bun.file(`${repo}/Dockerfile`).text();
+    expect(dockerfile).toContain(
+      "--chown=65532:65532 --chmod=0700 /data /data\n"
+    );
+  });
+
   test("the Dockerfile copies each platform's glibc binary, and the build context lets exactly those in", async () => {
     const dockerfile = await Bun.file(`${repo}/Dockerfile`).text();
     const ignore = await Bun.file(`${repo}/.dockerignore`).text();

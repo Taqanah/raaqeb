@@ -4,7 +4,8 @@
  * browser walks onboarding to the empty monitors list; `raaqeb health` inside
  * the container then exits 0 and Docker's own health check reads healthy; an
  * email channel's test message leaves the binary over SMTP, a real send;
- * `raaqeb reset-password` beside the server prints a link; `docker stop` ends
+ * `raaqeb reset-password` beside the server prints a link; the data folder
+ * starts at 0700, so the start logs no mode warning; `docker stop` ends
  * it with exit code 0. Needs Docker and Playwright's Chromium, so it stays
  * out of the gate. The container shares the host's network, so it reaches the
  * scripted SMTP server on loopback.
@@ -57,6 +58,12 @@ try {
   await page.goto(`${origin}/`);
   await expectPath(page, "/onboarding");
   step("reached the onboarding page");
+  // The image creates /data private; a wider folder logs a warning on every fresh install.
+  const started = await run(["docker", "logs", name]);
+  if (started.output.includes("wider than 0700")) {
+    throw new Error(`the data folder is wider than 0700: ${started.output}`);
+  }
+  step("the data folder starts private, with no mode warning");
   await page.click(continueButton);
   await expectPath(page, "/onboarding/database");
   await page.click(continueButton);

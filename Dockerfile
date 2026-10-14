@@ -10,13 +10,18 @@ FROM scratch AS bin-arm64
 COPY dist/bin/raaqeb-linux-arm64 /raaqeb
 FROM bin-${TARGETARCH} AS bin
 
+# The data folder, as a layer to copy: the distroless image has no shell to chmod with.
+FROM scratch AS data
+WORKDIR /data
+
 # cc-debian12:nonroot, pinned by its multi-arch index digest.
 FROM gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f
 COPY --from=bin --chmod=0755 /raaqeb /usr/local/bin/raaqeb
 USER 65532:65532
-# Made here, owned by the non-root user, so a fresh named volume takes that
-# owner. A bind mount needs `docker run --user "$(id -u):$(id -g)"` for a
-# folder the host user owns.
+# Private (0700) and owned by the non-root user, so a fresh named volume takes
+# both and the start logs no mode warning. A bind mount needs
+# `docker run --user "$(id -u):$(id -g)"` for a folder the host user owns.
+COPY --from=data --chown=65532:65532 --chmod=0700 /data /data
 WORKDIR /data
 ENV RAAQEB_DATA_DIR=/data RAAQEB_HOST=0.0.0.0
 VOLUME /data
