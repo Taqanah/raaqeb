@@ -3,7 +3,7 @@
  * preview image of each locale, the tags that point at it, and structured
  * data as JSON-LD.
  */
-import type { Locale } from "@/shared/i18n/locale.ts";
+import { defaultLocale, type Locale } from "@/shared/i18n/locale.ts";
 import { site } from "~/copy.ts";
 
 /** Each locale's preview image, 1200 by 630, taken from the landing page's hero. */
@@ -41,6 +41,26 @@ export function previewMeta(
     { content: description, name: "twitter:description" },
     { content: image, name: "twitter:image" },
     { content: alt, name: "twitter:image:alt" },
+  ];
+}
+
+/** A page in one language: its locale and its path on the site. */
+export interface Version {
+  readonly locale: Locale;
+  readonly url: string;
+}
+
+/** A page's versions as hreflang links, one per language it is written in, and x-default on the default language's, where a reader whose language has none lands. */
+export function languageLinks(
+  versions: readonly Version[]
+): { href: string; hrefLang: string }[] {
+  const fallback =
+    versions.find((v) => v.locale === defaultLocale) ?? versions[0];
+  return [
+    ...versions.map((v) => ({ href: `${site}${v.url}`, hrefLang: v.locale })),
+    ...(fallback
+      ? [{ href: `${site}${fallback.url}`, hrefLang: "x-default" }]
+      : []),
   ];
 }
 

@@ -6,6 +6,8 @@
   "compatibility_date": "2026-10-09",
   "assets": {
     "directory": "./dist/client",
+    // The build writes /docs/api as docs/api.html: served at /docs/api, with /docs/api/ redirected there, the address the canonical tags name.
+    "html_handling": "auto-trailing-slash",
     // Serves the nearest 404.html for a path that is no file; without one, Cloudflare's plain 404.
     "not_found_handling": "404-page"
   },

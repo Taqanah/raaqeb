@@ -4,7 +4,7 @@ import { defaultLocale, locales } from "@/shared/i18n/locale.ts";
 import { copies, installCommand, repository, site } from "~/copy.ts";
 import { Landing } from "~/landing/page.tsx";
 import { homePath, pageLocale } from "~/locale.ts";
-import { jsonLd, previewImage, previewMeta } from "~/seo.ts";
+import { jsonLd, languageLinks, previewImage, previewMeta } from "~/seo.ts";
 
 // The landing page: Arabic at the bare path, English under /en, each naming the other for search engines.
 export const Route = createFileRoute("/{-$locale}/")({
@@ -21,12 +21,9 @@ export const Route = createFileRoute("/{-$locale}/")({
     return {
       links: [
         { href: url, rel: "canonical" },
-        ...locales.map((l) => ({
-          href: `${site}${homePath[l]}`,
-          hrefLang: l,
-          rel: "alternate",
-        })),
-        { href: `${site}/`, hrefLang: "x-default", rel: "alternate" },
+        ...languageLinks(
+          locales.map((l) => ({ locale: l, url: homePath[l] }))
+        ).map((link) => ({ ...link, rel: "alternate" })),
       ],
       meta: [
         { title },

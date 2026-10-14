@@ -9,7 +9,7 @@ import { markdownUrl } from "~/docs/markdown.ts";
 import { DocsView } from "~/docs/page.tsx";
 import { docs, source } from "~/docs/source.ts";
 import { pageLocale } from "~/locale.ts";
-import { jsonLd, previewMeta } from "~/seo.ts";
+import { jsonLd, languageLinks, previewMeta } from "~/seo.ts";
 
 // A docs page and the sidebar's tree; prerender writes each answer to a JSON file, so following a link needs no server.
 const loadPage = createServerFn({ method: "GET" })
@@ -50,9 +50,8 @@ export const Route = createFileRoute("/{-$locale}/docs/$")({
     return {
       links: [
         { href: `${site}${loaderData.url}`, rel: "canonical" },
-        ...loaderData.alternates.map((a) => ({
-          href: `${site}${a.url}`,
-          hrefLang: a.locale,
+        ...languageLinks(loaderData.alternates).map((link) => ({
+          ...link,
           rel: "alternate",
         })),
       ],

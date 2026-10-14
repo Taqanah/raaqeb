@@ -19,7 +19,13 @@ export default defineConfig({
     // Compiles the docs' MDX (website/content/docs) before Start sees it.
     fumadocsMdx(),
     tanstackStart({
-      prerender: { crawlLinks: true, enabled: true, failOnError: true },
+      // Each page as its path plus .html, so the host serves /docs/api itself, the address every canonical tag names, and redirects /docs/api/ to it.
+      prerender: {
+        autoSubfolderIndex: false,
+        crawlLinks: true,
+        enabled: true,
+        failOnError: true,
+      },
       // Every page a visitor can reach, so a page no link names yet is still written.
       pages: [
         { path: "/" },

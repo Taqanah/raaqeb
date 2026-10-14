@@ -4,7 +4,11 @@ import { z } from "zod";
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 
 const configShape = z.object({
-  assets: z.object({ directory: z.string(), not_found_handling: z.string() }),
+  assets: z.object({
+    directory: z.string(),
+    html_handling: z.string().optional(),
+    not_found_handling: z.string(),
+  }),
   compatibility_date: z.string(),
   name: z.string(),
   routes: z.array(
@@ -40,4 +44,13 @@ test("an unknown address gets the not-found page in its language, which the buil
   expect(config.assets.not_found_handling).toBe("404-page");
   expect(vite).toContain('outputPath: "/404.html"');
   expect(vite).toContain('outputPath: "/en/404.html"');
+});
+
+test("every page is written as its path plus .html, so the host serves the slashless address the canonical tags and the sitemap name", async () => {
+  const vite = await Bun.file(`${import.meta.dir}/vite.config.ts`).text();
+  expect(vite).toContain("autoSubfolderIndex: false");
+  // Cloudflare's default: /docs/api serves docs/api.html, /docs/api/ redirects to it.
+  expect(config.assets.html_handling ?? "auto-trailing-slash").toBe(
+    "auto-trailing-slash"
+  );
 });
