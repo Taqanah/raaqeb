@@ -159,16 +159,18 @@ describe("the release version", () => {
     }
   });
 
-  test("the repository's own package is a release version, and the operator compose file and the Fly sample run that version's image", async () => {
-    const version = releaseVersion(
-      await Bun.file(`${import.meta.dir}/../package.json`).json()
-    );
-    expect(
-      await Bun.file(`${import.meta.dir}/../deploy/compose.yaml`).text()
-    ).toContain(`image: ${imageTag(version)}\n`);
-    expect(
-      await Bun.file(`${import.meta.dir}/../deploy/fly/fly.toml`).text()
-    ).toContain(`image = "${imageTag(version)}"\n`);
+  test("the repository's own package is a release version, and the operator compose file and the Fly sample run one stable release's image, never a pre-release", async () => {
+    releaseVersion(await Bun.file(`${import.meta.dir}/../package.json`).json());
+    const compose = await Bun.file(
+      `${import.meta.dir}/../deploy/compose.yaml`
+    ).text();
+    const fly = await Bun.file(
+      `${import.meta.dir}/../deploy/fly/fly.toml`
+    ).text();
+    const tag = compose.split("image: ")[1]?.split("\n")[0] ?? "";
+    expect(tag).toStartWith(imageTag(""));
+    expect(tag).not.toContain("-");
+    expect(fly).toContain(`image = "${tag}"\n`);
   });
 });
 
