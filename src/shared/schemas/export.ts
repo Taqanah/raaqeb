@@ -337,6 +337,7 @@ export const importRefusals = [
   "not_empty",
   "invalid",
   "version",
+  "line_too_large",
   "unavailable",
 ] as const;
 export type ImportRefusal = (typeof importRefusals)[number];

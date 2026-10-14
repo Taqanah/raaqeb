@@ -10,7 +10,7 @@ import { calendar, timeZone } from "@/server/settings/clock.ts";
 import { installLanguage } from "@/server/settings/language.ts";
 import { operatorCalendar } from "@/server/settings/operator.ts";
 import { runSql } from "@/server/storage/fixture.ts";
-import { pageImageMaxBytes } from "@/shared/schemas/page.ts";
+import { pageImageKinds, pageImageMaxBytes } from "@/shared/schemas/page.ts";
 import { exportInstall } from "./export.ts";
 import {
   checksEvery,
@@ -792,6 +792,49 @@ describe("an import", () => {
       await importInstall(into.storage, into.key, fileOf([header]), now)
     ).toEqual({ line: 1, ok: false, reason: "invalid" });
     expect(await empty(into)).toBe(true);
+  });
+
+  test("refuses a line past 8 MB as too large to read, by its number, and writes nothing", async () => {
+    const into = await target();
+    expect(
+      await importInstall(
+        into.storage,
+        into.key,
+        fileOf(["x".repeat(8 * 1024 * 1024 + 1)]),
+        now
+      )
+    ).toEqual({ line: 1, ok: false, reason: "line_too_large" });
+    expect(await empty(into)).toBe(true);
+  });
+
+  test("takes a header as large as a real one comes: a page's three images at their size limits", async () => {
+    const from = await source();
+    const into = await target();
+    const header = JSON.parse(
+      (await exportLines(from, "configuration"))[0] ?? "{}"
+    );
+    const { pageId } = header.configuration.pageImages[0];
+    for (const kind of pageImageKinds) {
+      const body = new Uint8Array(pageImageMaxBytes[kind]);
+      body.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      // biome-ignore lint/performance/noAwaitInLoops: three writes, one after another
+      await from.storage.pages.setImage(pageId, {
+        body,
+        contentType: "image/png",
+        hash: new Bun.CryptoHasher("sha256").update(body).digest("hex"),
+        kind,
+      });
+    }
+    expect(
+      (
+        await importInstall(
+          into.storage,
+          into.key,
+          fileOf(await exportLines(from, "configuration")),
+          now
+        )
+      ).ok
+    ).toBe(true);
   });
 
   test("refuses a blank line among the records, by its number", async () => {

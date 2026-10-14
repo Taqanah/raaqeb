@@ -4705,6 +4705,10 @@ msgid "setting_import_too_large"
 msgstr "The file is larger than an import takes (4 GB)."
 
 #. js-lingui-explicit-id
+msgid "setting_import_line_too_large"
+msgstr "A line of the file is larger than an import reads (8 MB). Nothing was imported."
+
+#. js-lingui-explicit-id
 msgid "setting_import_no_file"
 msgstr "Choose the export file first."
 

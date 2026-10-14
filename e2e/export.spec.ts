@@ -209,6 +209,21 @@ test("a damaged file and a file of another version are refused, each saying why,
   await expect(version).toHaveAttribute("data-state", "version");
 });
 
+test("a file with a line larger than an import reads is refused, saying so", async ({
+  page,
+}) => {
+  const long = "test-results/export/long-line.jsonl.zst";
+  await Bun.write(
+    long,
+    Bun.zstdCompressSync(
+      new TextEncoder().encode(`${"x".repeat(8 * 1024 * 1024 + 1)}\n`)
+    )
+  );
+  await signIn(page, englishOrigin);
+  const answer = await upload(page, englishOrigin, long);
+  await expect(answer).toHaveAttribute("data-state", "line_too_large");
+});
+
 test("a monitor's page downloads its history over the chart's range", async ({
   page,
 }) => {

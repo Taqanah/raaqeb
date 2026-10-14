@@ -49,7 +49,7 @@ import type { Outage } from "@/shared/schemas/outage.ts";
 import { pageImageMaxBytes } from "@/shared/schemas/page.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import type { Rollup } from "@/shared/schemas/rollup.ts";
-import { readLines, UnreadableFileError } from "./lines.ts";
+import { LongLineError, readLines, UnreadableFileError } from "./lines.ts";
 
 /** Records gathered before one statement writes them. */
 const batchSize = 500;
@@ -276,6 +276,9 @@ async function refused(
       );
       return { ok: false, reason: "unavailable" };
     }
+  }
+  if (error instanceof LongLineError) {
+    return { line: error.line, ok: false, reason: "line_too_large" };
   }
   if (
     error instanceof InvalidLineError ||

@@ -5,8 +5,13 @@
  * side holds more than a line.
  */
 
-/** The longest line a reader takes, in bytes: the header carries the page images, and anything longer is not an export. */
-export const maxLineBytes = 64 * 1024 * 1024;
+/**
+ * The longest line a reader takes, in bytes: the header carries a page's
+ * three images in base64 (2 MB at their size limits) and the configuration.
+ * Parsing a line costs about eight times its size, so this keeps an import
+ * near the memory floor; anything longer is not an export.
+ */
+export const maxLineBytes = 8 * 1024 * 1024;
 
 /** How much text one chunk into the compressor gathers, so millions of short lines are not millions of chunks. */
 const chunkChars = 64 * 1024;
@@ -47,7 +52,7 @@ export function compressLines(
   );
 }
 
-/** Thrown by `readLines` when the bytes are not zstd, not UTF-8, or hold a line past `maxLineBytes`. */
+/** Thrown by `readLines` when the bytes are not zstd or not UTF-8, and as a `LongLineError` for a line past `maxLineBytes`. */
 export class UnreadableFileError extends Error {
   readonly line: number;
   constructor(line: number, options?: ErrorOptions) {
@@ -56,6 +61,9 @@ export class UnreadableFileError extends Error {
     this.line = line;
   }
 }
+
+/** Thrown by `readLines` for a line past `maxLineBytes`, before it is held whole. */
+export class LongLineError extends UnreadableFileError {}
 
 /** The lines of a compressed stream, without their line breaks; an empty last line is no line. */
 export async function* readLines(
@@ -89,7 +97,7 @@ export async function* readLines(
       ) {
         held += end - start;
         if (held > maxBytes) {
-          throw new UnreadableFileError(line);
+          throw new LongLineError(line);
         }
         parts.push(chunk.subarray(start, end));
         yield complete();
@@ -100,7 +108,7 @@ export async function* readLines(
       }
       held += chunk.length - start;
       if (held > maxBytes) {
-        throw new UnreadableFileError(line);
+        throw new LongLineError(line);
       }
       parts.push(chunk.subarray(start));
     }

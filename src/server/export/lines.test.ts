@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { compressLines, readLines, UnreadableFileError } from "./lines.ts";
+import {
+  compressLines,
+  LongLineError,
+  readLines,
+  UnreadableFileError,
+} from "./lines.ts";
 
 async function all(lines: AsyncIterable<string>): Promise<string[]> {
   const read: string[] = [];
@@ -104,6 +109,22 @@ describe("JSON Lines under zstd", () => {
     );
     const error = await refusal(readLines(trickle(bytes, 64), 1000));
     expect(error?.line).toBe(2);
+  });
+
+  test("a line past the limit, with or without a line break after it, is refused as too large, and bytes that are not zstd are not", async () => {
+    const compressed = (text: string) =>
+      new Uint8Array(Bun.zstdCompressSync(new TextEncoder().encode(text)));
+    const long = "x".repeat(5000);
+    const refusals = await Promise.all([
+      refusal(readLines(trickle(compressed(`short\n${long}\n`), 64), 1000)),
+      refusal(readLines(trickle(compressed(`short\n${long}`), 64), 1000)),
+      refusal(readLines(new Blob(["not zstd at all"]).stream(), 1000)),
+    ]);
+    expect(refusals.map((error) => error instanceof LongLineError)).toEqual([
+      true,
+      true,
+      false,
+    ]);
   });
 
   test("bytes that are not UTF-8 are refused by their line", async () => {

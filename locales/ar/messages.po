@@ -4705,6 +4705,10 @@ msgid "setting_import_too_large"
 msgstr "الملف أكبر مما يقبله الاستيراد (4 GB)."
 
 #. js-lingui-explicit-id
+msgid "setting_import_line_too_large"
+msgstr "في الملف سطر أكبر مما يقرؤه الاستيراد (⁦8 MB⁩). لم يُستورد شيء."
+
+#. js-lingui-explicit-id
 msgid "setting_import_no_file"
 msgstr "اختر ملف التصدير أولًا."
 

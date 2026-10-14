@@ -167,6 +167,7 @@ const importRefusals: Readonly<
   Record<ImportRefusal | "too_large" | "no_file", MessageId>
 > = {
   invalid: "setting_import_invalid",
+  line_too_large: "setting_import_line_too_large",
   no_file: "setting_import_no_file",
   not_empty: "setting_import_not_empty",
   too_large: "setting_import_too_large",
