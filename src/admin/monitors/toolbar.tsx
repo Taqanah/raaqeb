@@ -90,12 +90,13 @@ export function Toolbar({
       ? [search.tag, ...tags]
       : tags;
   return (
+    // A phone lays the filters out evenly: the search, then the group and the tag side by side, then the sort across.
     <div
-      className="flex flex-wrap items-center gap-2"
+      className="flex flex-wrap items-center gap-2 max-sm:grid max-sm:grid-cols-2"
       data-slot="monitor-toolbar"
     >
       {/* Wide enough for the whole placeholder, so a filter that would squeeze it wraps to the next line instead. */}
-      <div className="relative min-w-60 flex-1">
+      <div className="relative min-w-60 flex-1 max-sm:col-span-2">
         <SearchIcon className="pointer-events-none absolute start-3 top-1/2 size-icon -translate-y-1/2 text-muted-foreground" />
         <Input
           aria-label={t("app_search")}
@@ -110,6 +111,7 @@ export function Toolbar({
       </div>
       <NativeSelect
         aria-label={t("monitor_filter_group")}
+        className="max-sm:w-full"
         name="group"
         onChange={onGroup}
         value={search.group ?? all}
@@ -125,6 +127,7 @@ export function Toolbar({
       </NativeSelect>
       <NativeSelect
         aria-label={t("monitor_filter_tag")}
+        className="max-sm:w-full"
         name="tag"
         onChange={onTag}
         value={search.tag ?? all}
@@ -141,16 +144,22 @@ export function Toolbar({
       {/* Two orders, side by side, one click each. Each option keeps its own width: the control's default equal shares squeeze the longer label into its padding and against the edge. */}
       <Segmented
         aria-label={t("monitor_sort")}
-        className="w-auto"
+        className="w-auto max-sm:col-span-2 max-sm:w-full"
         data-name="sort"
         name="sort"
         onValueChange={onSort}
         value={(search.sort ?? "name") satisfies MonitorSort}
       >
-        <SegmentedItem className="flex-none whitespace-nowrap" value="name">
+        <SegmentedItem
+          className="flex-none whitespace-nowrap max-sm:flex-1"
+          value="name"
+        >
           {t("monitor_sort_name")}
         </SegmentedItem>
-        <SegmentedItem className="flex-none whitespace-nowrap" value="newest">
+        <SegmentedItem
+          className="flex-none whitespace-nowrap max-sm:flex-1"
+          value="newest"
+        >
           {t("monitor_sort_newest")}
         </SegmentedItem>
       </Segmented>

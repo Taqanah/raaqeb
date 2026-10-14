@@ -15,6 +15,14 @@ msgid "app_close"
 msgstr "إغلاق"
 
 #. js-lingui-explicit-id
+msgid "app_copy"
+msgstr "نسخ"
+
+#. js-lingui-explicit-id
+msgid "app_copied"
+msgstr "نُسخ"
+
+#. js-lingui-explicit-id
 msgid "app_toasts"
 msgstr "الإشعارات"
 
@@ -1868,7 +1876,7 @@ msgstr "حفظ الاستجابة"
 
 #. js-lingui-explicit-id
 msgid "monitor_field_capture_mode_hint"
-msgstr "ترويسات الاستجابة وأول 4 KB من المحتوى، دون بيانات الاستيثاق أبدًا."
+msgstr "ترويسات الاستجابة وأول 4 كيلوبايت من المحتوى، دون بيانات الاستيثاق أبدًا."
 
 #. js-lingui-explicit-id
 msgid "monitor_capture_off"
@@ -2076,7 +2084,7 @@ msgstr "ترويسات الاستجابة"
 
 #. js-lingui-explicit-id
 msgid "monitor_test_body"
-msgstr "أول 4 KB من المحتوى"
+msgstr "أول 4 كيلوبايت من المحتوى"
 
 #. js-lingui-explicit-id
 msgid "monitor_test_redacted"
@@ -2203,6 +2211,10 @@ msgid "monitor_span_checks_gone"
 msgstr "لم تعد فحوص هذه المدة محفوظة، وبقيت ملخّصاتها فقط."
 
 #. js-lingui-explicit-id
+msgid "monitor_recent_checks_end"
+msgstr "لم تعد الفحوص الأقدم محفوظة، ويعرض الرسم البياني وشريط الأيام ملخّصاتها."
+
+#. js-lingui-explicit-id
 msgid "monitor_span_checks_more"
 msgstr "اعرض المزيد"
 
@@ -2269,6 +2281,10 @@ msgstr "مستمر منذ {duration}"
 #. js-lingui-explicit-id
 msgid "monitor_outage_acknowledged"
 msgstr "أُقِرّ به {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_acknowledged_toast"
+msgstr "أُقِرّ بالانقطاع، فتتوقف تذكيراته."
 
 #. js-lingui-explicit-id
 msgid "monitor_certificate_title"
@@ -4359,14 +4375,6 @@ msgstr "رابط الموجز"
 #. js-lingui-explicit-id
 msgid "public_subscribe_feed_hint"
 msgstr "أضف هذا الرابط إلى قارئ موجزات ليصلك فيه كل جديد عن الحوادث والصيانة. لا يحتاج إلى عنوان ولا تأكيد."
-
-#. js-lingui-explicit-id
-msgid "public_subscribe_copy"
-msgstr "نسخ"
-
-#. js-lingui-explicit-id
-msgid "public_subscribe_copied"
-msgstr "نُسخ"
 
 #. js-lingui-explicit-id
 msgid "public_subscription_title"

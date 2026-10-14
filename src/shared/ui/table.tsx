@@ -56,7 +56,8 @@ function TableRow({ className, ...props }: ComponentProps<"tr">) {
   return (
     <tr
       className={cn(
-        "relative border-b transition-colors hover:bg-muted has-aria-expanded:bg-muted data-[state=selected]:bg-subtle",
+        // A selected row is tinted, not grey, so the grey no-data days of a bar on it still show.
+        "relative border-b transition-colors hover:bg-muted has-aria-expanded:bg-muted data-[state=selected]:bg-action/6",
         className
       )}
       data-slot="table-row"

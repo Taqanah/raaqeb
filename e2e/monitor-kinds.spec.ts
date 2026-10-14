@@ -325,6 +325,8 @@ test("an open outage is acknowledged from the monitor's page and from the list's
   await page.keyboard.press("Escape");
   await menu(second).click();
   await page.click("[data-action=acknowledge]");
+  // The menu has closed, so a toast says it went through.
+  await expect(page.locator("[data-slot=toast]")).toBeVisible();
   await expect(page.locator("[data-action=acknowledge]")).toHaveCount(0);
   await page.reload();
   await menu(second).click();

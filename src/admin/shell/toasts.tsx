@@ -1,7 +1,7 @@
 /**
- * The admin's toasts: a save that leaves its page says it went
- * through here, at the bottom of the screen on the end side, since the form
- * that held the line is gone. Base UI's toast announces each one politely and
+ * The admin's toasts: a save that leaves its page, or an action whose menu
+ * closed, says it went through here, at the bottom of the screen on the end
+ * side, since the form or the menu that would hold the line is gone. Base UI's toast announces each one politely and
  * closes it after five seconds. A refusal is never a toast: it stays beside
  * the form it is about.
  */
@@ -57,7 +57,7 @@ function ToastList(): ReactNode {
   ));
 }
 
-/** Says a save went through, once its page is left behind. */
+/** Says a save or an action went through, once its page or its menu is gone. */
 export function useSavedToast(): (title: string) => void {
   const { add } = Toast.useToastManager();
   return useCallback(

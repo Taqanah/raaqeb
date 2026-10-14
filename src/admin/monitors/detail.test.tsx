@@ -110,6 +110,7 @@ function page(locale: Locale, captureMode: CaptureMode): string {
 }
 
 const detailsButton = /data-slot="check-details"/g;
+const chosenDay = /aria-pressed="true"[^>]*data-range="24h"/;
 
 describe("the recent checks open to what a check kept", () => {
   test("with capture always, an up check opens too, since it kept its response", () => {
@@ -283,7 +284,21 @@ describe("the checks of a zoomed span", () => {
   const noPage = () =>
     Promise.resolve({ ok: false, reason: "unavailable" } as const);
 
-  function zoomed(spanChecks: MonitorDetail["spanChecks"]): string {
+  /** A bucket of the span's chart that holds checks, from the raw checks or their summaries. */
+  const summarised = {
+    at: span.from,
+    averageMs: 80,
+    checks: 4,
+    degraded: 0,
+    down: 0,
+    maxMs: 90,
+    minMs: 70,
+  };
+
+  function zoomed(
+    spanChecks: MonitorDetail["spanChecks"],
+    buckets: readonly (typeof summarised)[] = []
+  ): string {
     return render(
       "en",
       <MonitorDetailView
@@ -293,7 +308,7 @@ describe("the checks of a zoomed span", () => {
           // The read zoomed the chart too, as it does for a span it lists.
           chart: {
             bucketMs: minute,
-            buckets: [],
+            buckets,
             from: span.from,
             gapLimitMs: 5 * minute,
             range: "24h",
@@ -353,10 +368,45 @@ describe("the checks of a zoomed span", () => {
   });
 
   test("a span whose checks are no longer kept says only summaries remain, and lists no check", () => {
-    const html = zoomed({ kept: false });
+    const html = zoomed({ kept: false }, [summarised]);
     expect(html).toContain('data-slot="span-checks-gone"');
     expect(rows(html)).toEqual([]);
     expect(html).not.toContain(showMore);
+  });
+
+  test("an old span with no checks and no summaries says it has no checks, not that they are no longer kept", () => {
+    const html = zoomed({ kept: false });
+    expect(html).toContain('data-slot="span-checks-none"');
+    expect(html).not.toContain('data-slot="span-checks-gone"');
+  });
+
+  test("while zoomed no range reads as chosen, since the chart shows the span", () => {
+    expect(
+      zoomed({ checks: inSpan, from: span.from, kept: true, more: false })
+    ).not.toContain('aria-pressed="true"');
+  });
+
+  test("unzoomed, the chosen range reads as chosen", () => {
+    const html = render(
+      "en",
+      <MonitorDetailView
+        clock={clock}
+        detail={{
+          ...detail("off"),
+          chart: {
+            bucketMs: minute,
+            buckets: [],
+            from: now - 1440 * minute,
+            gapLimitMs: 5 * minute,
+            range: "24h",
+            to: now,
+          },
+        }}
+        onRange={noRange}
+        openRecord={noRecord}
+      />
+    );
+    expect(html).toMatch(chosenDay);
   });
 
   test("unzoomed, the list holds the newest checks in relative time, and offers more while older ones remain", () => {
@@ -383,5 +433,62 @@ describe("the checks of a zoomed span", () => {
     );
     expect(html).toContain("1 minute ago");
     expect(html).toContain(showMore);
+  });
+
+  describe("unzoomed, at the raw checks' window's start", () => {
+    const edge = now - 30 * 1440 * minute;
+    const dayOf = (at: number, observedMs: number) => ({
+      date: new Date(at).toISOString().slice(0, 10),
+      downtimeMs: 0,
+      incidents: [],
+      maintenance: [],
+      observedMs,
+      outages: [],
+      responseMs: observedMs > 0 ? 80 : null,
+      uptime: observedMs > 0 ? { decimals: 2, percent: 100 } : null,
+    });
+    function unzoomed(
+      more: boolean,
+      days: readonly ReturnType<typeof dayOf>[]
+    ): string {
+      return render(
+        "en",
+        <MonitorDetailView
+          clock={clock}
+          detail={{
+            ...detail("off"),
+            days,
+            spanChecks: {
+              checks: detail("off").recent,
+              from: edge,
+              kept: true,
+              more,
+            },
+          }}
+          onRange={noRange}
+          openRecord={noRecord}
+          readSpanChecks={noPage}
+        />
+      );
+    }
+    const end = 'data-slot="recent-checks-end"';
+
+    test("the list says older checks remain only as summaries when the day bar has days before it", () => {
+      expect(
+        unzoomed(false, [dayOf(edge - 3 * 1440 * minute, 3_600_000)])
+      ).toContain(end);
+    });
+
+    test("it says nothing while older checks remain to show, or when no day before it has data", () => {
+      expect(
+        unzoomed(true, [dayOf(edge - 3 * 1440 * minute, 3_600_000)])
+      ).not.toContain(end);
+      expect(
+        unzoomed(false, [dayOf(edge - 3 * 1440 * minute, 0)])
+      ).not.toContain(end);
+      expect(
+        unzoomed(false, [dayOf(edge + 1440 * minute, 3_600_000)])
+      ).not.toContain(end);
+    });
   });
 });

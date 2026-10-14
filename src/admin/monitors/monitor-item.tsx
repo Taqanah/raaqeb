@@ -113,7 +113,7 @@ export function MonitorTableRow(props: MonitorItemProps): ReactNode {
           onCheckedChange={select}
         />
       </TableCell>
-      {/* A long name and a long target end in an ellipsis, the name allowed a little more, both wider on a wider screen, so the bar and the tags keep their room. The name's column takes the row's spare width, so the state and its bar sit together before the tags; from xl it takes no more, so a target as long as its cap ends in an ellipsis rather than push the table past its frame. */}
+      {/* A long name and a long target end in an ellipsis, the name allowed a little more, both capped by the space beside the sidebar (nameCaps), so the bar and the tags keep their room. From sm the name's column takes only the row's spare width, so the state and its bar sit together before the tags and a target as long as its cap ends in an ellipsis rather than push the table past its frame. */}
       <TableCell className={`w-full sm:max-w-0 ${nameCaps}`}>
         <Name monitor={monitor} />
       </TableCell>

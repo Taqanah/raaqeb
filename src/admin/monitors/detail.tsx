@@ -163,7 +163,11 @@ export function MonitorDetailView({
                   <XIcon />
                 </Button>
               ) : null}
-              <RangeSwitch current={detail.chart.range} onRange={onRange} />
+              {/* Zoomed, the chart shows the span, so no range reads as chosen; a click on one leaves the span for it. */}
+              <RangeSwitch
+                current={zoomed ? undefined : detail.chart.range}
+                onRange={onRange}
+              />
               <a
                 className={buttonVariants({ variant: "outline" })}
                 data-slot="history-download"
@@ -497,7 +501,7 @@ function RangeSwitch({
   current,
   onRange,
 }: {
-  readonly current: ChartRange;
+  readonly current: ChartRange | undefined;
   readonly onRange: (range: ChartRange) => void;
 }): ReactNode {
   const { t } = useMessages();
@@ -523,7 +527,7 @@ function RangeButton({
   onRange,
   range,
 }: {
-  readonly current: ChartRange;
+  readonly current: ChartRange | undefined;
   readonly onRange: (range: ChartRange) => void;
   readonly range: ChartRange;
 }): ReactNode {
@@ -594,22 +598,7 @@ function RecentChecks({
       setFailed(page.reason);
     }
   }, [checks, from, oldest, readSpanChecks]);
-  let empty: ReactNode;
-  if (!spanChecks.kept) {
-    empty = (
-      <p className="text-muted-foreground text-sm" data-slot="span-checks-gone">
-        {t("monitor_span_checks_gone")}
-      </p>
-    );
-  } else if (checks.length === 0) {
-    empty = zoomed ? (
-      <p className="text-muted-foreground text-sm" data-slot="span-checks-none">
-        {t("monitor_chart_empty")}
-      </p>
-    ) : (
-      <p className="text-muted-foreground text-sm">{t("monitor_no_checks")}</p>
-    );
-  }
+  const empty = emptyLine(detail, checks.length, zoomed, t);
   return (
     <Card data-slot="recent-checks">
       <CardHeader>
@@ -675,8 +664,67 @@ function RecentChecks({
             {t("monitor_span_checks_more")}
           </Button>
         ) : null}
+        {!(zoomed || more) &&
+        checks.length > 0 &&
+        summariesBefore(detail, from) ? (
+          <p
+            className="text-center text-muted-foreground text-sm"
+            data-slot="recent-checks-end"
+          >
+            {t("monitor_recent_checks_end")}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+/** What the checks card says in place of its list, if anything: an old span's checks are gone unless it never had any, and a span or a monitor may have none yet. */
+function emptyLine(
+  detail: MonitorDetail,
+  shown: number,
+  zoomed: boolean,
+  t: ReturnType<typeof useMessages>["t"]
+): ReactNode {
+  const none = (
+    <p className="text-muted-foreground text-sm" data-slot="span-checks-none">
+      {t("monitor_chart_empty")}
+    </p>
+  );
+  if (!detail.spanChecks.kept) {
+    // An old span with no summaries either had no checks to keep.
+    const summarised =
+      detail.chart?.buckets.some((bucket) => bucket.checks > 0) ?? false;
+    return summarised ? (
+      <p className="text-muted-foreground text-sm" data-slot="span-checks-gone">
+        {t("monitor_span_checks_gone")}
+      </p>
+    ) : (
+      none
+    );
+  }
+  if (shown > 0) {
+    return null;
+  }
+  return zoomed ? (
+    none
+  ) : (
+    <p className="text-muted-foreground text-sm">{t("monitor_no_checks")}</p>
+  );
+}
+
+const dayMs = 86_400_000;
+
+/** Whether the day bar holds a whole day with data before `from`, the raw checks' window's start: what is older than the list lives on as summaries. */
+function summariesBefore(
+  detail: MonitorDetail,
+  from: number | undefined
+): boolean {
+  return (
+    from !== undefined &&
+    detail.days.some(
+      (day) => day.observedMs > 0 && Date.parse(day.date) + dayMs <= from
+    )
   );
 }
 

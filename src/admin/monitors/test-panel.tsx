@@ -10,7 +10,7 @@
  * tokens are isolated LTR.
  */
 import type { ReactNode } from "react";
-import { formatUnit } from "@/shared/i18n/format.ts";
+import { formatBytes, formatUnit } from "@/shared/i18n/format.ts";
 import type { Locale } from "@/shared/i18n/locale.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
@@ -150,7 +150,7 @@ function TestResult({
         )}
         {test.response ? (
           <Pair label={t("monitor_test_bytes")}>
-            {formatUnit(locale, test.bytes, "byte")}
+            {formatBytes(locale, test.bytes)}
           </Pair>
         ) : null}
         {test.address === undefined ? null : (

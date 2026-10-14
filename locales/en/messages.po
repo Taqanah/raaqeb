@@ -15,6 +15,14 @@ msgid "app_close"
 msgstr "Close"
 
 #. js-lingui-explicit-id
+msgid "app_copy"
+msgstr "Copy"
+
+#. js-lingui-explicit-id
+msgid "app_copied"
+msgstr "Copied"
+
+#. js-lingui-explicit-id
 msgid "app_toasts"
 msgstr "Notifications"
 
@@ -2203,6 +2211,10 @@ msgid "monitor_span_checks_gone"
 msgstr "Checks this old are no longer kept; only their summaries remain."
 
 #. js-lingui-explicit-id
+msgid "monitor_recent_checks_end"
+msgstr "Older checks are no longer kept; the chart and the day bar show their summaries."
+
+#. js-lingui-explicit-id
 msgid "monitor_span_checks_more"
 msgstr "Show more"
 
@@ -2269,6 +2281,10 @@ msgstr "Ongoing for {duration}"
 #. js-lingui-explicit-id
 msgid "monitor_outage_acknowledged"
 msgstr "Acknowledged {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_acknowledged_toast"
+msgstr "Outage acknowledged; its reminders stop."
 
 #. js-lingui-explicit-id
 msgid "monitor_certificate_title"
@@ -4359,14 +4375,6 @@ msgstr "Feed URL"
 #. js-lingui-explicit-id
 msgid "public_subscribe_feed_hint"
 msgstr "Add this link to a feed reader to see every incident and maintenance update there. No address, no confirmation."
-
-#. js-lingui-explicit-id
-msgid "public_subscribe_copy"
-msgstr "Copy"
-
-#. js-lingui-explicit-id
-msgid "public_subscribe_copied"
-msgstr "Copied"
 
 #. js-lingui-explicit-id
 msgid "public_subscription_title"

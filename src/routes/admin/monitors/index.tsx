@@ -7,6 +7,7 @@ import { type BulkCall, MonitorList } from "@/admin/monitors/list.tsx";
 import { MonitorListSkeleton } from "@/admin/monitors/skeleton.tsx";
 import { keyLabel } from "@/admin/shell/keyboard.ts";
 import { Page } from "@/admin/shell/page.tsx";
+import { useSavedToast } from "@/admin/shell/toasts.tsx";
 import {
   acknowledgeOutageFn,
   changeMonitorsFn,
@@ -53,6 +54,7 @@ function MonitorsPage() {
   const changeFn = useServerFn(changeMonitorsFn);
   const acknowledgeFn = useServerFn(acknowledgeOutageFn);
   const dismissFn = useServerFn(dismissGettingStartedFn);
+  const toast = useSavedToast();
   const dismiss = useCallback(async () => {
     const result = await dismissFn();
     if (result?.ok) {
@@ -86,6 +88,10 @@ function MonitorsPage() {
         if (result) {
           await router.invalidate();
         }
+        // The menu that held the action has closed, so a toast says it went through.
+        if (result?.ok) {
+          toast(t("monitor_acknowledged_toast"));
+        }
         return { ok: result?.ok === true };
       },
       change: (ids: readonly string[], change: MonitorChange) =>
@@ -94,7 +100,17 @@ function MonitorsPage() {
       pause: act(pauseFn),
       resume: act(resumeFn),
     }),
-    [acknowledgeFn, act, changeFn, deleteFn, pauseFn, resumeFn, router]
+    [
+      acknowledgeFn,
+      act,
+      changeFn,
+      deleteFn,
+      pauseFn,
+      resumeFn,
+      router,
+      t,
+      toast,
+    ]
   );
   const setSearch = useCallback(
     (next: typeof search) => {
@@ -106,12 +122,14 @@ function MonitorsPage() {
   );
   const add = (
     <Link
+      aria-keyshortcuts="N"
       className={buttonVariants()}
       data-slot="new-monitor"
       to={newMonitorPath}
     >
       {t("monitor_add")}
-      <Kbd className="pointer-coarse:hidden">
+      {/* The chip shows the key; the link's name stays its words. */}
+      <Kbd aria-hidden="true" className="pointer-coarse:hidden">
         {keyLabel("KeyN", false, locale)}
       </Kbd>
     </Link>

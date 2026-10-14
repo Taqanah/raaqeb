@@ -949,6 +949,27 @@ describe("the checks of a zoomed span", () => {
     });
   });
 
+  test("unzoomed, the first page holds only checks inside the raw checks' window, though older ones still wait for the nightly purge", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create({ ...site, retentionDays: 7 });
+    const now = monitor.updatedAt + hour;
+    await minutes(store, monitor.id, now - 9 * day, 3);
+    await minutes(store, monitor.id, now - 20 * minute, 5);
+    const read = await zoomedRead(store, monitor.id, now, undefined);
+    if (!read.spanChecks.kept) {
+      throw new Error("the newest checks are kept");
+    }
+    expect(read.spanChecks.checks.map((each) => each.startedAt)).toEqual(
+      Array.from(
+        { length: 5 },
+        (_, index) => now - 16 * minute - index * minute
+      )
+    );
+    expect(read.spanChecks.more).toBe(false);
+    // The state is still the latest check's.
+    expect(read.state).toBe("up");
+  });
+
   test("a database that cannot answer is unavailable, and never throws", async () => {
     const store = await storage();
     const monitor = await store.monitors.create(site);

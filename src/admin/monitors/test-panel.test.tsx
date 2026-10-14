@@ -120,6 +120,35 @@ describe("the test panel", () => {
     expect(html).not.toContain("\u0002");
   });
 
+  for (const [locale, size] of [
+    ["en", "4.9 kB"],
+    ["ar", "4.9 كيلوبايت"],
+  ] as const) {
+    test(`the body's size reads in the largest unit under it, in ${locale}`, () => {
+      const html = render(
+        locale,
+        <TestPanel
+          onRun={ignore}
+          state={{
+            assertions: [{ codes: ["2xx"], kind: "status" }],
+            kind: "done",
+            test: {
+              bytes: 5000,
+              failure: undefined,
+              reason: "ok",
+              response: { body: "ok", headers: [] },
+              responseMs: 12,
+              result: "up",
+              statusCode: 200,
+            },
+          }}
+        />
+      );
+      expect(html).toContain(size);
+      expect(html).not.toContain("5,000");
+    });
+  }
+
   const dnsTest: MonitorTest = {
     bytes: 0,
     failure: undefined,

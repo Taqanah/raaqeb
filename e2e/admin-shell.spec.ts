@@ -46,6 +46,28 @@ test("the shell renders around an admin page: the grouped navigation, the header
   );
 });
 
+test("controls are named without their shortcut letters, the list's menu column is named, and the whole sidebar is navigation", async ({
+  page,
+}) => {
+  await signIn(page);
+  await expect(
+    page.getByRole("link", { exact: true, name: "Add monitor" })
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { exact: true, name: "Search" })
+  ).toHaveCount(1);
+  await expect(
+    page.locator("[data-slot=monitor-list] thead th").last()
+  ).not.toHaveText("");
+  // The brand, the search, the email and sign out sit inside the navigation landmark, so nothing of the sidebar is outside a landmark.
+  const navigation = page.getByRole("navigation");
+  await expect(navigation).toHaveCount(1);
+  await expect(navigation.locator("[data-slot=palette-trigger]")).toHaveCount(
+    1
+  );
+  await expect(navigation.locator("[data-slot=sidebar-footer]")).toHaveCount(1);
+});
+
 test("Ctrl+K opens the command palette; typing filters the pages and Enter opens the highlighted one", async ({
   page,
 }) => {

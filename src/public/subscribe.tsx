@@ -38,10 +38,9 @@ import {
 import { Button, buttonVariants } from "@/shared/ui/button.tsx";
 import { Card } from "@/shared/ui/card.tsx";
 import { cn } from "@/shared/ui/cn.ts";
+import { CopyButton } from "@/shared/ui/copy-button.tsx";
 import {
   BellIcon,
-  CheckIcon,
-  CopyIcon,
   MailIcon,
   RssIcon,
   WebhookIcon,
@@ -414,28 +413,6 @@ function FeedAddress({
 }): ReactNode {
   const { t } = useMessages();
   const field = useRef<HTMLElement>(null);
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!copied) {
-      return;
-    }
-    const later = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(later);
-  }, [copied]);
-  // Where the clipboard is refused (a page over plain http has none), the address is selected for the visitor to copy.
-  const select = useCallback(() => {
-    if (field.current) {
-      getSelection()?.selectAllChildren(field.current);
-    }
-  }, []);
-  const onCopy = useCallback(() => {
-    const written = navigator.clipboard?.writeText(feed);
-    if (!written) {
-      select();
-      return;
-    }
-    written.then(() => setCopied(true), select);
-  }, [feed, select]);
   return (
     <div className="flex flex-col gap-3" data-slot="subscribe-feed">
       <p className="font-medium text-sm" id="subscribe-feed-label">
@@ -452,19 +429,12 @@ function FeedAddress({
         >
           {feed}
         </Token>
-        <Button
-          className="shrink-0"
+        <CopyButton
           data-slot="subscribe-copy"
           disabled={!ready}
-          onClick={onCopy}
-          type="button"
-          variant="outline"
-        >
-          {copied ? <CheckIcon /> : <CopyIcon />}
-          <span aria-live="polite">
-            {t(copied ? "public_subscribe_copied" : "public_subscribe_copy")}
-          </span>
-        </Button>
+          target={field}
+          text={feed}
+        />
       </div>
       <p className="text-muted-foreground text-sm" id="subscribe-feed-hint">
         {t("public_subscribe_feed_hint")}

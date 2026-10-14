@@ -197,9 +197,16 @@ export async function resolveRecords(
   return textOfRecords(query.recordType, records);
 }
 
-/** A `node:dns` resolver with one try that gives up after the timeout; each record type through its own typed query. */
+/** Bun's resolver ends a try after at most five seconds, whatever `timeout` asks. */
+const resolverTryCapMs = 5000;
+
+/** A `node:dns` resolver that keeps asking until the timeout, which the query's own timer then enforces; each record type through its own typed query. */
 function nodeResolver(timeoutMs: number): RecordResolver {
-  const resolver = new Resolver({ timeout: timeoutMs, tries: 1 });
+  // Enough capped tries to outlast the timeout, so a slow resolver gets all of it.
+  const resolver = new Resolver({
+    timeout: Math.min(timeoutMs, resolverTryCapMs),
+    tries: Math.ceil(timeoutMs / resolverTryCapMs),
+  });
   const queries: Record<DnsRecordType, (name: string) => Promise<DnsRecords>> =
     {
       A: (name) => resolver.resolve4(name),

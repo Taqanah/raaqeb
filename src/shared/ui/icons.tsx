@@ -63,6 +63,14 @@ export function CheckIcon(props: IconProps): ReactNode {
   );
 }
 
+export function MinusIcon(props: IconProps): ReactNode {
+  return (
+    <Icon {...props}>
+      <path d="M5 12h14" />
+    </Icon>
+  );
+}
+
 export function ChevronDownIcon(props: IconProps): ReactNode {
   return (
     <Icon {...props}>

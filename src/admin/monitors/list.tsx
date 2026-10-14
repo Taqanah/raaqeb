@@ -197,9 +197,15 @@ export function MonitorList({
     },
     [actions, selectedIds]
   );
+  // One monitor selected is asked about by name, as from its own menu.
   const askDeleteSelected = useCallback(
-    () => setPendingDelete({ ids: selectedIds }),
-    [selectedIds]
+    () =>
+      setPendingDelete({
+        ids: selectedIds,
+        name:
+          selectedMonitors.length === 1 ? selectedMonitors[0]?.name : undefined,
+      }),
+    [selectedIds, selectedMonitors]
   );
   const closeDelete = useCallback((open: boolean) => {
     if (!open) {
@@ -216,6 +222,7 @@ export function MonitorList({
 
   const allShownSelected =
     shown.length > 0 && selectedIds.length === shown.length;
+  const someShownSelected = selectedIds.length > 0 && !allShownSelected;
   const itemProps = (monitor: Monitor): MonitorItemProps => ({
     acknowledgeable: acknowledgeable[monitor.id],
     days: days[monitor.id],
@@ -252,6 +259,7 @@ export function MonitorList({
         <div className="flex items-center gap-3 px-3 text-muted-foreground text-xs sm:hidden">
           <SelectAll
             checked={allShownSelected}
+            mixed={someShownSelected}
             onChange={selectAll}
             slot="monitor-select-all-phone"
           />
@@ -261,13 +269,20 @@ export function MonitorList({
           <TableHeader>
             <TableRow>
               <TableHead>
-                <SelectAll checked={allShownSelected} onChange={selectAll} />
+                <SelectAll
+                  checked={allShownSelected}
+                  mixed={someShownSelected}
+                  onChange={selectAll}
+                />
               </TableHead>
               <TableHead>{t("monitor_column_name")}</TableHead>
               {/* Over the state's badge and its bar, two columns. */}
               <TableHead colSpan={2}>{t("monitor_column_state")}</TableHead>
               <TableHead>{t("monitor_column_organization")}</TableHead>
-              <TableHead />
+              {/* The item menus' column, named for a screen reader only. */}
+              <TableHead>
+                <span className="sr-only">{t("monitor_actions")}</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -382,10 +397,13 @@ export function MonitorList({
 
 function SelectAll({
   checked,
+  mixed,
   onChange,
   slot = "monitor-select-all",
 }: {
   readonly checked: boolean;
+  /** Some of the shown monitors are selected, not all. */
+  readonly mixed: boolean;
   readonly onChange: (on: boolean) => void;
   /** The phone line carries its own slot, so one selector still names one checkbox. */
   readonly slot?: string;
@@ -400,6 +418,7 @@ function SelectAll({
       aria-label={t("monitor_select_all")}
       checked={checked}
       data-slot={slot}
+      indeterminate={mixed}
       onCheckedChange={onCheckedChange}
     />
   );

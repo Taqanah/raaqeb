@@ -12,8 +12,9 @@ export type InputProps = ComponentProps<"input"> & {
 // The box: border, fill, focus ring and refusal. With a unit it moves to the wrapper and follows the input inside it.
 const box =
   "h-control w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm transition-[border-color,box-shadow]";
+// A field with suggestions (`list`) offers them as the operator types; Chrome's raw triangle beside it is hidden, which takes !important over its own rule.
 const alone =
-  "py-1 file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm placeholder:text-muted-foreground focus-visible:border-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-50 aria-invalid:border-status-down aria-invalid:ring-4 aria-invalid:ring-status-down/15";
+  "py-1 [&[list]::-webkit-calendar-picker-indicator]:hidden! file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm placeholder:text-muted-foreground focus-visible:border-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-50 aria-invalid:border-status-down aria-invalid:ring-4 aria-invalid:ring-status-down/15";
 const grouped =
   "flex items-center gap-2 has-disabled:cursor-not-allowed has-aria-invalid:border-status-down has-focus-visible:border-ring has-disabled:bg-muted has-disabled:opacity-50 has-aria-invalid:ring-4 has-aria-invalid:ring-status-down/15 has-focus-visible:focus-ring";
 

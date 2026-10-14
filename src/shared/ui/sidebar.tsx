@@ -138,7 +138,13 @@ function Sidebar({ className, children, ...props }: ComponentProps<"div">) {
             <SheetTitle>{t("app_navigation")}</SheetTitle>
             <SheetDescription>{t("app_navigation")}</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          {/* The whole panel is the navigation landmark: the brand, the search and sign out too. */}
+          <nav
+            aria-label={t("app_navigation")}
+            className="flex h-full w-full flex-col"
+          >
+            {children}
+          </nav>
         </SheetContent>
       </Sheet>
     );
@@ -164,12 +170,13 @@ function Sidebar({ className, children, ...props }: ComponentProps<"div">) {
         inert={state === "collapsed"}
         {...props}
       >
-        <div
+        <nav
+          aria-label={t("app_navigation")}
           className="flex size-full flex-col rounded-2xl bg-sidebar ring-line"
           data-slot="sidebar-inner"
         >
           {children}
-        </div>
+        </nav>
       </div>
     </div>
   );

@@ -128,13 +128,15 @@ test("unzoomed, the list holds the newest twenty checks and shows more back thro
   await expect(page.locator(showMore)).toHaveCount(0);
 });
 
-test("a span older than the kept checks says only summaries remain and lists none", async ({
+// The monitor's checks are all from today, so a span this old has neither checks nor their summaries.
+test("a span older than the kept checks with no summaries either says it has no checks, not that they are gone, and lists none", async ({
   page,
 }) => {
   await open(page, { from: now - 40 * day, to: now - 35 * day });
   await expect(
-    page.locator("[data-slot=recent-checks] [data-slot=span-checks-gone]")
+    page.locator("[data-slot=recent-checks] [data-slot=span-checks-none]")
   ).toBeVisible();
+  await expect(page.locator("[data-slot=span-checks-gone]")).toHaveCount(0);
   await expect(page.locator(rows)).toHaveCount(0);
   await expect(page.locator(showMore)).toHaveCount(0);
 });

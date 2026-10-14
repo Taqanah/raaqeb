@@ -493,6 +493,31 @@ describe("the live bundle", () => {
     }
   });
 
+  test(
+    "a DNS query waits its whole timeout for a resolver that never answers, past the runtime's own five-second cap",
+    async () => {
+      const server = await Bun.udpSocket({
+        hostname: "127.0.0.1",
+        socket: { data: () => undefined },
+      });
+      const started = performance.now();
+      try {
+        await expect(
+          liveIo().resolve({
+            name: "example.test",
+            recordType: "A",
+            resolver: `127.0.0.1:${server.port}`,
+            timeoutMs: 6500,
+          })
+        ).rejects.toMatchObject({ name: "TimeoutError" });
+        expect(performance.now() - started).toBeGreaterThanOrEqual(6400);
+      } finally {
+        server.close();
+      }
+    },
+    { timeout: 10_000 }
+  );
+
   test("a TCP monitor whose host is the IPv6 loopback is up while it listens", async () => {
     const server = Bun.listen({
       hostname: "::1",

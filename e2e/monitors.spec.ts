@@ -225,6 +225,30 @@ test.describe("the seeded list and the Health monitor, changed in order", () => 
     await expect(page.locator("[data-slot=monitor-paused]")).toHaveCount(0);
   });
 
+  test("with some monitors selected, select all reads as mixed, and deleting one selected names it", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`${englishOrigin}/admin/monitors?group=Staging`);
+    const selectAll = page.locator("[data-slot=monitor-select-all]");
+    await knownRows(page).first().locator("[role=checkbox]").click();
+    await expect(selectAll).toHaveAttribute("aria-checked", "mixed");
+    await page.click("[data-slot=monitor-bulk] [data-action=delete]");
+    await expect(
+      page.locator(
+        "[data-slot=monitor-delete-dialog] [data-slot=monitor-delete-name]"
+      )
+    ).toHaveText(
+      (await knownRows(page)
+        .first()
+        .locator("[data-slot=monitor-name]")
+        .textContent()) ?? ""
+    );
+    await page.keyboard.press("Escape");
+    await knownRows(page).nth(1).locator("[role=checkbox]").click();
+    await expect(selectAll).toHaveAttribute("aria-checked", "true");
+  });
+
   test("add a tag in bulk: a tag with a comma is refused, then every selected monitor carries the tag and a reload keeps it", async ({
     page,
   }) => {
@@ -521,13 +545,14 @@ test.describe("the seeded list and the Health monitor, changed in order", () => 
     expect(new URL(page.url()).pathname).toBe(path);
   });
 
-  test("pause and resume from the detail page: a paused monitor says so and cannot be checked now", async ({
+  test("pause and resume from the detail page: a paused monitor says so and offers no check now", async ({
     page,
   }) => {
     await openDetail(page, renamedName);
     await page.click("[data-slot=toggle-paused]");
     await expect(page.locator("[data-slot=monitor-paused]")).toBeVisible();
-    await expect(page.locator("[data-slot=check-now]")).toBeDisabled();
+    // A paused monitor runs no checks, so it offers none.
+    await expect(page.locator("[data-slot=check-now]")).toHaveCount(0);
     await page.click("[data-slot=toggle-paused]");
     await expect(page.locator("[data-slot=monitor-paused]")).toHaveCount(0);
     await expect(page.locator("[data-slot=check-now]")).toBeEnabled();
@@ -620,13 +645,24 @@ test("a down check opens to its failure detail, the raw error as a token", async
   await expect(page.locator("[data-slot=outages]")).toBeVisible();
 });
 
-test("a heartbeat monitor's detail page shows its URL in place of the chart, and no check now", async ({
+test("a heartbeat monitor's detail page shows its URL in place of the chart, and no check now; the URL and the line a job runs copy with a click", async ({
   page,
 }) => {
   await openDetail(page, backupName);
   await expect(page.locator("[data-slot=heartbeat-url]")).toBeVisible();
   await expect(page.locator("[data-slot=response-chart]")).toHaveCount(0);
   await expect(page.locator("[data-slot=check-now]")).toHaveCount(0);
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  const url =
+    (await page.locator("[data-slot=heartbeat-url]").textContent()) ?? "";
+  await page.click("[data-copy=heartbeat-url]");
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(url);
+  await page.click("[data-copy=heartbeat-command]");
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(`curl -fsS -m 10 --retry 3 -o /dev/null ${url}`);
 });
 
 test("a refused field shows its message beside it and nothing is saved", async ({

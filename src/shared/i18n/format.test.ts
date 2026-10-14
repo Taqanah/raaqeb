@@ -421,8 +421,14 @@ describe("a size in bytes", () => {
   test("reads in the largest unit under its value, to one decimal, a kilobyte being 1024 bytes", () => {
     expect(formatBytes("ar", 512)).toBe("512 بايت");
     expect(formatBytes("en", 4.2 * 1024)).toBe("4.2 kB");
-    expect(formatBytes("ar", 4.2 * 1024 * 1024)).toBe("4.2 م.ب");
+    expect(formatBytes("ar", 4.2 * 1024 * 1024)).toBe("4.2 ميغابايت");
     expect(formatBytes("en", 1.5 * 1024 ** 3)).toBe("1.5 GB");
+  });
+
+  test("in Arabic every unit reads as a word, never an abbreviation", () => {
+    expect(formatBytes("ar", 4.2 * 1024)).toBe("4.2 كيلوبايت");
+    expect(formatBytes("ar", 4.2 * 1024 * 1024)).toBe("4.2 ميغابايت");
+    expect(formatBytes("ar", 1.5 * 1024 ** 3)).toBe("1.5 غيغابايت");
   });
 
   test("spells out the byte in English with its plural, and reads the same in Arabic", () => {

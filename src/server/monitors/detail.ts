@@ -170,7 +170,8 @@ export async function readMonitorDetail(
         : firstSpanPage(storage, id, span, rawFrom),
     ]);
     const recent = newest.slice(0, recentChecksShown);
-    const older = newest.at(recentChecksShown)?.startedAt;
+    // A check before the raw window waits only for the nightly purge; the list never shows it.
+    const kept = newest.filter((each) => each.startedAt >= rawStartsAt);
     const { components, windows } = reach;
     return {
       detail: {
@@ -196,10 +197,10 @@ export async function readMonitorDetail(
         recent,
         // Unzoomed, the list is the span from the raw checks' window to now.
         spanChecks: zoomedChecks ?? {
-          checks: recent,
+          checks: kept.slice(0, recentChecksShown),
           from: rawStartsAt,
           kept: true,
-          more: older !== undefined && older >= rawStartsAt,
+          more: kept.length > recentChecksShown,
         },
         state: recent[0]?.result,
         uptime: uptimeReadings({

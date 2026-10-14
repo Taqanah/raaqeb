@@ -238,11 +238,12 @@ function MonitorDetailPage(): ReactNode {
           <span className="max-sm:sr-only">{t("monitor_acknowledge")}</span>
         </Button>
       ) : null}
-      {monitor.config.type === "heartbeat" ? null : (
+      {/* A heartbeat monitor's checks come from its heartbeats, and a paused monitor runs none: neither offers check now. */}
+      {monitor.config.type === "heartbeat" || monitor.paused ? null : (
         <Button
           className={iconOnPhone}
           data-slot="check-now"
-          disabled={monitor.paused || waiting !== undefined}
+          disabled={waiting !== undefined}
           onClick={askCheck}
           type="button"
           variant="outline"

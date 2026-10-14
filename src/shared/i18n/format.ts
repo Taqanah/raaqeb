@@ -386,18 +386,18 @@ export function formatUnit(
   }).format(value);
 }
 
-/** A size in bytes in the largest unit under its value, to one decimal: `512 بايت`, `4.2 MB`, `363 bytes`; a kilobyte is 1024 bytes, as the storage page counts. */
+/** A size in bytes in the largest unit under its value, to one decimal: `512 بايت`, `4.2 ميغابايت`, `4.2 MB`, `363 bytes`; a kilobyte is 1024 bytes, as the storage page counts. */
 export function formatBytes(locale: Locale, bytes: number): string {
   const [unit, size] = byteUnits.find(([, each]) => bytes >= each) ?? [
     "byte",
     1,
   ];
-  // Intl's short English byte has no plural ("363 byte"); its long form has, and Arabic reads the same in both.
+  // Intl's short English byte has no plural ("363 byte"); its long form has. Arabic's short forms mix words and abbreviations (كيلوبايت, م.ب), so Arabic reads every unit as a word.
   return formatUnit(
     locale,
     bytes / size,
     unit,
-    unit === "byte" ? "long" : "short"
+    unit === "byte" || locale === "ar" ? "long" : "short"
   );
 }
 

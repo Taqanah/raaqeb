@@ -527,12 +527,20 @@ export const monitorSorts = ["name", "newest"] as const;
 export const monitorSortSchema = z.enum(monitorSorts);
 export type MonitorSort = z.infer<typeof monitorSortSchema>;
 
+/** A search text from the address; the router reads `?q=6379` as a number, so a number is taken as its text. */
+const searchText = z
+  .preprocess(
+    (value) => (typeof value === "number" ? String(value) : value),
+    z.string().trim().min(1).optional()
+  )
+  .catch(undefined);
+
 /** The list's search parameters (`/admin/monitors?q=&group=&tag=&sort=`); an absent one means no filter. */
 export const monitorListSearchSchema = z.object({
-  group: z.string().trim().min(1).optional().catch(undefined),
-  q: z.string().trim().min(1).optional().catch(undefined),
+  group: searchText,
+  q: searchText,
   sort: monitorSortSchema.optional().catch(undefined),
-  tag: z.string().trim().min(1).optional().catch(undefined),
+  tag: searchText,
 });
 export type MonitorListSearch = z.infer<typeof monitorListSearchSchema>;
 

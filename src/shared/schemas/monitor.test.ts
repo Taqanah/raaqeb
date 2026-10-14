@@ -384,6 +384,13 @@ describe("the list's search parameters", () => {
       })
     ).toEqual({ group: "الإنتاج", q: "api", sort: "newest", tag: "عام" });
   });
+
+  test("a query, a group or a tag typed into the address as a number is kept as its text", () => {
+    // The router reads `?q=6379` as the number 6379.
+    expect(
+      monitorListSearchSchema.parse({ group: 2026, q: 6379, tag: 1.5 })
+    ).toEqual({ group: "2026", q: "6379", tag: "1.5" });
+  });
 });
 
 describe("the fields the monitor form adds", () => {

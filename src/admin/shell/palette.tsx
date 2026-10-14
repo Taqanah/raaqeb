@@ -94,7 +94,7 @@ function PaletteEntry({
       ) : null}
       {/* Its key works on every page; N works on the monitor list only, so it shows no chip. */}
       {entry.value === "shortcuts" ? (
-        <Kbd className="ms-auto pointer-coarse:hidden">
+        <Kbd aria-hidden="true" className="ms-auto pointer-coarse:hidden">
           {keyLabel("Slash", true, locale)}
         </Kbd>
       ) : null}

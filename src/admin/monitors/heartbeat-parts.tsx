@@ -5,7 +5,7 @@
  * and the switch that gives the monitor a new URL on save. The URL and the
  * source address are machine tokens, isolated LTR.
  */
-import { type ReactNode, useCallback } from "react";
+import { type ReactNode, useCallback, useRef } from "react";
 import {
   formatDateTimeWithZone,
   type TimeOptions,
@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/ui/card.tsx";
+import { CopyButton } from "@/shared/ui/copy-button.tsx";
 import { Field, FieldLabel } from "@/shared/ui/field.tsx";
 import { Segmented, SegmentedItem } from "@/shared/ui/segmented.tsx";
 import { Token } from "@/shared/ui/token.tsx";
@@ -186,12 +187,17 @@ export function HeartbeatPanel({
       <CardContent className="flex flex-col gap-4">
         {heartbeat ? (
           <>
-            <Token className="break-all" data-slot="heartbeat-url">
-              {heartbeat.url}
-            </Token>
+            <Copyable
+              copy="heartbeat-url"
+              slot="heartbeat-url"
+              text={heartbeat.url}
+            />
             <div className="flex flex-col gap-1.5 text-muted-foreground text-sm">
               <span>{t("monitor_heartbeat_command")}</span>
-              <Token className="break-all">{curlLine(heartbeat.url)}</Token>
+              <Copyable
+                copy="heartbeat-command"
+                text={curlLine(heartbeat.url)}
+              />
             </div>
             {heartbeat.last && clock ? (
               <dl
@@ -242,5 +248,31 @@ export function HeartbeatPanel({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** A machine token with its copy button beside it; a line with spaces breaks at them first, so a URL in it stays whole where it fits. */
+function Copyable({
+  copy,
+  slot,
+  text,
+}: {
+  /** The button's `data-copy`, which the browser tests press. */
+  readonly copy: string;
+  readonly slot?: string;
+  readonly text: string;
+}): ReactNode {
+  const token = useRef<HTMLElement>(null);
+  return (
+    <div className="flex items-start gap-2">
+      <Token
+        className="wrap-anywhere min-w-0 flex-1 py-1"
+        data-slot={slot}
+        ref={token}
+      >
+        {text}
+      </Token>
+      <CopyButton data-copy={copy} size="sm" target={token} text={text} />
+    </div>
   );
 }

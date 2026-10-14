@@ -201,6 +201,7 @@ function ShellInner({
           </Link>
           {/* Search is global, so it sits with the navigation, not in a page's row. */}
           <Button
+            aria-keyshortcuts="Control+K Meta+K"
             className="w-full justify-start bg-background text-muted-foreground"
             data-slot="palette-trigger"
             onClick={openPalette}
@@ -210,14 +211,15 @@ function ShellInner({
             {/* The word takes the free space, so the chip sits at the end in both directions; the group's own LTR would turn an ms-auto left. */}
             <span className="flex-1 text-start">{t("app_search")}</span>
             {/* A touch screen has no keys to press. */}
-            <KbdGroup className="pointer-coarse:hidden">
+            <KbdGroup aria-hidden="true" className="pointer-coarse:hidden">
               <Kbd>{modifier}</Kbd>
               <Kbd>{keyLabel("KeyK", false, locale)}</Kbd>
             </KbdGroup>
           </Button>
         </SidebarHeader>
         <SidebarContent>
-          <nav aria-label={t("app_navigation")}>
+          {/* The sidebar itself is the navigation landmark. */}
+          <div>
             {navigation.map((group) => (
               <SidebarGroup key={group.id}>
                 {/* A group of one needs no heading. */}
@@ -254,7 +256,7 @@ function ShellInner({
                 </SidebarGroupContent>
               </SidebarGroup>
             ))}
-          </nav>
+          </div>
         </SidebarContent>
         <SidebarFooter className="border-sidebar-border border-t">
           {/* The email is the operator's name here, not a machine token: isolated, not monospace. */}
