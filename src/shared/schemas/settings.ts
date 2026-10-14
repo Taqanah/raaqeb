@@ -80,7 +80,11 @@ export interface AccountSettings {
   readonly timeZones: readonly string[];
 }
 
-export const emailChangeSchema = z.object({ email: z.email() });
+/** A new address takes the current password, as a new password does: a session alone cannot move the account. */
+export const emailChangeSchema = z.object({
+  currentPassword: z.string().min(1),
+  email: z.email(),
+});
 export type EmailChangeInput = z.infer<typeof emailChangeSchema>;
 
 export const passwordChangeSchema = z.object({
@@ -159,7 +163,9 @@ export type EmailChangeRefusal =
   /** The new address is the current one. */
   | "same_email"
   /** Not signed in, or Better Auth did not answer. */
-  | "unavailable";
+  | "unavailable"
+  /** The current password did not verify. */
+  | "wrong_password";
 
 /** The auth settings screen's choice of the email channel auth mail goes through. */
 export const authEmailChannelSchema = z.object({

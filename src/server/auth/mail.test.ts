@@ -14,6 +14,7 @@ import {
   authEmailChannel,
   authEmailChannelOf,
   authMailOver,
+  emailChangeNoticeOver,
   sendAuthMail,
 } from "./mail.ts";
 
@@ -276,6 +277,52 @@ describe("the mail an instance sends", () => {
     ).resolves.toBeUndefined();
     await expect(mail.code(testEmail, "123456")).resolves.toBeUndefined();
     expect(lines).toHaveLength(2);
+    expect(lines.join("\n")).toContain("no email channel");
+  });
+});
+
+describe("the notice of an email change", () => {
+  test("goes to the address the account had, naming the new address on a line of its own", async () => {
+    const s = await scratch();
+    const smtp = fakeSmtp();
+    try {
+      await emailChannel(s, "Mail", smtp.port);
+      const notice = emailChangeNoticeOver(
+        s.storage,
+        s.boot.installKey,
+        io,
+        () => undefined
+      );
+      await notice("old@example.com", "new@example.com");
+      expect(smtp.messages).toHaveLength(1);
+      const commands = smtp.commands.join("\n");
+      expect(commands).toContain("RCPT TO:<old@example.com>");
+      expect(commands).not.toContain("RCPT TO:<new@example.com>");
+      const message = smtp.messages[0] ?? "";
+      expect(subjectOf(message)).toBe("راقب: تغيّر بريد حسابك");
+      expect(bodyOf(message).split(lineBreak)).toContain("new@example.com");
+      // The HTML part names it too, as a line of its own with no button.
+      const html = htmlOf(message);
+      expect(htmlText(html).split("\n")).toContain("new@example.com");
+      expect(htmlLinks(html)).toEqual([]);
+    } finally {
+      smtp.stop();
+    }
+  });
+
+  test("one that did not go is logged, never thrown", async () => {
+    const s = await scratch();
+    const lines: string[] = [];
+    const notice = emailChangeNoticeOver(
+      s.storage,
+      s.boot.installKey,
+      io,
+      (line) => lines.push(line)
+    );
+    await expect(
+      notice("old@example.com", "new@example.com")
+    ).resolves.toBeUndefined();
+    expect(lines).toHaveLength(1);
     expect(lines.join("\n")).toContain("no email channel");
   });
 });

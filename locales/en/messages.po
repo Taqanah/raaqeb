@@ -2743,6 +2743,14 @@ msgid "auth_mail_test_sentence"
 msgstr "This is a test message from Raaqeb. Receiving it means sign-in email works."
 
 #. js-lingui-explicit-id
+msgid "auth_mail_email_changed_subject"
+msgstr "Raaqeb: your account's email changed"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_email_changed_sentence"
+msgstr "The email of your Raaqeb account is now the address below. If you did not change it, run the password reset command on the server, then sign in with that address."
+
+#. js-lingui-explicit-id
 msgid "setting_sign_in"
 msgstr "Sign-in"
 

@@ -1074,7 +1074,8 @@ describe("the auth settings screen", () => {
       const changed = await changeOperatorEmail(
         auth,
         headers,
-        "typo@example.com"
+        { currentPassword: testPassword, email: "typo@example.com" },
+        () => Promise.resolve()
       );
       expect(changed.ok).toBe(true);
       expect((await readSecondStep(s.storage))?.tested).toBe(false);

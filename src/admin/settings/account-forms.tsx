@@ -66,10 +66,11 @@ const emailMessages: Readonly<Record<EmailChangeRefusal, MessageId>> = {
   invalid: "setting_invalid",
   same_email: "setting_invalid",
   unavailable: "setting_unavailable",
+  wrong_password: "setting_invalid",
 };
 /** The email field's own words for a refusal: what to type, where the save line says to check. */
 const fieldMessages: Readonly<
-  Record<Exclude<EmailChangeRefusal, "unavailable">, MessageId>
+  Record<Extract<EmailChangeRefusal, "invalid" | "same_email">, MessageId>
 > = {
   invalid: "auth_email_invalid",
   same_email: "setting_email_same",
@@ -278,16 +279,21 @@ export function EmailForm({
   onChanged,
 }: EmailFormProps): ReactNode {
   const { t } = useMessages();
-  const [newEmail, setNewEmail] = useState("");
-  const onEmail = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setNewEmail(event.currentTarget.value);
+  const [typed, setTyped] = useState({ currentPassword: "", email: "" });
+  const onTyped = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.currentTarget;
+    setTyped((current) => ({ ...current, [name]: value }));
   }, []);
-  const saving = useDraftSave(change, newEmail, { onSaved: onChanged });
+  const saving = useDraftSave(change, typed, { onSaved: onChanged });
   const { fail, line, submit } = saving;
-  // Every refusal of this form is about its one field.
+  const reason = line.kind === "failed" ? line.reason : undefined;
+  const currentRefusal = currentRefusalOf(reason, typed.currentPassword);
+  // A wrong or empty password is worded beside the password, the rest beside the address.
   const refusal: MessageId | undefined =
-    line.kind === "failed" && line.reason !== "unavailable"
-      ? fieldMessages[line.reason]
+    reason === "same_email" ||
+    (reason === "invalid" &&
+      !emailChangeSchema.shape.email.safeParse(typed.email.trim()).success)
+      ? fieldMessages[reason]
       : undefined;
   const formRef = useRef<HTMLFormElement>(null);
   useFocusRefused(formRef, line);
@@ -296,6 +302,7 @@ export function EmailForm({
       event.preventDefault();
       const form = new FormData(event.currentTarget);
       const parsed = emailChangeSchema.safeParse({
+        currentPassword: String(form.get("currentPassword") ?? ""),
         email: String(form.get("email") ?? "").trim(),
       });
       if (!parsed.success) {
@@ -331,12 +338,31 @@ export function EmailForm({
                 dir="ltr"
                 id="email"
                 name="email"
-                onChange={onEmail}
+                onChange={onTyped}
                 required
                 type="email"
               />
               {refusal ? (
                 <FieldError data-error-for="email">{t(refusal)}</FieldError>
+              ) : null}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="emailCurrentPassword">
+                {t("setting_password_current")}
+              </FieldLabel>
+              <Input
+                aria-invalid={currentRefusal ? true : undefined}
+                autoComplete="current-password"
+                id="emailCurrentPassword"
+                name="currentPassword"
+                onChange={onTyped}
+                required
+                type="password"
+              />
+              {currentRefusal ? (
+                <FieldError data-error-for="currentPassword">
+                  {t(currentRefusal)}
+                </FieldError>
               ) : null}
             </Field>
           </FieldGroup>
@@ -352,9 +378,9 @@ export function EmailForm({
   );
 }
 
-/** The current password field's words for a refusal; nothing when the refusal is about the new one. */
+/** The current password field's words for a refusal; nothing when the refusal is about another field. */
 function currentRefusalOf(
-  refusal: PasswordChangeRefusal | undefined,
+  refusal: PasswordChangeRefusal | EmailChangeRefusal | undefined,
   current: string
 ): MessageId | undefined {
   if (refusal === "wrong_password") {

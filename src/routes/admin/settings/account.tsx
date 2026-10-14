@@ -24,6 +24,8 @@ import {
   type EmailChangeResult,
   type PasswordChangeResult,
 } from "@/server/auth/account.ts";
+import { emailChangeNoticeOver } from "@/server/auth/mail.ts";
+import { error as logError } from "@/server/log.ts";
 import {
   readAccountSettings,
   saveAccountSettings,
@@ -68,7 +70,13 @@ const changeEmail = createServerFn({ method: "POST" })
     const result = await changeOperatorEmail(
       context.auth,
       new Headers(getRequestHeaders()),
-      data.email
+      data,
+      emailChangeNoticeOver(
+        context.storage,
+        context.boot.installKey,
+        { fetch, now: Date.now },
+        logError
+      )
     );
     if (result.ok && result.setCookies.length > 0) {
       setResponseHeader("set-cookie", [...result.setCookies]);

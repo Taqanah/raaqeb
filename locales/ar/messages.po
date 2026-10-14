@@ -2743,6 +2743,14 @@ msgid "auth_mail_test_sentence"
 msgstr "هذه رسالة تجريبية من راقب. وصولها يعني أن بريد تسجيل الدخول يعمل."
 
 #. js-lingui-explicit-id
+msgid "auth_mail_email_changed_subject"
+msgstr "راقب: تغيّر بريد حسابك"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_email_changed_sentence"
+msgstr "صار البريد الإلكتروني لحسابك في راقب هو العنوان أدناه. إن لم تغيّره أنت، فشغّل أمر إعادة تعيين كلمة المرور على الخادوم، ثم سجّل الدخول بهذا العنوان."
+
+#. js-lingui-explicit-id
 msgid "setting_sign_in"
 msgstr "تسجيل الدخول"
 

@@ -51,12 +51,12 @@ export const authEmailTested: Setting<{
 
 export type AuthMailStorage = Pick<Storage, "channels" | "settings">;
 
-export type AuthMailKind = "reset_link" | "code" | "test";
+export type AuthMailKind = "reset_link" | "code" | "test" | "email_changed";
 
 export interface AuthMailMessage {
   readonly kind: AuthMailKind;
   readonly to: string;
-  /** The link or the code; a test carries none. */
+  /** The link, the code or the new address; a test carries none. */
   readonly value?: string;
 }
 
@@ -109,6 +109,10 @@ const wording: Readonly<
     sentence: "auth_mail_test_sentence",
     subject: "auth_mail_test_subject",
   },
+  email_changed: {
+    sentence: "auth_mail_email_changed_sentence",
+    subject: "auth_mail_email_changed_subject",
+  },
 };
 
 /** Sends one message in the operator language through the auth email channel. Never throws. */
@@ -140,14 +144,14 @@ export async function sendAuthMail(
       sentence: messages._(words.sentence),
       subject: messages._(words.subject),
     });
-    // The reset link is a button with the reset page's own title; the code stays a line of its own, left to right.
+    // The reset link is a button with the reset page's own title; a code or a new address stays a line of its own, left to right.
     const html = mailHtml({
       buttons:
         message.kind === "reset_link" && message.value !== undefined
           ? [{ url: message.value, words: messages._("auth_reset_title") }]
           : [],
       lines:
-        message.kind === "code" && message.value !== undefined
+        message.kind !== "reset_link" && message.value !== undefined
           ? [{ text: message.value, token: message.value }]
           : [],
       locale,
@@ -208,6 +212,25 @@ export function authMailOver(
         log(`the reset link was not sent: ${describe(sent)}`);
       }
     },
+  };
+}
+
+/** The notice an email change sends to the address the account had, naming the new one; a failed send is logged, never thrown. */
+export function emailChangeNoticeOver(
+  storage: AuthMailStorage,
+  key: InstallKey,
+  io: DeliverIo,
+  log: (line: string) => void
+): (previous: string, next: string) => Promise<void> {
+  return async (previous, next) => {
+    const sent = await sendAuthMail(storage, key, io, {
+      kind: "email_changed",
+      to: previous,
+      value: next,
+    });
+    if (!sent.ok) {
+      log(`the email change notice was not sent: ${describe(sent)}`);
+    }
   };
 }
 

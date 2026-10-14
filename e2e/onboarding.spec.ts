@@ -222,6 +222,35 @@ test.describe("the fresh install, walked to the end and then used", () => {
     await page.click("[data-slot=overrides-form] button[type=submit]");
     await expect(page.locator("html[lang=en][dir=ltr]")).toHaveCount(1);
 
+    // An empty current password is refused beside it: a session alone cannot move the account.
+    await page.fill(
+      "[data-slot=email-form] input[name=email]",
+      "owner@example.com"
+    );
+    await page.click("[data-slot=email-form] button[type=submit]");
+    await expectRefused(page, "[data-slot=email-form]", ["currentPassword"]);
+    await expectSaidOnce(page, "[data-slot=email-form]", "currentPassword");
+    // A wrong one too, and the address stays.
+    await page.fill(
+      "[data-slot=email-form] input[name=currentPassword]",
+      "not the password"
+    );
+    await page.click("[data-slot=email-form] button[type=submit]");
+    await expect(
+      page.locator(
+        "[data-slot=email-form] [data-slot=save-outcome][data-reason=wrong_password]"
+      )
+    ).toHaveCount(1);
+    await expectRefused(page, "[data-slot=email-form]", ["currentPassword"]);
+    await expectSaidOnce(page, "[data-slot=email-form]", "currentPassword");
+    await expect(page.locator("[data-slot=sidebar-footer] bdi")).toHaveText(
+      "operator@example.com"
+    );
+    await page.fill(
+      "[data-slot=email-form] input[name=currentPassword]",
+      "correct horse battery"
+    );
+
     // An address that is not one is refused beside the field.
     await page.fill("[data-slot=email-form] input[name=email]", "not an email");
     await page.click("[data-slot=email-form] button[type=submit]");

@@ -66,11 +66,33 @@ function cookieHeader(setCookies: readonly string[]): string {
   return setCookies.map((value) => value.split(";")[0] ?? "").join("; ");
 }
 
+/** The notices an email change sent, as the old and the new address. */
+type Notices = [previous: string, next: string][];
+
+/** Changes the email with the current password unless another is given, collecting the notices. */
+function change(
+  auth: Auth,
+  headers: Headers,
+  newEmail: string,
+  notices: Notices = [],
+  currentPassword = password
+) {
+  return changeOperatorEmail(
+    auth,
+    headers,
+    { currentPassword, email: newEmail },
+    (previous, next) => {
+      notices.push([previous, next]);
+      return Promise.resolve();
+    }
+  );
+}
+
 describe("changing the operator's email", () => {
   test("stores the new address and answers the cookies for the session that now names it", async () => {
     const auth = await authWithOperator();
     const headers = await signedIn(auth);
-    const result = await changeOperatorEmail(auth, headers, "new@example.com");
+    const result = await change(auth, headers, "new@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
@@ -83,19 +105,49 @@ describe("changing the operator's email", () => {
     expect(session?.operator.email).toBe("new@example.com");
   });
 
-  test("the address is lower-cased and the current address is refused as the same", async () => {
+  test("needs the current password: a wrong one is refused, the address stays and no notice goes", async () => {
     const auth = await authWithOperator();
     const headers = await signedIn(auth);
+    const notices: Notices = [];
     expect(
-      await changeOperatorEmail(auth, headers, "Operator@Example.com")
+      await change(
+        auth,
+        headers,
+        "new@example.com",
+        notices,
+        "not the password"
+      )
+    ).toEqual({ ok: false, reason: "wrong_password" });
+    expect((await readOperator(auth, headers))?.operator.email).toBe(email);
+    expect(notices).toEqual([]);
+  });
+
+  test("tells the address the account had which address it has now", async () => {
+    const auth = await authWithOperator();
+    const headers = await signedIn(auth);
+    const notices: Notices = [];
+    expect((await change(auth, headers, "New@Example.com", notices)).ok).toBe(
+      true
+    );
+    expect(notices).toEqual([[email, "new@example.com"]]);
+  });
+
+  test("the address is lower-cased and the current address is refused as the same, with no notice", async () => {
+    const auth = await authWithOperator();
+    const headers = await signedIn(auth);
+    const notices: Notices = [];
+    expect(
+      await change(auth, headers, "Operator@Example.com", notices)
     ).toEqual({ ok: false, reason: "same_email" });
+    expect(notices).toEqual([]);
   });
 
   test("without a session it is unavailable", async () => {
     const auth = await authWithOperator();
-    expect(
-      await changeOperatorEmail(auth, new Headers(), "new@example.com")
-    ).toEqual({ ok: false, reason: "unavailable" });
+    expect(await change(auth, new Headers(), "new@example.com")).toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
   });
 });
 
@@ -158,7 +210,7 @@ describe("the email change after the address was verified", () => {
     await context.internalAdapter.updateUser(user?.id ?? "", {
       emailVerified: true,
     });
-    const changed = await changeOperatorEmail(auth, headers, "new@example.com");
+    const changed = await change(auth, headers, "new@example.com");
     expect(changed.ok).toBe(true);
     const after =
       await context.internalAdapter.findUserByEmail("new@example.com");
@@ -173,7 +225,7 @@ describe("the email change after the address was verified", () => {
     await context.internalAdapter.updateUser(user?.id ?? "", {
       emailVerified: true,
     });
-    expect(await changeOperatorEmail(auth, headers, email)).toEqual({
+    expect(await change(auth, headers, email)).toEqual({
       ok: false,
       reason: "same_email",
     });

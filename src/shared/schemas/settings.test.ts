@@ -76,11 +76,24 @@ describe("what the account page posts", () => {
     ).toBe(false);
   });
 
-  test("an email change is one address; a password change needs the current one and a new one of at least eight characters", () => {
-    expect(emailChangeSchema.parse({ email: "op@example.com" })).toEqual({
-      email: "op@example.com",
-    });
-    expect(emailChangeSchema.safeParse({ email: "op" }).success).toBe(false);
+  test("an email change is one address and the current password; a password change needs the current one and a new one of at least eight characters", () => {
+    expect(
+      emailChangeSchema.parse({
+        currentPassword: "pw",
+        email: "op@example.com",
+      })
+    ).toEqual({ currentPassword: "pw", email: "op@example.com" });
+    expect(
+      emailChangeSchema.safeParse({ currentPassword: "pw", email: "op" })
+        .success
+    ).toBe(false);
+    expect(
+      emailChangeSchema.safeParse({ currentPassword: "", email: "op@x.com" })
+        .success
+    ).toBe(false);
+    expect(emailChangeSchema.safeParse({ email: "op@x.com" }).success).toBe(
+      false
+    );
     expect(
       passwordChangeSchema.safeParse({
         currentPassword: "old password",
