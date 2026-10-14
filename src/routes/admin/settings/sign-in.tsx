@@ -66,14 +66,18 @@ const choose = createServerFn({ method: "POST" })
 /** A test waits on the network for up to an SMTP attempt, past Bun's ten idle seconds. */
 const testHoldSeconds = smtpTimeoutMs / 1000 + 10;
 
+// The channel picked on the screen, saved or not: the test is of what Save would store.
 const test = createServerFn({ method: "POST" })
   .middleware([operatorMiddleware])
-  .handler(({ context }): Promise<AuthTestResult> => {
+  .validator(authEmailChannelSchema)
+  .handler(({ context, data }): Promise<AuthTestResult> => {
     context.holdOpen(testHoldSeconds);
-    return sendAuthTest(context.storage, context.boot.installKey, {
-      fetch,
-      now: Date.now,
-    });
+    return sendAuthTest(
+      context.storage,
+      context.boot.installKey,
+      { fetch, now: Date.now },
+      data.channelId
+    );
   });
 
 const change = createServerFn({ method: "POST" })
@@ -162,7 +166,10 @@ function SignInSettingsPage() {
     (input: AuthEmailChannelInput) => chooseFn({ data: input }),
     [chooseFn]
   );
-  const testCall = useCallback(() => testFn(), [testFn]);
+  const testCall = useCallback(
+    (input: AuthEmailChannelInput) => testFn({ data: input }),
+    [testFn]
+  );
   const changeCall = useCallback(
     (input: SecondStepInput) => changeFn({ data: input }),
     [changeFn]

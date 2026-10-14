@@ -73,12 +73,13 @@ async function signOut(page: Page, origin: string): Promise<void> {
 async function addEmailChannel(
   page: Page,
   origin: string,
-  smtp: FakeSmtp
+  smtp: FakeSmtp,
+  name = "Mail"
 ): Promise<void> {
   await page.goto(`${origin}/admin/channels/new`);
   await page.click("[role=radio][data-value=email]");
   const form = page.locator("[data-slot=channel-form]");
-  await form.locator("input[name=name]").fill("Mail");
+  await form.locator("input[name=name]").fill(name);
   await form.locator("input[name=from]").fill("raaqeb@example.com");
   await form.locator("input[name=to]").fill("team@example.com");
   await form.locator("input[name=host]").fill("127.0.0.1");
@@ -150,6 +151,34 @@ test("a visitor subscribes to a status page by email, confirms from the link the
     "data-state",
     "confirmed"
   );
+});
+
+test("the sign-in email test goes through the channel picked on the page, before it is saved", async ({
+  install,
+  page,
+  smtp,
+}) => {
+  const { origin } = install;
+  const refusing = fakeSmtp({ refuseRecipient: operatorEmail });
+  try {
+    await signIn(page, origin);
+    await expectPath(page, "/admin/monitors");
+    // The oldest email channel is the one in force until another is saved.
+    await addEmailChannel(page, origin, smtp, "Works");
+    await addEmailChannel(page, origin, refusing, "Refuses");
+    await page.goto(`${origin}/admin/settings/sign-in`);
+    const form = page.locator("[data-slot=auth-email-form]");
+    await form
+      .locator("select[name=channelId]")
+      .selectOption({ label: "Refuses" });
+    await form.locator("[data-slot=auth-email-test]").click();
+    await expect(
+      form.locator("[data-slot=auth-email-test-failed]")
+    ).toBeVisible();
+    expect(smtp.messages).toHaveLength(0);
+  } finally {
+    refusing.stop();
+  }
 });
 
 test("the authenticator app gives new backup codes and turns off, a pending sign-in that lapsed starts over, and the second step turns off in the browser so the password alone signs in", async ({

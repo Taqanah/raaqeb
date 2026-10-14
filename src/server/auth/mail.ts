@@ -120,10 +120,12 @@ export async function sendAuthMail(
   storage: AuthMailStorage,
   key: InstallKey,
   io: DeliverIo,
-  message: AuthMailMessage
+  message: AuthMailMessage,
+  /** Another email channel to send through; the test of one picked and not yet saved. */
+  through?: Channel
 ): Promise<AuthMailResult> {
   try {
-    const channel = await authEmailChannelOf(storage);
+    const channel = through ?? (await authEmailChannelOf(storage));
     if (!channel) {
       return { ok: false, reason: "no_channel" };
     }

@@ -1106,6 +1106,68 @@ describe("the auth settings screen", () => {
     }
   });
 
+  test("a channel picked and not yet saved is the one tested, not the one in force", async () => {
+    const s = await scratch();
+    await authWithOperator(s.storage);
+    const inForce = fakeSmtp();
+    const picked = fakeSmtp();
+    try {
+      await emailChannel(s, "First", inForce.port);
+      const second = await emailChannel(s, "Second", picked.port);
+      expect(
+        await sendAuthTest(s.storage, s.boot.installKey, io, second)
+      ).toEqual({ ok: true });
+      expect(inForce.messages).toHaveLength(0);
+      expect(picked.messages).toHaveLength(1);
+      // The proof is for the picked channel: the switch opens once it is saved.
+      expect((await readSecondStep(s.storage))?.tested).toBe(false);
+      await chooseAuthEmailChannel(s.storage, second);
+      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+    } finally {
+      inForce.stop();
+      picked.stop();
+    }
+  });
+
+  test("a picked channel's failed test leaves the proof of the channel in force", async () => {
+    const s = await scratch();
+    await authWithOperator(s.storage);
+    const inForce = fakeSmtp();
+    const picked = fakeSmtp({ refuseRecipient: testEmail });
+    try {
+      await emailChannel(s, "First", inForce.port);
+      const second = await emailChannel(s, "Second", picked.port);
+      await sendAuthTest(s.storage, s.boot.installKey, io);
+      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+      const failed = await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        second
+      );
+      expect(failed.ok).toBe(false);
+      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+    } finally {
+      inForce.stop();
+      picked.stop();
+    }
+  });
+
+  test("a picked id that is no email channel answers no channel and sends nothing", async () => {
+    const s = await scratch();
+    await authWithOperator(s.storage);
+    const smtp = fakeSmtp();
+    try {
+      await emailChannel(s, "Mail", smtp.port);
+      expect(
+        await sendAuthTest(s.storage, s.boot.installKey, io, "gone")
+      ).toEqual({ ok: false, reason: "no_channel" });
+      expect(smtp.messages).toHaveLength(0);
+    } finally {
+      smtp.stop();
+    }
+  });
+
   test("a wrong password refuses the switch either way", async () => {
     const s = await scratch();
     const auth = await authWithOperator(s.storage);

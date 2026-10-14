@@ -89,30 +89,39 @@ export async function chooseAuthEmailChannel(
   }
 }
 
-/** Sends the test message to the operator account's address and remembers the channel it went through. */
+/** Sends the test message to the operator account's address through the email channel picked on the screen, saved or not, else the one in force, and remembers the channel it went through. */
 export async function sendAuthTest(
   storage: SecondStepStorage,
   key: InstallKey,
-  io: DeliverIo
+  io: DeliverIo,
+  channelId?: string
 ): Promise<AuthTestResult> {
   try {
-    const [account, channel] = await Promise.all([
+    const [account, channel, tested] = await Promise.all([
       storage.operatorAccount.read(),
-      authEmailChannelOf(storage),
+      channelId === undefined
+        ? authEmailChannelOf(storage)
+        : storage.channels.find(channelId),
+      readSetting(storage, authEmailTested, undefined),
     ]);
     if (!account) {
       return { ok: false, reason: "unavailable" };
     }
-    if (!channel) {
+    if (channel?.type !== "email") {
       return { ok: false, reason: "no_channel" };
     }
-    const sent = await sendAuthMail(storage, key, io, {
-      kind: "test",
-      to: account.email,
-    });
+    const sent = await sendAuthMail(
+      storage,
+      key,
+      io,
+      { kind: "test", to: account.email },
+      channel
+    );
     if (!sent.ok) {
-      // The last test is the proof: a failed one undoes an earlier success.
-      await storage.settings.remove(authEmailTested);
+      // The channel's last test is its proof: a failed one undoes its earlier success, never another channel's.
+      if (tested?.channelId === channel.id) {
+        await storage.settings.remove(authEmailTested);
+      }
       return sent.reason === "failed"
         ? { failure: sent.failure, ok: false, reason: "failed" }
         : { ok: false, reason: "no_channel" };

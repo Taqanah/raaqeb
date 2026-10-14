@@ -66,7 +66,7 @@ const switchMessages: Readonly<Record<SecondStepRefusal, MessageId>> = {
 export interface AuthEmailFormProps {
   readonly choose: SaveCall<AuthEmailChannelInput, SaveRefusal>;
   readonly onChanged: () => void;
-  readonly sendTest: () => Promise<AuthTestResult>;
+  readonly sendTest: (input: AuthEmailChannelInput) => Promise<AuthTestResult>;
   readonly view: SecondStepView;
 }
 
@@ -111,7 +111,7 @@ export function AuthEmailForm({
   );
   const runTest = useCallback(() => {
     setTest({ kind: "pending" });
-    sendTest().then(
+    sendTest({ channelId }).then(
       (result) => {
         setTest(result.ok ? { kind: "sent" } : { kind: "failed", result });
         onChanged();
@@ -122,7 +122,7 @@ export function AuthEmailForm({
           result: { ok: false, reason: "unavailable" },
         })
     );
-  }, [onChanged, sendTest]);
+  }, [channelId, onChanged, sendTest]);
   const header = (
     <CardHeader divided>
       <CardTitle>{t("setting_auth_email_title")}</CardTitle>
@@ -146,7 +146,7 @@ export function AuthEmailForm({
       </Card>
     );
   }
-  // The test sends through the channel in force, the saved one, so it stays beside the choice and Save closes the card.
+  // The test sends through the channel picked, saved or not, so it stays beside the choice and Save closes the card.
   return (
     <form data-slot="auth-email-form" method="post" onSubmit={onSubmit}>
       <Card>
