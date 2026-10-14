@@ -13,6 +13,11 @@ export function pageLocale(prefix: string | undefined): Locale | undefined {
   return prefix === "en" ? "en" : undefined;
 }
 
+/** The locale a path is shown in, a path that names no page included: English under /en, Arabic everywhere else. */
+export function pathLocale(pathname: string): Locale {
+  return pageLocale(pathname.split("/")[1]) ?? defaultLocale;
+}
+
 /** Each locale's landing page: Arabic at the bare path, English under /en. */
 export const homePath: Readonly<Record<Locale, string>> = {
   ar: "/",

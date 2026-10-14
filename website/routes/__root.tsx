@@ -2,14 +2,15 @@ import {
   createRootRoute,
   HeadContent,
   Scripts,
-  useParams,
+  useLocation,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { defaultLocale, directionOf } from "@/shared/i18n/locale.ts";
+import { directionOf } from "@/shared/i18n/locale.ts";
 import rubikArabic from "@/shared/ui/fonts/rubik-arabic.woff2?url";
 import rubikLatin from "@/shared/ui/fonts/rubik-latin.woff2?url";
+import { NotFound } from "~/landing/not-found.tsx";
 import { themeScript } from "~/landing/theme.tsx";
-import { pageLocale } from "~/locale.ts";
+import { pathLocale } from "~/locale.ts";
 
 const font = {
   as: "font",
@@ -44,13 +45,14 @@ export const Route = createRootRoute({
     // The visitor's theme on the root before the first paint, the docs' key and classes, so it holds on every page.
     scripts: [{ children: themeScript }],
   }),
+  // The build writes it as each locale's 404.html, which the static host serves for an address that is no file.
+  notFoundComponent: NotFound,
   shellComponent: Document,
 });
 
-// The page's locale sets the document's language and direction; a path that names no page renders in the default.
+// The path's locale sets the document's language and direction, a path that names no page included.
 function Document({ children }: { readonly children: ReactNode }): ReactNode {
-  const { locale } = useParams({ strict: false });
-  const shown = pageLocale(locale) ?? defaultLocale;
+  const shown = useLocation({ select: (l) => pathLocale(l.pathname) });
   return (
     // The theme script in the head sets .light or .dark on the root before React loads.
     <html dir={directionOf(shown)} lang={shown} suppressHydrationWarning>

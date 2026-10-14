@@ -34,3 +34,10 @@ test("the compatibility date is a past or present day", () => {
   expect(config.compatibility_date).toMatch(isoDate);
   expect(Date.parse(config.compatibility_date)).toBeLessThanOrEqual(Date.now());
 });
+
+test("an unknown address gets the not-found page in its language, which the build writes where the host looks for it", async () => {
+  const vite = await Bun.file(`${import.meta.dir}/vite.config.ts`).text();
+  expect(config.assets.not_found_handling).toBe("404-page");
+  expect(vite).toContain('outputPath: "/404.html"');
+  expect(vite).toContain('outputPath: "/en/404.html"');
+});

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { pageLocale } from "./locale.ts";
+import { pageLocale, pathLocale } from "./locale.ts";
 
 describe("the locale a website address shows", () => {
   test("the bare path shows the Arabic page", () => {
@@ -18,5 +18,21 @@ describe("the locale a website address shows", () => {
     expect(pageLocale("fr")).toBeUndefined();
     expect(pageLocale("EN")).toBeUndefined();
     expect(pageLocale("")).toBeUndefined();
+  });
+});
+
+describe("the locale a path that may name no page is shown in", () => {
+  test("a path under /en is shown in English", () => {
+    expect(pathLocale("/en")).toBe("en");
+    expect(pathLocale("/en/")).toBe("en");
+    expect(pathLocale("/en/docs/nope")).toBe("en");
+  });
+
+  test("every other path is shown in Arabic, an unknown one included", () => {
+    expect(pathLocale("/")).toBe("ar");
+    expect(pathLocale("/docs/nope")).toBe("ar");
+    expect(pathLocale("/nope")).toBe("ar");
+    expect(pathLocale("/ar/nope")).toBe("ar");
+    expect(pathLocale("/english")).toBe("ar");
   });
 });

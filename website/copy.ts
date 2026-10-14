@@ -172,6 +172,13 @@ export interface Copy {
     readonly docs: string;
     readonly pages: string;
   };
+  /** What an address that names no page shows: the tab's title, the heading, the line under it and the way home. */
+  readonly notFound: {
+    readonly head: string;
+    readonly home: string;
+    readonly lead: string;
+    readonly title: string;
+  };
   readonly order: readonly Section[];
   readonly other: string;
   readonly pages: {
@@ -479,6 +486,12 @@ const ar: Copy = {
     docs: "التوثيقات",
     pages: "صفحات الحالة",
   },
+  notFound: {
+    head: "الصفحة غير موجودة",
+    home: "الصفحة الرئيسية",
+    lead: "ربما نُقلت الصفحة، أو في العنوان خطأ. ابدأ من الصفحة الرئيسية أو من التوثيقات.",
+    title: "لا صفحة بهذا العنوان.",
+  },
   // The admin section waits for new screenshots; add "admin" back after "pages" to show it.
   order: ["checks", "alerts", "pages", "arabic", "server", "install"],
   other: "English",
@@ -704,6 +717,12 @@ const en: Copy = {
     checks: "Checks",
     docs: "Docs",
     pages: "Status pages",
+  },
+  notFound: {
+    head: "Page not found",
+    home: "Home page",
+    lead: "It may have moved, or the address has a typo. Start from the home page or the docs.",
+    title: "No page at this address.",
   },
   // The admin section waits for new screenshots; add "admin" back after "pages" to show it.
   order: ["checks", "alerts", "pages", "arabic", "server", "install"],

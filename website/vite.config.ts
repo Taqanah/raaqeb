@@ -32,6 +32,9 @@ export default defineConfig({
         { path: "/llms-full.txt" },
         { path: "/robots.txt" },
         { path: "/sitemap.xml" },
+        // The host serves the nearest 404.html for an address that is no file: English under /en, Arabic elsewhere.
+        { path: "/404", prerender: { outputPath: "/404.html" } },
+        { path: "/en/404", prerender: { outputPath: "/en/404.html" } },
       ],
       router: { addExtensions: true, quoteStyle: "double", semicolons: true },
       // The stylesheet rides in each page's HTML, so the first paint waits on no request but the fonts.
