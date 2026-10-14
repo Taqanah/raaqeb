@@ -12,6 +12,11 @@
  */
 import { encrypt, type InstallKey } from "@/server/boot/installkey.ts";
 import { error as logError, reasonOf } from "@/server/log.ts";
+import {
+  mergeValues,
+  splitValues,
+  valuesSchema,
+} from "@/server/notify/secrets.ts";
 import { imageTypeOf } from "@/server/pages/images.ts";
 import { releaseCheckEnabled } from "@/server/release/release.ts";
 import { sealClosedDays } from "@/server/scheduler/sealing.ts";
@@ -34,6 +39,7 @@ import type { Storage } from "@/server/storage/storage.ts";
 import type { Restored } from "@/server/storage/transfer.ts";
 import { utcDayStart } from "@/shared/domain/retention.ts";
 import { dailyOfHours } from "@/shared/domain/rollup.ts";
+import { channelDeclarations } from "@/shared/schemas/channel.ts";
 import type { Check } from "@/shared/schemas/check.ts";
 import {
   type Configuration,
@@ -114,6 +120,29 @@ const travelling: Readonly<Record<TravellingSetting, Setting<unknown>>> = {
 /** Whether a setting's value fits the setting this install declares, so a file cannot store one the install would read as broken. */
 function fitsItsSetting(row: Configuration["settings"][number]): boolean {
   return travelling[row.key].schema.safeParse(parseJson(row.value)).success;
+}
+
+/** Whether a channel's values are what its form would store: each field its type declares fits, the secret ones among its credentials and the rest in its config, and nothing else. */
+function fitsItsForm(row: Configuration["channels"][number]): boolean {
+  const config = valuesSchema.safeParse(parseJson(row.config)).data;
+  const secrets =
+    row.credentials === null
+      ? {}
+      : valuesSchema.safeParse(parseJson(row.credentials)).data;
+  if (!(config && secrets)) {
+    return false;
+  }
+  const declaration = channelDeclarations[row.type];
+  const typed = { ...config, ...secrets };
+  // A generated value comes from the file, never made here: one missing refuses the channel.
+  const values = mergeValues(declaration, typed, typed, {
+    generate: {},
+    renew: false,
+  });
+  return (
+    values !== undefined &&
+    Bun.deepEquals(splitValues(declaration, values), { config, secrets })
+  );
 }
 
 /** The page images as an upload takes them: within their kind's size, the type and hash computed from the bytes; nothing when one is no image of its kind. */
@@ -213,7 +242,11 @@ async function importOnce(
     const { mode } = header.data;
     const pageImages = takenImages(header.data.configuration.pageImages);
     if (
-      !(pageImages && header.data.configuration.settings.every(fitsItsSetting))
+      !(
+        pageImages &&
+        header.data.configuration.settings.every(fitsItsSetting) &&
+        header.data.configuration.channels.every(fitsItsForm)
+      )
     ) {
       throw new InvalidLineError(1);
     }

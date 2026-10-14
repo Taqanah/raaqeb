@@ -23,6 +23,7 @@ import {
   checkTypeSchema,
   monitorConfigSchema,
   monitorEventKinds,
+  monitorFieldsSchema,
 } from "./monitor.ts";
 import {
   pageCustomizationSchema,
@@ -108,6 +109,8 @@ const count = z.number().int().min(0);
 const plain = z.string();
 /** Content: one text per locale, an object in the file and its JSON text in storage; one with no text in any locale refuses the line. */
 const content = jsonTextCodec(contentSchema(Number.MAX_SAFE_INTEGER));
+/** A monitor's numbers take the bounds its form takes, so an import cannot store one the form would refuse. */
+const monitorFields = monitorFieldsSchema.shape;
 
 /** A channel's values, or its secret ones: field name to value. */
 const channelValuesSchema = z.record(z.string(), z.string());
@@ -147,15 +150,15 @@ export const configurationSchema = z.object({
       checkType: checkTypeSchema,
       target: plain.nullable(),
       config: jsonTextCodec(monitorConfigSchema),
-      intervalMs: count,
-      timeoutMs: count,
-      retries: count,
-      degradedMs: count.nullable(),
-      retentionDays: count.nullable(),
+      intervalMs: monitorFields.intervalMs,
+      timeoutMs: monitorFields.timeoutMs,
+      retries: monitorFields.retries,
+      degradedMs: monitorFields.degradedMs.unwrap().nullable(),
+      retentionDays: monitorFields.retentionDays.unwrap().nullable(),
       credentials: jsonTextCodec(credentialsSchema).nullable(),
       heartbeatToken: plain.nullable(),
       events: jsonTextCodec(z.array(z.enum(monitorEventKinds))),
-      reminderMs: count.nullable(),
+      reminderMs: monitorFields.reminderMs.unwrap().nullable(),
       paused: flagCodec,
       pausedAt: timeCodec.nullable(),
       groupId: id.nullable(),

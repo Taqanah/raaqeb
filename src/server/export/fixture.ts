@@ -55,7 +55,9 @@ export const subscriberUrl = "https://hooks.example.test/raaqeb";
 export const monitorPassword = "monitor password 7";
 /** The webhook channel's URL and signing secret, sealed in the source and in clear in the file. */
 export const channelUrl = "https://alerts.example.test/hook?key=abc";
-export const signingSecret = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw";
+// A secret of the shape the webhook makes, so an import takes it as its form would.
+export const signingSecret =
+  "whsec_AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dw=";
 
 export interface Install {
   /** Moves the storage's clock, which stamps every row it writes. */

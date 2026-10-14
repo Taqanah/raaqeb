@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { z } from "zod";
 import { decrypt } from "@/server/boot/installkey.ts";
 import {
   openCredentials,
@@ -10,6 +11,13 @@ import { calendar, timeZone } from "@/server/settings/clock.ts";
 import { installLanguage } from "@/server/settings/language.ts";
 import { operatorCalendar } from "@/server/settings/operator.ts";
 import { runSql } from "@/server/storage/fixture.ts";
+import {
+  intervalMaxMs,
+  intervalMinMs,
+  reminderMinMs,
+  retriesMax,
+  timeoutMaxMs,
+} from "@/shared/schemas/monitor.ts";
 import { pageImageKinds, pageImageMaxBytes } from "@/shared/schemas/page.ts";
 import { exportInstall } from "./export.ts";
 import {
@@ -708,6 +716,104 @@ describe("an import", () => {
     ).toEqual({ line: 1, ok: false, reason: "invalid" });
     expect(await empty(into)).toBe(true);
     expect(await into.storage.settings.get(installLanguage)).toBe("ar");
+  });
+
+  /** A row of the file's JSON, which a test edits as a hand would. */
+  type Row = Record<string, unknown>;
+
+  /** A channel's values in the file: field name to text. */
+  const values = (value: unknown) =>
+    z.record(z.string(), z.string()).parse(value);
+
+  /** What an empty install answers to the configuration export of `from` with one row of `table` edited, the row found by `pick`, and whether the install is still empty after. */
+  async function importEdited(
+    from: Install,
+    table: "channels" | "monitors",
+    pick: (row: Row) => boolean,
+    edit: (row: Row) => void
+  ): Promise<{ answer: unknown; empty: boolean }> {
+    const header = JSON.parse(
+      (await exportLines(from, "configuration"))[0] ?? "{}"
+    );
+    const row = header.configuration[table].find(pick);
+    if (!row) {
+      throw new Error(`no such row of ${table}`);
+    }
+    edit(row);
+    const into = await target();
+    const answer = await importInstall(
+      into.storage,
+      into.key,
+      fileOf([JSON.stringify(header)]),
+      now
+    );
+    return { answer, empty: await empty(into) };
+  }
+
+  const refusedAtHeader = {
+    answer: { line: 1, ok: false, reason: "invalid" },
+    empty: true,
+  };
+
+  test("refuses a monitor whose interval, timeout, retries, degraded time, reminder or retention is outside what its form takes, at the header, and writes nothing", async () => {
+    const from = await source();
+    const edits: [string, number][] = [
+      ["intervalMs", 0],
+      ["intervalMs", intervalMinMs - 1],
+      ["intervalMs", intervalMaxMs + 1],
+      ["timeoutMs", 0],
+      ["timeoutMs", timeoutMaxMs + 1],
+      ["retries", retriesMax + 1],
+      ["degradedMs", 0],
+      ["reminderMs", reminderMinMs - 1],
+      ["retentionDays", 0],
+    ];
+    const answers: unknown[] = [];
+    for (const [field, value] of edits) {
+      answers.push(
+        // biome-ignore lint/performance/noAwaitInLoops: each import needs an install of its own
+        await importEdited(
+          from,
+          "monitors",
+          () => true,
+          (row) => {
+            row[field] = value;
+          }
+        )
+      );
+    }
+    expect(answers).toEqual(edits.map(() => refusedAtHeader));
+  });
+
+  test("refuses a channel whose values are not what its form would store: a required one missing, one that does not fit its field, a secret in clear, a name its type does not declare", async () => {
+    const from = await source();
+    const email = (row: Row) => row.type === "email";
+    const webhook = (row: Row) => row.type === "webhook";
+    const answers = [
+      await importEdited(from, "channels", email, (row) => {
+        row.config = { ...values(row.config), host: undefined };
+      }),
+      await importEdited(from, "channels", email, (row) => {
+        row.config = { ...values(row.config), port: "0" };
+      }),
+      await importEdited(from, "channels", webhook, (row) => {
+        row.credentials = { ...values(row.credentials), url: "not a url" };
+      }),
+      await importEdited(from, "channels", email, (row) => {
+        row.config = { ...values(row.config), ...values(row.credentials) };
+        row.credentials = null;
+      }),
+      await importEdited(from, "channels", email, (row) => {
+        row.config = { ...values(row.config), extra: "x" };
+      }),
+    ];
+    expect(answers).toEqual([
+      refusedAtHeader,
+      refusedAtHeader,
+      refusedAtHeader,
+      refusedAtHeader,
+      refusedAtHeader,
+    ]);
   });
 
   /** The configuration's header with its one page image's type and bytes replaced, and the image's page. */
