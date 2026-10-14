@@ -70,16 +70,17 @@ export function Page({
               <Link
                 className="max-w-48 shrink-0 truncate rounded-sm text-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-4 focus-visible:ring-ring-soft"
                 data-slot="page-parent"
+                dir="auto"
                 to={parent.to}
               >
-                <bdi>{parent.label}</bdi>
+                {parent.label}
               </Link>
               <ChevronEndIcon className="size-icon shrink-0 text-muted-foreground" />
             </>
           ) : null}
-          <h1 className="min-w-0 truncate font-semibold text-lg">
-            {/* A stored title may be in the other language: isolated, it keeps its own order. */}
-            <bdi>{title}</bdi>
+          {/* A stored title or name may be in the other language: in its own direction it keeps its order and the ellipsis falls at its end. */}
+          <h1 className="min-w-0 truncate font-semibold text-lg" dir="auto">
+            {title}
           </h1>
         </div>
         {action ? (

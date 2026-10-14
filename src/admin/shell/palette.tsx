@@ -82,8 +82,9 @@ function PaletteEntry({
       value={entry}
     >
       <Icon />
-      <span className="truncate">
-        {entry.item.kind === "monitor" ? <bdi>{entry.label}</bdi> : entry.label}
+      {/* A monitor's name may be in the other language: in its own direction the ellipsis falls at its end. */}
+      <span className="truncate" dir="auto">
+        {entry.label}
       </span>
       {/* The target shows why a monitor matched when the query was part of its URL. */}
       {entry.item.kind === "monitor" && entry.item.monitor.target ? (

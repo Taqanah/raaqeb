@@ -323,9 +323,9 @@ function ComponentRow({
       data-slot="page-item"
     >
       {/* On a narrow screen the name takes its own line and the controls wrap under it. */}
-      {/* The span takes the page's direction, so the name starts on the page's start side; the bdi keeps the name's own order. */}
-      <span className="min-w-0 basis-full truncate font-medium text-sm sm:flex-1 sm:basis-auto">
-        <ContentText content={component.name} />
+      {/* The span sits the name on the page's start side; the bdi cuts it in the name's own direction, at its end. */}
+      <span className="flex min-w-0 basis-full font-medium text-sm sm:flex-1 sm:basis-auto">
+        <ContentText className="truncate" content={component.name} />
       </span>
       <StatusLevelBadge level={component.status} />
       {groups.length > 0 ? (

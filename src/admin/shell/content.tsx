@@ -57,13 +57,15 @@ export function useContentIn(): (content: Content | undefined) => string {
   return (content) => contentIn(content, locale, install);
 }
 
-/** One piece of content as the operator reads it, isolated from the text around it. */
+/** One piece of content as the operator reads it, isolated from the text around it; a `bdi` takes the text's own direction, so a `truncate` given here cuts it at its end. */
 export function ContentText({
+  className,
   content,
 }: {
+  readonly className?: string;
   readonly content: Content | undefined;
 }): ReactNode {
-  return <bdi>{useContentIn()(content)}</bdi>;
+  return <bdi className={className}>{useContentIn()(content)}</bdi>;
 }
 
 /** What every content input shares: the content as typed, the rule it is held to and the change it reports. */

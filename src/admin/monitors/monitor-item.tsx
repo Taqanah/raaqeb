@@ -156,10 +156,12 @@ function Name({ monitor }: { readonly monitor: Monitor }): ReactNode {
       <Link
         className="-mb-[0.25rem] min-w-0 max-w-full self-start truncate pb-[0.25rem] font-medium underline-offset-4 hover:underline"
         data-slot="monitor-name"
+        // In the name's own direction the ellipsis falls at its end; `auto` skips the text of a bdi, so there is none inside.
+        dir="auto"
         params={{ id: monitor.id }}
         to="/admin/monitors/$id"
       >
-        <bdi>{monitor.name}</bdi>
+        {monitor.name}
       </Link>
       {monitor.target ? (
         <Token className="min-w-0 max-w-full self-start truncate bg-transparent px-0 text-muted-foreground text-xs max-sm:hidden">

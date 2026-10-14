@@ -685,10 +685,11 @@ function ComponentChoice({
         name={id}
         onCheckedChange={onChecked}
       />
-      <label className="min-w-0 flex-1" htmlFor={id}>
-        <span className="block truncate font-medium text-sm">
-          <ContentText content={component.name} />
-        </span>
+      <label className="flex min-w-0 flex-1" htmlFor={id}>
+        <ContentText
+          className="truncate font-medium text-sm"
+          content={component.name}
+        />
       </label>
       <StatusLevelBadge level={component.status} />
     </li>
