@@ -60,15 +60,15 @@ Anything with logic is written test first, one commit per step, so a reviewer ca
 
 A bug starts at red: a failing test reproduces the report before any fix. A test that fails stays as written; "fixed" means the same test, green.
 
-Tests sit in `<name>.test.ts` beside `<name>.ts`. Integration tests use a real SQLite file in a temp directory. Styling and copy have no tests. Playwright specs in `e2e/` cover onboarding and the public page and stay few: `retries: 0`, `@playwright/test` pinned exactly, `expectPath(page, "/...")` never a regex `toHaveURL`, every `expect.poll` awaited, selectors are attributes (`input[name=email]`) never Arabic copy.
+Tests sit in `<name>.test.ts` beside `<name>.ts`. Integration tests use a real SQLite file in a temp directory. Styling and copy have no tests. Playwright specs in `e2e/` walk every flow an operator or visitor finishes in the browser, each test on records it creates or on an install of its own, never on a seeded record another spec reads: `retries: 0`, `@playwright/test` pinned exactly, `expectPath(page, "/...")` never a regex `toHaveURL`, every `expect.poll` awaited, selectors are attributes (`input[name=email]`) never Arabic copy.
 
 ## The gate
 
 ```
 bun run gate                    catalog check, lint, typecheck, unit and integration tests on SQLite
-docker compose up -d            a local Postgres (and Mailpit for the email channel)
-bun run test:postgres           the same integration files against Postgres; a missing Postgres fails the run
-bun run e2e:install && bun run e2e    Playwright specs, when you touched onboarding, the public page or the routes they walk
+docker compose up -d            a local Postgres, Mailpit for the email channel, MySQL and Redis for the database monitors
+bun run test:postgres           the same integration files against Postgres, Mailpit, MySQL and Redis; a missing service fails the run
+bun run e2e:install && bun run e2e    Playwright specs: the full suite once when your work is done, only the spec of your red test while working
 ```
 
 `bun run fix` formats; formatting is never a review topic. A change an operator or visitor can see or click is done after you have used it in the built app (`bun run build`).
