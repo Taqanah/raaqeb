@@ -3,14 +3,22 @@
  * standard output, errors to standard error. No level, no timestamp, no JSON;
  * journald and `docker logs` add time and rotation. A line never carries the
  * value of a boot setting, only its name and length. A line break
- * inside a line, as an error's message may hold, becomes a space.
+ * inside a line, as an error's message may hold, becomes a space, and a control character is removed.
  */
 
-const lineBreak = /\s*[\r\n]+\s*/g;
+const lineBreak = /\s*[\r\n\u2028\u2029]+\s*/g;
+
+// What is left of a line's control characters, ANSI escapes included, would rewrite a terminal or a log viewer.
+const control = /\p{Cc}/gu;
+
+/** A line as written: one line, with no control character. */
+function plain(line: string): string {
+  return line.replaceAll(lineBreak, " ").replaceAll(control, "");
+}
 
 // The paths whose next segment is a secret: a heartbeat token, a subscription's token, a password reset token.
 const tokenSegment =
-  /^(\/api\/heartbeat|\/subscriptions|\/api\/auth\/reset-password)\/[^/]+/;
+  /^(\/+api\/+heartbeat|\/+subscriptions|\/+api\/+auth\/+reset-password)\/+[^/]+/i;
 
 /** A request's path as a line names it: no query, and no token a path carries. */
 export function loggedPath(url: string): string {
@@ -19,12 +27,12 @@ export function loggedPath(url: string): string {
 
 /** Writes one line to standard output. */
 export function info(line: string): void {
-  process.stdout.write(`raaqeb: ${line.replaceAll(lineBreak, " ")}\n`);
+  process.stdout.write(`raaqeb: ${plain(line)}\n`);
 }
 
 /** Writes one line to standard error. */
 export function error(line: string): void {
-  process.stderr.write(`raaqeb: ${line.replaceAll(lineBreak, " ")}\n`);
+  process.stderr.write(`raaqeb: ${plain(line)}\n`);
 }
 
 /** An error as a line names it. A refused query's message lists every bound value (a capture's headers and body, a token, an address), so a query's failure is its driver's own message, which names the table or the constraint alone. */

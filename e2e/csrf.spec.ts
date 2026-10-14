@@ -67,6 +67,13 @@ test("a server function call forged from another site is refused before the hand
   });
   expect(sameOrigin.status()).toBe(200);
   expect(await sameOrigin.text()).toContain("unreachable");
+
+  // A payload that is not JSON is refused with a plain 400 before Start parses it.
+  const malformed = await context.request.post(url, {
+    data: Buffer.from("{bad"),
+    headers: { ...protocol, origin: new URL(url).origin },
+  });
+  expect(malformed.status()).toBe(400);
 });
 
 // Vite resolves the server bundle under Node-first conditions unless told

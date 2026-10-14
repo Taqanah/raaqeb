@@ -1,6 +1,11 @@
 import { describe, expect, mock, test } from "bun:test";
 import type { CustomFetch } from "@tanstack/react-start";
-import { buildHeader, reloadingFetch, reloadOnce } from "./start.ts";
+import {
+  buildHeader,
+  malformedPayload,
+  reloadingFetch,
+  reloadOnce,
+} from "./start.ts";
 
 /** sessionStorage's two calls over a Map, which outlives a reload as the tab's own does. */
 function tabStorage(): Pick<Storage, "getItem" | "setItem"> {
@@ -416,5 +421,44 @@ describe("a reload for a chunk that failed to load", () => {
 
   test("never happens in a tab with no build of its own", () => {
     expect(reloadOnce(undefined, tabStorage())).toBe(false);
+  });
+});
+
+describe("a server function call's payload", () => {
+  const url = "http://h/_serverFn/routes.-admin--readSession";
+  const post = (body: string, type = "application/json") =>
+    new Request(url, {
+      body,
+      headers: { "content-type": type },
+      method: "POST",
+    });
+
+  test("JSON that does not parse is malformed, in a body or in the query", async () => {
+    expect(await malformedPayload(post("{bad"))).toBe(true);
+    expect(await malformedPayload(new Request(`${url}?payload=%7Bbad`))).toBe(
+      true
+    );
+  });
+
+  test("JSON that parses is not, and the body stays readable for the handler", async () => {
+    const request = post('{"data":1}');
+    expect(await malformedPayload(request)).toBe(false);
+    expect(await request.json()).toEqual({ data: 1 });
+    expect(
+      await malformedPayload(new Request(`${url}?payload=%7B%22data%22%3A1%7D`))
+    ).toBe(false);
+  });
+
+  test("a JSON body that is empty is malformed too, as Start would fail to parse it", async () => {
+    expect(await malformedPayload(post(""))).toBe(true);
+  });
+
+  test("a call with no payload, or a form body, is not", async () => {
+    expect(await malformedPayload(new Request(url))).toBe(false);
+    expect(
+      await malformedPayload(
+        post("not=json", "multipart/form-data; boundary=x")
+      )
+    ).toBe(false);
   });
 });

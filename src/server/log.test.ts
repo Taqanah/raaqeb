@@ -38,6 +38,17 @@ describe("the logging convention", () => {
     });
   });
 
+  test("a control character, an ANSI escape or a Unicode line separator in a line cannot rewrite the terminal or split the line", async () => {
+    expect(
+      await run(
+        'error("a\\u001b[2Jb\\u0007c\\u0000d\\u007fe\\u0085f"); info("g\\u2028h\\u2029i\\tj")'
+      )
+    ).toEqual({
+      stderr: "raaqeb: a[2Jbcdef\n",
+      stdout: "raaqeb: g h ij\n",
+    });
+  });
+
   test("lines keep their order within a stream", async () => {
     expect((await run('info("a"); info("b")')).stdout).toBe(
       "raaqeb: a\nraaqeb: b\n"
@@ -67,6 +78,24 @@ describe("a request's path in a line", () => {
   test("a password reset token in Better Auth's callback path is masked", () => {
     expect(loggedPath("http://h/api/auth/reset-password/reset_secret")).toBe(
       "/api/auth/reset-password/<token>"
+    );
+  });
+
+  test("a token is masked whatever the case of the path or the count of its slashes", () => {
+    expect(loggedPath("http://h/Api/Heartbeat/hb_secret")).toBe(
+      "/Api/Heartbeat/<token>"
+    );
+    expect(loggedPath("http://h/API/HEARTBEAT/hb_secret")).toBe(
+      "/API/HEARTBEAT/<token>"
+    );
+    expect(loggedPath("http://h//api//heartbeat//hb_secret")).toBe(
+      "//api//heartbeat/<token>"
+    );
+    expect(loggedPath("http://h/Subscriptions/sub_secret/confirm")).toBe(
+      "/Subscriptions/<token>/confirm"
+    );
+    expect(loggedPath("http://h/api/Auth/Reset-Password/reset_secret")).toBe(
+      "/api/Auth/Reset-Password/<token>"
     );
   });
 

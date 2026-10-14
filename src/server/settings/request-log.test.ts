@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { scratchDatabase } from "@/server/storage/fixture.ts";
-import type { Setting } from "@/server/storage/settings.ts";
+import { type Setting, SettingShapeError } from "@/server/storage/settings.ts";
 import { openStorage, type Storage } from "@/server/storage/storage.ts";
 import { heldRequestLog, requestLogEnabled } from "./request-log.ts";
 
@@ -85,5 +85,46 @@ describe("the request log switch the entry holds", () => {
     expect(await held(broken, 1)).toBe(false);
     await store.settings.set(requestLogEnabled, true);
     expect(await held(store, 2)).toBe(true);
+  });
+  test("a switch that is on stays on while the read fails, and the next request reads again", async () => {
+    const store = await storage();
+    await store.settings.set(requestLogEnabled, true);
+    const held = heldRequestLog();
+    expect(await held(store, 0)).toBe(true);
+    let reads = 0;
+    const broken = {
+      settings: {
+        ...store.settings,
+        get: () => {
+          reads += 1;
+          return Promise.reject(new Error("gone"));
+        },
+      },
+    };
+    expect(await held(broken, 1)).toBe(true);
+    expect(await held(broken, 1)).toBe(true);
+    expect(reads).toBe(2);
+    await store.settings.set(requestLogEnabled, false);
+    expect(await held(store, 1)).toBe(false);
+  });
+
+  test("a stored switch outside its values is off, and is read again only when the counter moves", async () => {
+    const store = await storage();
+    await store.settings.set(requestLogEnabled, true);
+    const held = heldRequestLog();
+    expect(await held(store, 0)).toBe(true);
+    let reads = 0;
+    const shapeless = {
+      settings: {
+        ...store.settings,
+        get: () => {
+          reads += 1;
+          return Promise.reject(new SettingShapeError(requestLogEnabled.key));
+        },
+      },
+    };
+    expect(await held(shapeless, 1)).toBe(false);
+    expect(await held(shapeless, 1)).toBe(false);
+    expect(reads).toBe(1);
   });
 });

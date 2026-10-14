@@ -34,6 +34,36 @@ const escaped = createMiddleware().server(async ({ next, request }) => {
   }
 });
 
+/** Whether a server function call carries a payload that is not JSON: Start parses it before any handler, and logs the failure as a stack trace with the install's paths. */
+export async function malformedPayload(request: Request): Promise<boolean> {
+  try {
+    if (request.method === "GET") {
+      const payload = new URL(request.url).searchParams.get("payload");
+      if (payload) {
+        JSON.parse(payload);
+      }
+    } else if (
+      request.headers.get("content-type")?.includes("application/json")
+    ) {
+      // ponytail: the body is parsed twice, here and by Start; payloads are small forms, capped at 8 MB by the entry.
+      await request.clone().json();
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+// After the CSRF check, so a forged call is still a 403; a call whose payload is not JSON is a plain 400 before Start logs it as a stack trace.
+const refused = createMiddleware().server(
+  async ({ handlerType, next, request }) => {
+    if (handlerType === "serverFn" && (await malformedPayload(request))) {
+      return new Response("Bad Request", { status: 400 });
+    }
+    return await next();
+  }
+);
+
 // This build's id, which vite.config.ts makes new on every build; a run from the source tree has none.
 declare const __RAAQEB_BUILD__: string | undefined;
 const build =
@@ -176,7 +206,7 @@ if (typeof window !== "undefined") {
 }
 
 export const startInstance = createStart(() => ({
-  requestMiddleware: [stamped, escaped, csrf],
+  requestMiddleware: [stamped, escaped, csrf, refused],
   serverFns: {
     fetch: reloadingFetch(build, tabStorage, () => window.location.reload()),
   },

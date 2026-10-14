@@ -6,9 +6,13 @@
  */
 
 import { z } from "zod";
-import { defineSetting, type Setting } from "@/server/storage/settings.ts";
+import { error as logError } from "@/server/log.ts";
+import {
+  defineSetting,
+  type Setting,
+  SettingShapeError,
+} from "@/server/storage/settings.ts";
 import type { Storage } from "@/server/storage/storage.ts";
-import { readSetting } from "./clock.ts";
 
 export const requestLogEnabled: Setting<boolean> = defineSetting(
   "request_log_enabled",
@@ -33,8 +37,18 @@ export function heldRequestLog(): HeldSwitch {
     if (loaded && (counter === undefined || counter === readAt)) {
       return on;
     }
-    // A setting that cannot be read is off, and logged once per move of the counter.
-    on = await readSetting(storage, requestLogEnabled, false);
+    try {
+      on = (await storage.settings.get(requestLogEnabled)) ?? false;
+    } catch (error) {
+      if (!(error instanceof SettingShapeError)) {
+        // The database did not answer: the switch stays as held, and the next request reads again.
+        return on;
+      }
+      logError(
+        `the stored setting ${requestLogEnabled.key} is not one of its values; using the default until it is set again`
+      );
+      on = false;
+    }
     loaded = true;
     readAt = counter;
     return on;
