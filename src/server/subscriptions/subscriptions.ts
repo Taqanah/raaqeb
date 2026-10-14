@@ -20,6 +20,7 @@ import {
   type HostLookup,
   lookupHost,
   webhookReachable,
+  webhookRefusedAsWritten,
 } from "@/server/notify/destination.ts";
 import { canonicalPaths } from "@/server/pages/public.ts";
 import { readPublicAddress } from "@/server/settings/address.ts";
@@ -120,6 +121,10 @@ export async function subscribe(
   input: SubscribeInput,
   options: SignUpOptions
 ): Promise<SubscribeResult> {
+  // An address refused on sight costs no sign-up: the visitor fixes a typo without using up the allowance.
+  if (input.channel === "webhook" && webhookRefusedAsWritten(input.address)) {
+    return { ok: false, reason: "unreachable" };
+  }
   // Counted before any read, so a flood from one client costs no query.
   if (!options.limiter.take(options.client, options.now)) {
     return { ok: false, reason: "limited" };

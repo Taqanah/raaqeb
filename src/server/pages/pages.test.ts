@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { publicAddress } from "@/server/settings/address.ts";
+import { loadCatalog } from "@/server/settings/language.ts";
 import { runSql } from "@/server/storage/fixture.ts";
+import { createMessages } from "@/shared/i18n/messages.ts";
 import { defaultCustomization, type PageInput } from "@/shared/schemas/page.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import { createComponent } from "./components.ts";
@@ -413,6 +415,22 @@ describe("the page editor's read", () => {
       { id: web, name: { ar: "Web" }, status: "partial_outage" },
       { id: api, name: { ar: "API" }, status: "operational" },
     ]);
+  });
+
+  test("the editor reads each status level's own name in every locale, for the names a page leaves empty", async () => {
+    const s = await opened();
+    const page = await created(s, "status");
+    const editor = await readPageEditor(s.storage, page.id);
+    expect(editor.ok && editor.editor.statusNames.ar.operational).toBe(
+      createMessages("ar", await loadCatalog("ar"))._(
+        "component_level_operational"
+      )
+    );
+    expect(editor.ok && editor.editor.statusNames.en.major_outage).toBe(
+      createMessages("en", await loadCatalog("en"))._(
+        "component_level_major_outage"
+      )
+    );
   });
 
   test("an unknown page's editor is not found", async () => {

@@ -13,6 +13,7 @@ import {
   useCallback,
   useContext,
 } from "react";
+import { intlLocale } from "@/shared/i18n/format.ts";
 import {
   defaultLocale,
   directionOf,
@@ -66,6 +67,28 @@ export function ContentText({
   readonly content: Content | undefined;
 }): ReactNode {
   return <bdi className={className}>{useContentIn()(content)}</bdi>;
+}
+
+/** Several pieces of content as one list in the page's language ("A, B and C"), each isolated in its own direction. */
+export function ContentList({
+  contents,
+}: {
+  readonly contents: readonly Content[];
+}): ReactNode {
+  const { locale } = useMessages();
+  const text = useContentIn();
+  const parts = new Intl.ListFormat(intlLocale(locale)).formatToParts(
+    contents.map((each) => text(each))
+  );
+  // The parts never reorder, so their place is their identity.
+  return parts.map((part, place) =>
+    part.type === "element" ? (
+      // biome-ignore lint/suspicious/noArrayIndexKey: a list's parts keep their order
+      <bdi key={place}>{part.value}</bdi>
+    ) : (
+      part.value
+    )
+  );
 }
 
 /** What every content input shares: the content as typed, the rule it is held to and the change it reports. */
@@ -180,12 +203,17 @@ export function ContentField(
   const { t } = useMessages();
   const onText = useOnText(props);
   const { description, error, id, label, multiline, placeholders } = props;
+  const describedBy =
+    [description ? `${id}-hint` : "", error ? `${id}-error` : ""]
+      .filter(Boolean)
+      .join(" ") || undefined;
   return (
     <fieldset className="flex min-w-0 flex-col gap-3" data-slot="content-field">
       <legend className="mb-2 font-medium text-sm leading-snug">{label}</legend>
       {inputsOf(props).map(({ breaks, locale, optional }) => {
         const inputId = `${id}-${locale}`;
         const input = {
+          "aria-describedby": describedBy,
           "aria-invalid": error && breaks ? true : undefined,
           dir: directionOf(locale),
           id: inputId,
@@ -214,8 +242,10 @@ export function ContentField(
           </div>
         );
       })}
-      {description ? <FieldDescription>{description}</FieldDescription> : null}
-      {error ? <FieldError>{error}</FieldError> : null}
+      {description ? (
+        <FieldDescription id={`${id}-hint`}>{description}</FieldDescription>
+      ) : null}
+      {error ? <FieldError id={`${id}-error`}>{error}</FieldError> : null}
     </fieldset>
   );
 }

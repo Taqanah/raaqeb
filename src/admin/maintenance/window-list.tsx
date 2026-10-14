@@ -7,7 +7,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { When } from "@/admin/incidents/incident-words.tsx";
-import { ContentText } from "@/admin/shell/content.tsx";
+import { ContentList, ContentText } from "@/admin/shell/content.tsx";
 import { Page } from "@/admin/shell/page.tsx";
 import { formatDuration, type TimeOptions } from "@/shared/i18n/format.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
@@ -16,7 +16,6 @@ import type {
   MaintenanceListResult,
 } from "@/shared/schemas/maintenance.ts";
 import { Alert, AlertDescription } from "@/shared/ui/alert.tsx";
-import { Badge } from "@/shared/ui/badge.tsx";
 import { buttonVariants } from "@/shared/ui/button.tsx";
 import {
   Empty,
@@ -149,7 +148,7 @@ function Row({
   readonly item: MaintenanceListItem;
   readonly now: number;
 }): ReactNode {
-  const { locale } = useMessages();
+  const { locale, t } = useMessages();
   return (
     <TableRow data-stage={item.stage} data-window={item.id}>
       {/* A long title wraps rather than widening the table past the page (the screenshot run). */}
@@ -166,22 +165,29 @@ function Row({
       <TableCell>
         <StageBadge stage={item.stage} />
       </TableCell>
-      <TableCell>
-        <span className="flex flex-wrap gap-1" data-slot="window-components">
-          {item.components.map((component) => (
-            <Badge key={component.id} variant="outline">
-              <ContentText content={component.name} />
-            </Badge>
-          ))}
+      <TableCell label={t("maintenance_column_components")}>
+        <span className="text-sm" data-slot="window-components">
+          <ContentList
+            contents={item.components.map((component) => component.name)}
+          />
         </span>
       </TableCell>
-      <TableCell className="whitespace-nowrap">
+      <TableCell
+        className="whitespace-nowrap"
+        label={t("maintenance_column_starts")}
+      >
         <When at={item.startsAt} clock={clock} now={now} />
       </TableCell>
-      <TableCell className="whitespace-nowrap">
+      <TableCell
+        className="whitespace-nowrap"
+        label={t("maintenance_column_ends")}
+      >
         <When at={item.endsAt} clock={clock} now={now} />
       </TableCell>
-      <TableCell className="whitespace-nowrap text-sm tabular-nums">
+      <TableCell
+        className="whitespace-nowrap text-sm tabular-nums"
+        label={t("maintenance_column_duration")}
+      >
         {formatDuration(locale, item.endsAt - item.startsAt)}
       </TableCell>
     </TableRow>

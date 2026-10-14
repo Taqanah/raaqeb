@@ -1,5 +1,14 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { type ComponentProps, useMemo } from "react";
+import {
+  Children,
+  type ComponentProps,
+  cloneElement,
+  createContext,
+  isValidElement,
+  useContext,
+  useId,
+  useMemo,
+} from "react";
 import { cn } from "./cn.ts";
 import { Label } from "./label.tsx";
 
@@ -33,18 +42,45 @@ const fieldVariants = cva(
   }
 );
 
+/** The ids of a field's hints and refusal, which its input is described by. */
+const FieldDescribedBy = createContext<string | undefined>(undefined);
+
+/** The ids a field's input is described by, joined; nothing outside a field or in one with no hint or refusal. */
+function useFieldDescribedBy(): string | undefined {
+  return useContext(FieldDescribedBy);
+}
+
 function Field({
+  children,
   className,
   orientation = "vertical",
   ...props
 }: ComponentProps<"div"> & VariantProps<typeof fieldVariants>) {
+  const base = useId();
+  const described: string[] = [];
+  // Each hint and refusal among the field's own children gets an id at render, so the server's markup already ties them to the input.
+  const marked = Children.map(children, (child, index) => {
+    if (
+      isValidElement<{ id?: string }>(child) &&
+      (child.type === FieldDescription || child.type === FieldError)
+    ) {
+      const id = child.props.id ?? `${base}${index}`;
+      described.push(id);
+      return cloneElement(child, { id });
+    }
+    return child;
+  });
   return (
     <div
       className={cn(fieldVariants({ orientation }), className)}
       data-orientation={orientation}
       data-slot="field"
       {...props}
-    />
+    >
+      <FieldDescribedBy.Provider value={described.join(" ") || undefined}>
+        {marked}
+      </FieldDescribedBy.Provider>
+    </div>
   );
 }
 
@@ -126,4 +162,11 @@ function FieldError({
   );
 }
 
-export { Field, FieldDescription, FieldError, FieldGroup, FieldLabel };
+export {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  useFieldDescribedBy,
+};

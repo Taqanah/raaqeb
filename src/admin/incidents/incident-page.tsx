@@ -21,6 +21,7 @@ import {
   useInstallLanguage,
 } from "@/admin/shell/content.tsx";
 import { formWithPanel, Page } from "@/admin/shell/page.tsx";
+import { useRefusedFields } from "@/admin/shell/refused-fields.ts";
 import { useSaveFlow } from "@/admin/shell/save-flow.ts";
 import {
   SaveButton,
@@ -281,7 +282,15 @@ function UpdateEditor({
   const { t } = useMessages();
   const language = useInstallLanguage();
   const [draft, setDraft] = useState(() => updateDraftOf(page.incident));
-  const [errors, setErrors] = useState<IncidentFieldErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const judge = useCallback(
+    (current: UpdateDraft): IncidentFieldErrors => {
+      const parsed = updateInputOf(current, language);
+      return parsed.ok ? {} : parsed.errors;
+    },
+    [language]
+  );
+  const { clear, errors, refuse } = useRefusedFields(formRef, draft, judge);
   const saving = useSaveFlow<UpdateDraft, IncidentRefusal>(draft);
   const { report } = saving;
   const locked = affectedComponents(page.incident);
@@ -324,11 +333,11 @@ function UpdateEditor({
       event.preventDefault();
       const parsed = updateInputOf(draft, language);
       if (!parsed.ok) {
-        setErrors(parsed.errors);
+        refuse(parsed.errors);
         report({ draft, kind: "failed", reason: "invalid" });
         return;
       }
-      setErrors({});
+      clear();
       if (!report({ draft, kind: "pending" })) {
         return;
       }
@@ -358,7 +367,7 @@ function UpdateEditor({
       report({ draft: next, kind: "saved" });
       onChanged();
     },
-    [draft, language, onChanged, post, report]
+    [draft, language, onChanged, post, report, refuse, clear]
   );
 
   return (
@@ -367,6 +376,7 @@ function UpdateEditor({
       method="post"
       noValidate
       onSubmit={onSubmit}
+      ref={formRef}
     >
       <Card>
         <CardHeader divided>
@@ -694,7 +704,15 @@ function EditFields({
   const { t } = useMessages();
   const language = useInstallLanguage();
   const [draft, setDraft] = useState(() => fieldsDraftOf({ impact, title }));
-  const [errors, setErrors] = useState<IncidentFieldErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const judge = useCallback(
+    (current: FieldsDraft): IncidentFieldErrors => {
+      const parsed = fieldsInputOf(current, language);
+      return parsed.ok ? {} : parsed.errors;
+    },
+    [language]
+  );
+  const { clear, errors, refuse } = useRefusedFields(formRef, draft, judge);
   const saving = useSaveFlow<FieldsDraft, IncidentRefusal>(draft);
   const { report } = saving;
   const onTitle = useCallback((value: ContentDraft) => {
@@ -711,11 +729,11 @@ function EditFields({
       event.preventDefault();
       const parsed = fieldsInputOf(draft, language);
       if (!parsed.ok) {
-        setErrors(parsed.errors);
+        refuse(parsed.errors);
         report({ draft, kind: "failed", reason: "invalid" });
         return;
       }
-      setErrors({});
+      clear();
       if (!report({ draft, kind: "pending" })) {
         return;
       }
@@ -727,7 +745,7 @@ function EditFields({
         onChanged();
       }
     },
-    [draft, edit, language, onChanged, report]
+    [clear, draft, edit, language, onChanged, refuse, report]
   );
   return (
     <form
@@ -735,6 +753,7 @@ function EditFields({
       method="post"
       noValidate
       onSubmit={onSubmit}
+      ref={formRef}
     >
       <Card>
         <CardHeader divided>

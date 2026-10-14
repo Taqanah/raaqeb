@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { IncidentPage } from "@/admin/incidents/incident-page.tsx";
 import { Page } from "@/admin/shell/page.tsx";
 import { FormSkeleton } from "@/admin/shell/page-skeleton.tsx";
+import { useSavedToast } from "@/admin/shell/toasts.tsx";
 import {
   deleteIncidentFn,
   editIncidentFn,
@@ -65,9 +66,11 @@ function IncidentRoute() {
   const reread = useCallback(() => {
     router.invalidate().catch(() => undefined);
   }, [router]);
+  const toast = useSavedToast();
   const removed = useCallback(() => {
+    toast(t("incident_deleted"));
     router.navigate({ to: "/admin/incidents" }).catch(() => undefined);
-  }, [router]);
+  }, [router, t, toast]);
   if (!result.ok) {
     return (
       <Page title={t("incident_list_title")}>

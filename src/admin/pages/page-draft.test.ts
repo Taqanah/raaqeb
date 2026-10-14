@@ -51,6 +51,22 @@ const editor: PageEditor = {
     title: { ar: "حالة الخدمات" },
     updatedAt: 2,
   },
+  statusNames: {
+    ar: {
+      degraded_performance: "",
+      major_outage: "",
+      operational: "",
+      partial_outage: "",
+      under_maintenance: "",
+    },
+    en: {
+      degraded_performance: "",
+      major_outage: "",
+      operational: "",
+      partial_outage: "",
+      under_maintenance: "",
+    },
+  },
 };
 
 /** The key the draft gave the stored page's one group. */
@@ -213,9 +229,31 @@ describe("the page editor's draft", () => {
     ).toEqual({
       errors: {
         "customization.description": "page_refused_description",
-        "customization.footerLinks.0.label": "page_refused_footer_label",
+        "customization.footerLinks.0.label":
+          "page_refused_footer_label_missing",
         [`layout.${key}`]: "page_refused_group",
         title: "page_refused_title",
+      },
+      ok: false,
+    });
+  });
+
+  test("a footer link's label past 40 characters is refused for its length, not as missing", () => {
+    const draft = pageDraftOf(editor);
+    expect(
+      pageInputOf({
+        ...draft,
+        footerLinks: [
+          {
+            key: "x",
+            label: arabic("ن".repeat(41)),
+            url: "https://example.test/help",
+          },
+        ],
+      })
+    ).toEqual({
+      errors: {
+        "customization.footerLinks.0.label": "page_refused_footer_label",
       },
       ok: false,
     });

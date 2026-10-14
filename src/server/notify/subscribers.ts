@@ -344,6 +344,17 @@ const sentences: Readonly<
   "maintenance.started": "subscription_text_started",
 };
 
+/** An event email's subject: an incident's leads with its impact, a window's with what happened to it, so a reader tells one window's emails apart in a list. */
+const subjects: Readonly<Record<SubscriberEventType, MessageId>> = {
+  "incident.published": "subscription_subject_incident",
+  "incident.updated": "subscription_subject_incident",
+  "maintenance.cancelled": "subscription_subject_cancelled",
+  "maintenance.completed": "subscription_subject_completed",
+  "maintenance.rescheduled": "subscription_subject_rescheduled",
+  "maintenance.scheduled": "subscription_subject_scheduled",
+  "maintenance.started": "subscription_subject_started",
+};
+
 /** The words of each stage, an incident's and a window's. */
 const stageWords: Readonly<
   Record<IncidentStage | MaintenanceStage, MessageId>
@@ -436,15 +447,13 @@ export async function subscriberMail(
   );
   const at = line("subscription_line_time", when(payload.timestamp));
   const footer = messages._("subscription_footer", { page });
-  const subject =
-    incident.impact === "maintenance"
-      ? messages._("subscription_subject_maintenance", {
-          title: incident.name,
-        })
-      : messages._("subscription_subject_incident", {
-          impact: messages._(impactWords[incident.impact]),
-          title: incident.name,
-        });
+  const subject = messages._(subjects[payload.type], {
+    impact:
+      incident.impact === "maintenance"
+        ? ""
+        : messages._(impactWords[incident.impact]),
+    title: incident.name,
+  });
   return {
     html: mailHtml({
       buttons: [

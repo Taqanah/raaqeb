@@ -116,6 +116,18 @@ export async function webhookAddress(
   }
 }
 
+/** Whether a subscriber's webhook is refused without a lookup: not a URL, not https, or an address off the public internet. */
+export function webhookRefusedAsWritten(url: string): boolean {
+  if (!URL.canParse(url)) {
+    return true;
+  }
+  const { hostname, protocol } = new URL(url);
+  const host = hostname.replace(bracketed, "$1");
+  return (
+    protocol !== "https:" || (anyAddress(host) && !isInternetAddress(host))
+  );
+}
+
 /** Whether a subscriber's webhook may be posted to: an https URL whose host is, or resolves only to, internet addresses. A name that does not resolve is refused. Never throws. */
 export async function webhookReachable(
   url: string,

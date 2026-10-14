@@ -11,7 +11,8 @@ export const pageRefusalWords: Readonly<Record<PageRefusal, MessageId>> = {
   invalid: "app_form_invalid",
   not_found: "page_not_found",
   slug_taken: "page_refused_slug_taken",
-  unavailable: "page_unavailable",
+  // A write that failed says nothing changed; "could not be read" is a read's line.
+  unavailable: "app_write_unavailable",
 };
 
 export const imageRefusalWords: Readonly<Record<PageImageRefusal, MessageId>> =

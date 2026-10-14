@@ -14,6 +14,9 @@ import {
 } from "./support/servers.ts";
 import { type Install, spawnInstall } from "./support/spawn.ts";
 
+/** A field described by the name field's refusal, among its other lines. */
+const describedByError = /name-error/;
+
 async function signIn(page: Page, origin = englishOrigin): Promise<void> {
   await page.goto(`${origin}/sign-in`);
   await page.fill("input[name=email]", operatorEmail);
@@ -283,6 +286,10 @@ test("a form's Save rests until something changes, Ctrl+S presses it, and a crea
   await page.click("[data-slot=delete-component]");
   await page.click("[data-slot=confirm-delete]");
   await expectPath(page, "/admin/components");
+  // The delete's own toast, not the save's before it.
+  await expect(
+    page.locator("[data-slot=toast]", { hasText: "deleted" })
+  ).toBeVisible();
 });
 
 /** The server functions the page calls from now on, by path: each is one round trip. */
@@ -662,4 +669,24 @@ test.describe("the settings saves, on an install of their own", () => {
     await expect(page.locator("input#retentionDays")).toHaveValue("90");
     await expect(page.locator("input#sizeBudget")).toHaveValue("");
   });
+});
+
+test("a refused save hands the focus to the first refused field, and the refusal goes as soon as the field is fixed", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto(`${englishOrigin}/admin/components/new`);
+  const name = page.locator("input[name=name-en]");
+  await name.fill("x".repeat(101));
+  await page.click("[data-slot=save-component]");
+  await expect(name).toHaveAttribute("aria-invalid", "true");
+  await expect(name).toBeFocused();
+  const refusal = page.locator("#name-error");
+  await expect(refusal).toBeVisible();
+  await expect(name).toHaveAttribute("aria-describedby", describedByError);
+
+  await name.press("Backspace");
+  await expect(name).not.toHaveAttribute("aria-invalid", "true");
+  await expect(refusal).toHaveCount(0);
+  await expectPath(page, "/admin/components/new");
 });

@@ -8,6 +8,7 @@ import type { Browser, Page } from "@playwright/test";
 import { expect, expectPath, test } from "./support/fixtures.ts";
 import { englishOrigin } from "./support/servers.ts";
 import {
+  fillTime,
   handComponent,
   idOf,
   publishedPage,
@@ -206,8 +207,8 @@ test("a window as the visitor sees it: scheduled, moved to start now and under m
   await expect(stage).toHaveAttribute("data-stage", "scheduled");
   await expect(component).toHaveAttribute("data-level", "operational");
 
-  await page.fill("input[name=starts]", startingNow(zone));
-  await page.fill("input[name=ends]", wallTime(Date.now() + 30 * 60_000, zone));
+  await fillTime(page, "starts", startingNow(zone));
+  await fillTime(page, "ends", wallTime(Date.now() + 30 * 60_000, zone));
   await page.click("[data-slot=save-window]");
   await expect(
     page.locator("[data-slot=save-outcome][data-state=saved]")

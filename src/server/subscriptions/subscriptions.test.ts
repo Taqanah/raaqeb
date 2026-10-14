@@ -661,6 +661,29 @@ describe("edges of signing up", () => {
     ).toEqual({ ok: false, reason: "limited" });
   });
 
+  test("a webhook refused as written, not https or on a private address, costs the client no sign-up", async () => {
+    const { main, s } = await world();
+    const limiter = createSignUpLimiter(1);
+    for (const address of [
+      "http://hooks.example.com/raaqeb",
+      "https://10.0.0.4/raaqeb",
+      "not a url",
+    ]) {
+      expect(
+        // biome-ignore lint/performance/noAwaitInLoops: the limiter counts in order
+        await subscribe(
+          s.storage,
+          key,
+          webhook(main, address),
+          options({ limiter })
+        )
+      ).toEqual({ ok: false, reason: "unreachable" });
+    }
+    expect(
+      await subscribe(s.storage, key, webhook(main), options({ limiter }))
+    ).toEqual({ ok: true });
+  });
+
   test("an unsubscribed address that signs up again gets a new confirmation", async () => {
     const { main, s } = await world();
     const first = options();

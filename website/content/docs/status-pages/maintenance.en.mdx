@@ -11,11 +11,11 @@ A window is one period. Raaqeb has no recurring windows: schedule one window for
 
 A window names the components it covers, so at least one [component](/en/docs/status-pages/components) must exist.
 
-1. In the admin area, open **Maintenance windows** and select **New maintenance window**.
+1. In the admin area, open **Maintenance windows** and select **Add maintenance window**.
 2. Fill in **Title** and **Description**, the text visitors read.
 3. Under **Times**, set **Starts** and **Ends**.
 4. Under **Affected components**, tick the components the work touches.
-5. Select **Schedule the window**.
+5. Select **Schedule window**.
 
 | Field | Rule |
 | --- | --- |
@@ -34,8 +34,8 @@ What you can change depends on the stage:
 
 | Stage | What you can change | Actions |
 | --- | --- | --- |
-| **Scheduled** | Everything: title, description, times, components | **Cancel the maintenance window** deletes it. A cancel cannot be undone. |
-| **In progress** | Title, description and end | **End it now** sets the end to now; the scheduler completes the window at its next tick. |
+| **Scheduled** | Everything: title, description, times, components | **Cancel window** deletes it. A cancel cannot be undone. |
+| **In progress** | Title, description and end | **End now** sets the end to now; the scheduler completes the window at its next tick. |
 | **Completed** | Title and description | None |
 
 A started window cannot be cancelled or deleted, and its start and components no longer change, because it has already taken time out of uptime. It is deleted only with the last component it names. If the scheduler moved the window while you were editing, the save is refused and the page shows the window as it is now. Check your edit and save it again.
@@ -78,7 +78,7 @@ Confirmed subscribers of every published page that shows an affected component r
 | `maintenance.scheduled` | You schedule a window. Not sent for a window that starts in the current minute, which sends `maintenance.started` alone. |
 | `maintenance.rescheduled` | An edit moves the start or the end, while scheduled or in progress. Not sent when the new start or end is the current minute. |
 | `maintenance.started` | The window starts. A window that went straight to completed sends `maintenance.completed` alone. |
-| `maintenance.completed` | The window ends: at its time, through **End it now**, or by an edit that sets the end to now. |
+| `maintenance.completed` | The window ends: at its time, through **End now**, or by an edit that sets the end to now. |
 | `maintenance.cancelled` | You cancel a scheduled window. |
 
 Editing only the title or description sends nothing. An email's subject is "Maintenance:" followed by the title. A webhook receives the window in Statuspage's body, as an incident with impact `maintenance`. See [What subscribers receive](/en/docs/status-pages/subscriptions#what-subscribers-receive).

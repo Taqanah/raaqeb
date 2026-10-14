@@ -125,7 +125,10 @@ function ListBody({
             <TableCell>
               <StatusLevelBadge level={status} slot="component-status" />
             </TableCell>
-            <TableCell className="tabular-nums">
+            <TableCell
+              className="tabular-nums"
+              label={t("component_column_monitors")}
+            >
               {component.monitorIds.length === 0 ? (
                 <span className="text-muted-foreground text-sm">
                   {t("component_set_by_hand")}
@@ -134,10 +137,17 @@ function ListBody({
                 formatNumber(locale, component.monitorIds.length)
               )}
             </TableCell>
-            <TableCell className="tabular-nums">
+            <TableCell
+              className="tabular-nums"
+              label={t("component_column_pages")}
+            >
               {formatNumber(locale, pages)}
             </TableCell>
-            <TableCell className="tabular-nums" data-slot="component-uptime">
+            <TableCell
+              className="tabular-nums"
+              data-slot="component-uptime"
+              label={t("component_column_uptime")}
+            >
               {uptime ? (
                 formatUptime(locale, uptime)
               ) : (

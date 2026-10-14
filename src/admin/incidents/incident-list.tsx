@@ -6,7 +6,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { ContentText } from "@/admin/shell/content.tsx";
+import { ContentList, ContentText } from "@/admin/shell/content.tsx";
 import { Page } from "@/admin/shell/page.tsx";
 import { formatDuration, type TimeOptions } from "@/shared/i18n/format.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
@@ -15,7 +15,6 @@ import type {
   IncidentListResult,
 } from "@/shared/schemas/incident.ts";
 import { Alert, AlertDescription } from "@/shared/ui/alert.tsx";
-import { Badge } from "@/shared/ui/badge.tsx";
 import { buttonVariants } from "@/shared/ui/button.tsx";
 import {
   Empty,
@@ -165,16 +164,17 @@ function Row({
       <TableCell>
         <StageBadge stage={item.stage} />
       </TableCell>
-      <TableCell>
-        <span className="flex flex-wrap gap-1" data-slot="incident-components">
-          {item.components.map((component) => (
-            <Badge key={component.id} variant="outline">
-              <ContentText content={component.name} />
-            </Badge>
-          ))}
+      <TableCell label={t("incident_column_components")}>
+        <span className="text-sm" data-slot="incident-components">
+          <ContentList
+            contents={item.components.map((component) => component.name)}
+          />
         </span>
       </TableCell>
-      <TableCell className="whitespace-nowrap">
+      <TableCell
+        className="whitespace-nowrap"
+        label={t("incident_column_started")}
+      >
         <When at={item.createdAt} clock={clock} now={now} />
       </TableCell>
       <TableCell className="whitespace-nowrap text-sm tabular-nums">

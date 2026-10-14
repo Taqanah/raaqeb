@@ -190,6 +190,10 @@ test.describe("one incident, from the monitor's down notification to its deletio
     await page.click("[data-slot=delete-incident]");
     await page.click("[data-slot=confirm-delete]");
     await expectPath(page, "/admin/incidents");
+    // The delete's own toast, not the save's before it.
+    await expect(
+      page.locator("[data-slot=toast]", { hasText: "deleted" })
+    ).toBeVisible();
     await expect(
       page.locator(`[data-incident="${incidentPage.split("/").at(-1)}"]`)
     ).toHaveCount(0);

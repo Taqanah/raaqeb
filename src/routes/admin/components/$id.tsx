@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { ComponentForm } from "@/admin/pages/component-form.tsx";
 import { Page } from "@/admin/shell/page.tsx";
 import { FormSkeleton } from "@/admin/shell/page-skeleton.tsx";
+import { useSavedToast } from "@/admin/shell/toasts.tsx";
 import {
   deleteComponentFn,
   editComponentFn,
@@ -44,9 +45,11 @@ function ComponentPage() {
     router.invalidate().catch(() => undefined);
   }, [router]);
   const remove = useCallback(() => deleteFn({ data: { id } }), [deleteFn, id]);
+  const toast = useSavedToast();
   const removed = useCallback(() => {
+    toast(t("component_deleted"));
     router.navigate({ to: "/admin/components" }).catch(() => undefined);
-  }, [router]);
+  }, [router, t, toast]);
   if (!form.ok) {
     return (
       <Page title={t("component_list_title")}>

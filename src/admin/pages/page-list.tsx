@@ -137,8 +137,13 @@ function ListBody({
                 ) : null}
               </div>
             </TableCell>
-            <TableCell>{localeNames[page.locale]}</TableCell>
-            <TableCell className="tabular-nums">
+            <TableCell label={t("page_column_language")}>
+              {localeNames[page.locale]}
+            </TableCell>
+            <TableCell
+              className="tabular-nums"
+              label={t("page_column_components")}
+            >
               {formatNumber(locale, components)}
             </TableCell>
           </TableRow>

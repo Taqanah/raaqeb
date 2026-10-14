@@ -79,7 +79,15 @@ function TableHead({ className, ...props }: ComponentProps<"th">) {
   );
 }
 
-function TableCell({ className, ...props }: ComponentProps<"td">) {
+function TableCell({
+  children,
+  className,
+  label,
+  ...props
+}: ComponentProps<"td"> & {
+  /** The column's name, shown before the value on a phone, where a stacked table drops its header. */
+  readonly label?: string;
+}) {
   return (
     <td
       className={cn(
@@ -88,7 +96,14 @@ function TableCell({ className, ...props }: ComponentProps<"td">) {
       )}
       data-slot="table-cell"
       {...props}
-    />
+    >
+      {label ? (
+        <span className="me-1.5 text-muted-foreground text-xs sm:hidden">
+          {label}
+        </span>
+      ) : null}
+      {children}
+    </td>
   );
 }
 

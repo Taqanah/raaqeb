@@ -149,6 +149,10 @@ test("a renamed slug moves the page's address, and a deleted page is gone from t
   await page.click("[data-slot=delete-page]");
   await page.click("[data-slot=confirm-delete]");
   await expectPath(page, "/admin/pages");
+  // The delete's own toast, not the save's before it.
+  await expect(
+    page.locator("[data-slot=toast]", { hasText: "deleted" })
+  ).toBeVisible();
   await expect(page.locator("[data-page]").first()).toBeVisible();
   await expect(page.locator(`[data-page="${pageId}"]`)).toHaveCount(0);
   expect(await statusOf(after)).toBe(404);
@@ -338,4 +342,20 @@ test("a bad slug, a script contact link and a footer link that is not web or mai
   await expectPath(page, `/admin/pages/${pageId}/subscribers`);
   await expect(page.locator("[data-slot=subscribers-empty]")).toBeVisible();
   await expect(page.locator("[data-slot=subscriber]")).toHaveCount(0);
+});
+
+test("an image over the request size limit is refused as too large, not as a server that cannot answer", async ({
+  page,
+}) => {
+  const run = runId();
+  await signIn(page);
+  await publishedPage(page, `big-${run}`, []);
+  await page.setInputFiles("input[name=image-cover]", {
+    buffer: Buffer.alloc(9 * 1024 * 1024),
+    mimeType: "image/png",
+    name: "cover.png",
+  });
+  await expect(
+    page.locator("[data-image=cover] [data-slot=field-error]")
+  ).toHaveAttribute("data-reason", "too_large");
 });

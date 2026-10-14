@@ -1,9 +1,9 @@
 /**
- * A maintenance window's start or end in the operator's calendar:
- * the native `datetime-local` field in Gregorian, and in Hijri the day,
- * month and year in Umm al-Qura with the hour and minute on the operator's
- * clock, the Gregorian date under them for Hijri with Gregorian. Either way
- * the value is `datetime-local` text in the operator's zone, so the draft
+ * A maintenance window's start or end in the operator's calendar: the date
+ * as the native date field in Gregorian, and in Hijri as the day, month and
+ * year in Umm al-Qura, the Gregorian date under them for Hijri with
+ * Gregorian; then the hour and minute on the operator's clock in either.
+ * The value is `datetime-local` text in the operator's zone, so the draft
  * and what the form sends are the same in every calendar.
  */
 import { type ChangeEvent, type ReactNode, useCallback } from "react";
@@ -54,7 +54,7 @@ const twoDigits = (value: number) => String(value).padStart(2, "0");
 const numbers = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, index) => from + index);
 
-/** A part of a Hijri time the operator chooses; the period is the 12-hour clock's half of the day. */
+/** A part of a time the operator chooses: the Hijri date's, and the clock's, where the period is the 12-hour clock's half of the day. */
 export type HijriPart = "day" | "hour" | "minute" | "month" | "period" | "year";
 
 const parts: ReadonlySet<string> = new Set<HijriPart>([
@@ -81,13 +81,18 @@ export function withPart(
   chosen: number,
   twelve: boolean
 ): string {
-  const date = hijriDateOf(value);
   let hour = Number(value.slice(11, 13));
   if (part === "hour") {
     hour = twelve ? (chosen % 12) + (hour >= 12 ? 12 : 0) : chosen;
   } else if (part === "period") {
     hour = (hour % 12) + chosen;
   }
+  // The clock's parts leave the date as written, in any calendar.
+  if (part === "hour" || part === "minute" || part === "period") {
+    const minute = part === "minute" ? chosen : Number(value.slice(14, 16));
+    return `${value.slice(0, 11)}${twoDigits(hour)}:${twoDigits(minute)}`;
+  }
+  const date = hijriDateOf(value);
   return hijriWallTime(
     {
       day: part === "day" ? chosen : date.day,
@@ -95,53 +100,13 @@ export function withPart(
       year: part === "year" ? chosen : date.year,
     },
     hour,
-    part === "minute" ? chosen : Number(value.slice(14, 16))
+    Number(value.slice(14, 16))
   );
 }
 
 export function TimeField(props: TimeFieldProps): ReactNode {
-  const { error, label, name, onChange } = props;
-  const onText = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) =>
-      onChange(name, event.currentTarget.value),
-    [name, onChange]
-  );
-  return (
-    <Field>
-      <FieldLabel htmlFor={name} id={`${name}-label`}>
-        {label}
-      </FieldLabel>
-      {props.clock.calendar === "gregorian" ? (
-        <Input
-          aria-invalid={error ? true : undefined}
-          dir="ltr"
-          id={name}
-          name={name}
-          onChange={onText}
-          type="datetime-local"
-          value={props.value}
-        />
-      ) : (
-        <HijriParts {...props} />
-      )}
-      {error ? <FieldError>{error}</FieldError> : null}
-    </Field>
-  );
-}
-
-/** The Hijri day, month and year, then the hour and minute on the operator's clock, each a select. */
-function HijriParts({
-  clock,
-  error,
-  name,
-  now,
-  onChange,
-  value,
-}: TimeFieldProps): ReactNode {
+  const { clock, error, label, name, onChange, value } = props;
   const { locale, t } = useMessages();
-  const date = hijriDateOf(value);
-  const hour = Number(value.slice(11, 13));
-  const minute = Number(value.slice(14, 16));
   const twelve = clock.clock === "12h";
   const onPart = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
@@ -160,100 +125,147 @@ function HijriParts({
       ),
     [name, onChange, twelve, value]
   );
+  const onDate = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) =>
+      onChange(name, `${event.currentTarget.value}T${value.slice(11, 16)}`),
+    [name, onChange, value]
+  );
+  const hour = Number(value.slice(11, 13));
+  const [am, pm] = dayPeriods(locale);
+  const common = { invalid: Boolean(error), onChange: onPart };
+  const gregorian = clock.calendar === "gregorian";
+  return (
+    <Field>
+      <FieldLabel htmlFor={name} id={`${name}-label`}>
+        {label}
+      </FieldLabel>
+      <fieldset
+        aria-labelledby={`${name}-label`}
+        className="flex min-w-0 flex-col gap-2"
+        data-slot={gregorian ? "gregorian-time" : "hijri-time"}
+        data-value={value}
+      >
+        {gregorian ? (
+          <Input
+            aria-invalid={error ? true : undefined}
+            className="w-auto self-start"
+            dir="ltr"
+            id={name}
+            name={`${name}-date`}
+            onChange={onDate}
+            type="date"
+            value={value.slice(0, 10)}
+          />
+        ) : (
+          <HijriDate {...props} onPart={onPart} />
+        )}
+        <div className="flex items-center gap-2">
+          {/* Hours before minutes, as a time is written in either language. */}
+          <div className="flex items-center gap-1" dir="ltr">
+            <Part
+              {...common}
+              label={t("maintenance_field_hour")}
+              name={`${name}-hour`}
+              options={
+                twelve
+                  ? [12, ...numbers(1, 11)].map((each) => [each, String(each)])
+                  : numbers(0, 23).map((each) => [each, twoDigits(each)])
+              }
+              part="hour"
+              value={twelve ? hour % 12 || 12 : hour}
+            />
+            <span aria-hidden="true" className="text-muted-foreground">
+              :
+            </span>
+            <Part
+              {...common}
+              label={t("maintenance_field_minute")}
+              name={`${name}-minute`}
+              options={numbers(0, 59).map((each) => [each, twoDigits(each)])}
+              part="minute"
+              value={Number(value.slice(14, 16))}
+            />
+          </div>
+          {twelve ? (
+            <Segmented
+              aria-label={t("maintenance_field_period")}
+              className="w-auto"
+              data-name={`${name}-period`}
+              name={`${name}-period`}
+              onValueChange={onPeriod}
+              value={hour >= 12 ? "pm" : "am"}
+            >
+              <SegmentedItem value="am">{am}</SegmentedItem>
+              <SegmentedItem value="pm">{pm}</SegmentedItem>
+            </Segmented>
+          ) : null}
+        </div>
+        {clock.calendar === "hijri_gregorian" ? (
+          <FieldDescription data-slot="gregorian-date">
+            {formatDay(locale, Date.parse(value.slice(0, 10)), "gregorian")}
+          </FieldDescription>
+        ) : null}
+      </fieldset>
+      {error ? <FieldError>{error}</FieldError> : null}
+    </Field>
+  );
+}
+
+/** The Hijri day, month and year, each a select. */
+function HijriDate({
+  clock,
+  error,
+  name,
+  now,
+  onPart,
+  value,
+}: TimeFieldProps & {
+  readonly onPart: (event: ChangeEvent<HTMLSelectElement>) => void;
+}): ReactNode {
+  const { locale, t } = useMessages();
+  const date = hijriDateOf(value);
   const thisYear = hijriDateOf(wallTime(now, clock.timeZone)).year;
   const years = numbers(
     Math.min(thisYear, date.year),
     Math.max(thisYear, date.year) + yearsAhead
   );
   const months = hijriMonthNames(locale);
-  const [am, pm] = dayPeriods(locale);
   const common = { invalid: Boolean(error), onChange: onPart };
   return (
-    <fieldset
-      aria-labelledby={`${name}-label`}
-      className="flex min-w-0 flex-col gap-2"
-      data-slot="hijri-time"
-    >
-      <div className="flex gap-2">
-        <Part
-          {...common}
-          id={name}
-          label={t("maintenance_field_day")}
-          name={`${name}-day`}
-          options={numbers(1, hijriMonthDays(date.year, date.month)).map(
-            (day) => [day, String(day)]
-          )}
-          part="day"
-          value={date.day}
-        />
-        <Part
-          {...common}
-          className="min-w-0 flex-1"
-          label={t("maintenance_field_month")}
-          name={`${name}-month`}
-          options={months.map((month, index) => [index + 1, month])}
-          part="month"
-          value={date.month}
-        />
-        <Part
-          {...common}
-          label={t("maintenance_field_year")}
-          name={`${name}-year`}
-          options={years.map((year) => [year, String(year)])}
-          part="year"
-          value={date.year}
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        {/* Hours before minutes, as a time is written in either language. */}
-        <div className="flex items-center gap-1" dir="ltr">
-          <Part
-            {...common}
-            label={t("maintenance_field_hour")}
-            name={`${name}-hour`}
-            options={
-              twelve
-                ? [12, ...numbers(1, 11)].map((each) => [each, String(each)])
-                : numbers(0, 23).map((each) => [each, twoDigits(each)])
-            }
-            part="hour"
-            value={twelve ? hour % 12 || 12 : hour}
-          />
-          <span aria-hidden="true" className="text-muted-foreground">
-            :
-          </span>
-          <Part
-            {...common}
-            label={t("maintenance_field_minute")}
-            name={`${name}-minute`}
-            options={numbers(0, 59).map((each) => [each, twoDigits(each)])}
-            part="minute"
-            value={minute}
-          />
-        </div>
-        {twelve ? (
-          <Segmented
-            aria-label={t("maintenance_field_period")}
-            className="w-auto"
-            name={`${name}-period`}
-            onValueChange={onPeriod}
-            value={hour >= 12 ? "pm" : "am"}
-          >
-            <SegmentedItem value="am">{am}</SegmentedItem>
-            <SegmentedItem value="pm">{pm}</SegmentedItem>
-          </Segmented>
-        ) : null}
-      </div>
-      {clock.calendar === "hijri_gregorian" ? (
-        <FieldDescription data-slot="gregorian-date">
-          {formatDay(locale, Date.parse(value.slice(0, 10)), "gregorian")}
-        </FieldDescription>
-      ) : null}
-    </fieldset>
+    <div className="flex gap-2">
+      <Part
+        {...common}
+        id={name}
+        label={t("maintenance_field_day")}
+        name={`${name}-day`}
+        options={numbers(1, hijriMonthDays(date.year, date.month)).map(
+          (day) => [day, String(day)]
+        )}
+        part="day"
+        value={date.day}
+      />
+      <Part
+        {...common}
+        className="min-w-0 flex-1"
+        label={t("maintenance_field_month")}
+        name={`${name}-month`}
+        options={months.map((month, index) => [index + 1, month])}
+        part="month"
+        value={date.month}
+      />
+      <Part
+        {...common}
+        label={t("maintenance_field_year")}
+        name={`${name}-year`}
+        options={years.map((year) => [year, String(year)])}
+        part="year"
+        value={date.year}
+      />
+    </div>
   );
 }
 
-/** One part of a Hijri time: a select with its own spoken label. */
+/** One part of a time: a select with its own spoken label. */
 function Part({
   className,
   id,

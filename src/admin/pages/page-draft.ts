@@ -173,8 +173,8 @@ const refusals: Readonly<Record<string, MessageId>> = {
   title: "page_refused_title",
 };
 
-/** The message of a refused field, by the path it posts to. */
-function refusalOf(path: string): MessageId {
+/** The message of a refused field, by the path it posts to and why it was refused. */
+function refusalOf(path: string, code: string): MessageId {
   const exact = refusals[path];
   if (exact) {
     return exact;
@@ -183,9 +183,12 @@ function refusalOf(path: string): MessageId {
     return "page_refused_label";
   }
   if (path.startsWith("customization.footerLinks.")) {
-    return path.endsWith(".label")
+    if (!path.endsWith(".label")) {
+      return "page_refused_link";
+    }
+    return code === "too_big"
       ? "page_refused_footer_label"
-      : "page_refused_link";
+      : "page_refused_footer_label_missing";
   }
   return path.startsWith("layout.") ? "page_refused_group" : "app_form_invalid";
 }
@@ -250,7 +253,7 @@ export function pageInputOf(draft: PageDraft): PageDraftParse {
       path[0] === "layout" && path.length > 1
         ? `layout.${groupKeyAt(draft.layout, Number(path[1]))}`
         : path.join(".");
-    errors[key] = refusalOf(key);
+    errors[key] = refusalOf(key, issue.code);
   }
   return { errors, ok: false };
 }

@@ -11,13 +11,17 @@
  */
 
 import { readPublicAddress } from "@/server/settings/address.ts";
+import { loadCatalog } from "@/server/settings/language.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { worstStatus } from "@/shared/domain/status.ts";
+import type { Locale } from "@/shared/i18n/locale.ts";
+import { createMessages } from "@/shared/i18n/messages.ts";
 import {
   customDomainOf,
   defaultCustomization,
   type PageCreateInput,
   type PageDeleteResult,
+  type PageEditor,
   type PageEditorResult,
   type PageInput,
   type PageListResult,
@@ -78,7 +82,30 @@ export async function listPages(storage: PageStorage): Promise<PageListResult> {
   }
 }
 
-/** The editor's read: the page, its layout, its images, and every component with its status now. */
+/** One locale's name of each status level. */
+async function statusNamesIn(
+  locale: Locale
+): Promise<PageEditor["statusNames"][Locale]> {
+  const messages = createMessages(locale, await loadCatalog(locale));
+  return {
+    degraded_performance: messages._("component_level_degraded_performance"),
+    major_outage: messages._("component_level_major_outage"),
+    operational: messages._("component_level_operational"),
+    partial_outage: messages._("component_level_partial_outage"),
+    under_maintenance: messages._("component_level_under_maintenance"),
+  };
+}
+
+/** Each status level's own name in every locale, from the catalogs. */
+async function statusNames(): Promise<PageEditor["statusNames"]> {
+  const [ar, en] = await Promise.all([
+    statusNamesIn("ar"),
+    statusNamesIn("en"),
+  ]);
+  return { ar, en };
+}
+
+/** The editor's read: the page, its layout, its images, every component with its status now, and each status level's own name in every locale. */
 export async function readPageEditor(
   storage: PageStorage,
   id: string
@@ -103,6 +130,7 @@ export async function readPageEditor(
         images,
         layout,
         page,
+        statusNames: await statusNames(),
       },
       ok: true,
     };

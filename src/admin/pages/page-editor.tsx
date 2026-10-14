@@ -26,6 +26,7 @@ import {
   useContentIn,
 } from "@/admin/shell/content.tsx";
 import { formWidth, Page } from "@/admin/shell/page.tsx";
+import { useRefusedFields } from "@/admin/shell/refused-fields.ts";
 import { useSaveFlow } from "@/admin/shell/save-flow.ts";
 import { SaveFooter } from "@/admin/shell/save-footer.tsx";
 import { formatUnit } from "@/shared/i18n/format.ts";
@@ -91,7 +92,7 @@ import {
 import { Input } from "@/shared/ui/input.tsx";
 import { localeNames } from "@/shared/ui/locale-switcher.tsx";
 import { Segmented, SegmentedItem } from "@/shared/ui/segmented.tsx";
-import { levelWords, StatusLevelBadge } from "@/shared/ui/status-level.tsx";
+import { StatusLevelBadge } from "@/shared/ui/status-level.tsx";
 import { Switch } from "@/shared/ui/switch.tsx";
 import { Textarea } from "@/shared/ui/textarea.tsx";
 import { Token } from "@/shared/ui/token.tsx";
@@ -152,13 +153,10 @@ const subscriptionWords: Readonly<Record<SubscriptionChannel, MessageId>> = {
 
 const formId = "page-editor";
 
-const footerPath = "customization.footerLinks.";
-
-/** The refusals without the footer rows'. */
-function withoutFooterRefusals(errors: PageFieldErrors): PageFieldErrors {
-  return Object.fromEntries(
-    Object.entries(errors).filter(([path]) => !path.startsWith(footerPath))
-  );
+/** The page's rules, as its save judges them. */
+function judge(draft: PageDraft): PageFieldErrors {
+  const parsed = pageInputOf(draft);
+  return parsed.ok ? {} : parsed.errors;
 }
 
 export interface PageEditorProps {
@@ -186,7 +184,7 @@ export function PageEditor({
   const text = useContentIn();
   const form = useRef<HTMLFormElement>(null);
   const [draft, setDraft] = useState(() => pageDraftOf(editor));
-  const [errors, setErrors] = useState<PageFieldErrors>({});
+  const { clear, errors, refuse } = useRefusedFields(form, draft, judge);
   const saving = useSaveFlow<PageDraft, PageRefusal>(draft);
   const { report } = saving;
 
@@ -230,10 +228,6 @@ export function PageEditor({
     setDraft((current) => ({ ...current, layout }));
   }, []);
   const onPart: PartChange = useCallback((part) => {
-    // A footer row's refusal is keyed by its place, so any change to the rows clears them until the next save.
-    if (part.footerLinks) {
-      setErrors(withoutFooterRefusals);
-    }
     setDraft((current) => ({ ...current, ...part }));
   }, []);
 
@@ -242,17 +236,11 @@ export function PageEditor({
       event.preventDefault();
       const parsed = pageInputOf(draft);
       if (!parsed.ok) {
-        setErrors(parsed.errors);
+        refuse(parsed.errors);
         report({ draft, kind: "failed", reason: "invalid" });
-        // The first marked field takes the focus once it has rendered.
-        requestAnimationFrame(() => {
-          form.current
-            ?.querySelector<HTMLElement>("[aria-invalid=true]")
-            ?.focus();
-        });
         return;
       }
-      setErrors({});
+      clear();
       if (!report({ draft, kind: "pending" })) {
         return;
       }
@@ -260,12 +248,12 @@ export function PageEditor({
       if (!result?.ok) {
         const reason = result?.ok === false ? result.reason : "unavailable";
         if (reason === "slug_taken") {
-          setErrors({ slug: pageRefusalWords.slug_taken });
+          refuse({ slug: pageRefusalWords.slug_taken });
         } else if (
           reason === "domain_taken" ||
           reason === "domain_public_address"
         ) {
-          setErrors({ customDomain: pageRefusalWords[reason] });
+          refuse({ customDomain: pageRefusalWords[reason] });
         }
         report({ draft, kind: "failed", reason });
         return;
@@ -273,7 +261,7 @@ export function PageEditor({
       report({ draft, kind: "saved" });
       onSaved(result.page);
     },
-    [draft, onSaved, report, save]
+    [clear, draft, onSaved, refuse, report, save]
   );
 
   const { page } = editor;
@@ -368,7 +356,12 @@ export function PageEditor({
             </Field>
             <BrandColour draft={draft} onPart={onPart} />
             <StatusColours draft={draft} onPart={onPart} />
-            <StatusNames draft={draft} errors={errors} onPart={onPart} />
+            <StatusNames
+              draft={draft}
+              errors={errors}
+              names={editor.statusNames}
+              onPart={onPart}
+            />
           </CardContent>
         </Card>
         <ContentCard
@@ -736,10 +729,12 @@ function LevelColour({
 function StatusNames({
   draft,
   errors,
+  names,
   onPart,
 }: {
   readonly draft: PageDraft;
   readonly errors: PageFieldErrors;
+  readonly names: PageEditorRead["statusNames"];
   readonly onPart: PartChange;
 }): ReactNode {
   const { t } = useMessages();
@@ -762,6 +757,7 @@ function StatusNames({
             key={level}
             level={level}
             onPart={onPart}
+            statusNames={names}
           />
         ))}
       </div>
@@ -774,13 +770,16 @@ function StatusName({
   errors,
   level,
   onPart,
+  statusNames,
 }: {
   readonly draft: PageDraft;
   readonly errors: PageFieldErrors;
   readonly level: StatusLevel;
   readonly onPart: PartChange;
+  /** Each level's own name in every locale, shown in an empty input. */
+  readonly statusNames: PageEditorRead["statusNames"];
 }): ReactNode {
-  const { locale, t } = useMessages();
+  const { t } = useMessages();
   const path = `customization.labels.${level}`;
   const onName = useCallback(
     (name: ContentDraft) =>
@@ -797,7 +796,10 @@ function StatusName({
       max={statusLabelMaxLength}
       onChange={onName}
       optional
-      placeholders={{ [locale]: t(levelWords[level]) }}
+      placeholders={{
+        ar: statusNames.ar[level],
+        en: statusNames.en[level],
+      }}
       required={draft.locale}
       value={draft.labels[level]}
     />
@@ -1073,7 +1075,8 @@ function FooterRow({
   return (
     <div className="flex flex-col gap-1" data-slot="footer-link">
       <div className="flex flex-wrap items-start gap-2">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
+        {/* On a phone the label takes the row and the link sits under it, so neither shrinks to a sliver. */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1 max-sm:basis-full">
           <ContentInputs
             id={`footer-${row}-label`}
             invalid={errors[`${path}.label`] !== undefined}

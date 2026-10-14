@@ -97,6 +97,11 @@ export function ImageField({
       if (!file) {
         return;
       }
+      // Said here: a file past the request limit never reaches the server's own refusal.
+      if (file.size > pageImageMaxBytes[kind]) {
+        setState({ kind: "failed", reason: "too_large" });
+        return;
+      }
       setState({ kind: "pending" });
       settle(await actions.upload(kind, file).catch(() => undefined));
     },
@@ -175,7 +180,9 @@ export function ImageField({
         <FieldDescription>{t("page_field_cover_hint")}</FieldDescription>
       ) : null}
       {state.kind === "failed" ? (
-        <FieldError>{t(imageRefusalWords[state.reason])}</FieldError>
+        <FieldError data-reason={state.reason}>
+          {t(imageRefusalWords[state.reason])}
+        </FieldError>
       ) : null}
     </Field>
   );

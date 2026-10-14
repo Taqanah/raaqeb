@@ -15,6 +15,7 @@ import {
   type SubmitEvent,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { When } from "@/admin/incidents/incident-words.tsx";
@@ -25,6 +26,7 @@ import {
   useInstallLanguage,
 } from "@/admin/shell/content.tsx";
 import { formWidth, Page } from "@/admin/shell/page.tsx";
+import { useRefusedFields } from "@/admin/shell/refused-fields.ts";
 import { useSaveFlow } from "@/admin/shell/save-flow.ts";
 import { SaveFooter } from "@/admin/shell/save-footer.tsx";
 import {
@@ -122,7 +124,20 @@ export function NewWindowForm({
   const [draft, setDraft] = useState(() =>
     newWindowDraftOf(form.now, clock.timeZone)
   );
-  const [errors, setErrors] = useState<WindowFieldErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const judge = useCallback(
+    (current: WindowDraft): WindowFieldErrors => {
+      const parsed = newWindowInputOf(
+        current,
+        clock.timeZone,
+        Date.now(),
+        language
+      );
+      return parsed.ok ? {} : parsed.errors;
+    },
+    [clock.timeZone, language]
+  );
+  const { clear, errors, refuse } = useRefusedFields(formRef, draft, judge);
   const saving = useSaveFlow<WindowDraft, MaintenanceRefusal>(draft);
   const { report } = saving;
   const onSubmit = useCallback(
@@ -135,11 +150,11 @@ export function NewWindowForm({
         language
       );
       if (!parsed.ok) {
-        setErrors(parsed.errors);
+        refuse(parsed.errors);
         report({ draft, kind: "failed", reason: "invalid" });
         return;
       }
-      setErrors({});
+      clear();
       if (!report({ draft, kind: "pending" })) {
         return;
       }
@@ -149,7 +164,7 @@ export function NewWindowForm({
         onCreated(result.window);
       }
     },
-    [clock.timeZone, create, draft, language, onCreated, report]
+    [clear, clock.timeZone, create, draft, language, onCreated, refuse, report]
   );
   return (
     <Page
@@ -162,6 +177,7 @@ export function NewWindowForm({
         method="post"
         noValidate
         onSubmit={onSubmit}
+        ref={formRef}
       >
         {/* Said before anything is written: a window needs a component. */}
         {form.components.length === 0 ? (
@@ -377,7 +393,21 @@ function EditForm({
   const [draft, setDraft] = useState(() =>
     windowDraftOf(window, clock.timeZone)
   );
-  const [errors, setErrors] = useState<WindowFieldErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const judge = useCallback(
+    (current: WindowDraft): WindowFieldErrors => {
+      const parsed = editInputOf(
+        current,
+        window.stage,
+        clock.timeZone,
+        Date.now(),
+        language
+      );
+      return parsed.ok ? {} : parsed.errors;
+    },
+    [clock.timeZone, language, window.stage]
+  );
+  const { clear, errors, refuse } = useRefusedFields(formRef, draft, judge);
   const saving = useSaveFlow<WindowDraft, MaintenanceRefusal>(draft);
   const { report } = saving;
   const basis = `${window.stage}:${window.updatedAt}`;
@@ -400,11 +430,11 @@ function EditForm({
         language
       );
       if (!parsed.ok) {
-        setErrors(parsed.errors);
+        refuse(parsed.errors);
         report({ draft, kind: "failed", reason: "invalid" });
         return;
       }
-      setErrors({});
+      clear();
       if (!report({ draft, kind: "pending" })) {
         return;
       }
@@ -419,7 +449,17 @@ function EditForm({
         onChanged();
       }
     },
-    [clock.timeZone, draft, edit, language, onChanged, report, window.stage]
+    [
+      clear,
+      clock.timeZone,
+      draft,
+      edit,
+      language,
+      onChanged,
+      refuse,
+      report,
+      window.stage,
+    ]
   );
   return (
     <form
@@ -428,6 +468,7 @@ function EditForm({
       method="post"
       noValidate
       onSubmit={onSubmit}
+      ref={formRef}
     >
       {window.stage === "scheduled" ? null : (
         <Alert data-slot="window-locked">

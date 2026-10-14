@@ -6,9 +6,17 @@
  * components linked to it. Publishing opens the incident's page.
  */
 import { Link } from "@tanstack/react-router";
-import { type ReactNode, type SubmitEvent, useCallback, useState } from "react";
+import {
+  type ReactNode,
+  type SubmitEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ContentField, useInstallLanguage } from "@/admin/shell/content.tsx";
 import { formWidth, Page } from "@/admin/shell/page.tsx";
+import { useRefusedFields } from "@/admin/shell/refused-fields.ts";
 import { useSaveFlow } from "@/admin/shell/save-flow.ts";
 import { SaveFooter } from "@/admin/shell/save-footer.tsx";
 import { useMessages } from "@/shared/i18n/react.tsx";
@@ -80,7 +88,28 @@ export function NewIncidentForm({
   const { t } = useMessages();
   const language = useInstallLanguage();
   const [draft, setDraft] = useState(() => newIncidentDraftOf(form, language));
-  const [errors, setErrors] = useState<IncidentFieldErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  // A component deleted since the page read its list is left out.
+  const known = useMemo(
+    () => new Set(form.components.map((each) => each.id)),
+    [form.components]
+  );
+  const judge = useCallback(
+    (current: NewIncidentDraft): IncidentFieldErrors => {
+      const parsed = newIncidentInputOf(
+        {
+          ...current,
+          statuses: current.statuses.filter((each) =>
+            known.has(each.componentId)
+          ),
+        },
+        language
+      );
+      return parsed.ok ? {} : parsed.errors;
+    },
+    [known, language]
+  );
+  const { clear, errors, refuse } = useRefusedFields(formRef, draft, judge);
   const saving = useSaveFlow<NewIncidentDraft, IncidentRefusal>(draft);
   const { report } = saving;
 
@@ -109,8 +138,6 @@ export function NewIncidentForm({
   const onSubmit = useCallback(
     async (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
-      // A component deleted since the page read its list is left out.
-      const known = new Set(form.components.map((each) => each.id));
       const parsed = newIncidentInputOf(
         {
           ...draft,
@@ -121,11 +148,11 @@ export function NewIncidentForm({
         language
       );
       if (!parsed.ok) {
-        setErrors(parsed.errors);
+        refuse(parsed.errors);
         report({ draft, kind: "failed", reason: "invalid" });
         return;
       }
-      setErrors({});
+      clear();
       if (!report({ draft, kind: "pending" })) {
         return;
       }
@@ -137,7 +164,7 @@ export function NewIncidentForm({
       if (!result.ok) {
         if (result.reason === "invalid") {
           // None of the chosen components exists any more: read the list again.
-          setErrors({ components: "incident_refused_components" });
+          refuse({ components: "incident_refused_components" });
           onStale();
         }
         report({ draft, kind: "failed", reason: result.reason });
@@ -146,7 +173,7 @@ export function NewIncidentForm({
       report({ draft, kind: "saved" });
       onCreated(result.incident);
     },
-    [create, draft, form.components, language, onCreated, onStale, report]
+    [clear, create, draft, known, language, onCreated, onStale, refuse, report]
   );
 
   return (
@@ -160,6 +187,7 @@ export function NewIncidentForm({
         method="post"
         noValidate
         onSubmit={onSubmit}
+        ref={formRef}
       >
         {/* Said before anything is written: an incident needs a component. */}
         {form.components.length === 0 ? (

@@ -5,6 +5,7 @@ import type { ImageActions } from "@/admin/pages/image-field.tsx";
 import { PageEditor } from "@/admin/pages/page-editor.tsx";
 import { Page } from "@/admin/shell/page.tsx";
 import { FormSkeleton } from "@/admin/shell/page-skeleton.tsx";
+import { useSavedToast } from "@/admin/shell/toasts.tsx";
 import {
   deletePageFn,
   readPageEditorFn,
@@ -50,9 +51,11 @@ function PageEditorPage() {
     router.invalidate().catch(() => undefined);
   }, [router]);
   const remove = useCallback(() => deleteFn({ data: { id } }), [deleteFn, id]);
+  const toast = useSavedToast();
   const removed = useCallback(() => {
+    toast(t("page_deleted"));
     router.navigate({ to: "/admin/pages" }).catch(() => undefined);
-  }, [router]);
+  }, [router, t, toast]);
   const images: ImageActions = useMemo(
     () => ({
       remove: (kind: PageImageKind) => removeImageFn({ data: { id, kind } }),

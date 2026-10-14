@@ -12,6 +12,7 @@ import {
   type ReactNode,
   type SubmitEvent,
   useCallback,
+  useRef,
   useState,
 } from "react";
 import {
@@ -20,6 +21,7 @@ import {
   useInstallLanguage,
 } from "@/admin/shell/content.tsx";
 import { formWithPanel, Page } from "@/admin/shell/page.tsx";
+import { useRefusedFields } from "@/admin/shell/refused-fields.ts";
 import { useSaveFlow } from "@/admin/shell/save-flow.ts";
 import { SaveFooter } from "@/admin/shell/save-footer.tsx";
 import type { MessageId } from "@/shared/i18n/messages.ts";
@@ -77,7 +79,8 @@ import {
 const refusals: Readonly<Record<ComponentRefusal, MessageId>> = {
   invalid: "app_form_invalid",
   not_found: "component_not_found",
-  unavailable: "component_unavailable",
+  // A write that failed says nothing changed; "could not be read" is a read's line.
+  unavailable: "app_write_unavailable",
 };
 
 const stateWords: Readonly<Record<CheckResult, MessageId>> = {
@@ -113,7 +116,15 @@ export function ComponentForm({
   const language = useInstallLanguage();
   const text = useContentIn();
   const [draft, setDraft] = useState(() => componentDraftOf(form.component));
-  const [errors, setErrors] = useState<ComponentFieldErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const judge = useCallback(
+    (current: typeof draft): ComponentFieldErrors => {
+      const parsed = componentInputOf(current, language);
+      return parsed.ok ? {} : parsed.errors;
+    },
+    [language]
+  );
+  const { clear, errors, refuse } = useRefusedFields(formRef, draft, judge);
   const saving = useSaveFlow<typeof draft, ComponentRefusal>(draft);
   const { report } = saving;
 
@@ -138,11 +149,11 @@ export function ComponentForm({
       event.preventDefault();
       const parsed = componentInputOf(draft, language);
       if (!parsed.ok) {
-        setErrors(parsed.errors);
+        refuse(parsed.errors);
         report({ draft, kind: "failed", reason: "invalid" });
         return;
       }
-      setErrors({});
+      clear();
       if (!report({ draft, kind: "pending" })) {
         return;
       }
@@ -158,7 +169,7 @@ export function ComponentForm({
       report({ draft, kind: "saved" });
       onSaved(result.component);
     },
-    [draft, language, onSaved, report, save]
+    [clear, draft, language, onSaved, refuse, report, save]
   );
 
   const title = form.component
@@ -178,6 +189,7 @@ export function ComponentForm({
             method="post"
             noValidate
             onSubmit={onSubmit}
+            ref={formRef}
           >
             <Card>
               <CardHeader divided>

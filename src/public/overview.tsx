@@ -88,9 +88,23 @@ const bannerText: Readonly<Record<StatusLevel, string>> = {
 /**
  * The page's own colours and CSS as one style element: each status colour
  * a page picked replaces its level's colour and soft tint, the brand colour
- * tints its links, and the custom CSS comes last. Colours are hex by their
+ * tints its links and fills its buttons, and the custom CSS comes last. Colours are hex by their
  * schema and the CSS never holds `</`, so neither can end the element.
  */
+/** White or black, whichever has the higher contrast on the `#rrggbb` colour, by WCAG's relative luminance. */
+function textOn(hex: string): "#000000" | "#ffffff" {
+  const [r, g, b] = [1, 3, 5].map((at) => {
+    const channel = Number.parseInt(hex.slice(at, at + 2), 16) / 255;
+    return channel <= 0.040_45
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+  return 1.05 / (luminance + 0.05) >= (luminance + 0.05) / 0.05
+    ? "#ffffff"
+    : "#000000";
+}
+
 export function pageStyle(page: OverviewPage): string {
   const rules: string[] = [];
   for (const level of statusLevels) {
@@ -105,7 +119,11 @@ export function pageStyle(page: OverviewPage): string {
     );
   }
   if (page.brandColour) {
-    rules.push(`--brand:${page.brandColour}`);
+    rules.push(
+      `--brand:${page.brandColour}`,
+      `--action:${page.brandColour}`,
+      `--action-foreground:${textOn(page.brandColour)}`
+    );
   }
   const root = rules.length > 0 ? `:root{${rules.join(";")}}` : "";
   return `${root}${page.customCss ?? ""}`;

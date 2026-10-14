@@ -108,6 +108,7 @@ function AffectedRow({
     [component.id, onChange, statuses]
   );
   const id = `affect-${component.id}`;
+  const isLocked = locked.includes(component.id);
   return (
     <li
       className="flex min-h-control flex-wrap items-center gap-x-3 gap-y-2 border-border border-b py-2 last:border-b-0"
@@ -116,8 +117,9 @@ function AffectedRow({
       data-slot={status ? "incident-component" : "incident-component-choice"}
     >
       <Checkbox
+        aria-describedby={isLocked ? `${id}-locked` : undefined}
         checked={status !== undefined}
-        disabled={locked.includes(component.id)}
+        disabled={isLocked}
         id={id}
         onCheckedChange={onTick}
       />
@@ -136,6 +138,16 @@ function AffectedRow({
         {t("incident_component_now")}
         <StatusLevelBadge level={component.status} />
       </span>
+      {isLocked ? (
+        // Why the box cannot be cleared, under the name.
+        <p
+          className="ms-7 w-full text-muted-foreground text-xs"
+          data-slot="incident-component-locked"
+          id={`${id}-locked`}
+        >
+          {t("incident_component_locked")}
+        </p>
+      ) : null}
       {status ? (
         <LevelChoice
           // Its own line under the name, in line with it past the box, so the four levels have the row's width.

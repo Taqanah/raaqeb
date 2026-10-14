@@ -17,6 +17,7 @@ import {
   publicPage,
   seededSubscriptions,
 } from "./support/servers.ts";
+import { fillTime, timeOf } from "./support/status-page.ts";
 
 /** The subscribe button's tag in a page's HTML. */
 const submitButton = /<button[^>]*data-slot="subscribe-submit"[^>]*>/;
@@ -242,9 +243,10 @@ test("the admin's writes reach a confirmed subscriber: an incident published and
   await page.click("[data-slot=create-window]");
   await expect(page.locator("[data-slot=save-window]")).toBeVisible();
   // An hour later on the same wall clock; the field holds `yyyy-mm-ddThh:mm`.
-  const ends = await page.locator("input[name=ends]").inputValue();
-  await page.fill(
-    "input[name=ends]",
+  const ends = await timeOf(page, "ends");
+  await fillTime(
+    page,
+    "ends",
     new Date(Date.parse(`${ends}Z`) + 3_600_000).toISOString().slice(0, 16)
   );
   await page.click("[data-slot=save-window]");

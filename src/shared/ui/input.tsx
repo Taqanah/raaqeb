@@ -1,6 +1,7 @@
 import { Input as InputPrimitive } from "@base-ui/react/input";
 import { type ComponentProps, useId } from "react";
 import { cn } from "./cn.ts";
+import { useFieldDescribedBy } from "./field.tsx";
 
 export type InputProps = ComponentProps<"input"> & {
   /** The unit a number is in, shown muted at the field's end and read with it. */
@@ -30,10 +31,13 @@ function Input({
 }: InputProps) {
   const token = variant === "token";
   const unitId = useId();
+  const described = [describedBy, useFieldDescribedBy()]
+    .filter(Boolean)
+    .join(" ");
   const field = (
     <InputPrimitive
       aria-describedby={
-        unit ? [describedBy, unitId].filter(Boolean).join(" ") : describedBy
+        [described, unit ? unitId : ""].filter(Boolean).join(" ") || undefined
       }
       className={cn(
         unit

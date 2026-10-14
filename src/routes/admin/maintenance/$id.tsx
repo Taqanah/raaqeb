@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { WindowPage } from "@/admin/maintenance/window-form.tsx";
 import { Page } from "@/admin/shell/page.tsx";
 import { FormSkeleton } from "@/admin/shell/page-skeleton.tsx";
+import { useSavedToast } from "@/admin/shell/toasts.tsx";
 import {
   deleteMaintenanceFn,
   editMaintenanceFn,
@@ -51,9 +52,11 @@ function WindowRoute() {
   const reread = useCallback(() => {
     router.invalidate().catch(() => undefined);
   }, [router]);
+  const toast = useSavedToast();
   const removed = useCallback(() => {
+    toast(t("maintenance_cancelled"));
     router.navigate({ to: "/admin/maintenance" }).catch(() => undefined);
-  }, [router]);
+  }, [router, t, toast]);
   if (!result.ok) {
     return (
       <Page title={t("maintenance_list_title")}>

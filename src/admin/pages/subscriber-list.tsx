@@ -176,18 +176,21 @@ function SubscriberRow({
         </Token>
       </TableCell>
       <TableCell>{t(channelWords[subscriber.channel])}</TableCell>
-      <TableCell lang={subscriber.locale}>
-        {localeNames[subscriber.locale]}
+      <TableCell label={t("app_language")}>
+        <span lang={subscriber.locale}>{localeNames[subscriber.locale]}</span>
       </TableCell>
       <TableCell>
         <Badge variant={stateVariants[subscriber.state]}>
           {t(stateWords[subscriber.state])}
         </Badge>
       </TableCell>
-      <TableCell className="text-muted-foreground">
+      <TableCell
+        className="text-muted-foreground"
+        label={t("page_subscribers_since")}
+      >
         <Stamp at={subscriber.createdAt} clock={clock} />
       </TableCell>
-      <TableCell>
+      <TableCell label={t("page_subscribers_last")}>
         {lastSend ? (
           // The badge over its time, so the column stays narrow enough for the row to fit.
           <div className="flex flex-col items-start gap-1">

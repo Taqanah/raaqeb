@@ -33,7 +33,16 @@ describe("a status page's own style", () => {
         statusColours: { major_outage: "#ff0000", operational: "#00aa00" },
       })
     ).toBe(
-      ":root{--status-up:#00aa00;--status-up-soft:color-mix(in oklab,#00aa00 14%,var(--background));--status-down:#ff0000;--status-down-soft:color-mix(in oklab,#ff0000 14%,var(--background));--brand:#123456}"
+      ":root{--status-up:#00aa00;--status-up-soft:color-mix(in oklab,#00aa00 14%,var(--background));--status-down:#ff0000;--status-down-soft:color-mix(in oklab,#ff0000 14%,var(--background));--brand:#123456;--action:#123456;--action-foreground:#ffffff}"
+    );
+  });
+
+  test("the brand colour fills the page's buttons, their text white or black, whichever reads better on it", () => {
+    expect(pageStyle({ ...plain, brandColour: "#0055aa" })).toContain(
+      "--action:#0055aa;--action-foreground:#ffffff"
+    );
+    expect(pageStyle({ ...plain, brandColour: "#facc15" })).toContain(
+      "--action:#facc15;--action-foreground:#000000"
     );
   });
 

@@ -1102,6 +1102,40 @@ describe("a subscriber's email", () => {
     expect(mail.text).toContain("هـ");
   });
 
+  test("each of a window's emails says in its subject what happened, beside the title", async () => {
+    const w = await world();
+    const created = await window(w.s, [w.web], now + day);
+    const subjects: string[] = [];
+    for (const type of [
+      "maintenance.scheduled",
+      "maintenance.rescheduled",
+      "maintenance.started",
+      "maintenance.completed",
+    ] as const) {
+      // biome-ignore lint/performance/noAwaitInLoops: each is its own case
+      const [only] = await subscriberPayloads(w.s.storage, {
+        type,
+        windowId: created.id,
+      });
+      subjects.push(
+        (await subscriberMail(defined(only).payload, "en", time, links)).subject
+      );
+    }
+    const [cancelled] = await subscriberPayloads(w.s.storage, {
+      at: now + minute,
+      type: "maintenance.cancelled",
+      window: created,
+    });
+    subjects.push(
+      (await subscriberMail(defined(cancelled).payload, "en", time, links))
+        .subject
+    );
+    expect(new Set(subjects).size).toBe(5);
+    for (const subject of subjects) {
+      expect(subject).toContain(created.title.en ?? created.title.ar ?? "");
+    }
+  });
+
   test("a rescheduled window's email says its times changed and gives the new ones; a cancelled one's says it is cancelled, with no stage line", async () => {
     const w = await world();
     const start = now + day;

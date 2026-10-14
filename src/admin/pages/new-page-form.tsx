@@ -9,9 +9,11 @@ import {
   type ReactNode,
   type SubmitEvent,
   useCallback,
+  useRef,
   useState,
 } from "react";
 import { formWidth, Page } from "@/admin/shell/page.tsx";
+import { useRefusedFields } from "@/admin/shell/refused-fields.ts";
 import { useSaveFlow } from "@/admin/shell/save-flow.ts";
 import { SaveFooter } from "@/admin/shell/save-footer.tsx";
 import { isLocale, type Locale, locales } from "@/shared/i18n/locale.ts";
@@ -38,6 +40,14 @@ import { Token } from "@/shared/ui/token.tsx";
 import { type NewPageDraft, newPageInputOf } from "./page-draft.ts";
 import { pageRefusalWords } from "./page-words.ts";
 
+/** The new page's rules, as its save judges them. */
+function judge(
+  draft: NewPageDraft
+): Readonly<Partial<Record<"slug" | "title", MessageId>>> {
+  const parsed = newPageInputOf(draft);
+  return parsed.ok ? {} : parsed.errors;
+}
+
 export function NewPageForm({
   create,
   installLanguage,
@@ -55,9 +65,8 @@ export function NewPageForm({
     slug: "",
     title: "",
   });
-  const [errors, setErrors] = useState<
-    Readonly<Partial<Record<"slug" | "title", MessageId>>>
-  >({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const { clear, errors, refuse } = useRefusedFields(formRef, draft, judge);
   const saving = useSaveFlow<NewPageDraft, PageRefusal>(draft);
   const { report } = saving;
 
@@ -80,11 +89,11 @@ export function NewPageForm({
       event.preventDefault();
       const parsed = newPageInputOf(draft);
       if (!parsed.ok) {
-        setErrors(parsed.errors);
+        refuse(parsed.errors);
         report({ draft, kind: "failed", reason: "invalid" });
         return;
       }
-      setErrors({});
+      clear();
       if (!report({ draft, kind: "pending" })) {
         return;
       }
@@ -92,7 +101,7 @@ export function NewPageForm({
       if (!result?.ok) {
         const reason = result?.ok === false ? result.reason : "unavailable";
         if (reason === "slug_taken") {
-          setErrors({ slug: pageRefusalWords.slug_taken });
+          refuse({ slug: pageRefusalWords.slug_taken });
         }
         report({ draft, kind: "failed", reason });
         return;
@@ -100,7 +109,7 @@ export function NewPageForm({
       report({ draft, kind: "saved" });
       onCreated(result.page);
     },
-    [create, draft, onCreated, report]
+    [clear, create, draft, onCreated, refuse, report]
   );
 
   const slug = draft.slug.trim().toLowerCase();
@@ -115,6 +124,7 @@ export function NewPageForm({
         method="post"
         noValidate
         onSubmit={onSubmit}
+        ref={formRef}
       >
         <Card>
           <CardHeader divided>

@@ -74,11 +74,26 @@ function select(
 }
 
 describe("a time field in the Gregorian calendar", () => {
-  test("stays the native datetime-local field holding the draft's text", () => {
+  test("holds the draft's date in the native date field and its hour and minute as the Hijri field does", () => {
     const html = render("gregorian");
-    expect(html).toContain('type="datetime-local"');
-    expect(html).toContain(`value="${value}"`);
-    expect(html).not.toContain("<select");
+    expect(html).not.toContain('type="datetime-local"');
+    expect(html).toContain('type="date"');
+    expect(html).toContain('value="2026-02-18"');
+    expect(select(html, "starts-hour").selected).toBe("14");
+    expect(select(html, "starts-minute").selected).toBe("5");
+  });
+
+  test("on a 24-hour clock offers the hours 00 to 23 and no half of the day", () => {
+    const html = render("gregorian");
+    expect(select(html, "starts-hour").options).toHaveLength(24);
+    expect(html).not.toContain('data-slot="segmented"');
+  });
+
+  test("on a 12-hour clock offers the hours 1 to 12 and the half of the day", () => {
+    const html = render("gregorian", { clock: "12h" });
+    expect(select(html, "starts-hour").options).toHaveLength(12);
+    expect(select(html, "starts-hour").selected).toBe("2");
+    expect(html).toMatch(pmChecked);
   });
 });
 

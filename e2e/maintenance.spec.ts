@@ -9,7 +9,7 @@ import {
   operatorEmail,
   operatorPassword,
 } from "./support/servers.ts";
-import { startingNow, wallTime } from "./support/status-page.ts";
+import { fillTime, startingNow, wallTime } from "./support/status-page.ts";
 
 const run = Date.now().toString(36);
 const componentName = `Payments ${run}`;
@@ -86,6 +86,10 @@ test.describe("two windows on one component", () => {
     await page.click("[data-slot=cancel-window]");
     await page.click("[data-slot=confirm-cancel]");
     await expectPath(page, "/admin/maintenance");
+    // The delete's own toast, not the save's before it.
+    await expect(
+      page.locator("[data-slot=toast]", { hasText: "cancelled" })
+    ).toBeVisible();
     await expect(page.locator(`a[href="${path}"]`)).toHaveCount(0);
   });
 
@@ -102,11 +106,8 @@ test.describe("two windows on one component", () => {
         .getAttribute("data-zone")) ?? "UTC";
     await page.fill("input[name=title-en]", `Network work ${run}`);
     await page.fill("textarea[name=message-en]", "We replace a switch.");
-    await page.fill("input[name=starts]", startingNow(zone));
-    await page.fill(
-      "input[name=ends]",
-      wallTime(Date.now() + 30 * 60_000, zone)
-    );
+    await fillTime(page, "starts", startingNow(zone));
+    await fillTime(page, "ends", wallTime(Date.now() + 30 * 60_000, zone));
     await page
       .locator(
         `[data-slot=window-component][data-component="${componentId}"] label`
@@ -119,8 +120,8 @@ test.describe("two windows on one component", () => {
     await stageShows(page, "in_progress");
     await expect(page.locator("[data-slot=window-locked]")).toBeVisible();
     // Started, the start is no longer a field; the summary above shows it.
-    await expect(page.locator("input[name=starts]")).toHaveCount(0);
-    await expect(page.locator("input[name=ends]")).toBeEnabled();
+    await expect(page.locator("#starts")).toHaveCount(0);
+    await expect(page.locator("#ends")).toBeEnabled();
 
     await page.goto(`${englishOrigin}/admin/components/${componentId}`);
     await expect(
@@ -141,7 +142,7 @@ test.describe("two windows on one component", () => {
     await page.click("[data-slot=end-window]");
     await page.click("[data-slot=confirm-end]");
     await stageShows(page, "completed");
-    await expect(page.locator("input[name=ends]")).toHaveCount(0);
+    await expect(page.locator("#ends")).toHaveCount(0);
 
     await page.goto(`${englishOrigin}/admin/monitors`);
     await expect(
@@ -161,17 +162,17 @@ test("a window that ends before it starts, or starts in the past, is refused on 
   const zone =
     (await page.locator("[data-slot=window-zone]").getAttribute("data-zone")) ??
     "UTC";
-  const starts = page.locator("input[name=starts]");
-  const ends = page.locator("input[name=ends]");
+  const starts = page.locator("#starts");
+  const ends = page.locator("#ends");
   await page.fill("input[name=title-en]", `Backwards ${run}`);
   await page.fill("textarea[name=message-en]", "Ends first.");
-  await starts.fill(wallTime(Date.now() + 2 * hour, zone));
-  await ends.fill(wallTime(Date.now() + hour, zone));
+  await fillTime(page, "starts", wallTime(Date.now() + 2 * hour, zone));
+  await fillTime(page, "ends", wallTime(Date.now() + hour, zone));
   await page.click("[data-slot=create-window]");
   await expect(ends).toHaveAttribute("aria-invalid", "true");
   await expect(starts).not.toHaveAttribute("aria-invalid", "true");
 
-  await starts.fill(wallTime(Date.now() - 2 * hour, zone));
+  await fillTime(page, "starts", wallTime(Date.now() - 2 * hour, zone));
   await page.click("[data-slot=create-window]");
   await expect(starts).toHaveAttribute("aria-invalid", "true");
   await expect(ends).not.toHaveAttribute("aria-invalid", "true");

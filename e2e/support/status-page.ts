@@ -103,3 +103,40 @@ export function startingNow(timeZone: string): string {
     timeZone
   );
 }
+
+/** Sets a window's start or end to a wall time `yyyy-mm-ddThh:mm` as the operator does: the date, then the hour, the half of the day on a 12-hour clock, and the minute. */
+export async function fillTime(
+  page: Page,
+  name: "ends" | "starts",
+  wall: string
+): Promise<void> {
+  await page.fill(`input[name=${name}-date]`, wall.slice(0, 10));
+  const hour = Number(wall.slice(11, 13));
+  const period = page.locator(`[data-name=${name}-period]`);
+  const twelve = (await period.count()) > 0;
+  await page.selectOption(
+    `select[name=${name}-hour]`,
+    String(twelve ? hour % 12 || 12 : hour)
+  );
+  if (twelve) {
+    await period
+      .locator(`[role=radio][data-value=${hour >= 12 ? "pm" : "am"}]`)
+      .click();
+  }
+  await page.selectOption(
+    `select[name=${name}-minute]`,
+    String(Number(wall.slice(14, 16)))
+  );
+}
+
+/** A window's start or end as its field holds it, `yyyy-mm-ddThh:mm`. */
+export async function timeOf(
+  page: Page,
+  name: "ends" | "starts"
+): Promise<string> {
+  return (
+    (await page
+      .locator(`fieldset[aria-labelledby=${name}-label]`)
+      .getAttribute("data-value")) ?? ""
+  );
+}

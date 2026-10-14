@@ -359,6 +359,10 @@ export interface PageEditor {
   readonly images: readonly PageImage[];
   readonly layout: PageLayout;
   readonly page: StatusPage;
+  /** Each status level's own name in every locale: what a page shows where it names a level nothing of its own. */
+  readonly statusNames: Readonly<
+    Record<Locale, Readonly<Record<StatusLevel, string>>>
+  >;
 }
 
 export type PageRefusal =
