@@ -2980,6 +2980,10 @@ msgid "component_delete_description"
 msgstr "It disappears from every status page that shows it, and its monitors stay as they are. Deleting cannot be undone."
 
 #. js-lingui-explicit-id
+msgid "component_delete_takes"
+msgstr "It is the last affected component of these incidents and maintenance windows, so they are deleted with it:"
+
+#. js-lingui-explicit-id
 msgid "component_refused_name"
 msgstr "Type a name of up to 100 characters."
 

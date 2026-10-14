@@ -2980,6 +2980,10 @@ msgid "component_delete_description"
 msgstr "يختفي من كل صفحة حالة تعرضه، وتبقى مراقباته كما هي. لا يمكن التراجع عن الحذف."
 
 #. js-lingui-explicit-id
+msgid "component_delete_takes"
+msgstr "وهو آخر مكوّن متأثر بهذه الحوادث وأوقات الصيانة، فتُحذف معه:"
+
+#. js-lingui-explicit-id
 msgid "component_refused_name"
 msgstr "اكتب اسمًا حتى 100 حرف."
 

@@ -548,6 +548,7 @@ describe("the component form", () => {
     expect(await readComponentForm(storage, undefined)).toEqual({
       form: {
         component: undefined,
+        deletedWith: { incidents: [], maintenance: [] },
         incidents: [],
         maintenance: [],
         monitors: [
@@ -705,6 +706,97 @@ describe("creating, editing and deleting a component", () => {
       ok: false,
       reason: "not_found",
     });
+  });
+
+  test("a stored component's form names the incidents and windows deleting it deletes, at any stage, and exactly those go", async () => {
+    const { at, storage } = await opened();
+    const author = "owner@example.com";
+    const made = await Promise.all([
+      createComponent(storage, input),
+      createComponent(storage, { ...input, name: { ar: "API" } }),
+    ]);
+    const [id, otherId] = made.map((each) =>
+      each.ok ? each.component.id : ""
+    );
+    if (!(id && otherId)) {
+      throw new Error("a component was not stored");
+    }
+    const incidentOn = (title: string, componentIds: string[]) =>
+      storage.incidents.create(
+        { impact: "minor", title: { ar: title } },
+        {
+          author,
+          message: { ar: "نحقق." },
+          stage: "investigating",
+          statuses: componentIds.map((componentId) => ({
+            componentId,
+            status: "degraded_performance" as const,
+          })),
+        }
+      );
+    const windowOn = (title: string, componentIds: string[]) =>
+      storage.maintenance.create({
+        componentIds,
+        endsAt: d0 + 2 * hour,
+        message: { ar: "نص" },
+        startsAt: d0 + hour,
+        title: { ar: title },
+      });
+    const resolved = await incidentOn("محلولة", [id]);
+    await storage.incidents.post(
+      resolved.id,
+      {
+        author,
+        message: { ar: "حُلّت." },
+        stage: "resolved",
+        statuses: [{ componentId: id, status: "operational" }],
+      },
+      [],
+      resolved.updates.at(-1)?.id ?? ""
+    );
+    at(d0 + 1);
+    const open = await incidentOn("مفتوحة", [id]);
+    // Named by a later update only, the other component still keeps it.
+    const widened = await incidentOn("اتسعت", [id]);
+    await storage.incidents.post(
+      widened.id,
+      {
+        author,
+        message: { ar: "اتسعت." },
+        stage: "identified",
+        statuses: [{ componentId: otherId, status: "major_outage" }],
+      },
+      [],
+      widened.updates.at(-1)?.id ?? ""
+    );
+    const shared = await incidentOn("مشتركة", [id, otherId]);
+    const elsewhere = await incidentOn("أخرى", [otherId]);
+    const completed = await windowOn("انتهت", [id]);
+    await storage.maintenance.advance(d0 + 3 * hour);
+    const scheduled = await windowOn("مجدولة", [id]);
+    const sharedWindow = await windowOn("مشتركة", [id, otherId]);
+
+    const form = await readComponentForm(storage, id);
+    expect(form.ok && form.form.deletedWith).toEqual({
+      incidents: [
+        { id: resolved.id, title: { ar: "محلولة" } },
+        { id: open.id, title: { ar: "مفتوحة" } },
+      ],
+      maintenance: [
+        { id: completed.id, title: { ar: "انتهت" } },
+        { id: scheduled.id, title: { ar: "مجدولة" } },
+      ],
+    });
+
+    await deleteComponent(storage, id);
+    expect((await storage.incidents.list()).map((each) => each.id)).toEqual([
+      widened.id,
+      shared.id,
+      elsewhere.id,
+    ]);
+    expect((await storage.maintenance.list()).map((each) => each.id)).toEqual([
+      sharedWindow.id,
+    ]);
   });
 
   test("a write the database refuses is unavailable, never a throw", async () => {

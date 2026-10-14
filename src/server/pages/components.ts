@@ -323,7 +323,7 @@ function totalOf(days: readonly ComponentDay[]): {
   return { downtimeMs, observedMs };
 }
 
-/** The form's read: the stored component with its status and the pages showing it, or the new form's with no id; the monitors it may link either way. */
+/** The form's read: the stored component with its status, the pages showing it and what deleting it deletes, or the new form's with no id; the monitors it may link either way. */
 export async function readComponentForm(
   storage: ComponentStorage,
   id: string | undefined
@@ -342,6 +342,7 @@ export async function readComponentForm(
       return {
         form: {
           component: undefined,
+          deletedWith: { incidents: [], maintenance: [] },
           incidents: [],
           maintenance: [],
           monitors: linkable,
@@ -358,19 +359,32 @@ export async function readComponentForm(
     const [pages, shown, incidents, windows] = await Promise.all([
       storage.pages.list(),
       storage.pages.componentsShown(),
-      storage.incidents.open(),
-      storage.maintenance.unfinished(),
+      storage.incidents.list(),
+      storage.maintenance.list(),
     ]);
-    const setting = incidents.filter((incident) =>
-      latestStatuses(incident).some((each) => each.componentId === id)
+    const setting = incidents.filter(
+      (incident) =>
+        incident.resolvedAt === undefined &&
+        latestStatuses(incident).some((each) => each.componentId === id)
     );
     const holding = windows.filter(
       (window) =>
         window.stage === "in_progress" && window.componentIds.includes(id)
     );
+    // The same rule the repository deletes by: no other component named.
+    const onlyThis = (componentIds: readonly string[]) =>
+      componentIds.every((each) => each === id);
     return {
       form: {
         component,
+        deletedWith: {
+          incidents: incidents
+            .filter((incident) => onlyThis(affectedComponents(incident)))
+            .map((incident) => ({ id: incident.id, title: incident.title })),
+          maintenance: windows
+            .filter((window) => onlyThis(window.componentIds))
+            .map((window) => ({ id: window.id, title: window.title })),
+        },
         incidents: setting.map((incident) => ({
           id: incident.id,
           title: incident.title,

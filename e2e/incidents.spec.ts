@@ -215,3 +215,30 @@ test("an incident naming only a component deleted since the form opened is refus
     page.locator("[data-slot=save-outcome][data-reason=invalid]")
   ).toBeVisible();
 });
+
+test("deleting a component names the incidents it is the last affected component of, and they go with it", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto(`${englishOrigin}/admin/components/new`);
+  await page.fill("input[name=name-en]", `Last ${run}`);
+  await page.click("[data-slot=save-component]");
+  const lastId = await idOf(page, componentPath);
+
+  await page.goto(`${englishOrigin}/admin/incidents/new`);
+  await page.fill("input[name=title-en]", `Only on last ${run}`);
+  await page.fill("textarea[name=message-en]", "Affects one component.");
+  await page.click(`[data-component="${lastId}"] [role=checkbox]`);
+  await page.click("[data-slot=create-incident]");
+  const incidentId = await idOf(page, incidentPath);
+
+  await page.goto(`${englishOrigin}/admin/components/${lastId}`);
+  await page.click("[data-slot=delete-component]");
+  await expect(
+    page.locator(`[data-slot=deleted-incidents] [data-record="${incidentId}"]`)
+  ).toBeVisible();
+  await page.click("[data-slot=confirm-delete]");
+  await expectPath(page, "/admin/components");
+  await page.goto(`${englishOrigin}/admin/incidents`);
+  await expect(page.locator(`[data-incident="${incidentId}"]`)).toHaveCount(0);
+});

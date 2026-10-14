@@ -244,7 +244,11 @@ export function ComponentForm({
             </Card>
           </form>
           {remove ? (
-            <DeleteComponent onRemoved={onRemoved} remove={remove} />
+            <DeleteComponent
+              deletedWith={form.deletedWith}
+              onRemoved={onRemoved}
+              remove={remove}
+            />
           ) : null}
         </div>
         {form.component ? <SidePanel form={form} /> : null}
@@ -470,15 +474,30 @@ function SidePanel({ form }: { readonly form: ComponentFormRead }): ReactNode {
   );
 }
 
-/** Delete, after the operator confirms. */
+/** Delete, after the operator confirms, naming the incidents and windows that go with it. */
 function DeleteComponent({
+  deletedWith,
   onRemoved,
   remove,
 }: {
+  readonly deletedWith: ComponentFormRead["deletedWith"];
   readonly onRemoved: (() => void) | undefined;
   readonly remove: () => Promise<ComponentDeleteResult | undefined>;
 }): ReactNode {
   const { t } = useMessages();
+  const text = useContentIn();
+  const groups = [
+    {
+      label: t("incident_list_title"),
+      records: deletedWith.incidents,
+      slot: "deleted-incidents",
+    },
+    {
+      label: t("maintenance_list_title"),
+      records: deletedWith.maintenance,
+      slot: "deleted-maintenance",
+    },
+  ].filter((group) => group.records.length > 0);
   const [open, setOpen] = useState(false);
   const [refused, setRefused] = useState<ComponentRefusal | undefined>();
   const ask = useCallback(() => setOpen(true), []);
@@ -515,6 +534,29 @@ function DeleteComponent({
               {t("component_delete_description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {groups.length > 0 ? (
+            <div className="flex flex-col gap-3 text-sm">
+              <p className="text-center sm:text-start">
+                {t("component_delete_takes")}
+              </p>
+              <div className="flex max-h-48 flex-col gap-3 overflow-y-auto rounded-lg border p-3">
+                {groups.map((group) => (
+                  <div className="flex flex-col gap-1" key={group.slot}>
+                    <span className="text-muted-foreground text-xs">
+                      {group.label}
+                    </span>
+                    <ul className="flex flex-col gap-1" data-slot={group.slot}>
+                      {group.records.map((record) => (
+                        <li data-record={record.id} key={record.id}>
+                          <bdi>{text(record.title)}</bdi>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel>{t("app_cancel")}</AlertDialogCancel>
             <AlertDialogAction

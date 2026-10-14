@@ -102,6 +102,17 @@ export interface ShowingPage {
 /** What the component form reads: the stored component, or nothing for a new one. */
 export interface ComponentForm {
   readonly component: Component | undefined;
+  /** The incidents and maintenance windows, at any stage, of which the stored component is the last affected component, so deleting it deletes them; in creation order. */
+  readonly deletedWith: {
+    readonly incidents: readonly {
+      readonly id: string;
+      readonly title: Content;
+    }[];
+    readonly maintenance: readonly {
+      readonly id: string;
+      readonly title: Content;
+    }[];
+  };
   /** The open incidents that set the stored component's status, in creation order. */
   readonly incidents: readonly {
     readonly id: string;
