@@ -206,7 +206,9 @@ export function ChannelForm({
         report({ draft, kind: "failed", reason: "invalid" });
         return;
       }
-      report({ draft, kind: "pending" });
+      if (!report({ draft, kind: "pending" })) {
+        return;
+      }
       const result = await save(parsed.input, {
         renewGenerated: draft.renewGenerated,
       }).catch(() => undefined);

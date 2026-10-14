@@ -329,7 +329,9 @@ function UpdateEditor({
         return;
       }
       setErrors({});
-      report({ draft, kind: "pending" });
+      if (!report({ draft, kind: "pending" })) {
+        return;
+      }
       const outcome = outcomeOf(
         await post(parsed.input).catch(() => undefined)
       );
@@ -627,7 +629,9 @@ function FixText({
         report({ draft: message, kind: "failed", reason: "invalid" });
         return;
       }
-      report({ draft: message, kind: "pending" });
+      if (!report({ draft: message, kind: "pending" })) {
+        return;
+      }
       const outcome = outcomeOf(
         await fix(update.id, parsed.input).catch(() => undefined)
       );
@@ -712,7 +716,9 @@ function EditFields({
         return;
       }
       setErrors({});
-      report({ draft, kind: "pending" });
+      if (!report({ draft, kind: "pending" })) {
+        return;
+      }
       const outcome = outcomeOf(
         await edit(parsed.input).catch(() => undefined)
       );

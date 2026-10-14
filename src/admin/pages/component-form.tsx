@@ -143,7 +143,9 @@ export function ComponentForm({
         return;
       }
       setErrors({});
-      report({ draft, kind: "pending" });
+      if (!report({ draft, kind: "pending" })) {
+        return;
+      }
       const result = await save(parsed.input).catch(() => undefined);
       if (!result?.ok) {
         report({

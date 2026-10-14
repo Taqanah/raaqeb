@@ -140,7 +140,9 @@ export function NewWindowForm({
         return;
       }
       setErrors({});
-      report({ draft, kind: "pending" });
+      if (!report({ draft, kind: "pending" })) {
+        return;
+      }
       const result = await create(parsed.input).catch(() => undefined);
       report({ draft, ...outcomeOf(result) });
       if (result?.ok) {
@@ -403,7 +405,9 @@ function EditForm({
         return;
       }
       setErrors({});
-      report({ draft, kind: "pending" });
+      if (!report({ draft, kind: "pending" })) {
+        return;
+      }
       const outcome = outcomeOf(
         await edit(parsed.input).catch(() => undefined)
       );

@@ -126,7 +126,9 @@ export function NewIncidentForm({
         return;
       }
       setErrors({});
-      report({ draft, kind: "pending" });
+      if (!report({ draft, kind: "pending" })) {
+        return;
+      }
       const result = await create(parsed.input).catch(() => undefined);
       if (!result) {
         report({ draft, kind: "failed", reason: "unavailable" });

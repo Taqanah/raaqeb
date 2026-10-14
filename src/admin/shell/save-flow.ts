@@ -6,7 +6,7 @@
  * last outcome until the next change makes it old news: unsaved changes, a
  * save in progress, saved, or a refusal worded through the catalog.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 export type SaveState<Refusal extends string> =
   | { readonly kind: "idle" }
@@ -142,11 +142,23 @@ export function useSaveFlow<Draft, Refusal extends string>(
   draft: Draft,
   start: Draft = draft
 ): SaveView<Refusal> & {
-  readonly report: (event: SaveEvent<Draft, Refusal>) => void;
+  /** Takes in what happened; answers false, and changes nothing, for a save started while another runs, which the form must then not send. */
+  readonly report: (event: SaveEvent<Draft, Refusal>) => boolean;
 } {
   const [flow, setFlow] = useState(() => flowOf<Draft, Refusal>(start));
+  // A second submit can land before the resting Save renders; the state would still say no save runs, the ref already does.
+  const running = useRef<boolean>(false);
   const report = useCallback((event: SaveEvent<Draft, Refusal>) => {
+    if (event.kind === "pending") {
+      if (running.current) {
+        return false;
+      }
+      running.current = true;
+    } else if (event.kind !== "rebased") {
+      running.current = false;
+    }
     setFlow((current) => nextFlow(current, event));
+    return true;
   }, []);
   const view = useMemo(() => viewOf(flow, draft), [draft, flow]);
   return { ...view, report };

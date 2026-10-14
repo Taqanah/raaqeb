@@ -201,7 +201,9 @@ export function MonitorForm({
         report({ draft, kind: "failed", reason: "invalid" });
         return;
       }
-      report({ draft, kind: "pending" });
+      if (!report({ draft, kind: "pending" })) {
+        return;
+      }
       save(parsed.input, { renewHeartbeatUrl: draft.renewHeartbeatUrl }).then(
         (result) => {
           if (result?.ok) {

@@ -74,7 +74,9 @@ export function useDraftSave<Input, Refusal extends string, Draft>(
   );
   const submit = useCallback(
     (input: Input) => {
-      report({ draft, kind: "pending" });
+      if (!report({ draft, kind: "pending" })) {
+        return;
+      }
       save(input).then(
         (result) => {
           if (result.ok) {
