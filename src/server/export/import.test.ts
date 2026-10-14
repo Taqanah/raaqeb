@@ -4,11 +4,13 @@ import {
   openCredentials,
   sealCredentials,
 } from "@/server/monitors/credentials.ts";
+import { imagePolicy, pageImageResponse } from "@/server/pages/images.ts";
 import { publicAddress } from "@/server/settings/address.ts";
 import { calendar, timeZone } from "@/server/settings/clock.ts";
 import { installLanguage } from "@/server/settings/language.ts";
 import { operatorCalendar } from "@/server/settings/operator.ts";
 import { runSql } from "@/server/storage/fixture.ts";
+import { pageImageMaxBytes } from "@/shared/schemas/page.ts";
 import { exportInstall } from "./export.ts";
 import {
   checksEvery,
@@ -706,6 +708,90 @@ describe("an import", () => {
     ).toEqual({ line: 1, ok: false, reason: "invalid" });
     expect(await empty(into)).toBe(true);
     expect(await into.storage.settings.get(installLanguage)).toBe("ar");
+  });
+
+  /** The configuration's header with its one page image's type and bytes replaced, and the image's page. */
+  async function withImage(
+    from: Install,
+    contentType: string,
+    body: Uint8Array
+  ): Promise<{ header: string; pageId: string }> {
+    const header = JSON.parse(
+      (await exportLines(from, "configuration"))[0] ?? "{}"
+    );
+    const [image] = header.configuration.pageImages;
+    image.contentType = contentType;
+    image.body = body.toBase64();
+    return { header: JSON.stringify(header), pageId: image.pageId };
+  }
+
+  const pngBytes = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+  test("takes a page image for what its bytes say, never the type or hash the file names, and serves it under its sandbox policy", async () => {
+    const from = await source();
+    const into = await target();
+    const png = new Uint8Array([...pngBytes, 9, 9, 9]);
+    const { header, pageId } = await withImage(from, "text/html", png);
+    const lines = JSON.parse(header);
+    lines.configuration.pageImages[0].hash = "not-its-hash";
+    expect(
+      (
+        await importInstall(
+          into.storage,
+          into.key,
+          fileOf([JSON.stringify(lines)]),
+          now
+        )
+      ).ok
+    ).toBe(true);
+    const served = await pageImageResponse(
+      into.storage,
+      pageId,
+      "logo",
+      new Request("http://status.example.test/"),
+      () => Promise.resolve(false)
+    );
+    expect(served.headers.get("content-type")).toBe("image/png");
+    expect(served.headers.get("content-security-policy")).toBe(imagePolicy);
+    expect(served.headers.get("etag")).toBe(
+      `"${new Bun.CryptoHasher("sha256").update(png).digest("hex")}"`
+    );
+  });
+
+  test("refuses a page image whose bytes are no image of its kind, such as HTML with a script, at the header, and writes nothing", async () => {
+    const from = await source();
+    const into = await target();
+    const { header, pageId } = await withImage(
+      from,
+      "text/html",
+      new TextEncoder().encode(
+        "<!doctype html><script>fetch('/admin/monitors')</script>"
+      )
+    );
+    expect(
+      await importInstall(into.storage, into.key, fileOf([header]), now)
+    ).toEqual({ line: 1, ok: false, reason: "invalid" });
+    expect(await empty(into)).toBe(true);
+    const served = await pageImageResponse(
+      into.storage,
+      pageId,
+      "logo",
+      new Request("http://status.example.test/"),
+      () => Promise.resolve(true)
+    );
+    expect(served.status).toBe(404);
+  });
+
+  test("refuses a page image larger than an upload of its kind may be, at the header", async () => {
+    const from = await source();
+    const into = await target();
+    const large = new Uint8Array(pageImageMaxBytes.logo + 1);
+    large.set(pngBytes);
+    const { header } = await withImage(from, "image/png", large);
+    expect(
+      await importInstall(into.storage, into.key, fileOf([header]), now)
+    ).toEqual({ line: 1, ok: false, reason: "invalid" });
+    expect(await empty(into)).toBe(true);
   });
 
   test("refuses a blank line among the records, by its number", async () => {

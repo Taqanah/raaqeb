@@ -539,7 +539,8 @@ function withSecurityHeaders(
   headers.set("x-content-type-options", "nosniff");
   headers.set("referrer-policy", "strict-origin-when-cross-origin");
   if (!view.framable) {
-    headers.set("content-security-policy", "frame-ancestors 'none'");
+    // Appended: a policy the response carries, such as a page image's sandbox, stays in force beside it.
+    headers.append("content-security-policy", "frame-ancestors 'none'");
     headers.set("x-frame-options", "DENY");
   }
   if (view.https) {

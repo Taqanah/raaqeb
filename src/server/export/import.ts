@@ -12,6 +12,7 @@
  */
 import { encrypt, type InstallKey } from "@/server/boot/installkey.ts";
 import { error as logError, reasonOf } from "@/server/log.ts";
+import { imageTypeOf } from "@/server/pages/images.ts";
 import { releaseCheckEnabled } from "@/server/release/release.ts";
 import { sealClosedDays } from "@/server/scheduler/sealing.ts";
 import {
@@ -45,6 +46,7 @@ import {
   versionProbeSchema,
 } from "@/shared/schemas/export.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
+import { pageImageMaxBytes } from "@/shared/schemas/page.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import type { Rollup } from "@/shared/schemas/rollup.ts";
 import { readLines, UnreadableFileError } from "./lines.ts";
@@ -112,6 +114,27 @@ const travelling: Readonly<Record<TravellingSetting, Setting<unknown>>> = {
 /** Whether a setting's value fits the setting this install declares, so a file cannot store one the install would read as broken. */
 function fitsItsSetting(row: Configuration["settings"][number]): boolean {
   return travelling[row.key].schema.safeParse(parseJson(row.value)).success;
+}
+
+/** The page images as an upload takes them: within their kind's size, the type and hash computed from the bytes; nothing when one is no image of its kind. */
+function takenImages(
+  images: Configuration["pageImages"]
+): Configuration["pageImages"] | undefined {
+  const taken: Configuration["pageImages"] = [];
+  for (const image of images) {
+    const contentType = imageTypeOf(image.body, image.kind);
+    if (
+      contentType === undefined ||
+      image.body.length > pageImageMaxBytes[image.kind]
+    ) {
+      return;
+    }
+    const hash = new Bun.CryptoHasher("sha256")
+      .update(image.body)
+      .digest("hex");
+    taken.push({ ...image, contentType, hash });
+  }
+  return taken;
 }
 
 /** The configuration with every credential sealed with this install's key, and a webhook subscriber's address the SHA-256 of its URL. */
@@ -187,10 +210,14 @@ async function importOnce(
     if (!header.success) {
       throw new InvalidLineError(1);
     }
-    const { configuration, mode } = header.data;
-    if (!configuration.settings.every(fitsItsSetting)) {
+    const { mode } = header.data;
+    const pageImages = takenImages(header.data.configuration.pageImages);
+    if (
+      !(pageImages && header.data.configuration.settings.every(fitsItsSetting))
+    ) {
       throw new InvalidLineError(1);
     }
+    const configuration = { ...header.data.configuration, pageImages };
     const zone = await importedTimeZone(storage, configuration);
     restored = await storage.transfer.restore(
       await sealed(key, { ...configuration, settings: [] })

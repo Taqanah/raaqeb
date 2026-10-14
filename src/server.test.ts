@@ -1252,11 +1252,12 @@ describe("a stop by signal", () => {
 });
 
 describe("the security headers of an HTML response", () => {
-  /** A handler answering HTML everywhere, public at a status page's view, a page image under its own sandbox policy and the summary as JSON. */
+  /** A handler answering HTML everywhere, public at a status page's view, a page image under its own sandbox policy, the cover as HTML under that policy, and the summary as JSON. */
   const handler = [
     "export default { fetch: (r) => {",
     "const path = new URL(r.url).pathname;",
     "if (path.endsWith('.json')) return Response.json({}, { headers: { 'cache-control': 'public, max-age=0, must-revalidate' } });",
+    "if (path === '/api/pages/some-id/cover') return new Response('<script></script>', { headers: { 'content-type': 'text/html', 'content-security-policy': \"default-src 'none'; style-src 'unsafe-inline'; sandbox\" } });",
     "if (path.startsWith('/api/pages/')) return new Response('png', { headers: { 'content-type': 'image/png', 'content-security-policy': \"default-src 'none'; style-src 'unsafe-inline'; sandbox\", 'x-content-type-options': 'nosniff' } });",
     "return new Response('<!doctype html>', { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': path === '/' ? 'public, max-age=0, must-revalidate' : 'no-store' } });",
     "} };",
@@ -1441,6 +1442,15 @@ describe("the security headers of an HTML response", () => {
       ]) {
         expect(summary.headers.has(name)).toBe(false);
       }
+    });
+  });
+
+  test("an HTML response that carries its own policy keeps it, the frame refusal added beside it", async () => {
+    await withPage(undefined, async (at) => {
+      const html = await at("/api/pages/some-id/cover");
+      expect(html.headers.get("content-security-policy")).toBe(
+        "default-src 'none'; style-src 'unsafe-inline'; sandbox, frame-ancestors 'none'"
+      );
     });
   });
 });
