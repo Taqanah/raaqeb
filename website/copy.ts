@@ -5,6 +5,7 @@
  */
 import type { Locale } from "@/shared/i18n/locale.ts";
 import { website } from "@/shared/ui/website.ts";
+import { bench } from "./landing/bench.ts";
 
 /** Where the website lives and the project's repository. */
 export const site = website;
@@ -500,7 +501,11 @@ const ar: Copy = {
       ["1", "نواة", "معالج افتراضي واحد"],
       ["800", "مراقبة", "كل 20 ثانية في 107 ميغابايت"],
       ["0.4", "ثانية", "من التشغيل إلى أول إجابة"],
-      ["86", "ميغابايت", "ملف تنفيذي واحد لـ Linux وmacOS وWindows"],
+      [
+        String(bench.binaryMb),
+        "ميغابايت",
+        "ملف تنفيذي واحد لـ Linux وmacOS وWindows",
+      ],
       ["0", "خدمات خارجية", "SQLite أو Postgres، لا غير"],
     ],
     lead: "عملية واحدة على خادومك، بلا خدمات خارجية ولا رسوم. يُقاس كل إصدار في حاوية بنواة واحدة و240 ميغابايت قبل أن يصدر.",
@@ -722,7 +727,7 @@ const en: Copy = {
       ["1", "vCPU", "one core"],
       ["800", "monitors", "every 20 seconds in 107 MB"],
       ["0.4", "s", "from start to the first answer"],
-      ["86", "MB", "one binary for Linux, macOS and Windows"],
+      [String(bench.binaryMb), "MB", "one binary for Linux, macOS and Windows"],
       ["0", "outside services", "SQLite or Postgres, nothing else"],
     ],
     lead: "One process on your own server. No Redis, no queue to babysit, no monthly bill. Every release is measured in a container with one core and 240 MB before it ships.",
