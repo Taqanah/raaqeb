@@ -321,9 +321,9 @@ export function createAuth(input: CreateAuthInput) {
       }),
     ],
     rateLimit: {
-      // The reset request and the reset get sign-in's limit, 3 in 10 seconds.
+      // A reset request sends an email, so it keeps Better Auth's 3 a minute; the reset itself gets sign-in's 3 in 10 seconds.
       customRules: {
-        "/request-password-reset": { max: 3, window: 10 },
+        "/request-password-reset": { max: 3, window: 60 },
         "/reset-password": { max: 3, window: 10 },
       },
       enabled: true,

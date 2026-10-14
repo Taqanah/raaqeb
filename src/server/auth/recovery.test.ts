@@ -196,7 +196,7 @@ describe("forgot password", () => {
     expect(await rows()).toEqual([]);
   });
 
-  test("the fourth request in ten seconds from one address is refused, as a sign-in would be", async () => {
+  test("the fourth request in a minute from one address is refused until the minute is out, Better Auth's own limit", async () => {
     const { storage } = await scratch();
     const auth = await authWithOperator(storage);
     const address = "198.51.200.1";
@@ -207,9 +207,13 @@ describe("forgot password", () => {
         (await call(auth, "/request-password-reset", { address, body })).status
       ).toBe(200);
     }
-    expect(
-      (await call(auth, "/request-password-reset", { address, body })).status
-    ).toBe(429);
+    const fourth = await call(auth, "/request-password-reset", {
+      address,
+      body,
+    });
+    expect(fourth.status).toBe(429);
+    // Seconds left in the window: a ten-second window would answer ten at most.
+    expect(Number(fourth.headers.get("x-retry-after"))).toBeGreaterThan(50);
   });
 });
 
