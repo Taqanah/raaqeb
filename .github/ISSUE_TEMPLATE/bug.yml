@@ -7,7 +7,7 @@ body:
     attributes:
       label: "الإصدار | Version"
       description: "الإصدار الذي ثبّتّه، أو وسم صورة Docker | The release you installed, or the Docker image tag"
-      placeholder: "0.1.0"
+      placeholder: "0.2.0"
     validations:
       required: true
   - type: dropdown

@@ -5,7 +5,7 @@
 #
 # It downloads the latest stable release's binary and SHA256SUMS from
 # https://github.com/Taqanah/raaqeb/releases, both from one release. Two
-# variables change that: RAAQEB_VERSION, such as 0.2.0-beta.1, names the
+# variables change that: RAAQEB_VERSION, such as 1.2.3-beta.1, names the
 # release to install (a pre-release is never the latest), and
 # RAAQEB_DOWNLOAD_URL, which wins over it, is the folder or mirror holding
 # the binaries and SHA256SUMS. It picks the binary for this machine, checks
@@ -113,7 +113,7 @@ download_url() {
 	if [ -n "${RAAQEB_VERSION:-}" ]; then
 		version=${RAAQEB_VERSION#v}
 		case $version in
-		"" | *[!0-9A-Za-z.+-]* | [!0-9A-Za-z]*) fail "RAAQEB_VERSION must be a version such as 0.2.0 or 0.2.0-beta.1" ;;
+		"" | *[!0-9A-Za-z.+-]* | [!0-9A-Za-z]*) fail "RAAQEB_VERSION must be a version such as 1.2.3 or 1.2.3-beta.1" ;;
 		esac
 		tag=v$version
 	else

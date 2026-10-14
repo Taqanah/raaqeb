@@ -12,7 +12,7 @@ name: raaqeb
 
 services:
   raaqeb:
-    image: ghcr.io/taqanah/raaqeb:0.1.0
+    image: ghcr.io/taqanah/raaqeb:0.2.0
     restart: unless-stopped
     ports:
       # With the caddy profile, delete this line: Caddy is the way in.

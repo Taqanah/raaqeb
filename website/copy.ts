@@ -13,7 +13,7 @@ export const repository = "https://github.com/Taqanah/raaqeb";
 export const installCommand = `curl -fsSL ${site}/install.sh | sudo sh`;
 /** The docs' Docker command (website/content/docs/operate/install.en.mdx). */
 export const dockerCommand =
-  "docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0";
+  "docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0";
 /** The ways to install the install section offers, each with its command and the prompt it is typed at. */
 export const installs = {
   unix: { code: installCommand, prompt: "$" },

@@ -28,7 +28,7 @@ curl -fsSL https://raaqeb.dev/install.sh | sudo sh
 
 The script installs the latest stable release. It asks `https://github.com/Taqanah/raaqeb/releases/latest` for the release it redirects to, not the GitHub API, so no rate limit applies, and downloads the binary and `SHA256SUMS` from that one release. Two variables change that:
 
-- `RAAQEB_VERSION` names the release to install, such as a pre-release, which is never the latest: `curl -fsSL https://raaqeb.dev/install.sh | sudo RAAQEB_VERSION=0.2.0-beta.1 sh`. It is also how you install an older version. The script stops if no such release exists.
+- `RAAQEB_VERSION` names the release to install, such as a pre-release, which is never the latest: `curl -fsSL https://raaqeb.dev/install.sh | sudo RAAQEB_VERSION=0.3.0-beta.1 sh`. It is also how you install an older version. The script stops if no such release exists.
 - `RAAQEB_DOWNLOAD_URL` is the folder holding the binaries, `SHA256SUMS` and `install.sh`, a mirror or a folder on the server, and wins over both. For a server with no route to GitHub, copy `dist/bin` and `deploy/install.sh` over and run `sudo RAAQEB_DOWNLOAD_URL=file:///root/bin sh install.sh` (a `file://` address needs curl).
 
 The script stops with a message when the network is down, when the repository has no release yet, and when `RAAQEB_VERSION` names none. Finding the latest release needs curl.
@@ -87,7 +87,7 @@ In PowerShell run as Administrator, the Windows installer does the whole install
 irm https://raaqeb.dev/install.ps1 | iex
 ```
 
-It installs the latest stable release. `$env:RAAQEB_VERSION = '0.2.0-beta.1'; irm https://raaqeb.dev/install.ps1 | iex` installs the release you name, a pre-release for one. `RAAQEB_DOWNLOAD_URL` wins over both and may be a URL or a local folder holding the binaries, `SHA256SUMS` and `install.ps1`: `$env:RAAQEB_DOWNLOAD_URL = 'C:\raaqeb'; iex (Get-Content -Raw C:\raaqeb\install.ps1)`. The script:
+It installs the latest stable release. `$env:RAAQEB_VERSION = '0.3.0-beta.1'; irm https://raaqeb.dev/install.ps1 | iex` installs the release you name, a pre-release for one. `RAAQEB_DOWNLOAD_URL` wins over both and may be a URL or a local folder holding the binaries, `SHA256SUMS` and `install.ps1`: `$env:RAAQEB_DOWNLOAD_URL = 'C:\raaqeb'; iex (Get-Content -Raw C:\raaqeb\install.ps1)`. The script:
 
 1. picks `raaqeb-windows-x64.exe` or `raaqeb-windows-arm64.exe` by the machine's own architecture, which an emulated PowerShell does not change;
 2. downloads it and `SHA256SUMS`, and refuses a binary whose checksum does not match;
@@ -113,7 +113,7 @@ The image runs the glibc binary on distroless, as uid 65532, with `/data` as its
 
 ```sh
 docker run -d --name raaqeb --restart unless-stopped \
-  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0
+  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0
 ```
 
 A named volume needs nothing more. A bind mount needs the container to run as the folder's owner: `--user "$(id -u):$(id -g)" -v "$PWD/data:/data"`. The image has no shell; `docker exec raaqeb raaqeb <command>` runs the binary directly.

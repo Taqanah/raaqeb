@@ -28,7 +28,7 @@ curl -fsSL https://raaqeb.dev/install.sh | sudo sh
 
 يثبّت البرنامج النصي أحدث إصدار مستقر. يسأل العنوان `https://github.com/Taqanah/raaqeb/releases/latest` عن الإصدار الذي يحوّله إليه، ولا يستعمل واجهة GitHub البرمجية، فلا ينطبق عليه حدّ للطلبات، وينزّل الملف التنفيذي و`SHA256SUMS` من ذلك الإصدار وحده. ويغيّر ذلك متغيّران:
 
-- `RAAQEB_VERSION` يسمّي الإصدار المراد تثبيته، ومنه الإصدار المبدئي الذي لا يكون أحدث إصدار أبدًا: `curl -fsSL https://raaqeb.dev/install.sh | sudo RAAQEB_VERSION=0.2.0-beta.1 sh`. وبه أيضًا تثبّت إصدارًا أقدم. ويتوقف البرنامج النصي إن لم يوجد إصدار بهذا الرقم.
+- `RAAQEB_VERSION` يسمّي الإصدار المراد تثبيته، ومنه الإصدار المبدئي الذي لا يكون أحدث إصدار أبدًا: `curl -fsSL https://raaqeb.dev/install.sh | sudo RAAQEB_VERSION=0.3.0-beta.1 sh`. وبه أيضًا تثبّت إصدارًا أقدم. ويتوقف البرنامج النصي إن لم يوجد إصدار بهذا الرقم.
 - `RAAQEB_DOWNLOAD_URL` هو المجلد الذي يحوي الملفات التنفيذية و`SHA256SUMS` و`install.sh`، مرآةً كان أو مجلدًا على الخادوم، وله الأولوية على ما سواه. وللخادوم الذي لا طريق له إلى GitHub، انسخ إليه `dist/bin` و`deploy/install.sh` وشغّل `sudo RAAQEB_DOWNLOAD_URL=file:///root/bin sh install.sh` (يحتاج العنوان `file://` إلى curl).
 
 يتوقف البرنامج النصي برسالة حين تنقطع الشبكة، وحين لا يكون في المستودع إصدار بعد، وحين لا يسمّي `RAAQEB_VERSION` إصدارًا موجودًا. ويحتاج العثور على أحدث إصدار إلى curl.
@@ -87,7 +87,7 @@ chmod +x raaqeb-darwin-arm64
 irm https://raaqeb.dev/install.ps1 | iex
 ```
 
-يثبّت هذا الأمر أحدث إصدار مستقر. أما `$env:RAAQEB_VERSION = '0.2.0-beta.1'; irm https://raaqeb.dev/install.ps1 | iex` فيثبّت الإصدار الذي تسمّيه، ومنه الإصدار المبدئي. وللمتغير `RAAQEB_DOWNLOAD_URL` الأولوية على ما سواه، ويمكن أن يكون عنوان رابط أو مجلدًا محليًا يحوي الملفات التنفيذية و`SHA256SUMS` و`install.ps1`: `$env:RAAQEB_DOWNLOAD_URL = 'C:\raaqeb'; iex (Get-Content -Raw C:\raaqeb\install.ps1)`. يفعل البرنامج النصي ما يلي:
+يثبّت هذا الأمر أحدث إصدار مستقر. أما `$env:RAAQEB_VERSION = '0.3.0-beta.1'; irm https://raaqeb.dev/install.ps1 | iex` فيثبّت الإصدار الذي تسمّيه، ومنه الإصدار المبدئي. وللمتغير `RAAQEB_DOWNLOAD_URL` الأولوية على ما سواه، ويمكن أن يكون عنوان رابط أو مجلدًا محليًا يحوي الملفات التنفيذية و`SHA256SUMS` و`install.ps1`: `$env:RAAQEB_DOWNLOAD_URL = 'C:\raaqeb'; iex (Get-Content -Raw C:\raaqeb\install.ps1)`. يفعل البرنامج النصي ما يلي:
 
 1. يختار `raaqeb-windows-x64.exe` أو `raaqeb-windows-arm64.exe` بحسب معمارية الجهاز نفسه، ولا يغيّرها تشغيل PowerShell بالمحاكاة؛
 2. ينزّله مع `SHA256SUMS`، ويرفض الملف التنفيذي إذا لم يطابق مجموعه الاختباري؛
@@ -113,7 +113,7 @@ Enable-ScheduledTask Raaqeb; Start-ScheduledTask Raaqeb      # start
 
 ```sh
 docker run -d --name raaqeb --restart unless-stopped \
-  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0
+  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0
 ```
 
 لا تحتاج وحدة التخزين المسمّاة إلى شيء آخر. أما ضمّ مجلد فيحتاج أن تعمل الحاوية بمالك المجلد: `--user "$(id -u):$(id -g)" -v "$PWD/data:/data"`. لا صدفة في الصورة؛ يشغّل `docker exec raaqeb raaqeb <command>` الملف التنفيذي مباشرة.

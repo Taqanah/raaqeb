@@ -13,7 +13,7 @@ Run the installer on the server:
 curl -fsSL https://raaqeb.dev/install.sh | sudo sh
 ```
 
-It installs the latest stable release. To install a release by its version, set `RAAQEB_VERSION`, such as `RAAQEB_VERSION=0.2.0-beta.1`; to install from a folder or a mirror, set `RAAQEB_DOWNLOAD_URL`. See [Install](/en/docs/operate/install).
+It installs the latest stable release. To install a release by its version, set `RAAQEB_VERSION`, such as `RAAQEB_VERSION=0.3.0-beta.1`; to install from a folder or a mirror, set `RAAQEB_DOWNLOAD_URL`. See [Install](/en/docs/operate/install).
 
 The script picks the binary for your machine, refuses it if its checksum does not match, and installs it as `/usr/local/bin/raaqeb`. It creates a `raaqeb` system user and the data directory `/var/lib/raaqeb`, writes `/etc/raaqeb/raaqeb.env` for boot settings, every line a comment, and starts Raaqeb as a systemd or OpenRC service. It waits for Raaqeb to answer, then prints the next step.
 
@@ -30,7 +30,7 @@ The image keeps its data in the `/data` volume and answers on port 3000:
 
 ```sh
 docker run -d --name raaqeb --restart unless-stopped \
-  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0
+  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0
 ```
 
 Open `http://<server>:3000` in your browser. Keep the named volume: it holds the database and the install key.

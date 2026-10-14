@@ -23,7 +23,7 @@ irm https://raaqeb.dev/install.ps1 | iex
 أو بـ Docker:
 
 ```sh
-docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0
+docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0
 ```
 
 ## ما يراقبه
@@ -68,7 +68,7 @@ irm https://raaqeb.dev/install.ps1 | iex
 Or with Docker:
 
 ```sh
-docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.1.0
+docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0
 ```
 
 ## What it watches

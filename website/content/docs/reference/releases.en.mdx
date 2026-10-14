@@ -7,6 +7,49 @@ Releases are published at [github.com/Taqanah/raaqeb/releases](https://github.co
 
 This page lists each release, newest first, with its release notes.
 
+## 0.2.0
+
+2026-10-14. [Release page](https://github.com/Taqanah/raaqeb/releases/tag/v0.2.0)
+
+A request log, `--version` and `--help`, stricter imports and subscriber webhooks, and polish on every screen.
+
+### New features
+
+- A request log: turn it on in Settings, General, and the server log gets one line per request with its status code, duration, visitor address and browser. It takes effect without a restart.
+- `raaqeb --version` prints the version, and `raaqeb --help` lists the commands.
+- On a monitor's page, the checks list loads more with "Show more", and follows the chart when you zoom it.
+- Deleting a component names the incidents and maintenance windows deleted with it.
+- Changing the account email asks for the current password, and the old address receives a notice naming the new one.
+- An email channel's failed send says whether the SMTP server never greeted or stopped answering during the send.
+- Signing out explains when the browser's address is not the public address, with the command that fixes it, and the general settings warn before you save an address that would cause it.
+- The admin, and a status page with no favicon of its own, show Raaqeb's icon.
+- A page's brand colour fills the status page's buttons.
+
+### Fixes
+
+- A notification channel saved twice without a reload keeps its fields: the second save no longer resets ntfy's server or drops the email and Telegram fields.
+- A form sent twice before it answers saves once.
+- "Send a test message" in the sign-in settings sends through the email channel selected in the form.
+- The first page after signing in or out is in the right language.
+- On Postgres, `/health` and the pages answer within about 4 seconds when the database stops answering.
+- A failed SMTP attempt closes its connection.
+- A fresh Docker install no longer warns about the data folder's permissions.
+- A maintenance window's page follows its stage without a reload.
+- Keyboard focus is visible on every control and is never lost.
+- A name written in the other language is cut at its end, so its start stays in view.
+- The monitor list fits beside the open sidebar at every width.
+- An import checks page images as an upload does, and refuses a line too large to read and any monitor or channel its form would refuse.
+- The subscriber webhook filter blocks every internal address range, and posts to the address it checked.
+- Log lines hide tokens in every path and drop control characters.
+- The new release banner links to release notes over https only.
+- Polish on the monitor, sign-in, account, channel, settings, status page, incident and maintenance screens.
+
+### Changes
+
+- Password reset requests are limited to three a minute from one address.
+- A database monitor's query reads at most one row.
+- The status page's theme switch shows a sun, a moon and a screen instead of words.
+
 ## 0.1.0
 
 2026-10-10. [Release page](https://github.com/Taqanah/raaqeb/releases/tag/v0.1.0)
@@ -23,7 +66,7 @@ A release's download folder, `https://github.com/Taqanah/raaqeb/releases/downloa
 
 The Docker image is `ghcr.io/taqanah/raaqeb`, tagged with the version, such as `ghcr.io/taqanah/raaqeb:0.1.0`.
 
-The installer's address, `https://raaqeb.dev/install.sh`, serves the script of the latest stable release. A release whose tag carries a suffix, such as `v0.2.0-beta.1`, is a pre-release: it is never the latest, and you install it with `RAAQEB_VERSION=0.2.0-beta.1`.
+The installer's address, `https://raaqeb.dev/install.sh`, serves the script of the latest stable release. A release whose tag carries a suffix, such as `v0.3.0-beta.1`, is a pre-release: it is never the latest, and you install it with `RAAQEB_VERSION=0.3.0-beta.1`.
 
 ## Learning of a newer release
 

@@ -7,7 +7,7 @@ primary_region = "<region>"
 [build]
   # The released image Fly pulls; change the tag to upgrade. A build of your own
   # is `bun run image`, deployed with `fly deploy --local-only --ha=false`.
-  image = "ghcr.io/taqanah/raaqeb:0.1.0"
+  image = "ghcr.io/taqanah/raaqeb:0.2.0"
 
 [env]
   # Fly's proxy connects from inside 172.16.0.0/12 and appends the app's own
