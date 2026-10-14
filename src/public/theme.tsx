@@ -80,7 +80,7 @@ export function ThemeSwitch({
         return (
           <label
             className={cn(
-              "grid size-8 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground has-focus-visible:ring-4 has-focus-visible:ring-ring-soft",
+              "has-focus-visible:focus-ring grid size-8 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground",
               chosen === theme && "bg-segment text-foreground shadow-xs"
             )}
             key={theme}

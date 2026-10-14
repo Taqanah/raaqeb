@@ -117,7 +117,7 @@ export function ResponseChart({
                 : undefined
             }
             className={cn(
-              "relative h-48 touch-pan-y select-none rounded-sm outline-none focus-visible:ring-4 focus-visible:ring-ring-soft",
+              "relative h-48 touch-pan-y select-none rounded-sm",
               onZoom ? "cursor-crosshair" : undefined
             )}
             data-slot="chart-plot"

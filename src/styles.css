@@ -148,7 +148,8 @@
   --border-strong: light-dark(oklch(85% 0.008 178), oklch(33% 0.01 178));
   --input: light-dark(oklch(89% 0.008 178), oklch(29% 0.01 178));
   --ring: var(--foreground);
-  --ring-soft: light-dark(oklch(91% 0.007 178), oklch(29% 0.01 178));
+  /* The keyboard focus ring, the website's: 3 to 1 or more against the page, a card, a popover and a hovered row in both themes (measured by focus-ring.test.ts). */
+  --focus: light-dark(oklch(58% 0.16 178), oklch(78% 0.16 178));
   --sidebar: var(--card);
   --sidebar-foreground: var(--foreground);
   --sidebar-accent: var(--accent);
@@ -287,7 +288,6 @@
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ring-soft: var(--ring-soft);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
@@ -322,6 +322,9 @@
   * {
     @apply border-border outline-ring/50;
   }
+  :focus-visible {
+    @apply focus-ring;
+  }
   /* An underline sits below the lowest descender, so it never crosses Arabic letters such as ح and ج, whatever offset a link sets. */
   html {
     text-underline-position: under;
@@ -344,6 +347,12 @@
   pre {
     @apply font-mono;
   }
+}
+
+/* The keyboard focus ring: offset, so it keeps its contrast against the page behind it whatever the control's own fill. */
+@utility focus-ring {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* A surface's edge: the rim, the sheen and the lift, in place of a grey border. */

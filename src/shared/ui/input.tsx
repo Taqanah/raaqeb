@@ -13,9 +13,9 @@ export type InputProps = ComponentProps<"input"> & {
 const box =
   "h-control w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm transition-[border-color,box-shadow]";
 const alone =
-  "py-1 outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring-soft disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-50 aria-invalid:border-status-down aria-invalid:ring-4 aria-invalid:ring-status-down/15";
+  "py-1 file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm placeholder:text-muted-foreground focus-visible:border-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-50 aria-invalid:border-status-down aria-invalid:ring-4 aria-invalid:ring-status-down/15";
 const grouped =
-  "flex items-center gap-2 has-disabled:cursor-not-allowed has-aria-invalid:border-status-down has-focus-visible:border-ring has-disabled:bg-muted has-disabled:opacity-50 has-aria-invalid:ring-4 has-aria-invalid:ring-status-down/15 has-focus-visible:ring-4 has-focus-visible:ring-ring-soft";
+  "flex items-center gap-2 has-disabled:cursor-not-allowed has-aria-invalid:border-status-down has-focus-visible:border-ring has-disabled:bg-muted has-disabled:opacity-50 has-aria-invalid:ring-4 has-aria-invalid:ring-status-down/15 has-focus-visible:focus-ring";
 
 function Input({
   "aria-describedby": describedBy,

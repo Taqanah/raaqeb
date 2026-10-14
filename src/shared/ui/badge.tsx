@@ -9,7 +9,7 @@ import { cn } from "./cn.ts";
 // keeps a stretched badge to its content without undoing the 1 px width of one
 // hidden with `sr-only`, which would push its word off screen.
 const badgeVariants = cva(
-  "group/badge inline-flex max-w-fit shrink-0 items-center gap-1.5 whitespace-nowrap font-medium text-xs transition-colors focus-visible:ring-4 focus-visible:ring-ring-soft [&>svg:not([data-slot=badge-mark])]:size-icon-sm! [&>svg]:pointer-events-none",
+  "group/badge inline-flex max-w-fit shrink-0 items-center gap-1.5 whitespace-nowrap font-medium text-xs transition-colors [&>svg:not([data-slot=badge-mark])]:size-icon-sm! [&>svg]:pointer-events-none",
   {
     defaultVariants: {
       variant: "default",

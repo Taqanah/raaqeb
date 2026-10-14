@@ -121,7 +121,7 @@ export function GettingStartedCard({
                   </span>
                 ) : (
                   <Link
-                    className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-sm font-medium outline-none hover:underline focus-visible:ring-4 focus-visible:ring-ring-soft"
+                    className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-sm font-medium hover:underline"
                     to={to}
                   >
                     {t(label)}

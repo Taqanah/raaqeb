@@ -201,7 +201,7 @@ export function SubscribeForm({
           </div>
           <button
             aria-label={t("app_close")}
-            className="-m-1 rounded-sm p-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="-m-1 rounded-sm p-1 text-muted-foreground hover:text-foreground"
             popoverTarget={dialogId}
             popoverTargetAction="hide"
             type="button"

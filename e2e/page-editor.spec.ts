@@ -208,6 +208,30 @@ test("the layout's components move up and down, leave the page, and a removed gr
   await visitor.context().close();
 });
 
+test("a move button keeps the keyboard's focus when its entry reaches the end of the layout", async ({
+  page,
+}) => {
+  const run = runId();
+  await signIn(page);
+  const first = await handComponent(page, `First ${run}`);
+  const second = await handComponent(page, `Second ${run}`);
+  await publishedPage(page, `focus-${run}`, [first, second]);
+  const layout = () =>
+    page
+      .locator("[data-slot=page-layout] > [data-component]")
+      .evaluateAll((items) => items.map((item) => item.dataset.component));
+  const down = page
+    .locator(`[data-slot=page-item][data-component="${first}"]`)
+    .locator("[data-slot=move-down]");
+  await down.focus();
+  await page.keyboard.press("Enter");
+  await expect.poll(layout).toEqual([second, first]);
+  // The entry is last now, so Down rests; the focus stays on it and another press changes nothing.
+  await expect(down).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect.poll(layout).toEqual([second, first]);
+});
+
 test("a favicon and a cover reach the public page's head, and a removed logo leaves the editor and the page", async ({
   browser,
   page,

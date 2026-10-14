@@ -193,7 +193,7 @@ function ShellInner({
       <Sidebar>
         <SidebarHeader>
           <Link
-            className="flex h-control items-center rounded-lg px-3 font-semibold text-base outline-none focus-visible:ring-4 focus-visible:ring-ring-soft"
+            className="flex h-control items-center rounded-lg px-3 font-semibold text-base"
             onClick={closeSheet}
             to="/admin/monitors"
           >

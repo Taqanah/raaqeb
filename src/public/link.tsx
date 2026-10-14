@@ -41,4 +41,4 @@ export function ViewLink({
 
 /** A text link in the page's quiet style, tinted by its brand colour on hover. */
 export const quietLink =
-  "rounded-sm underline-offset-4 outline-none hover:text-[var(--brand,var(--foreground))] hover:underline focus-visible:ring-4 focus-visible:ring-ring-soft";
+  "rounded-sm underline-offset-4 hover:text-[var(--brand,var(--foreground))] hover:underline";

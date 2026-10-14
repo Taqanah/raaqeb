@@ -68,7 +68,7 @@ export function Page({
           {parent ? (
             <>
               <Link
-                className="max-w-48 shrink-0 truncate rounded-sm text-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-4 focus-visible:ring-ring-soft"
+                className="max-w-48 shrink-0 truncate rounded-sm text-lg text-muted-foreground hover:text-foreground"
                 data-slot="page-parent"
                 dir="auto"
                 to={parent.to}

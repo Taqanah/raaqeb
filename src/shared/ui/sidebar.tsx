@@ -85,6 +85,13 @@ function SidebarProvider({
     if (isMobile) {
       setOpenMobile((current) => !current);
     } else {
+      // The panel goes inert as it closes; a focus inside it would fall to the page, so it moves to the toggle first.
+      const panel = document.querySelector("[data-slot=sidebar-container]");
+      if (open && panel?.contains(document.activeElement)) {
+        document
+          .querySelector<HTMLElement>("[data-slot=sidebar-trigger]")
+          ?.focus();
+      }
       setOpen(!open);
     }
   }, [isMobile, open, setOpen]);
@@ -154,6 +161,7 @@ function Sidebar({ className, children, ...props }: ComponentProps<"div">) {
           className
         )}
         data-slot="sidebar-container"
+        inert={state === "collapsed"}
         {...props}
       >
         <div
@@ -308,7 +316,7 @@ function SidebarMenuButton({
     props: mergeProps<"button">(
       {
         className: cn(
-          "flex h-control w-full items-center gap-2 overflow-hidden rounded-lg px-3 text-start text-sm outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-4 focus-visible:ring-ring-soft data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&_svg]:size-icon [&_svg]:shrink-0",
+          "flex h-control w-full items-center gap-2 overflow-hidden rounded-lg px-3 text-start text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&_svg]:size-icon [&_svg]:shrink-0",
           className
         ),
       },

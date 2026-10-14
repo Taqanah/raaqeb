@@ -30,7 +30,7 @@ export function LocaleSwitcher({ current }: LocaleSwitcherProps): ReactNode {
         <a
           aria-current={locale === current ? "page" : undefined}
           className={cn(
-            "rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring-soft",
+            "rounded-sm underline-offset-4 hover:underline",
             locale === current ? "text-foreground" : "text-muted-foreground"
           )}
           dir={directionOf(locale)}

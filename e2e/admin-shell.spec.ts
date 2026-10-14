@@ -110,6 +110,35 @@ test("Ctrl+B collapses the sidebar and the choice survives a reload", async ({
   ).toHaveCount(1);
 });
 
+test("a collapsed sidebar keeps its links out of the tab order, and Ctrl+B with the focus inside it hands the focus to the toggle", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.locator("a[data-nav=monitors]").focus();
+  await page.keyboard.press("Control+b");
+  await expect(
+    page.locator("[data-slot=sidebar][data-state=collapsed]")
+  ).toHaveCount(1);
+  await expect(page.locator("[data-slot=sidebar-trigger]")).toBeFocused();
+  await expect
+    .poll(() =>
+      page.locator("a[data-nav]").evaluateAll(
+        (links) =>
+          links.filter((link) => {
+            link.focus();
+            return document.activeElement === link;
+          }).length
+      )
+    )
+    .toBe(0);
+  await page.keyboard.press("Control+b");
+  await expect(
+    page.locator("[data-slot=sidebar][data-state=expanded]")
+  ).toHaveCount(1);
+  await page.locator("a[data-nav=monitors]").focus();
+  await expect(page.locator("a[data-nav=monitors]")).toBeFocused();
+});
+
 /** The phone's sheet open on the monitor list; the shell is waited for at desktop width first, since the palette button lives in the sheet there. */
 async function openPhoneSheet(page: Page) {
   await signIn(page);

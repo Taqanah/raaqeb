@@ -185,6 +185,10 @@ test("the admin lists the page's subscribers from its editor, and removing one t
   await expect(
     rows.filter({ hasText: seededSubscriptions.removed.address })
   ).toHaveCount(0);
+  // The row that held the focus is gone; it moves to a neighbour's remove button.
+  await expect(page.locator("[data-slot=remove-subscriber]:focus")).toHaveCount(
+    1
+  );
 });
 
 /** The English install's database, which the spec reads beside the running server. */

@@ -29,7 +29,7 @@ function OptionCard({
   return (
     <RadioPrimitive.Root
       className={cn(
-        "group/option-card relative flex cursor-pointer select-none rounded-xl border bg-background p-3 text-start outline-none transition-[border-color,background-color,box-shadow] hover:border-border-strong focus-visible:ring-4 focus-visible:ring-ring-soft data-disabled:cursor-not-allowed data-checked:border-action data-checked:bg-action/5 data-disabled:opacity-50 data-checked:ring-3 data-checked:ring-action/20",
+        "group/option-card relative flex cursor-pointer select-none rounded-xl border bg-background p-3 text-start transition-[border-color,background-color,box-shadow] hover:border-border-strong data-disabled:cursor-not-allowed data-checked:border-action data-checked:bg-action/5 data-disabled:opacity-50 data-checked:ring-3 data-checked:ring-action/20",
         className
       )}
       data-slot="option-card"

@@ -365,7 +365,7 @@ function Components({
                     className="group/fold"
                     open={item.status !== "operational"}
                   >
-                    <summary className="flex cursor-pointer list-none items-center gap-2.5 px-(--card-spacing) py-3 outline-none focus-visible:ring-4 focus-visible:ring-ring-soft [&::-webkit-details-marker]:hidden">
+                    <summary className="flex cursor-pointer list-none items-center gap-2.5 px-(--card-spacing) py-3 [&::-webkit-details-marker]:hidden">
                       <StatusLevelIcon level={item.status} />
                       <Prose
                         className="font-semibold text-sm"

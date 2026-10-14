@@ -37,7 +37,7 @@ function SegmentedItem({
   return (
     <RadioPrimitive.Root
       className={cn(
-        "flex min-h-9 min-w-0 flex-1 cursor-pointer select-none flex-col items-center justify-center rounded-md px-3 py-1.5 text-center font-medium text-muted-foreground text-sm outline-none transition-[background-color,color,box-shadow] hover:text-foreground focus-visible:ring-4 focus-visible:ring-ring-soft data-disabled:cursor-not-allowed data-checked:bg-segment data-checked:text-foreground data-disabled:opacity-50 data-checked:shadow-sm",
+        "flex min-h-9 min-w-0 flex-1 cursor-pointer select-none flex-col items-center justify-center rounded-md px-3 py-1.5 text-center font-medium text-muted-foreground text-sm transition-[background-color,color,box-shadow] hover:text-foreground data-disabled:cursor-not-allowed data-checked:bg-segment data-checked:text-foreground data-disabled:opacity-50 data-checked:shadow-sm",
         className
       )}
       data-slot="segmented-item"

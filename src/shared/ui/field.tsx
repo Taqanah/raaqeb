@@ -52,7 +52,7 @@ function FieldLabel({ className, ...props }: ComponentProps<typeof Label>) {
   return (
     <Label
       className={cn(
-        "group/field-label peer/field-label flex w-fit gap-2 leading-snug has-[>[data-slot=field]]:has-[:focus-visible]:border-ring has-[>[data-slot=field]]:has-[:focus-visible]:ring-4 has-[>[data-slot=field]]:has-[:focus-visible]:ring-ring-soft has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border has-data-checked:border-action/30 has-data-checked:bg-action/5 has-[>[data-slot=field]]:not-has-[:disabled,[data-disabled]]:hover:bg-muted *:data-[slot=field]:p-3 group-data-[disabled=true]/field:opacity-50",
+        "group/field-label peer/field-label has-[>[data-slot=field]]:has-[:focus-visible]:focus-ring flex w-fit gap-2 leading-snug has-[>[data-slot=field]]:has-[:focus-visible]:border-ring has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border has-data-checked:border-action/30 has-data-checked:bg-action/5 has-[>[data-slot=field]]:not-has-[:disabled,[data-disabled]]:hover:bg-muted *:data-[slot=field]:p-3 group-data-[disabled=true]/field:opacity-50",
         className
       )}
       data-slot="field-label"

@@ -205,7 +205,7 @@ export function LayoutCard({
   );
 }
 
-/** Up and down for one entry; each disabled at its edge. */
+/** Up and down for one entry; each rests at its edge, still focusable, so a press there changes nothing and the focus stays. */
 function MoveButtons({
   context,
   entry,
@@ -230,9 +230,9 @@ function MoveButtons({
   return (
     <>
       <Button
+        aria-disabled={first}
         aria-label={t("page_move_up")}
         data-slot="move-up"
-        disabled={first}
         onClick={up}
         size="icon"
         type="button"
@@ -241,9 +241,9 @@ function MoveButtons({
         <ChevronUpIcon />
       </Button>
       <Button
+        aria-disabled={last}
         aria-label={t("page_move_down")}
         data-slot="move-down"
-        disabled={last}
         onClick={down}
         size="icon"
         type="button"

@@ -34,7 +34,7 @@ export function SettingsNav(): ReactNode {
           <Link
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-control shrink-0 items-center whitespace-nowrap rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-ring-soft",
+              "flex h-control shrink-0 items-center whitespace-nowrap rounded-md px-3 text-sm transition-colors",
               active
                 ? "bg-segment font-medium text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"

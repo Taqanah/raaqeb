@@ -163,10 +163,23 @@ test.describe("one incident, from the monitor's down notification to its deletio
     await page.goto(`${englishOrigin}${incidentPage}`);
     const first = page.locator("[data-slot=incident-update]").last();
     await first.locator("[data-slot=fix-update]").click();
+    // The button that opened the form is gone; the focus moves into the form and back out to the button.
+    await expect(
+      first.locator("[data-slot=fix-form] textarea[lang=en]")
+    ).toBeFocused();
+    await first.getByRole("button", { name: "Cancel" }).click();
+    await expect(first.locator("[data-slot=fix-update]")).toBeFocused();
+    await first.locator("[data-slot=fix-update]").click();
     await first
       .locator("[data-slot=fix-form] textarea[lang=en]")
       .fill("Card payments fail at checkout.");
     await first.locator("[data-slot=save-fix]").click();
+    await expect(
+      page
+        .locator("[data-slot=incident-update]")
+        .last()
+        .locator("[data-slot=fix-update]")
+    ).toBeFocused();
     await expect(
       page
         .locator("[data-slot=incident-update]")

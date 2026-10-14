@@ -4,7 +4,13 @@
  * message to it went. The operator may remove one, which deletes it with
  * its queued messages and tells no one. Newest first; no paging in v1.
  */
-import { type ReactNode, useCallback, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { SendFailureText, SendStatus } from "@/admin/channels/send-parts.tsx";
 import { useContentIn } from "@/admin/shell/content.tsx";
 import { Page } from "@/admin/shell/page.tsx";
@@ -78,6 +84,30 @@ export function SubscriberListPage({
 }): ReactNode {
   const { t } = useMessages();
   const text = useContentIn();
+  // A removed row takes the focus with it: the next row's remove button, else the previous one's, else the way back to the page.
+  const refocus = useRef<{ gone: string; next?: string } | null>(null);
+  const removed = useCallback(
+    (id: string) => {
+      const ids = list.subscribers.map((each) => each.id);
+      const at = ids.indexOf(id);
+      refocus.current = { gone: id, next: ids[at + 1] ?? ids[at - 1] };
+      onRemoved();
+    },
+    [list.subscribers, onRemoved]
+  );
+  useEffect(() => {
+    const pending = refocus.current;
+    if (pending && !list.subscribers.some((each) => each.id === pending.gone)) {
+      refocus.current = null;
+      document
+        .querySelector<HTMLElement>(
+          pending.next
+            ? `[data-subscriber="${pending.next}"] [data-slot=remove-subscriber]`
+            : "[data-slot=page-parent]"
+        )
+        ?.focus();
+    }
+  }, [list.subscribers]);
   return (
     <Page
       parent={{
@@ -108,7 +138,7 @@ export function SubscriberListPage({
               <SubscriberRow
                 clock={clock}
                 key={subscriber.id}
-                onRemoved={onRemoved}
+                onRemoved={removed}
                 remove={remove}
                 subscriber={subscriber}
               />
@@ -127,7 +157,7 @@ function SubscriberRow({
   subscriber,
 }: {
   readonly clock: TimeOptions;
-  readonly onRemoved: () => void;
+  readonly onRemoved: (id: string) => void;
   readonly remove: (id: string) => Promise<SubscriberRemoveResult | undefined>;
   readonly subscriber: Subscriber;
 }): ReactNode {
@@ -218,7 +248,7 @@ function RemoveSubscriber({
   /** Named in the dialog, so a narrow screen that scrolls the row away still says whom it removes. */
   readonly address: string;
   readonly id: string;
-  readonly onRemoved: () => void;
+  readonly onRemoved: (id: string) => void;
   readonly remove: (id: string) => Promise<SubscriberRemoveResult | undefined>;
 }): ReactNode {
   const { t } = useMessages();
@@ -229,7 +259,7 @@ function RemoveSubscriber({
     const result = await remove(id).catch(() => undefined);
     // A subscription someone else removed meanwhile is gone either way.
     if (result?.ok || result?.reason === "not_found") {
-      onRemoved();
+      onRemoved(id);
       return;
     }
     setRefused(true);

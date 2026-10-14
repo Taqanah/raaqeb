@@ -109,7 +109,7 @@ export function TimeZonePicker({
     >
       <Combobox.Trigger
         aria-labelledby={labelledBy}
-        className="flex h-control w-full items-center justify-between gap-3 rounded-lg border border-input bg-background px-3 text-start text-sm outline-none transition-[border-color,box-shadow] hover:border-border-strong focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring-soft"
+        className="flex h-control w-full items-center justify-between gap-3 rounded-lg border border-input bg-background px-3 text-start text-sm transition-[border-color,box-shadow] hover:border-border-strong focus-visible:border-ring"
         data-slot="time-zone-picker"
       >
         <span className="flex min-w-0 items-baseline gap-2">

@@ -7,7 +7,7 @@ import { cn } from "./cn.ts";
 // is a <Kbd> as the last child; the chip styling reacts to the button. A button
 // disabled yet focusable (a form's Save) carries aria-disabled and dims alike.
 const variants = cva(
-  "group/button inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-transparent bg-clip-padding font-medium text-sm outline-none transition-[background-color,border-color,box-shadow,color,transform] focus-visible:ring-4 focus-visible:ring-ring-soft active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-destructive [&>[data-slot=kbd]]:ms-1 [&_svg:not([class*='size-'])]:size-icon [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "group/button inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-transparent bg-clip-padding font-medium text-sm transition-[background-color,border-color,box-shadow,color,transform] active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-destructive [&>[data-slot=kbd]]:ms-1 [&_svg:not([class*='size-'])]:size-icon [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     defaultVariants: {
       size: "default",
@@ -21,9 +21,9 @@ const variants = cva(
       },
       variant: {
         default:
-          "border-action bg-action text-action-foreground hover:ring-4 hover:ring-action/25 focus-visible:ring-action/25 [&>[data-slot=kbd]]:bg-action-foreground/20 [&>[data-slot=kbd]]:text-action-foreground",
+          "border-action bg-action text-action-foreground hover:ring-4 hover:ring-action/25 [&>[data-slot=kbd]]:bg-action-foreground/20 [&>[data-slot=kbd]]:text-action-foreground",
         destructive:
-          "border-status-down bg-status-down text-destructive-foreground hover:ring-4 hover:ring-status-down/25 focus-visible:ring-status-down/25 [&>[data-slot=kbd]]:bg-destructive-foreground/20 [&>[data-slot=kbd]]:text-destructive-foreground",
+          "border-status-down bg-status-down text-destructive-foreground hover:ring-4 hover:ring-status-down/25 [&>[data-slot=kbd]]:bg-destructive-foreground/20 [&>[data-slot=kbd]]:text-destructive-foreground",
         // A button that leads to deleting something: the outline's shape in the destructive text colour.
         "destructive-outline":
           "border-border bg-background text-destructive-text hover:bg-status-down-soft aria-expanded:bg-status-down-soft",

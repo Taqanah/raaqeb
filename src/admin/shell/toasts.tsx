@@ -49,7 +49,7 @@ function ToastList(): ReactNode {
       <Toast.Title className="min-w-0 flex-1 font-medium text-sm" />
       <Toast.Close
         aria-label={t("app_close")}
-        className="shrink-0 rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-4 focus-visible:ring-ring-soft"
+        className="shrink-0 rounded-sm text-muted-foreground hover:text-foreground"
       >
         <XIcon className="size-4" />
       </Toast.Close>

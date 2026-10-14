@@ -399,7 +399,7 @@ function DayCard<Day extends OverviewDay>({
           {floating ? null : (
             <button
               aria-label={t("public_day_close")}
-              className="-m-1 rounded-sm p-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              className="-m-1 rounded-sm p-1 text-muted-foreground hover:text-foreground"
               onClick={onClose}
               type="button"
             >

@@ -24,7 +24,7 @@ function NativeSelect({
       dir={dir}
     >
       <select
-        className="h-control w-full min-w-0 select-none appearance-none rounded-lg border border-input bg-background py-1 ps-3 pe-9 text-sm outline-none transition-[border-color,box-shadow] focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring-soft disabled:pointer-events-none disabled:cursor-not-allowed aria-invalid:border-status-down"
+        className="h-control w-full min-w-0 select-none appearance-none rounded-lg border border-input bg-background py-1 ps-3 pe-9 text-sm transition-[border-color,box-shadow] focus-visible:border-ring disabled:pointer-events-none disabled:cursor-not-allowed aria-invalid:border-status-down"
         data-size={size}
         data-slot="native-select"
         dir={dir}

@@ -6,7 +6,14 @@
  * statuses and a fix of its text; the title and impact edit; and delete.
  * Messages are plain text; each paragraph picks its own direction. Every write reads the page again.
  */
-import { type ReactNode, type SubmitEvent, useCallback, useState } from "react";
+import {
+  type ReactNode,
+  type SubmitEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   ContentField,
   ContentText,
@@ -497,6 +504,15 @@ function UpdateItem({
   const [fixing, setFixing] = useState(false);
   const startFixing = useCallback(() => setFixing(true), []);
   const stopFixing = useCallback(() => setFixing(false), []);
+  // The Fix button goes while the form is open, so the focus it held moves into the form and comes back to the button.
+  const fixButton = useRef<HTMLButtonElement>(null);
+  const wasFixing = useRef<boolean>(false);
+  useEffect(() => {
+    if (wasFixing.current && !fixing) {
+      fixButton.current?.focus();
+    }
+    wasFixing.current = fixing;
+  }, [fixing]);
   return (
     <li
       className="flex flex-col gap-2 border-border border-b py-4 first:pt-0 last:border-b-0 last:pb-0"
@@ -515,6 +531,7 @@ function UpdateItem({
             className="ms-auto"
             data-slot="fix-update"
             onClick={startFixing}
+            ref={fixButton}
             size="sm"
             type="button"
             variant="ghost"
@@ -598,6 +615,10 @@ function FixText({
   const [message, setMessage] = useState(() => contentDraftOf(update.message));
   const saving = useSaveFlow<ContentDraft, IncidentRefusal>(message);
   const { report } = saving;
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    form.current?.querySelector("textarea")?.focus();
+  }, []);
   const onSave = useCallback(
     async (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -625,6 +646,7 @@ function FixText({
       method="post"
       noValidate
       onSubmit={onSave}
+      ref={form}
     >
       <ContentField
         description={t("incident_fix_hint")}
