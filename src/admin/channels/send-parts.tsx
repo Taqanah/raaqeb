@@ -11,6 +11,7 @@ import {
 } from "@/shared/i18n/format.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
+import type { ChannelType } from "@/shared/schemas/channel.ts";
 import type {
   Notification,
   NotificationStatus,
@@ -78,14 +79,27 @@ export function SendStatus({
 
 /** A failed attempt: the reason in words, then what it saw and the driver's text, as the monitor screens show a failure. */
 export function SendFailureText({
+  channelType,
   failure,
 }: {
+  /** The channel's type, for a refusal only its platform can explain. */
+  readonly channelType?: ChannelType;
   readonly failure: SendFailure;
 }): ReactNode {
   const { t } = useMessages();
+  // The Bot API answers 401 to a token it does not know and 404 to one that is no token at all.
+  const tokenRefused =
+    channelType === "telegram" &&
+    failure.params.reason === "unexpected_status" &&
+    (failure.params.observed === 401 || failure.params.observed === 404);
   return (
     <div className="flex flex-col gap-2 text-sm" data-reason={failure.reason}>
       <span>{t(reasonMessageId(failure.reason))}</span>
+      {tokenRefused ? (
+        <span data-slot="telegram-token-refused">
+          {t("channel_telegram_token_refused")}
+        </span>
+      ) : null}
       <FailureDetail failure={failure} />
     </div>
   );
@@ -93,9 +107,11 @@ export function SendFailureText({
 
 /** One row of the recent sends: what was sent, how it went and when. */
 export function SendRow({
+  channelType,
   clock,
   send,
 }: {
+  readonly channelType?: ChannelType;
   readonly clock: TimeOptions;
   readonly send: Notification;
 }): ReactNode {
@@ -124,7 +140,9 @@ export function SendRow({
           {t("channel_send_attempts", { count: send.attempts })}
         </span>
       </div>
-      {send.failure ? <SendFailureText failure={send.failure} /> : null}
+      {send.failure ? (
+        <SendFailureText channelType={channelType} failure={send.failure} />
+      ) : null}
       {send.nextAttemptAt === undefined ? null : (
         <p className="text-muted-foreground text-xs">
           {t("channel_send_next", {

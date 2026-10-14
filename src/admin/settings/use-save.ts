@@ -54,14 +54,19 @@ export function useSave<Input, Refusal extends string>(
   return { fail, state, submit };
 }
 
-/** A settings form's save of the values in `draft`; `start` is the baseline when the shown values are not the stored ones (no channel chosen yet). */
+/** A settings form's save of the values in `draft`; `start` is the baseline when the shown values are not the stored ones (no channel chosen yet), and `emptied` the draft a form holds once it saved, when the save empties its fields (a password). */
 export function useDraftSave<Input, Refusal extends string, Draft>(
   save: SaveCall<Input, Refusal>,
   draft: Draft,
   {
+    emptied,
     onSaved,
     start = draft,
-  }: { readonly onSaved?: (input: Input) => void; readonly start?: Draft } = {}
+  }: {
+    readonly emptied?: Draft;
+    readonly onSaved?: (input: Input) => void;
+    readonly start?: Draft;
+  } = {}
 ): SaveView<Refusal | "unavailable"> & {
   readonly fail: (reason: Refusal) => void;
   readonly submit: (input: Input) => void;
@@ -80,7 +85,7 @@ export function useDraftSave<Input, Refusal extends string, Draft>(
       save(input).then(
         (result) => {
           if (result.ok) {
-            report({ draft, kind: "saved" });
+            report({ draft: emptied ?? draft, kind: "saved" });
             onSaved?.(input);
           } else {
             report({ draft, kind: "failed", reason: result.reason });
@@ -89,7 +94,7 @@ export function useDraftSave<Input, Refusal extends string, Draft>(
         () => report({ draft, kind: "failed", reason: "unavailable" })
       );
     },
-    [draft, onSaved, report, save]
+    [draft, emptied, onSaved, report, save]
   );
   return { ...flow, fail, submit };
 }

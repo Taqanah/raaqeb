@@ -12,6 +12,7 @@ import {
   authFor,
   createAuth,
   handleAuth,
+  mailSettled,
   operatorName,
 } from "./auth.ts";
 import { disabledPaths } from "./paths.ts";
@@ -623,6 +624,54 @@ describe("sign-in events in the log", () => {
     await signIn(auth, { address: "203.0.113.78" });
     expect(lines).toEqual(["sign-in from 203.0.113.78"]);
     expect(lines.join("\n")).not.toContain(email);
+  });
+
+  test("with the second step on, the password alone is logged as waiting, and the sign-in once its code passes", async () => {
+    const lines: string[] = [];
+    const codes: string[] = [];
+    const auth = await authWithOperator({
+      log: (line) => lines.push(line),
+      mail: {
+        ...silentMail,
+        code: (_to, code) => {
+          codes.push(code);
+          return Promise.resolve();
+        },
+      },
+    });
+    const context = await auth.$context;
+    const [user] = await context.internalAdapter.listUsers();
+    await context.internalAdapter.updateUser(user?.id ?? "", {
+      twoFactorEnabled: true,
+    });
+    lines.length = 0;
+    const pending = await signIn(auth, { address: "203.0.113.79" });
+    expect(lines).toEqual([
+      "sign-in waits for the second step from 203.0.113.79",
+    ]);
+    const cookie = (pending.headers.get("set-cookie") ?? "")
+      .split(", ")
+      .map((value) => value.split(";")[0] ?? "")
+      .filter((value) => value.includes("two_factor"))
+      .join("; ");
+    await call(auth, "/two-factor/send-otp", { body: {}, cookie });
+    await mailSettled();
+    lines.length = 0;
+    await call(auth, "/two-factor/verify-otp", {
+      address: "203.0.113.79",
+      body: { code: codes[0] === "000000" ? "111111" : "000000" },
+      cookie,
+    });
+    expect(lines).toEqual([
+      "sign-in refused at the second step from 203.0.113.79",
+    ]);
+    lines.length = 0;
+    await call(auth, "/two-factor/verify-otp", {
+      address: "203.0.113.79",
+      body: { code: codes[0] },
+      cookie,
+    });
+    expect(lines).toEqual(["sign-in from 203.0.113.79"]);
   });
 });
 

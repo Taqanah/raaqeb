@@ -172,7 +172,9 @@ export function AuthenticatorForm({
   ) : null;
   const header = (
     <CardHeader divided>
-      <CardTitle>{t("setting_authenticator_title")}</CardTitle>
+      <CardTitle id="authenticator-title">
+        {t("setting_authenticator_title")}
+      </CardTitle>
       <CardDescription>{t("setting_authenticator_intro")}</CardDescription>
     </CardHeader>
   );
@@ -287,10 +289,14 @@ export function AuthenticatorForm({
               </p>
             ) : null}
             <Field>
-              <FieldLabel htmlFor="authenticatorPassword">
+              <FieldLabel
+                htmlFor="authenticatorPassword"
+                id="authenticatorPassword-label"
+              >
                 {t("setting_password_current")}
               </FieldLabel>
               <Input
+                aria-labelledby="authenticator-title authenticatorPassword-label"
                 autoComplete="current-password"
                 id="authenticatorPassword"
                 name="password"

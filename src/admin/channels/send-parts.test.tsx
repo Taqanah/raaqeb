@@ -7,9 +7,10 @@ import { MessagesProvider } from "@/shared/i18n/react.tsx";
 import type {
   Notification,
   NotificationPayload,
+  SendFailure,
 } from "@/shared/schemas/notification.ts";
 import { messages as ar } from "../../../locales/ar/messages.ts";
-import { SendRow, SendStatus } from "./send-parts.tsx";
+import { SendFailureText, SendRow, SendStatus } from "./send-parts.tsx";
 
 const i18n = createMessages("ar", ar);
 const clock: TimeOptions = {
@@ -175,5 +176,52 @@ describe("a notification's state", () => {
     );
     expect(html).toContain(i18n._("channel_send_queued"));
     expect(html).not.toContain(i18n._("channel_send_pending"));
+  });
+});
+
+describe("a failure only the platform can explain", () => {
+  const refused = (observed: number): SendFailure => ({
+    error: '{"ok":false,"error_code":401,"description":"Unauthorized"}',
+    params: { expected: ["2xx"], observed, reason: "unexpected_status" },
+    reason: "unexpected_status",
+  });
+  const tokenRefused = i18n._("channel_telegram_token_refused");
+
+  test("a Telegram send the Bot API refused with 401 or 404 says the bot token is not one Telegram knows", () => {
+    for (const status of [401, 404]) {
+      expect(
+        render(
+          <SendFailureText channelType="telegram" failure={refused(status)} />
+        )
+      ).toContain(tokenRefused);
+    }
+  });
+
+  test("another status, or another channel's 401, says nothing of a bot token", () => {
+    expect(
+      render(<SendFailureText channelType="telegram" failure={refused(400)} />)
+    ).not.toContain(tokenRefused);
+    expect(
+      render(<SendFailureText channelType="webhook" failure={refused(401)} />)
+    ).not.toContain(tokenRefused);
+  });
+
+  test("a recent send of a Telegram channel says it too", () => {
+    const html = render(
+      <SendRow
+        channelType="telegram"
+        clock={clock}
+        send={{
+          ...sent({
+            data: { channel: { id: "c", name: "Ops" } },
+            timestamp: stamp,
+            type: "channel.test",
+          }),
+          failure: refused(401),
+          status: "failed",
+        }}
+      />
+    );
+    expect(html).toContain(tokenRefused);
   });
 });

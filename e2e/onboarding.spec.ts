@@ -146,6 +146,10 @@ test.describe("the fresh install, walked to the end and then used", () => {
     await page.click(continueButton);
     await expectPath(page, "/admin/monitors");
     await expect(page.locator("main [data-slot=empty]")).toHaveCount(1);
+    // Back onto the account screen, which is gone, returns to the admin area rather than a bare not-found page.
+    await page.goBack();
+    await expectPath(page, "/admin/monitors");
+    await expect(page.locator("main [data-slot=empty]")).toHaveCount(1);
     const cookies = await context.cookies(tunnelOrigin);
     expect(cookies.some((c) => c.name === "raaqeb.session_token")).toBe(true);
 
@@ -279,6 +283,13 @@ test.describe("the fresh install, walked to the end and then used", () => {
     await expect(page.locator("[data-slot=sidebar-footer] bdi")).toHaveText(
       "owner@example.com"
     );
+    // Nothing typed stays in the form once the change went through.
+    await expect(
+      page.locator("[data-slot=email-form] input[name=currentPassword]")
+    ).toHaveValue("");
+    await expect(
+      page.locator("[data-slot=email-form] input[name=email]")
+    ).toHaveValue("");
 
     // An empty current password and a short new one are refused beside each field.
     await page.fill(
@@ -322,6 +333,17 @@ test.describe("the fresh install, walked to the end and then used", () => {
       "owner@example.com"
     );
     await expectPath(page, "/admin/settings/account");
+    await expect(
+      page.locator(
+        "[data-slot=password-form] [data-slot=save-outcome][data-state=saved]"
+      )
+    ).toHaveCount(1);
+    for (const field of ["currentPassword", "newPassword"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one field at a time keeps the failure readable
+      await expect(
+        page.locator(`[data-slot=password-form] input[name=${field}]`)
+      ).toHaveValue("");
+    }
     await page.goto(`${freshOrigin}/sign-out`);
     await page.click("form button[type=submit]");
     await expectPath(page, "/sign-in");

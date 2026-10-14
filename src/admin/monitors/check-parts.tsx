@@ -50,7 +50,7 @@ export function Pair({
   return (
     <>
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-all">{children}</dd>
+      <dd className="wrap-anywhere min-w-0">{children}</dd>
     </>
   );
 }
@@ -87,7 +87,8 @@ export function FailureDetail({
           <span className="text-muted-foreground text-xs">
             {t("monitor_test_error")}
           </span>
-          <Token className="block whitespace-pre-wrap break-all">
+          {/* Words break at spaces first; only a word longer than the line breaks inside. */}
+          <Token className="wrap-anywhere block whitespace-pre-wrap">
             {failure.error}
           </Token>
         </div>

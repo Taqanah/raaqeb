@@ -8,6 +8,8 @@
  * the entry resolved behind the trusted proxies (server/boot/proxies.ts). The
  * admin guard reads the session on the server through `readOperator`.
  */
+
+import type { BetterAuthPlugin } from "better-auth";
 import {
   APIError,
   createAuthMiddleware,
@@ -63,6 +65,22 @@ export const resetPagePath = "/reset-password";
 /** The reset link: the public address, the page and the core token. */
 export function resetLinkOf(publicAddress: string, token: string): string {
   return `${publicAddress}${resetPagePath}?token=${encodeURIComponent(token)}`;
+}
+
+/** Whether a reset link's token still sets a password: issued, not used and not expired, so the page shows the form or says to ask for a new link. */
+export async function resetLinkOpen(
+  auth: Auth,
+  token: string,
+  now: number
+): Promise<boolean> {
+  if (token === "") {
+    return false;
+  }
+  // The row Better Auth's request writes and its reset deletes (api/routes/password.mjs).
+  const row = await (await auth.$context).internalAdapter.findVerificationValue(
+    `reset-password:${token}`
+  );
+  return row !== null && row !== undefined && row.expiresAt.getTime() > now;
 }
 
 /** Deletes every trusted browser: Better Auth's rows are `trust-device-<random>`, one per browser. */
@@ -197,6 +215,54 @@ async function guardCodes(ctx: HookContext): Promise<void> {
   }
 }
 
+/** The codes that finish a pending sign-in; asking for an emailed code finishes nothing. */
+const finishingPaths = new Set(
+  [...secondStepPaths].filter((path) => path !== "/two-factor/send-otp")
+);
+
+/**
+ * One log line per sign-in attempt over HTTP, with the client address and
+ * never the email: a password that needs the second step waits, a code
+ * that passes signs in. A plugin, so it runs after the two-factor plugin's
+ * hook has decided whether a code is due. A 429 never reaches here.
+ */
+function signInLog(log: (line: string) => void): BetterAuthPlugin {
+  return {
+    hooks: {
+      after: [
+        {
+          handler: createAuthMiddleware((ctx) => {
+            const address =
+              ctx.request?.headers.get(clientAddressHeader) ??
+              "an unknown address";
+            const returned: unknown = ctx.context.returned;
+            const pending =
+              typeof returned === "object" &&
+              returned !== null &&
+              "twoFactorRedirect" in returned;
+            let event = "sign-in";
+            if (isAPIError(returned)) {
+              event =
+                ctx.path === "/sign-in/email"
+                  ? "sign-in refused"
+                  : "sign-in refused at the second step";
+            } else if (pending) {
+              event = "sign-in waits for the second step";
+            }
+            log(`${event} from ${address}`);
+            return Promise.resolve();
+          }),
+          matcher: (ctx) =>
+            ctx.request !== undefined &&
+            (ctx.path === "/sign-in/email" ||
+              finishingPaths.has(ctx.path ?? "")),
+        },
+      ],
+    },
+    id: "raaqeb-sign-in-log",
+  };
+}
+
 /** The Better Auth instance for these inputs: minimal build, Argon2id, UUIDv7 ids, 7-day sessions refreshed daily, the disabled-paths list, the in-memory rate limit keyed on the address the entry resolved. */
 export function createAuth(input: CreateAuthInput) {
   const log = input.log ?? logError;
@@ -241,18 +307,9 @@ export function createAuth(input: CreateAuthInput) {
     },
     experimental: { instrumentation: { enabled: false } },
     hooks: {
-      // One line per sign-in attempt with the client address, never the email. A 429 never reaches here.
+      // A reset forgets the trusted browsers; an app code that signed in is spent; an emailed code verifies the address. The sign-in log is signInLog.
       after: createAuthMiddleware(async (ctx) => {
-        const refused = isAPIError(ctx.context.returned);
-        if (ctx.path === "/sign-in/email") {
-          // One line per sign-in attempt with the client address, never the email. A 429 never reaches here.
-          const address =
-            ctx.request?.headers.get(clientAddressHeader) ??
-            "an unknown address";
-          log(`sign-in${refused ? " refused" : ""} from ${address}`);
-          return;
-        }
-        if (refused) {
+        if (isAPIError(ctx.context.returned)) {
           return;
         }
         if (ctx.path === "/reset-password") {
@@ -319,6 +376,7 @@ export function createAuth(input: CreateAuthInput) {
         },
         // A trusted browser lasts Better Auth's default of 30 days, pinned by a test.
       }),
+      signInLog(log),
     ],
     rateLimit: {
       // A reset request sends an email, so it keeps Better Auth's 3 a minute; the reset itself gets sign-in's 3 in 10 seconds.

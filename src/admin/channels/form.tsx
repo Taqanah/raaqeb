@@ -587,7 +587,9 @@ function TestPanel({
               ? t("channel_sending")
               : t("channel_send_test")}
           </Button>
-          {state.kind === "done" ? <TestResult result={state.result} /> : null}
+          {state.kind === "done" ? (
+            <TestResult result={state.result} type={form.channel.type} />
+          ) : null}
         </CardContent>
       </Card>
       <Card>
@@ -602,7 +604,12 @@ function TestPanel({
           ) : (
             <ul data-slot="recent-sends">
               {form.recent.map((send) => (
-                <SendRow clock={clock} key={send.id} send={send} />
+                <SendRow
+                  channelType={form.channel.type}
+                  clock={clock}
+                  key={send.id}
+                  send={send}
+                />
               ))}
             </ul>
           )}
@@ -614,8 +621,10 @@ function TestPanel({
 
 function TestResult({
   result,
+  type,
 }: {
   readonly result: ChannelTestResult | undefined;
+  readonly type: ChannelType;
 }): ReactNode {
   const { t } = useMessages();
   if (!result?.ok) {
@@ -634,7 +643,9 @@ function TestResult({
       role="status"
     >
       <SendStatus send={send} />
-      {send.failure ? <SendFailureText failure={send.failure} /> : null}
+      {send.failure ? (
+        <SendFailureText channelType={type} failure={send.failure} />
+      ) : null}
     </div>
   );
 }

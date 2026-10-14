@@ -126,8 +126,10 @@ export function AuthEmailForm({
   const header = (
     <CardHeader divided>
       <CardTitle>{t("setting_auth_email_title")}</CardTitle>
-      <CardDescription>
-        {t("setting_auth_email_intro")} <Token>{view.email}</Token>
+      <CardDescription>{t("setting_auth_email_intro")}</CardDescription>
+      {/* The operator's own address on a line of its own, so it never reads as the subscribers'. */}
+      <CardDescription data-slot="auth-email-to">
+        {t("setting_auth_email_to")} <Token>{view.email}</Token>
       </CardDescription>
     </CardHeader>
   );
@@ -273,7 +275,9 @@ export function SecondStepForm({
     >
       <Card>
         <CardHeader divided>
-          <CardTitle>{t("setting_second_step_title")}</CardTitle>
+          <CardTitle id="secondStep-title">
+            {t("setting_second_step_title")}
+          </CardTitle>
           <CardDescription>{t("setting_second_step_intro")}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,10 +302,15 @@ export function SecondStepForm({
               </p>
             ) : (
               <Field>
-                <FieldLabel htmlFor="secondStepPassword">
+                <FieldLabel
+                  htmlFor="secondStepPassword"
+                  id="secondStepPassword-label"
+                >
                   {t("setting_password_current")}
                 </FieldLabel>
                 <Input
+                  // Named with its card, since the authenticator card has a field of the same label.
+                  aria-labelledby="secondStep-title secondStepPassword-label"
                   autoComplete="current-password"
                   id="secondStepPassword"
                   name="password"

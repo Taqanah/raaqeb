@@ -2591,6 +2591,10 @@ msgid "channel_refused_bot_token"
 msgstr "Enter the token exactly as @BotFather gave it: the bot's number, a colon, then a long code."
 
 #. js-lingui-explicit-id
+msgid "channel_telegram_token_refused"
+msgstr "Telegram does not know this bot token. Copy it again from @BotFather, or make a new one there."
+
+#. js-lingui-explicit-id
 msgid "channel_field_chat_id"
 msgstr "Chat ID"
 
@@ -2780,7 +2784,11 @@ msgstr "Sign-in email"
 
 #. js-lingui-explicit-id
 msgid "setting_auth_email_intro"
-msgstr "The channel that sends the reset link and the one-time code to the operator account's email, and every message to the status pages' subscribers:"
+msgstr "The email channel that sends the reset link and the one-time code to the operator account's email, and every message to the status pages' subscribers."
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_to"
+msgstr "Sign-in messages go to:"
 
 #. js-lingui-explicit-id
 msgid "setting_auth_email_channel"
@@ -2817,7 +2825,7 @@ msgstr "The second step is off."
 
 #. js-lingui-explicit-id
 msgid "setting_second_step_needs_test"
-msgstr "It opens once a test message arrives through the sign-in mail channel above, or set up an authenticator app below."
+msgstr "It opens once a test message arrives through the sign-in email channel above, or set up an authenticator app below."
 
 #. js-lingui-explicit-id
 msgid "setting_second_step_enable"

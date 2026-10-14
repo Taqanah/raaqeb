@@ -2591,6 +2591,10 @@ msgid "channel_refused_bot_token"
 msgstr "اكتب الرمز كما أعطاك إياه ⁦@BotFather⁩ تمامًا: رقم البوت، ثم نقطتان، ثم رمز طويل."
 
 #. js-lingui-explicit-id
+msgid "channel_telegram_token_refused"
+msgstr "لا يعرف Telegram رمز البوت هذا. انسخه مرة أخرى من ⁦@BotFather⁩، أو أنشئ رمزًا جديدًا هناك."
+
+#. js-lingui-explicit-id
 msgid "channel_field_chat_id"
 msgstr "معرّف المحادثة"
 
@@ -2780,7 +2784,11 @@ msgstr "بريد تسجيل الدخول"
 
 #. js-lingui-explicit-id
 msgid "setting_auth_email_intro"
-msgstr "القناة التي ترسل رابط إعادة التعيين والرمز المؤقت إلى بريد حساب المشغّل، وكل رسالة إلى مشتركي صفحات الحالة:"
+msgstr "قناة البريد التي ترسل رابط إعادة التعيين والرمز المؤقت إلى بريد حساب المشغّل، وكل رسالة إلى مشتركي صفحات الحالة."
+
+#. js-lingui-explicit-id
+msgid "setting_auth_email_to"
+msgstr "تذهب رسائل تسجيل الدخول إلى:"
 
 #. js-lingui-explicit-id
 msgid "setting_auth_email_channel"

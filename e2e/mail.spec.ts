@@ -295,10 +295,8 @@ test("a reset link from the mail sets a new password once, refuses a short one f
   await page.click(continueButton);
   await expect(page.locator("[data-slot=reset-done]")).toBeVisible();
 
-  // The same link again: the form shows, and the answer is that the link is spent.
+  // The same link again: no form that could only fail, the page says the link is spent.
   await page.goto(link);
-  await page.fill("input[name=newPassword]", "yet another password");
-  await page.click(continueButton);
   await expect(page.locator("[data-slot=reset-link-invalid]")).toBeVisible();
   await expect(page.locator("input[name=newPassword]")).toHaveCount(0);
   await expect(page.locator("a[href='/forgot-password']")).toBeVisible();

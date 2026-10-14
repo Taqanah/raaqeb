@@ -58,6 +58,13 @@ async function rejection(promise: Promise<unknown>): Promise<unknown> {
   }
 }
 
+/** The `code` a rejection carries, as socket and TLS errors name their cause. */
+function codeOf(error: unknown): unknown {
+  return typeof error === "object" && error !== null && "code" in error
+    ? error.code
+    : undefined;
+}
+
 describe("an email over SMTP", () => {
   test("reaches the server from the sender to every recipient, as one message in UTF-8", async () => {
     const server = serve();
@@ -166,9 +173,7 @@ describe("an email over SMTP", () => {
     const { port } = server;
     server.stop();
     const error = await rejection(send(plain(port), message, 5000));
-    expect((error as { code?: unknown } | undefined)?.code).toBe(
-      "ECONNREFUSED"
-    );
+    expect(codeOf(error)).toBe("ECONNREFUSED");
   });
 
   test("a server that never greets fails at the wait, as one that sent no greeting, before the limit", async () => {
@@ -227,14 +232,14 @@ describe("an email over SMTP", () => {
     const error = await rejection(
       send({ ...plain(25), host: "nope.invalid" }, message, 5000)
     );
-    expect((error as { code?: unknown } | undefined)?.code).toBe("ENOTFOUND");
+    expect(codeOf(error)).toBe("ENOTFOUND");
   });
 
   test("a server name that holds a certificate word is still a DNS failure", async () => {
     const error = await rejection(
       send({ ...plain(25), host: "mail.expired.invalid" }, message, 5000)
     );
-    expect((error as { code?: unknown } | undefined)?.code).toBe("ENOTFOUND");
+    expect(codeOf(error)).toBe("ENOTFOUND");
   });
 
   test("a server whose certificate no authority signed rejects with the platform's certificate code", async () => {
@@ -252,9 +257,7 @@ describe("an email over SMTP", () => {
       const error = await rejection(
         send({ ...plain(server.port), security: "tls" }, message, 5000)
       );
-      expect((error as { code?: unknown } | undefined)?.code).toBe(
-        "DEPTH_ZERO_SELF_SIGNED_CERT"
-      );
+      expect(codeOf(error)).toBe("DEPTH_ZERO_SELF_SIGNED_CERT");
     } finally {
       server.stop(true);
     }

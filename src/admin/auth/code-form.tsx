@@ -126,7 +126,8 @@ export function CodeForm({
       ? t("auth_code_backup_wrong")
       : failure && t(failureMessage[failure]);
   return (
-    <AuthPage title={t("auth_code_title")}>
+    // No language links: a new document would drop the pending sign-in this screen holds in memory.
+    <AuthPage switcher={false} title={t("auth_code_title")}>
       <form
         data-method={method}
         data-slot="code-form"

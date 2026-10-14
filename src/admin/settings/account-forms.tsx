@@ -81,6 +81,12 @@ const passwordMessages: Readonly<Record<PasswordChangeRefusal, MessageId>> = {
   wrong_password: "setting_invalid",
 };
 
+/** The email form once a change went through: nothing typed. */
+const emptyEmailChange = { currentPassword: "", email: "" };
+
+/** The password form once a change went through: nothing typed. */
+const emptyPasswordChange = { currentPassword: "", newPassword: "" };
+
 /** The empty choice of a select: follow the install. */
 const followInstall = "";
 
@@ -279,12 +285,22 @@ export function EmailForm({
   onChanged,
 }: EmailFormProps): ReactNode {
   const { t } = useMessages();
-  const [typed, setTyped] = useState({ currentPassword: "", email: "" });
+  const [typed, setTyped] = useState(emptyEmailChange);
   const onTyped = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.currentTarget;
     setTyped((current) => ({ ...current, [name]: value }));
   }, []);
-  const saving = useDraftSave(change, typed, { onSaved: onChanged });
+  const formRef = useRef<HTMLFormElement>(null);
+  // A password typed once is not left in the page, nor the address it moved to.
+  const changed = useCallback(() => {
+    formRef.current?.reset();
+    setTyped(emptyEmailChange);
+    onChanged();
+  }, [onChanged]);
+  const saving = useDraftSave(change, typed, {
+    emptied: emptyEmailChange,
+    onSaved: changed,
+  });
   const { fail, line, submit } = saving;
   const reason = line.kind === "failed" ? line.reason : undefined;
   const currentRefusal = currentRefusalOf(reason, typed.currentPassword);
@@ -295,7 +311,6 @@ export function EmailForm({
       !emailChangeSchema.shape.email.safeParse(typed.email.trim()).success)
       ? fieldMessages[reason]
       : undefined;
-  const formRef = useRef<HTMLFormElement>(null);
   useFocusRefused(formRef, line);
   const onSubmit = useCallback(
     (event: SubmitEvent<HTMLFormElement>) => {
@@ -323,7 +338,9 @@ export function EmailForm({
     >
       <Card>
         <CardHeader divided>
-          <CardTitle>{t("setting_email_change")}</CardTitle>
+          <CardTitle id="emailChange-title">
+            {t("setting_email_change")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <FieldGroup>
@@ -347,11 +364,16 @@ export function EmailForm({
               ) : null}
             </Field>
             <Field>
-              <FieldLabel htmlFor="emailCurrentPassword">
+              <FieldLabel
+                htmlFor="emailCurrentPassword"
+                id="emailCurrentPassword-label"
+              >
                 {t("setting_password_current")}
               </FieldLabel>
               <Input
                 aria-invalid={currentRefusal ? true : undefined}
+                // Named with its card, since the password card has a field of the same label.
+                aria-labelledby="emailChange-title emailCurrentPassword-label"
                 autoComplete="current-password"
                 id="emailCurrentPassword"
                 name="currentPassword"
@@ -401,12 +423,22 @@ export function PasswordForm({
   onChanged,
 }: PasswordFormProps): ReactNode {
   const { t } = useMessages();
-  const [typed, setTyped] = useState({ currentPassword: "", newPassword: "" });
+  const [typed, setTyped] = useState(emptyPasswordChange);
   const onTyped = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.currentTarget;
     setTyped((current) => ({ ...current, [name]: value }));
   }, []);
-  const saving = useDraftSave(change, typed, { onSaved: onChanged });
+  const formRef = useRef<HTMLFormElement>(null);
+  // Neither password is left in the fields once it changed.
+  const changed = useCallback(() => {
+    formRef.current?.reset();
+    setTyped(emptyPasswordChange);
+    onChanged();
+  }, [onChanged]);
+  const saving = useDraftSave(change, typed, {
+    emptied: emptyPasswordChange,
+    onSaved: changed,
+  });
   const { fail, line, submit } = saving;
   const refusal = line.kind === "failed" ? line.reason : undefined;
   const currentRefusal = currentRefusalOf(refusal, typed.currentPassword);
@@ -414,7 +446,6 @@ export function PasswordForm({
     refusal === "invalid" &&
     !passwordChangeSchema.shape.newPassword.safeParse(typed.newPassword)
       .success;
-  const formRef = useRef<HTMLFormElement>(null);
   useFocusRefused(formRef, line);
   const onSubmit = useCallback(
     (event: SubmitEvent<HTMLFormElement>) => {
@@ -442,16 +473,19 @@ export function PasswordForm({
     >
       <Card>
         <CardHeader divided>
-          <CardTitle>{t("setting_password_change")}</CardTitle>
+          <CardTitle id="passwordChange-title">
+            {t("setting_password_change")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="currentPassword">
+              <FieldLabel htmlFor="currentPassword" id="currentPassword-label">
                 {t("setting_password_current")}
               </FieldLabel>
               <Input
                 aria-invalid={currentRefusal ? true : undefined}
+                aria-labelledby="passwordChange-title currentPassword-label"
                 autoComplete="current-password"
                 id="currentPassword"
                 name="currentPassword"

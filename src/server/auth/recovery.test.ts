@@ -5,6 +5,7 @@ import {
   mailSettled,
   operatorName,
   resetLinkOf,
+  resetLinkOpen,
   resetPagePath,
 } from "./auth.ts";
 import {
@@ -308,6 +309,23 @@ describe("a reset link that could not go", () => {
     expect(lines).toEqual([
       "the reset link was not sent: no public address is stored",
     ]);
+  });
+});
+
+describe("whether the set-new-password page shows its form", () => {
+  test("a link just sent is open; once used, or past its hour, or never sent, it is not", async () => {
+    const { storage } = await scratch();
+    const { mail, sent } = capturingMail();
+    const auth = await authWithOperator(storage, mail);
+    await call(auth, "/request-password-reset", { body: { email: testEmail } });
+    const token = tokenOf(sent[0]?.value ?? "");
+    const now = Date.now();
+    expect(await resetLinkOpen(auth, token, now)).toBe(true);
+    expect(await resetLinkOpen(auth, token, now + 61 * 60 * 1000)).toBe(false);
+    expect(await resetLinkOpen(auth, "not-a-token", now)).toBe(false);
+    expect(await resetLinkOpen(auth, "", now)).toBe(false);
+    await call(auth, "/reset-password", { body: { newPassword, token } });
+    expect(await resetLinkOpen(auth, token, now)).toBe(false);
   });
 });
 

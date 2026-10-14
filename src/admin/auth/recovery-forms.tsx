@@ -182,17 +182,19 @@ export function NoEmailPage(): ReactNode {
 }
 
 export interface ResetFormProps {
+  /** Whether the link still sets a password: not used, not expired. */
+  readonly open: boolean;
   /** The reset link's token; empty when the page was opened without one. */
   readonly token: string;
 }
 
 /** The set-new-password page: one new password, then a line that sends the operator to sign in. */
-export function ResetForm({ token }: ResetFormProps): ReactNode {
+export function ResetForm({ open, token }: ResetFormProps): ReactNode {
   const { t } = useMessages();
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
   const [failure, setFailure] = useState<ResetFailure | undefined>(
-    token === "" ? "invalid_link" : undefined
+    open && token !== "" ? undefined : "invalid_link"
   );
   // A new object per refused submit, so each one moves the focus to the field.
   const [refused, setRefused] = useState<{ newPassword: boolean }>({
