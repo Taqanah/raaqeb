@@ -144,6 +144,78 @@ describe("an HTTP monitor's check-type part", () => {
     ).toBe(false);
   });
 
+  test("takes its own proxy as an http or https URL, an IP address and a port included, and none by default", () => {
+    expect(monitorConfigSchema.parse(http)).not.toHaveProperty("proxy");
+    for (const proxy of [
+      "http://proxy.example.test:3128",
+      "https://proxy.example.test",
+      "http://10.0.0.5:8080/",
+      "http://[::1]:3128",
+    ]) {
+      expect(monitorConfigSchema.parse({ ...http, proxy })).toMatchObject({
+        proxy,
+      });
+    }
+  });
+
+  test("refuses a proxy that is not an http or https URL: no SOCKS", () => {
+    for (const proxy of [
+      "socks5://proxy.example.test:1080",
+      "socks5h://proxy.example.test",
+      "ftp://proxy.example.test",
+      "proxy.example.test:3128",
+      "",
+    ]) {
+      expect(monitorConfigSchema.safeParse({ ...http, proxy }).success).toBe(
+        false
+      );
+    }
+  });
+
+  test("refuses a proxy URL carrying a user name or a password: they are sealed credentials", () => {
+    for (const proxy of [
+      "http://ops:secret@proxy.example.test:3128",
+      "http://ops@proxy.example.test",
+      "http://:secret@proxy.example.test",
+    ]) {
+      expect(monitorConfigSchema.safeParse({ ...http, proxy }).success).toBe(
+        false
+      );
+    }
+  });
+
+  test("refuses a proxy URL longer than a connection URL may be", () => {
+    const long = `http://proxy.example.test/${"a".repeat(2100)}`;
+    expect(
+      monitorConfigSchema.safeParse({ ...http, proxy: long }).success
+    ).toBe(false);
+  });
+
+  test("a proxy user name and password need a proxy to go with", () => {
+    const credentials = { proxyAuth: { password: "pw", user: "ops" } };
+    const withProxy = monitorInputSchema.safeParse({
+      ...base,
+      config: { ...http, proxy: "http://proxy.example.test:3128" },
+      credentials,
+    });
+    expect(withProxy.success).toBe(true);
+    const without = monitorInputSchema.safeParse({ ...base, credentials });
+    expect(without.success).toBe(false);
+    expect(
+      without.error?.issues.map((issue) => issue.path.join("."))
+    ).toContain("credentials.proxyAuth");
+  });
+
+  test("a proxy user name may not hold a colon, as a basic auth's may not", () => {
+    expect(
+      monitorInputSchema.safeParse({
+        ...base,
+        config: { ...http, proxy: "http://proxy.example.test" },
+        credentials: { proxyAuth: { password: "pw", user: "a:b" } },
+      }).success
+    ).toBe(false);
+  });
+
   test("refuses a URL carrying a password alone", () => {
     expect(
       monitorConfigSchema.safeParse({

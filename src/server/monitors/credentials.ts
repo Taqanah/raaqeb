@@ -1,6 +1,6 @@
 /**
  * A monitor's credentials at rest: an
- * HTTP monitor's auth and headers, a database monitor's connection URL,
+ * HTTP monitor's auth, headers and its own proxy's user name and password, a database monitor's connection URL,
  * sealed with the install key into one column, opened only by what
  * sends them (the scheduler and "test now"), and read back into the form as
  * names only, and whether a URL is stored. A secret the form leaves out
@@ -21,7 +21,8 @@ export function mergeCredentials(
   stored: Credentials | undefined
 ): Credentials | undefined {
   const auth = mergeAuth(input.auth, stored?.auth);
-  if (auth === false) {
+  const proxyAuth = mergeProxyAuth(input.proxyAuth, stored?.proxyAuth);
+  if (auth === false || proxyAuth === false) {
     return;
   }
   const kept = new Map(
@@ -38,7 +39,19 @@ export function mergeCredentials(
     }
     headers.push({ name: header.name, value });
   }
-  return { auth, headers };
+  return { auth, headers, ...(proxyAuth && { proxyAuth }) };
+}
+
+/** The proxy's user name and password to store, a left-out password taken from the stored one, or false when none is stored to keep. */
+function mergeProxyAuth(
+  input: CredentialsInput["proxyAuth"],
+  stored: Credentials["proxyAuth"]
+): Credentials["proxyAuth"] | false {
+  if (input === undefined) {
+    return;
+  }
+  const password = input.password ?? stored?.password;
+  return password === undefined ? false : { password, user: input.user };
 }
 
 /** The auth to store, or false when a left-out secret has nothing of its kind stored. */
@@ -69,6 +82,7 @@ export function sealCredentials(
   if (
     credentials.auth === undefined &&
     credentials.headers.length === 0 &&
+    credentials.proxyAuth === undefined &&
     credentials.url === undefined
   ) {
     return Promise.resolve(undefined);
@@ -100,6 +114,7 @@ export function credentialsView(
         ? { kind: "basic", user: auth.user }
         : auth && { kind: "bearer" },
     headers: (credentials?.headers ?? []).map(({ name }) => ({ name })),
+    proxyUser: credentials?.proxyAuth?.user,
     url: credentials?.url !== undefined,
   };
 }

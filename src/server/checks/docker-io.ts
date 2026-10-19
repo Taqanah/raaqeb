@@ -30,7 +30,11 @@ export async function requestDocker(
   try {
     response = socket
       ? await fetch(`http://localhost${path}`, { ...init, unix: endpoint })
-      : await fetch(`${endpoint.replace(trailingSlashes, "")}${path}`, init);
+      : await fetch(`${endpoint.replace(trailingSlashes, "")}${path}`, {
+          ...init,
+          // The daemon is the operator's own infrastructure, not behind the install's outbound proxy.
+          proxy: false,
+        });
   } catch (error) {
     const code = codeOf(error);
     throw socket && code !== undefined

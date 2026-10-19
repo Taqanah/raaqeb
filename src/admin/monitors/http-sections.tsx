@@ -381,6 +381,44 @@ export function RequestSection({
         onField={onField}
         onRemoveHeader={onRemoveHeader}
       />
+      <TextField
+        autoComplete="off"
+        dir="ltr"
+        errors={errors}
+        hint={t("monitor_field_proxy_hint")}
+        label={t("monitor_field_proxy")}
+        name="proxy"
+        onField={onField}
+        path="config.proxy"
+        value={draft.proxy}
+        variant="token"
+      />
+      {draft.proxy.trim() === "" ? null : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            autoComplete="off"
+            errors={errors}
+            label={t("monitor_field_proxy_user")}
+            name="proxyUser"
+            onField={onField}
+            path="credentials.proxyAuth.user"
+            value={draft.proxyUser}
+            variant="token"
+          />
+          <TextField
+            autoComplete="new-password"
+            dir="ltr"
+            errors={errors}
+            label={t("monitor_field_proxy_password")}
+            name="proxyPassword"
+            onField={onField}
+            path="credentials.proxyAuth.password"
+            placeholder={draft.storedProxyAuth ? kept : undefined}
+            type="password"
+            value={draft.proxyPassword}
+          />
+        </div>
+      )}
     </Section>
   );
 }

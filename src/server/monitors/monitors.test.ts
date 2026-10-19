@@ -4,6 +4,10 @@ import { credentialMask } from "@/server/checks/capture.ts";
 import type { DatabaseQuery } from "@/server/checks/database.ts";
 import type { DockerRequest } from "@/server/checks/docker.ts";
 import { liveIo } from "@/server/checks/io.ts";
+import {
+  setProxyEnvironment,
+  startProxy,
+} from "@/server/checks/proxy-fixture.ts";
 import { publicAddress } from "@/server/settings/address.ts";
 import {
   dismissGettingStarted,
@@ -2452,5 +2456,99 @@ describe("a Docker monitor through the module", () => {
     ]);
     expect(result.ok && result.test.reason).toBe("container_paused");
     expect(await store.checks.latest()).toEqual([]);
+  });
+});
+
+describe("an HTTP monitor's own proxy", () => {
+  const proxy = "http://proxy.example.test:3128";
+  const proxied: MonitorInput = {
+    ...site,
+    config: { ...probeConfig, proxy, url: "http://web.example.test/" },
+    credentials: {
+      headers: [],
+      proxyAuth: { password: "pässword", user: "ops" },
+    },
+  };
+
+  test("is kept in the config, its user name and password sealed beside the other credentials, and the form reads the address and the user name", async () => {
+    const store = await storage();
+    const id = await createdId(store, proxied);
+    expect((await store.monitors.find(id))?.config).toMatchObject({ proxy });
+    expect(await store.monitors.credentialsOf(id)).not.toContain("pässword");
+    expect((await storedCredentials(store, id))?.proxyAuth).toEqual({
+      password: "pässword",
+      user: "ops",
+    });
+    const form = await readMonitorForm(store, key, id, undefined);
+    if (!form.ok) {
+      throw new Error(form.reason);
+    }
+    expect(form.monitor?.config).toMatchObject({ proxy });
+    expect(form.credentials.proxyUser).toBe("ops");
+    expect(JSON.stringify(form)).not.toContain("pässword");
+  });
+
+  test("keeps its password through an edit that leaves it out, and drops the credentials with the proxy", async () => {
+    const store = await storage();
+    const id = await createdId(store, proxied);
+    const kept = await editMonitor(store, key, id, {
+      ...proxied,
+      credentials: { headers: [], proxyAuth: { user: "ops-two" } },
+    });
+    expect(kept.ok).toBe(true);
+    expect((await storedCredentials(store, id))?.proxyAuth).toEqual({
+      password: "pässword",
+      user: "ops-two",
+    });
+    const removed = await editMonitor(store, key, id, {
+      ...proxied,
+      config: { ...probeConfig, url: "http://web.example.test/" },
+      credentials: undefined,
+    });
+    expect(removed.ok).toBe(true);
+    expect((await store.monitors.find(id))?.config).not.toHaveProperty("proxy");
+    expect(await store.monitors.credentialsOf(id)).toBeUndefined();
+  });
+
+  test("is refused a password that was left out when none is stored", async () => {
+    const store = await storage();
+    expect(
+      await createMonitor(store, key, {
+        ...proxied,
+        credentials: { headers: [], proxyAuth: { user: "ops" } },
+      })
+    ).toEqual({ ok: false, reason: "invalid" });
+  });
+
+  test("is the proxy test now goes through, with its credentials, whatever the install's environment holds", async () => {
+    const store = await storage();
+    const seen = startProxy();
+    const restore = setProxyEnvironment({});
+    try {
+      const result = await testMonitor(
+        store,
+        key,
+        liveIo(),
+        {
+          ...proxied,
+          config: {
+            ...probeConfig,
+            proxy: seen.url,
+            url: "http://web.example.test/",
+          },
+        },
+        undefined
+      );
+      expect(result.ok && result.test.result).toBe("up");
+      expect(seen.requests.map((request) => request.line)).toEqual([
+        "GET http://web.example.test/ HTTP/1.1",
+      ]);
+      expect(seen.requests[0]?.headers["proxy-authorization"]).toBe(
+        `Basic ${new TextEncoder().encode("ops:pässword").toBase64()}`
+      );
+    } finally {
+      restore();
+      seen.stop();
+    }
   });
 });

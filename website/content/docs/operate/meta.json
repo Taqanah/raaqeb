@@ -6,6 +6,7 @@
     "data-directory",
     "commands",
     "reverse-proxy",
+    "outbound-proxy",
     "custom-domains",
     "postgres",
     "backups",

@@ -156,6 +156,12 @@ export interface MonitorDraft {
   readonly ownRetention: boolean;
   readonly password: string;
   readonly port: string;
+  /** The HTTP monitor's own proxy as typed; empty follows the install's environment. */
+  readonly proxy: string;
+  /** The proxy's password as typed; empty keeps the stored one while a user name is stored. */
+  readonly proxyPassword: string;
+  /** The proxy's user name as typed; empty means the proxy asks for none. */
+  readonly proxyUser: string;
   /** A database monitor's query or Redis command, as typed; empty runs the default. */
   readonly query: string;
   readonly recordType: DnsRecordType;
@@ -172,6 +178,8 @@ export interface MonitorDraft {
   readonly scheduleKind: ScheduleKind;
   /** The stored auth kind, whose secret an empty field keeps. */
   readonly storedAuth: "basic" | "bearer" | undefined;
+  /** Whether the proxy has a user name and password stored, whose password an empty field keeps. */
+  readonly storedProxyAuth: boolean;
   /** The check type of the monitor whose connection URL is stored, which an empty field keeps for that type alone. */
   readonly storedUrlType: DatabaseCheckType | undefined;
   /** Tags as typed, separated by commas (Latin or Arabic). */
@@ -360,6 +368,7 @@ function httpDraft(config: HttpConfig | undefined) {
     followRedirects: config?.followRedirects ?? true,
     ignoreTlsErrors: config?.ignoreTlsErrors ?? false,
     method: config?.method ?? "GET",
+    proxy: config?.proxy ?? "",
     tlsExpiry: config?.tlsExpiryDays !== undefined,
     tlsExpiryDays: String(config?.tlsExpiryDays ?? tlsExpiryDefaultDays),
     url: config?.url ?? "",
@@ -410,7 +419,7 @@ function dockerDraft(config: DockerConfig | undefined): {
 }
 
 /** The stored credentials' names, with every secret field empty. */
-function credentialsDraft({ auth, headers }: CredentialsView) {
+function credentialsDraft({ auth, headers, proxyUser }: CredentialsView) {
   const kind: AuthKind = auth?.kind ?? "none";
   return {
     auth: kind,
@@ -421,7 +430,10 @@ function credentialsDraft({ auth, headers }: CredentialsView) {
       value: "",
     })),
     password: "",
+    proxyPassword: "",
+    proxyUser: proxyUser ?? "",
     storedAuth: auth?.kind,
+    storedProxyAuth: proxyUser !== undefined,
     token: "",
     user: auth?.kind === "basic" ? auth.user : "",
   };
@@ -681,6 +693,7 @@ function configOf(draft: MonitorDraft, refusals: Refusals): unknown {
         followRedirects: draft.followRedirects,
         ignoreTlsErrors: draft.ignoreTlsErrors,
         method: draft.method,
+        ...(draft.proxy.trim() !== "" && { proxy: draft.proxy.trim() }),
         type: "http",
         url: refusals.required("config.url", draft.url),
         // Off posts no day count at all (absent means off); only an https address has a certificate to read.
@@ -754,9 +767,26 @@ function credentialsOf(draft: MonitorDraft, refusals: Refusals): unknown {
   } else if (draft.auth === "bearer") {
     auth = { kind: "bearer", token: keep("bearer", draft.token) };
   }
-  return auth === undefined && headers.length === 0
+  const proxyAuth = proxyAuthOf(draft, refusals);
+  return auth === undefined && headers.length === 0 && proxyAuth === undefined
     ? undefined
-    : { auth, headers };
+    : { auth, headers, ...(proxyAuth && { proxyAuth }) };
+}
+
+/** The proxy's user name and password, only beside a proxy; a stored password left empty is left out, so the server keeps it. */
+function proxyAuthOf(
+  draft: MonitorDraft,
+  refusals: Refusals
+): { password: string | undefined; user: string } | undefined {
+  if (
+    draft.proxy.trim() === "" ||
+    (draft.proxyUser.trim() === "" && draft.proxyPassword === "")
+  ) {
+    return;
+  }
+  const user = refusals.required("credentials.proxyAuth.user", draft.proxyUser);
+  const kept = draft.storedProxyAuth && draft.proxyPassword === "";
+  return { password: kept ? undefined : draft.proxyPassword, user };
 }
 
 /** The field a schema issue belongs to and the message that words it. */
@@ -810,16 +840,26 @@ const connectionUrlRefusals: Readonly<Record<DatabaseCheckType, MessageId>> = {
   redis: "monitor_error_connection_url_redis",
 };
 
+/** The two http addresses of an HTTP monitor: one that is no http or https URL, and one that carries a user name or a password. */
+const addressRefusals: Readonly<
+  Partial<Record<string, { credentials: MessageId; url: MessageId }>>
+> = {
+  "config.proxy": {
+    credentials: "monitor_error_proxy_credentials",
+    url: "monitor_error_proxy",
+  },
+  "config.url": {
+    credentials: "monitor_error_url_credentials",
+    url: "monitor_error_url",
+  },
+};
+
 /** The message for an issue on a field; the path decides what a custom or format refusal means. */
 function wordingOf(issue: z.core.$ZodIssue, path: string): FieldError {
   const leaf = path.split(".").at(-1) ?? "";
-  if (path === "config.url") {
-    return {
-      id:
-        issue.code === "custom"
-          ? "monitor_error_url_credentials"
-          : "monitor_error_url",
-    };
+  const address = addressRefusals[path];
+  if (address) {
+    return { id: issue.code === "custom" ? address.credentials : address.url };
   }
   if (path === "config.host") {
     return { id: "monitor_error_host" };
@@ -952,6 +992,9 @@ const textFields = [
   "name",
   "password",
   "port",
+  "proxy",
+  "proxyPassword",
+  "proxyUser",
   "query",
   "resolver",
   "retentionDays",

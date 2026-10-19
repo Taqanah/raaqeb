@@ -162,6 +162,9 @@ export const captureModes = ["off", "on_failure", "always"] as const;
 export const captureModeSchema = z.enum(captureModes);
 export type CaptureMode = z.infer<typeof captureModeSchema>;
 
+/** Room for a proxy's address, as for a connection URL. */
+export const proxyUrlMaxLength = 2048;
+
 export const httpConfigSchema = z.object({
   assertions: z
     .array(assertionSchema)
@@ -173,6 +176,14 @@ export const httpConfigSchema = z.object({
   followRedirects: z.boolean().default(true),
   ignoreTlsErrors: z.boolean().default(false),
   method: z.enum(httpMethods).default("GET"),
+  /** The monitor's own proxy, http or https, which overrides the install's environment (CONTEXT.md "Outbound proxy"); its user name and password are sealed in the credentials, never in this URL. */
+  proxy: z
+    .url({ protocol: httpProtocol })
+    .max(proxyUrlMaxLength)
+    .refine((url) => !(URL.canParse(url) && hasCredentials(new URL(url))), {
+      message: "a proxy URL with a user name or a password is refused",
+    })
+    .optional(),
   /** Days before expiry that warn; absent means the option is off (default 14). */
   tlsExpiryDays: z.int().min(1).max(365).optional(),
   type: z.literal("http"),
@@ -479,6 +490,17 @@ export const monitorInputSchema = monitorFieldsSchema
         code: "custom",
         message: "a connection URL this check type cannot read",
         path: ["credentials", "url"],
+      });
+    }
+    // A proxy's user name and password go with a proxy that is there to ask for them.
+    if (
+      credentials?.proxyAuth !== undefined &&
+      !(config.type === "http" && config.proxy !== undefined)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "a proxy user name and password need a proxy",
+        path: ["credentials", "proxyAuth"],
       });
     }
     if (config.type !== "http") {

@@ -13,4 +13,6 @@ The file holds every credential in clear: monitor credentials, channel secrets a
 
 Import works only into an install with no monitors, status pages, components, incidents or maintenance windows, and replaces the settings that travel: the install language, the time zone, the clock and the calendar, the appearance settings, the retention, the size budget and the release check switch. The public address, the trusted proxies, the request log switch, the sign-in settings and the operator's own preferences stay as the new install has them. Ids travel, so status page addresses, heartbeat URLs and subscribers' links keep working once the domain points at the new server. The operator account, certificate records and the notification queue stay behind.
 
+The file names its format. An install reads its own and the earlier ones it can still take in as they are, so a backup from 0.1 or 0.2 imports, with no proxy on any HTTP monitor. A file written by a newer release, whose format this one does not know, is refused by name, never read wrongly: upgrade the install you import into first.
+
 A proxy that caps request bodies must let the file through ([reverse proxy and TLS](/en/docs/operate/reverse-proxy)).

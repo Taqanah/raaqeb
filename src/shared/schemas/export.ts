@@ -308,10 +308,10 @@ export const headerSchema = z.object({
 });
 export type Header = z.output<typeof headerSchema>;
 
-/** The versions an import reads: this one, and version 1, written before maintenance series. */
+/** The versions an import reads: this one, and version 1, written before maintenance series and before an HTTP monitor's own proxy. */
 export const readableExportVersions: readonly number[] = [1, exportVersion];
 
-/** A first line of version 1 as this version reads it: no maintenance series, and every window of none. Anything that is not such a line comes back as it came, for the header's schema to refuse. */
+/** A first line of version 1 as this version reads it: no maintenance series, and every window of none; its monitors carry no proxy, which reads as none. Anything that is not such a line comes back as it came, for the header's schema to refuse. */
 export function fromVersion1(first: unknown): unknown {
   const parsed = version1Schema.safeParse(first);
   if (!parsed.success) {

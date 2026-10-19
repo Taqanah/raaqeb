@@ -33,6 +33,32 @@ export const bodyReadBytes = 1_048_576;
 /** With redirects on, the check follows at most this many; the next fails the attempt as too many redirects. */
 export const redirectCap = 10;
 
+/**
+ * The `proxy` option of a monitor's own proxy: its address, its sealed user
+ * name and password as the proxy's Basic authorization, and the install's
+ * `NO_PROXY` not applied, since the operator asked for this proxy for this
+ * monitor. Nothing for a monitor with none, so the proxy environment decides.
+ */
+export function proxyOf(
+  config: HttpConfig,
+  credentials: Credentials | undefined
+): Bun.FetchProxyOption | undefined {
+  if (config.proxy === undefined) {
+    return;
+  }
+  const auth = credentials?.proxyAuth;
+  return {
+    // RFC 7617, as the target's own basic auth is built; Bun sends it with the CONNECT or the request.
+    ...(auth && {
+      headers: {
+        "Proxy-Authorization": `Basic ${new TextEncoder().encode(`${auth.user}:${auth.password}`).toBase64()}`,
+      },
+    }),
+    respectNoProxy: false,
+    url: config.proxy,
+  };
+}
+
 /** Runs one check of the monitor now: attempts until one succeeds or the retries are spent. */
 export function runHttpCheck(
   monitor: HttpMonitor,
@@ -120,6 +146,8 @@ function requestInit(
     body: bodyless ? undefined : config.body,
     headers: requestHeaders(credentials),
     method: config.method,
+    // The monitor's own proxy; without one the option is left out, so Bun reads the proxy environment at each request.
+    proxy: proxyOf(config, credentials),
     // The check follows redirects itself (send), so the cap and the one timeout hold.
     redirect: "manual",
     signal: AbortSignal.timeout(timeoutMs),

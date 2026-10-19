@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
+  setProxyEnvironment,
+  startProxy,
+} from "@/server/checks/proxy-fixture.ts";
+import {
   type PostgresPool,
   postgresExecutor,
 } from "@/server/storage/connection.ts";
@@ -178,5 +182,33 @@ describe("the health command", () => {
         new Error(`ECONNREFUSED ${String(input)}`)
       )) as typeof fetch;
     expect(await healthCommand(url, refusing)).toBe(1);
+  });
+});
+
+describe("the health command under the proxy environment", () => {
+  test("asks the process at the boot address directly, never through the install's outbound proxy", async () => {
+    const proxy = startProxy(() => ({ status: 503 }));
+    const restore = setProxyEnvironment({
+      ALL_PROXY: proxy.url,
+      HTTP_PROXY: proxy.url,
+    });
+    const boundProcess = Bun.serve({
+      fetch: () => new Response("{}"),
+      hostname: "127.0.0.1",
+      port: 0,
+    });
+    try {
+      expect(
+        await healthCommand(
+          `http://127.0.0.1:${boundProcess.port}/health`,
+          fetch
+        )
+      ).toBe(0);
+      expect(proxy.requests).toEqual([]);
+    } finally {
+      await boundProcess.stop(true);
+      restore();
+      proxy.stop();
+    }
   });
 });

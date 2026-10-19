@@ -105,6 +105,36 @@ async function empty(install: Install): Promise<boolean> {
   return true;
 }
 
+/** A version 2 first line rewritten as version 1 wrote it: no maintenance series, and no window of one. */
+function asVersion1(header: {
+  configuration: {
+    maintenanceComponents: { windowId: string }[];
+    maintenanceSeries?: unknown;
+    maintenanceSeriesComponents?: unknown;
+    maintenanceWindows: { id: string; seriesId?: string | null }[];
+  };
+  version: number;
+}) {
+  header.version = 1;
+  header.configuration.maintenanceSeries = undefined;
+  header.configuration.maintenanceSeriesComponents = undefined;
+  // A version 1 window has no series, so the series' occurrence goes with it.
+  header.configuration.maintenanceWindows =
+    header.configuration.maintenanceWindows
+      .filter((each) => each.seriesId === null)
+      .map((each) => {
+        const { seriesId: _, ...window } = each;
+        return window;
+      });
+  header.configuration.maintenanceComponents =
+    header.configuration.maintenanceComponents.filter((link) =>
+      header.configuration.maintenanceWindows.some(
+        (each) => each.id === link.windowId
+      )
+    );
+  return header;
+}
+
 describe("an import", () => {
   test("of an export from a SQLite install into an empty install round-trips every record and answers how many monitors, pages and records it wrote", async () => {
     const from = await source();
@@ -243,6 +273,46 @@ describe("an import", () => {
     expect(await decrypt(into.key, String(subscription?.credentials))).toBe(
       subscriberUrl
     );
+  });
+
+  test("carries an HTTP monitor's own proxy, its user name and password in clear in the file and sealed again with this install's key", async () => {
+    const from = await source();
+    const api = await from.storage.monitors.find(from.ids.api);
+    if (api?.config.type !== "http") {
+      throw new Error("the fixture's API monitor is an HTTP monitor");
+    }
+    const proxy = "http://proxy.example.test:3128";
+    await from.storage.monitors.update(
+      api.id,
+      { ...api, config: { ...api.config, proxy } },
+      await sealCredentials(from.key, {
+        headers: [],
+        proxyAuth: { password: "proxy password 9", user: "ops" },
+      })
+    );
+    const lines = await exportLines(from);
+    const header = JSON.parse(lines[0] ?? "{}");
+    const row = header.configuration.monitors.find(
+      (each: { id: string }) => each.id === api.id
+    );
+    expect(row.config).toMatchObject({ proxy });
+    expect(row.credentials.proxyAuth).toEqual({
+      password: "proxy password 9",
+      user: "ops",
+    });
+    const into = await target();
+    expect(
+      (await importInstall(into.storage, into.key, fileOf(lines), now)).ok
+    ).toBe(true);
+    expect((await into.storage.monitors.find(api.id))?.config).toMatchObject({
+      proxy,
+    });
+    const sealed = await into.storage.monitors.credentialsOf(api.id);
+    expect(sealed).not.toContain("proxy password 9");
+    expect((await openCredentials(into.key, sealed ?? ""))?.proxyAuth).toEqual({
+      password: "proxy password 9",
+      user: "ops",
+    });
   });
 
   test("keeps a webhook subscriber apart by the SHA-256 of its URL, computed again from the URL", async () => {
@@ -477,29 +547,29 @@ describe("an import", () => {
     expect(outages[0]?.acknowledgedAt).toBeUndefined();
   });
 
-  test("of a file of version 1, written before maintenance series, imports its windows with no series", async () => {
+  test("of a version 1 file, a 0.1 or 0.2 backup with no proxy on any monitor, imports as it always did", async () => {
     const from = await source();
     const into = await target();
     const lines = await exportLines(from, "configuration");
     const header = JSON.parse(lines[0] ?? "{}");
-    header.version = 1;
-    header.configuration.maintenanceSeries = undefined;
-    header.configuration.maintenanceSeriesComponents = undefined;
-    // A version 1 window has no series, so the series' occurrence goes with it.
-    header.configuration.maintenanceWindows =
-      header.configuration.maintenanceWindows
-        .filter((each: { seriesId: string | null }) => each.seriesId === null)
-        .map((each: { seriesId?: string | null }) => {
-          const { seriesId: _, ...window } = each;
-          return window;
-        });
-    header.configuration.maintenanceComponents =
-      header.configuration.maintenanceComponents.filter(
-        (link: { windowId: string }) =>
-          header.configuration.maintenanceWindows.some(
-            (each: { id: string }) => each.id === link.windowId
-          )
-      );
+    expect(header.version).toBe(2);
+    const result = await importInstall(
+      into.storage,
+      into.key,
+      fileOf([JSON.stringify(asVersion1(header))]),
+      now
+    );
+    expect(result.ok).toBe(true);
+    const api = await into.storage.monitors.find(from.ids.api);
+    expect(api?.config).not.toHaveProperty("proxy");
+    expect(await count(into, "monitors")).toBe(await count(from, "monitors"));
+  });
+
+  test("of a file of version 1, written before maintenance series, imports its windows with no series", async () => {
+    const from = await source();
+    const into = await target();
+    const lines = await exportLines(from, "configuration");
+    const header = asVersion1(JSON.parse(lines[0] ?? "{}"));
     expect(
       await importInstall(
         into.storage,

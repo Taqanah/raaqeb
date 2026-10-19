@@ -199,3 +199,68 @@ describe("what the edit form reads of the credentials", () => {
     });
   });
 });
+
+describe("the credentials of an HTTP monitor's own proxy", () => {
+  const withProxy: Credentials = {
+    headers: [],
+    proxyAuth: { password: "pässword", user: "ops" },
+  };
+
+  test("a left-out proxy password keeps the stored one, even under a new user name", () => {
+    expect(
+      mergeCredentials(
+        { headers: [], proxyAuth: { user: "ops-two" } },
+        withProxy
+      )
+    ).toEqual({
+      auth: undefined,
+      headers: [],
+      proxyAuth: { password: "pässword", user: "ops-two" },
+    });
+  });
+
+  test("a typed proxy password replaces the stored one", () => {
+    expect(
+      mergeCredentials(
+        { headers: [], proxyAuth: { password: "new", user: "ops" } },
+        withProxy
+      )
+    ).toEqual({
+      auth: undefined,
+      headers: [],
+      proxyAuth: { password: "new", user: "ops" },
+    });
+  });
+
+  test("a left-out proxy password with none stored is refused, as a basic auth's is", () => {
+    expect(
+      mergeCredentials({ headers: [], proxyAuth: { user: "ops" } }, undefined)
+    ).toBeUndefined();
+    expect(
+      mergeCredentials({ headers: [], proxyAuth: { user: "ops" } }, stored)
+    ).toBeUndefined();
+  });
+
+  test("posting no proxy credentials drops the stored ones", () => {
+    expect(mergeCredentials({ headers: [] }, withProxy)).toEqual({
+      auth: undefined,
+      headers: [],
+    });
+  });
+
+  test("proxy credentials alone are sealed, and open to the same", async () => {
+    const key = await scratchInstallKey();
+    const sealed = await sealCredentials(key, withProxy);
+    expect(sealed).toBeDefined();
+    expect(sealed).not.toContain("pässword");
+    expect(await openCredentials(key, sealed ?? "")).toEqual(withProxy);
+  });
+
+  test("the form reads the proxy's user name, never its password", () => {
+    const view = credentialsView(withProxy);
+    expect(view.proxyUser).toBe("ops");
+    expect(JSON.stringify(view)).not.toContain("pässword");
+    expect(credentialsView(stored).proxyUser).toBeUndefined();
+    expect(credentialsView(undefined).proxyUser).toBeUndefined();
+  });
+});

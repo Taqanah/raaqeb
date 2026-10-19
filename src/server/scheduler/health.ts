@@ -88,7 +88,8 @@ export async function healthCommand(
   fetchFn: typeof fetch
 ): Promise<0 | 1> {
   try {
-    const response = await fetchFn(url);
+    // This machine's own process, never through the install's outbound proxy, which would send the probe to the proxy's loopback.
+    const response = await fetchFn(url, { proxy: false });
     return response.status === 200 ? 0 : 1;
   } catch {
     return 1;

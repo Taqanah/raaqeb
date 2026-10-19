@@ -1401,3 +1401,167 @@ describe("edges of the events and reminder in the form", () => {
     expect(parsed.ok && parsed.input.events).toEqual([]);
   });
 });
+
+describe("an HTTP monitor's own proxy in the draft", () => {
+  const proxy = "http://proxy.example.test:3128";
+  const proxied: MonitorFields = {
+    ...httpFields,
+    config: {
+      assertions: [{ codes: ["2xx"], kind: "status" }],
+      captureMode: "off",
+      followRedirects: true,
+      ignoreTlsErrors: false,
+      method: "GET",
+      proxy,
+      type: "http",
+      url: "https://api.example.test/health",
+    },
+  };
+
+  test("a new monitor has none, and posts neither a proxy nor its credentials", () => {
+    const draft = draftOf(undefined, noCredentials);
+    expect([draft.proxy, draft.proxyUser, draft.proxyPassword]).toEqual([
+      "",
+      "",
+      "",
+    ]);
+    const parsed = inputOf(typed({}));
+    expect(parsed.ok && parsed.input.config).not.toHaveProperty("proxy");
+    expect(parsed.ok && parsed.input.credentials).toBe(undefined);
+  });
+
+  test("a stored proxy comes back as its address and its user name, the password left out so the server keeps it", () => {
+    const view: CredentialsView = {
+      auth: undefined,
+      headers: [],
+      proxyUser: "ops",
+      url: false,
+    };
+    const draft = draftOf(monitorOf(proxied), view);
+    expect([draft.proxy, draft.proxyUser, draft.proxyPassword]).toEqual([
+      proxy,
+      "ops",
+      "",
+    ]);
+    const parsed = inputOf(draft);
+    expect(parsed.ok && parsed.input.config).toMatchObject({ proxy });
+    expect(parsed.ok && parsed.input.credentials).toEqual({
+      headers: [],
+      proxyAuth: { user: "ops" },
+    });
+  });
+
+  test("a typed address, user name and password are posted, the address trimmed", () => {
+    const parsed = inputOf(
+      typed({
+        proxy: `  ${proxy}  `,
+        proxyPassword: "pässword",
+        proxyUser: "ops",
+      })
+    );
+    expect(parsed.ok && parsed.input.config).toMatchObject({ proxy });
+    expect(parsed.ok && parsed.input.credentials).toEqual({
+      headers: [],
+      proxyAuth: { password: "pässword", user: "ops" },
+    });
+  });
+
+  test("an address alone posts no credentials, and a password typed new is posted even empty beside a user name", () => {
+    const alone = inputOf(typed({ proxy }));
+    expect(alone.ok && alone.input.credentials).toBe(undefined);
+    const empty = inputOf(typed({ proxy, proxyUser: "ops" }));
+    expect(empty.ok && empty.input.credentials).toEqual({
+      headers: [],
+      proxyAuth: { password: "", user: "ops" },
+    });
+  });
+
+  test("an emptied address drops the proxy and whatever user name and password the fields still hold", () => {
+    const parsed = inputOf(
+      typed({ proxy: "  ", proxyPassword: "pw", proxyUser: "ops" })
+    );
+    expect(parsed.ok && parsed.input.config).not.toHaveProperty("proxy");
+    expect(parsed.ok && parsed.input.credentials).toBe(undefined);
+  });
+
+  test("the proxy's credentials ride beside the authentication and the headers", () => {
+    const parsed = inputOf(
+      typed({
+        auth: "bearer",
+        proxy,
+        proxyPassword: "pw",
+        proxyUser: "ops",
+        token: "t",
+      })
+    );
+    expect(parsed.ok && parsed.input.credentials).toEqual({
+      auth: { kind: "bearer", token: "t" },
+      headers: [],
+      proxyAuth: { password: "pw", user: "ops" },
+    });
+  });
+
+  test("a password with no user name is refused on the user name", () => {
+    expect(errorsOf(typed({ proxy, proxyPassword: "pw" }))).toMatchObject({
+      "credentials.proxyAuth.user": { id: "monitor_error_required" },
+    });
+  });
+
+  test("an address that is no http or https URL, or that carries a user name, is refused with its own message", () => {
+    expect(
+      errorsOf(typed({ proxy: "socks5://proxy.example.test:1080" }))
+    ).toMatchObject({ "config.proxy": { id: "monitor_error_proxy" } });
+    expect(errorsOf(typed({ proxy: "proxy.example.test" }))).toMatchObject({
+      "config.proxy": { id: "monitor_error_proxy" },
+    });
+    expect(
+      errorsOf(typed({ proxy: "http://ops:pw@proxy.example.test" }))
+    ).toMatchObject({
+      "config.proxy": { id: "monitor_error_proxy_credentials" },
+    });
+  });
+
+  test("a user name with a colon is refused where it was typed", () => {
+    expect(
+      errorsOf(typed({ proxy, proxyPassword: "pw", proxyUser: "a:b" }))
+    ).toMatchObject({
+      "credentials.proxyAuth.user": { id: "monitor_error_user" },
+    });
+  });
+
+  test("only an HTTP monitor posts one: a TCP monitor drops what the fields still hold", () => {
+    const tcp = inputOf({
+      ...draftOf(monitorOf(tcpFields), noCredentials),
+      proxy,
+      proxyPassword: "pw",
+      proxyUser: "ops",
+    });
+    expect(tcp.ok && tcp.input.config).not.toHaveProperty("proxy");
+    expect(tcp.ok && tcp.input.credentials).toBe(undefined);
+  });
+
+  test("a duplicate keeps the address and asks for the user name and password again", () => {
+    const draft = copyDraftOf(monitorOf(proxied), "نسخة");
+    expect([draft.proxy, draft.proxyUser, draft.proxyPassword]).toEqual([
+      proxy,
+      "",
+      "",
+    ]);
+  });
+
+  test("the fields take what was typed", () => {
+    const draft = [
+      ["proxy", proxy],
+      ["proxyUser", "ops"],
+      ["proxyPassword", "pw"],
+    ].reduce(
+      (current, [name, value]) => withField(current, name ?? "", value ?? ""),
+      draftOf(undefined, noCredentials)
+    );
+    expect([draft.proxy, draft.proxyUser, draft.proxyPassword]).toEqual([
+      proxy,
+      "ops",
+      "pw",
+    ]);
+  });
+});

@@ -1,0 +1,57 @@
+---
+title: Outbound proxy
+description: Reach the internet through an HTTP proxy: the environment variables that route the HTTP checks and the notifications, an HTTP monitor's own proxy, and the checks a proxy never covers.
+---
+
+An install on a network that reaches the internet only through a proxy sends its HTTP checks, its notifications and its daily release check through that proxy. There is one route for the whole install and one override for a single HTTP monitor. There is no SOCKS support, and no list of shared proxies to choose from.
+
+## For the whole install
+
+Set `HTTP_PROXY` and `HTTPS_PROXY` to the proxy's address, and `NO_PROXY` to what must not go through it. Set them where the install keeps its [boot settings](/en/docs/operate/boot-settings), then restart Raaqeb:
+
+```sh
+HTTPS_PROXY='http://proxy.internal:3128'
+HTTP_PROXY='http://proxy.internal:3128'
+NO_PROXY='localhost,127.0.0.1,.internal'
+```
+
+These are not Raaqeb's own settings: the runtime reads them at each request, so they are not on the settings pages and Raaqeb never prints them. A proxy that wants a user name and password takes them in the address, `http://user:password@proxy.internal:3128`. The proxy's address is `http` or `https`; the variable decides the proxy for the target's scheme, `HTTP_PROXY` for an `http://` target and `HTTPS_PROXY` for an `https://` one, and `ALL_PROXY` serves both when the one for the scheme is not set. Lower-case names work as well. An address that names another kind of proxy, such as `socks5://`, is ignored, and the request goes direct.
+
+`NO_PROXY` is a list of hosts separated by commas or spaces:
+
+| Entry | Matches |
+|---|---|
+| `*` | every host |
+| `example.com`, `.example.com`, `*.example.com` | `example.com` and its subdomains |
+| `10.0.0.5`, `::1` | that address |
+| `10.0.0.0/8` | every address in the range |
+| `example.com:8080` | the host, on that port only |
+
+### What goes through it
+
+- HTTP checks, over `http` through the proxy and over `https` through a tunnel the proxy opens (`CONNECT`), each redirect they follow as well, and with "ignore TLS errors" on as with it off. Test now takes the same road as the scheduled check.
+- Notification channels that post over HTTP: webhook, Slack, Discord, ntfy and Telegram.
+- A subscriber's webhook. Raaqeb resolves its host name first and connects to the address it checked, so `NO_PROXY` is matched against that address: list an address or a range, since a host name there does not match.
+- The daily check for a newer release.
+
+### What never goes through it
+
+A proxy for HTTP is no help to a check that does not speak HTTP, and the install does not tunnel them:
+
+- TCP, DNS and database monitors (Postgres, MySQL and Redis) connect directly, as does the DNS resolver they name.
+- A Docker monitor asks the daemon directly: it is on your own host or network, so its address is never sent to the proxy.
+- Email, the email channel and the sign-in mail, is sent over SMTP straight to the server you chose.
+- The certificate expiry option reads the certificate over its own TLS connection. On a network with no way out but the proxy it cannot read one, and the monitor's own checks still run.
+- `raaqeb health`, which asks the process on its own address.
+
+A network that allows only the proxy out therefore needs a way to reach the servers of these checks, or monitors that do not need one.
+
+## For one HTTP monitor
+
+An HTTP monitor may carry its own proxy: the **Proxy** field of its **Request** section, an `http` or `https` address, and under it, when the proxy asks for one, a user name and a password. It replaces the install's route for that monitor, and `NO_PROXY` does not apply to it, since you asked for this proxy for this monitor. Left empty, the monitor follows the install's. The user name and password are sealed with the install key like the monitor's other credentials, and the form never shows the password again; leave it empty to keep it. An address with the user name in it is refused: put them in their own fields.
+
+The proxy is for the monitor's requests only. It does not change the certificate expiry read, which is direct.
+
+## When the proxy refuses
+
+A proxy that will not open the tunnel, or is down, fails the check. The check's detail shows the proxy's own words, for instance `Proxy refused to open a tunnel: 403 Forbidden`, under the reason "Unknown error". A proxy that cannot be reached is "Connection refused" or "DNS lookup failed", and those reasons name the target's host, not the proxy's; the error text beside them names the one that failed. If a monitor works with the proxy field empty and fails with it set, the proxy is where to look.

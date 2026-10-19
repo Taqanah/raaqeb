@@ -409,6 +409,11 @@ Arabic: إعداد
 A value the operator edits in the admin area and Raaqeb stores in the database. Everything that is not a boot setting. The trusted proxies are a setting that `RAAQEB_TRUSTED_PROXIES` overrides: where the variable is set it wins, and the field shows as managed by environment.
 _Avoid_: preference, option, config
 
+**Outbound proxy**:
+Arabic: الوكيل الصادر
+The HTTP proxy that the HTTP checks, the notification channels' senders and the daily release check connect through, for an install that reaches the internet only through one. Install-wide it is the runtime's `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` from the environment, read at each request. An HTTP monitor may set its own, an http or https address whose user name and password are sealed with its credentials; it overrides the environment for that monitor and ignores `NO_PROXY`. Never SOCKS. A TCP, DNS, database or Docker check, the certificate read and an SMTP send open their own connections and never go through it.
+_Avoid_: trusted proxies (the reverse proxy in front of Raaqeb, the other direction), gateway, tunnel
+
 **Setup check**:
 Arabic: تهيئة راقب
 One rule, shown on a read-only page under settings, that compares what the server sees with what the install is configured for and says, in plain words, what is wrong and how to fix it: forwarded headers from a peer that is not a trusted proxy, a public address that is not the origin the browser is at, no email channel, a data directory open to other users while it holds secrets, a data directory holding secrets on a container's overlay root filesystem, on a volume Docker made without a name, or in memory on tmpfs. Each judges facts the server already holds; none makes an outbound call or stores anything. A check that cannot know says nothing: a root filesystem that is no overlay may be a host's disk or a VM's ephemeral one, so it gets no verdict.

@@ -43,8 +43,9 @@ Raaqeb reads at most 1 MB of the body and cancels the rest; the assertions run o
 | **Ignore TLS errors** | Accepts expired and self-signed certificates. | Off. |
 | **Authentication** | **None**, **User name and password** (basic auth) or **Bearer token**. | None. A user name cannot contain a colon. |
 | **Request headers** | Custom headers sent with every attempt. Select **Add header** for another. | Up to 20, each name once. A value is one line of Latin characters. |
+| **Proxy** | An `http` or `https` address this monitor's requests go through, in place of the install's [outbound proxy](/en/docs/operate/outbound-proxy), and whatever `NO_PROXY` lists. A proxy that asks for one takes a **Proxy user name** and **Proxy password** under it. | Empty: the install's proxy, if it has one. No user name in the address, and no SOCKS. |
 
-Authentication and request headers are credentials: Raaqeb stores them encrypted with the install key and never shows their values again. On edit, a saved secret shows "Saved; leave it empty to keep it". A renamed header needs its value typed again. If you set both **Authentication** and a custom `Authorization` header, **Authentication** wins.
+Authentication, request headers and the proxy's user name and password are credentials: Raaqeb stores them encrypted with the install key and never shows their values again. On edit, a saved secret shows "Saved; leave it empty to keep it". A renamed header needs its value typed again. If you set both **Authentication** and a custom `Authorization` header, **Authentication** wins.
 
 When following redirects, a redirect to another origin drops the `Authorization`, `Cookie` and `Proxy-Authorization` headers; other headers go on. A `303`, or a `301` or `302` answering a `POST`, turns the next request into a `GET` with no body. A redirect to anything but `http` or `https` fails the attempt.
 

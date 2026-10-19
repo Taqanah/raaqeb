@@ -5013,6 +5013,30 @@ msgid "auth_password_length"
 msgstr "اكتب من 8 إلى 128 حرفًا."
 
 #. js-lingui-explicit-id
+msgid "monitor_field_proxy"
+msgstr "الوكيل"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_proxy_hint"
+msgstr "عنوان يبدأ بـ http أو https. إذا تُرك فارغًا اتّبعت المراقبة إعدادات الوكيل في التثبيت، وإذا كُتب هنا حلّ محلها لهذه المراقبة."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_proxy_user"
+msgstr "اسم مستخدم الوكيل"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_proxy_password"
+msgstr "كلمة مرور الوكيل"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_proxy"
+msgstr "أدخل عنوانًا كاملًا يبدأ بـ http أو https."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_proxy_credentials"
+msgstr "ضع اسم المستخدم وكلمة المرور في حقليهما، لا في العنوان."
+
+#. js-lingui-explicit-id
 msgid "setting_public_address_invalid"
 msgstr "اكتب عنوانًا يبدأ بـ http أو https وينتهي عند المضيف أو منفذه، بلا مسار، مثل ⁦https://status.example.com⁩."
 

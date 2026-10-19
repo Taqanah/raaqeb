@@ -5017,6 +5017,30 @@ msgid "setting_public_address_invalid"
 msgstr "Enter an address that starts with http or https and ends at the host or its port, with no path, like https://status.example.com."
 
 #. js-lingui-explicit-id
+msgid "monitor_field_proxy"
+msgstr "Proxy"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_proxy_hint"
+msgstr "An http or https address. Left empty, the monitor follows the install's proxy settings; an address here replaces them for this monitor."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_proxy_user"
+msgstr "Proxy user name"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_proxy_password"
+msgstr "Proxy password"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_proxy"
+msgstr "Enter a full address starting with http or https."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_proxy_credentials"
+msgstr "Put the user name and password in their own fields, not in the address."
+
+#. js-lingui-explicit-id
 msgid "maintenance_refused_weekdays"
 msgstr "Choose at least one day."
 

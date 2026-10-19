@@ -170,6 +170,22 @@ describe("the export file's format", () => {
     }
   });
 
+  test("a header of version 1, the format before an HTTP monitor's own proxy, is still this format", () => {
+    const {
+      maintenanceSeries: _,
+      maintenanceSeriesComponents: __,
+      ...older
+    } = configurationSchema.encode(empty);
+    const earlier = {
+      configuration: older,
+      exportedAt: "2026-09-28T12:00:00.000Z",
+      mode: "full",
+      raaqeb: "export",
+      version: 1,
+    };
+    expect(headerSchema.safeParse(fromVersion1(earlier)).success).toBe(true);
+  });
+
   test("a header of version 1 reads as this format with no maintenance series and every window of none", () => {
     const encoded = configurationSchema.encode(empty);
     const {
@@ -208,10 +224,14 @@ describe("the export file's format", () => {
       exportedAt: "2026-09-28T12:00:00.000Z",
       mode: "full",
       raaqeb: "export",
-      version: 1,
+      version: 3,
     };
     expect(headerSchema.safeParse(other).success).toBe(false);
-    expect(versionProbeSchema.parse(other).version).toBe(1);
+    expect(versionProbeSchema.parse(other).version).toBe(3);
+    // Version 1 is read only once lifted to this format.
+    expect(headerSchema.safeParse({ ...other, version: 1 }).success).toBe(
+      false
+    );
   });
 
   test("a check record names its result and reason by name and its time in ISO 8601", () => {

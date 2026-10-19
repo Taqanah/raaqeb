@@ -1,6 +1,6 @@
 /**
  * A monitor's credentials: an HTTP monitor's basic auth or
- * bearer token and custom request headers, or a database monitor's
+ * bearer token, custom request headers and its own proxy's user name and password, or a database monitor's
  * connection URL. Stored as one ciphertext under the install key,
  * never in the monitor's config, never sent back to the browser: the edit
  * form reads the names only, and whether a URL is stored, and a secret
@@ -72,6 +72,8 @@ export const credentialsSchema = z.object({
     .max(headersMax)
     .superRefine(namedOnce)
     .default([]),
+  /** The user name and password the HTTP monitor's own proxy asks for; the proxy's address is in the monitor's config. */
+  proxyAuth: z.object({ password: secret, user }).optional(),
   /** A database monitor's connection URL, its password inside it; whether it fits the check type is the monitor's rule (monitor.ts). */
   url: connectionUrl.optional(),
 });
@@ -94,6 +96,8 @@ export const credentialsInputSchema = z.object({
     .max(headersMax)
     .superRefine(namedOnce)
     .default([]),
+  /** The proxy's user name and password; a password left out keeps the stored one. */
+  proxyAuth: z.object({ password: secret.optional(), user }).optional(),
   /** Left out keeps the stored one. */
   url: connectionUrl.optional(),
 });
@@ -106,6 +110,8 @@ export interface CredentialsView {
     | { readonly kind: "bearer" }
     | undefined;
   readonly headers: readonly { readonly name: string }[];
+  /** The user name the proxy is signed in with; never its password. */
+  readonly proxyUser?: string | undefined;
   /** Whether a connection URL is stored; never the URL. */
   readonly url: boolean;
 }
