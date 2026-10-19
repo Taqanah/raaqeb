@@ -131,12 +131,24 @@ export async function documentLanguage(
   };
 }
 
+/** Each locale's public part, cut once, so the document's text of it is written once too. */
+const publicParts = new Map<Locale, Catalog>();
+
+async function publicPart(locale: Locale): Promise<Catalog> {
+  let part = publicParts.get(locale);
+  if (part === undefined) {
+    part = publicCatalog(await loadCatalog(locale));
+    publicParts.set(locale, part);
+  }
+  return part;
+}
+
 /** What a status page's document inlines: the locale the request shows, its direction and the public part of its catalog; the page's own title stands in for the install's. */
 export async function publicDocumentLanguage(
   locale: Locale
 ): Promise<Omit<DocumentLanguage, "title">> {
   return {
-    catalog: publicCatalog(await loadCatalog(locale)),
+    catalog: await publicPart(locale),
     dir: directionOf(locale),
     locale,
   };

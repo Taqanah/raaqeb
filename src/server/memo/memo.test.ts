@@ -241,6 +241,102 @@ describe("the memo", () => {
   });
 });
 
+describe("a stale entry", () => {
+  const later: Validity = { counter: 8, day };
+  /** A render that answers `body` after `ms`, counting its calls and whether each refreshed a stale entry. */
+  function slow(body: string, ms: number, init: ResponseInit = {}) {
+    const refreshes: boolean[] = [];
+    return {
+      refreshes,
+      render: async (refresh: boolean) => {
+        refreshes.push(refresh);
+        await Bun.sleep(ms);
+        return new Response(body, {
+          headers: {
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html; charset=utf-8",
+          },
+          ...init,
+        });
+      },
+    };
+  }
+
+  test("is answered at once when its refresh does not land within the wait, and the refresh lands for the next request", async () => {
+    const memo = createMemo(() => 10, isStorable, 50);
+    await memo.respond(get(), "k", at, counting(() => page("before")).render);
+    const refresh = slow("after", 200);
+    const started = performance.now();
+    const first = await memo.respond(get(), "k", later, refresh.render);
+    expect(performance.now() - started).toBeLessThan(150);
+    expect(await first.text()).toBe("before");
+    await Bun.sleep(250);
+    const next = await memo.respond(get(), "k", later, refresh.render);
+    expect(await next.text()).toBe("after");
+    expect(refresh.refreshes).toEqual([true]);
+  });
+
+  test("is answered fresh when its refresh lands within the wait", async () => {
+    const memo = createMemo(() => 10, isStorable, 200);
+    await memo.respond(get(), "k", at, counting(() => page("before")).render);
+    const refresh = slow("after", 20);
+    const fresh = await memo.respond(get(), "k", later, refresh.render);
+    expect(await fresh.text()).toBe("after");
+  });
+
+  test("everyone asking it while it refreshes is answered from memory, and it refreshes once", async () => {
+    const memo = createMemo(() => 10, isStorable, 20);
+    await memo.respond(get(), "k", at, counting(() => page("before")).render);
+    const refresh = slow("after", 200);
+    const answers = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        memo.respond(get(), "k", later, refresh.render)
+      )
+    );
+    const bodies = await Promise.all(answers.map((each) => each.text()));
+    expect(new Set(bodies)).toEqual(new Set(["before"]));
+    expect(refresh.refreshes).toEqual([true]);
+  });
+
+  test("a counter that moves again while it refreshes costs no second refresh, and the next change after it lands refreshes again", async () => {
+    const memo = createMemo(() => 10, isStorable, 20);
+    await memo.respond(get(), "k", at, counting(() => page("before")).render);
+    const refresh = slow("after", 100);
+    const first = await memo.respond(get(), "k", later, refresh.render);
+    const moved = await memo.respond(
+      get(),
+      "k",
+      { counter: 9, day },
+      refresh.render
+    );
+    expect([await first.text(), await moved.text()]).toEqual([
+      "before",
+      "before",
+    ]);
+    await Bun.sleep(150);
+    expect(refresh.refreshes).toEqual([true]);
+    const landed = await memo.respond(
+      get(),
+      "k",
+      { counter: 9, day },
+      slow("newest", 0).render
+    );
+    expect(await landed.text()).toBe("newest");
+  });
+
+  test("stays while a refresh is refused a turn, and goes once a refresh answers something no longer kept", async () => {
+    const memo = createMemo(() => 10, isStorable, 200);
+    await memo.respond(get(), "k", at, counting(() => page("before")).render);
+    const refused = slow("busy", 0, { status: 503 });
+    const busy = await memo.respond(get(), "k", later, refused.render);
+    expect(await busy.text()).toBe("before");
+    const gone = slow("gone", 0, { status: 404 });
+    const answer = await memo.respond(get(), "k", later, gone.render);
+    expect(answer.status).toBe(404);
+    expect(memo.size()).toBe(0);
+  });
+});
+
 describe("a memo that keeps not-founds", () => {
   const notFound = () =>
     new Response("<html>not found</html>", {

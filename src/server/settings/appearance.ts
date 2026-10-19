@@ -56,9 +56,9 @@ export async function readAppearance(
   return { density, fontSize, radius, theme };
 }
 
-/** Stores all four settings; never throws. */
+/** Stores all four settings and moves the change counter, since the pages the memo keeps for strangers (sign-in, onboarding) are drawn in them; never throws. */
 export async function saveAppearance(
-  storage: Pick<Storage, "settings">,
+  storage: Pick<Storage, "bump" | "settings">,
   appearance: Appearance
 ): Promise<SaveResult> {
   try {
@@ -66,6 +66,7 @@ export async function saveAppearance(
     await storage.settings.set(appearanceFontSize, appearance.fontSize);
     await storage.settings.set(appearanceDensity, appearance.density);
     await storage.settings.set(appearanceRadius, appearance.radius);
+    await storage.bump();
     return { ok: true };
   } catch {
     return { ok: false, reason: "unavailable" };

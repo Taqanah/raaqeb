@@ -5,6 +5,7 @@ import {
   type StatusPage,
 } from "@/shared/schemas/page.ts";
 import {
+  anonymousPageKey,
   canonicalPaths,
   missingAddress,
   missingView,
@@ -12,6 +13,7 @@ import {
   publicIndexOf,
   publicTarget,
   type ResourceTarget,
+  rendersDocument,
   unresolvedAt,
   type ViewTarget,
 } from "./public.ts";
@@ -914,6 +916,76 @@ const parameterPattern = /\$[A-Za-z]+/g;
 /** A view's address under either locale and either base: the memo resolves it when a page has it. */
 const viewPattern =
   /^(\/en)?(\/status\/x)?(\/|\/history\/?.*|\/incidents\/x|\/maintenance\/x)?$/;
+
+describe("a document the app renders", () => {
+  test("is any route's page, the admin's and the bare host's included", () => {
+    for (const path of [
+      "/",
+      "/sign-in",
+      "/admin/monitors",
+      "/onboarding/account",
+      "/subscriptions/token",
+    ]) {
+      expect(rendersDocument(path), path).toBe(true);
+    }
+  });
+
+  test("is never the API's answer, a server function's, the health check's, a badge's, feed's or summary's, or a subscription's links", () => {
+    for (const path of [
+      "/api/openapi.json",
+      "/api/auth/get-session",
+      "/_serverFn/routes.__root--readDocument",
+      "/health",
+      "/badge.svg",
+      "/en/status/slug/feed.atom",
+      "/status/slug/api/v2/summary.json",
+      "/subscriptions/token/confirm",
+      "/subscriptions/token/unsubscribe",
+    ]) {
+      expect(rendersDocument(path), path).toBe(false);
+    }
+  });
+});
+
+describe("a page everyone without a session gets the same", () => {
+  test("is sign-in, forgot-password, sign-out, a reset page with no link and onboarding's language and database screens, by address and locale", () => {
+    expect(anonymousPageKey("/sign-in", "")).toBe("/sign-in");
+    expect(anonymousPageKey("/sign-in", "?locale=en")).toBe("/sign-in en");
+    expect(anonymousPageKey("/forgot-password", "?locale=ar")).toBe(
+      "/forgot-password ar"
+    );
+    for (const path of [
+      "/sign-out",
+      "/reset-password",
+      "/onboarding",
+      "/onboarding/database",
+    ]) {
+      expect(anonymousPageKey(path, ""), path).toBe(path);
+    }
+  });
+
+  test("is never onboarding's account screen, which fills in the address the request came through", () => {
+    expect(anonymousPageKey("/onboarding/account", "")).toBeUndefined();
+  });
+
+  test("is no page when the search holds anything but a locale the install ships, a reset link included, or the address is spelled otherwise", () => {
+    for (const [path, search] of [
+      ["/sign-in", "?x=1"],
+      ["/sign-in", "?locale=en&x=1"],
+      ["/sign-in", "?locale=fr"],
+      ["/reset-password", "?token=abc"],
+      ["/SIGN-IN", ""],
+      ["/sign-in/", ""],
+      ["/admin", ""],
+      ["/", ""],
+    ] as const) {
+      expect(
+        anonymousPageKey(path, search),
+        `${path}${search}`
+      ).toBeUndefined();
+    }
+  });
+});
 
 describe("the address a frame's not-found renders at", () => {
   test("a month no history has, under the plain address of the page that frames it, or the bare host's when none does", () => {

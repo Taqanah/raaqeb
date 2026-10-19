@@ -21,6 +21,19 @@ export function catalogFromJson(text: string): Catalog {
   return JSON.parse(text) as Catalog;
 }
 
+/** A catalog as the JSON text a document carries, written once per catalog; `<` is escaped so the serializer copies the text whole instead of a character at a time. `catalogFromJson` reads it back. */
+export function catalogText(catalog: Catalog): string {
+  let text = catalogTexts.get(catalog);
+  if (text === undefined) {
+    text = JSON.stringify(catalog).replaceAll("<", "\\u003c");
+    catalogTexts.set(catalog, text);
+  }
+  return text;
+}
+
+/** Each catalog's text, kept while the catalog is: the compiled modules hold theirs for the process's life. */
+const catalogTexts = new WeakMap<Catalog, string>();
+
 /**
  * The words of the notice a failed page shows. Every document carries
  * them: the public part of a catalog includes them, and a document whose own

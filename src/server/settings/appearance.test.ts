@@ -128,6 +128,7 @@ describe("the appearance page's save", () => {
     expect(
       await saveAppearance(
         {
+          bump: () => store.bump(),
           settings: {
             ...store.settings,
             set: () => Promise.reject(new Error("the disk is busy")),

@@ -8,6 +8,7 @@ import type { Browser, Page } from "@playwright/test";
 import { expect, expectPath, test } from "./support/fixtures.ts";
 import { englishOrigin } from "./support/servers.ts";
 import {
+  afterRefresh,
   fillTime,
   handComponent,
   idOf,
@@ -71,6 +72,8 @@ test("an incident's life as the visitor sees it: published, each stage, a new ti
   browser,
   page,
 }) => {
+  // Four changes, each waiting on a paced refresh while the rest of the suite renders too.
+  test.setTimeout(60_000);
   const run = runId();
   const slug = `life-${run}`;
   await signIn(page);
@@ -118,11 +121,12 @@ test("an incident's life as the visitor sees it: published, each stage, a new ti
   ] as const) {
     // biome-ignore lint/performance/noAwaitInLoops: the stages follow one another
     await postUpdate(page, stage, updates);
-    await visitor.reload();
-    await expect(card.locator("[data-slot=incident-stage]")).toHaveAttribute(
-      "data-stage",
-      stage
-    );
+    await afterRefresh(async () => {
+      await visitor.reload();
+      return await card
+        .locator("[data-slot=incident-stage]")
+        .getAttribute("data-stage");
+    }, stage);
   }
 
   await page.fill("input[name=title-en]", `Down, renamed ${run}`);
@@ -153,14 +157,18 @@ test("an incident's life as the visitor sees it: published, each stage, a new ti
   await expect(
     page.locator("[data-slot=incident-resolved-note]")
   ).toBeVisible();
-  await visitor.goto(overview);
-  await expect(card).toHaveCount(0);
+  await afterRefresh(async () => {
+    await visitor.goto(overview);
+    return await card.count();
+  }, 0);
   // The incident set the status; resolved, the component is back at the one set by hand.
   await expect(component).toHaveAttribute("data-level", "operational");
-  await visitor.goto(view);
-  await expect(
-    visitor.locator("[data-slot=incident-view] [data-slot=incident-stage]")
-  ).toHaveAttribute("data-stage", "resolved");
+  await afterRefresh(async () => {
+    await visitor.goto(view);
+    return await visitor
+      .locator("[data-slot=incident-view] [data-slot=incident-stage]")
+      .getAttribute("data-stage");
+  }, "resolved");
   await expect(visitor.locator("[data-slot=incident-update]")).toHaveCount(4);
   await visitor.goto(`${overview}/history`);
   await expect(

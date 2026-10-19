@@ -21,7 +21,11 @@ import {
   type Locale,
   localeSchema,
 } from "@/shared/i18n/locale.ts";
-import { catalogFromJson, createMessages } from "@/shared/i18n/messages.ts";
+import {
+  catalogFromJson,
+  catalogText,
+  createMessages,
+} from "@/shared/i18n/messages.ts";
 import { MessagesProvider } from "@/shared/i18n/react.tsx";
 import {
   type Appearance,
@@ -76,7 +80,7 @@ const readDocument = createServerFn()
       const view: PublicView = { ...shown, locale };
       return {
         appearance: defaultAppearance,
-        catalog: JSON.stringify(catalog),
+        catalog: catalogText(catalog),
         dir,
         locale,
         title: "",
@@ -90,10 +94,10 @@ const readDocument = createServerFn()
       documentLanguage(context.storage, requested),
       readAppearance(context.storage),
     ]);
-    // The compiled catalog travels as JSON text: its token type is not one Start can check for serializability.
+    // The compiled catalog travels as JSON text, written once per catalog: its token type is not one Start can check for serializability.
     return {
       appearance,
-      catalog: JSON.stringify(catalog),
+      catalog: catalogText(catalog),
       dir,
       locale,
       title,
@@ -126,7 +130,7 @@ interface DocumentData {
 // words for its catalog, for the error.
 const fallback: DocumentData = {
   appearance: defaultAppearance,
-  catalog: JSON.stringify(fallbackCatalog(defaultLocale)),
+  catalog: catalogText(fallbackCatalog(defaultLocale)),
   dir: directionOf(defaultLocale),
   locale: defaultLocale,
   title: "",

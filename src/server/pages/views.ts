@@ -11,7 +11,11 @@
 
 import { readClock } from "@/server/settings/clock.ts";
 import type { Storage } from "@/server/storage/storage.ts";
-import { historyMonth, monthOf } from "@/shared/domain/history.ts";
+import {
+  historyFirst,
+  historyMonth,
+  monthOf,
+} from "@/shared/domain/history.ts";
 import {
   affectedComponents,
   incidentStage,
@@ -167,6 +171,54 @@ export function readViewFrame(
   );
 }
 
+/** Every entry the page's history holds: each resolved incident and completed window on a component it shows, with its start. */
+async function historyEntries(
+  storage: ViewStorage,
+  named: PageRead["named"]
+): Promise<{ readonly entry: HistoryEntry; readonly start: number }[]> {
+  // ponytail: reads every incident and window, as the admin lists do; a range read when an install holds years of them.
+  const [incidents, windows] = await Promise.all([
+    storage.incidents.list(),
+    storage.maintenance.list(),
+  ]);
+  const entries: { readonly entry: HistoryEntry; readonly start: number }[] =
+    [];
+  for (const incident of incidents) {
+    const components = named(affectedComponents(incident));
+    if (incident.resolvedAt !== undefined && components.length > 0) {
+      entries.push({
+        entry: {
+          components,
+          id: incident.id,
+          impact: incident.impact,
+          kind: "incident",
+          resolvedAt: iso(incident.resolvedAt),
+          startedAt: iso(incident.createdAt),
+          title: incident.title,
+        },
+        start: incident.createdAt,
+      });
+    }
+  }
+  for (const window of windows) {
+    const components = named(window.componentIds);
+    if (window.stage === "completed" && components.length > 0) {
+      entries.push({
+        entry: {
+          components,
+          endsAt: iso(window.endsAt),
+          id: window.id,
+          kind: "maintenance",
+          startsAt: iso(window.startsAt),
+          title: window.title,
+        },
+        start: window.startsAt,
+      });
+    }
+  }
+  return entries;
+}
+
 /** The page's history for a month, the current one when none is named. */
 export function readHistory(
   storage: ViewStorage,
@@ -175,46 +227,7 @@ export function readHistory(
   now: number
 ): Promise<ViewResult<HistoryDocument>> {
   return readView(storage, pageId, async ({ frame, named }) => {
-    // ponytail: reads every incident and window, as the admin lists do; a range read when an install holds years of them.
-    const [incidents, windows] = await Promise.all([
-      storage.incidents.list(),
-      storage.maintenance.list(),
-    ]);
-    const entries: { readonly entry: HistoryEntry; readonly start: number }[] =
-      [];
-    for (const incident of incidents) {
-      const components = named(affectedComponents(incident));
-      if (incident.resolvedAt !== undefined && components.length > 0) {
-        entries.push({
-          entry: {
-            components,
-            id: incident.id,
-            impact: incident.impact,
-            kind: "incident",
-            resolvedAt: iso(incident.resolvedAt),
-            startedAt: iso(incident.createdAt),
-            title: incident.title,
-          },
-          start: incident.createdAt,
-        });
-      }
-    }
-    for (const window of windows) {
-      const components = named(window.componentIds);
-      if (window.stage === "completed" && components.length > 0) {
-        entries.push({
-          entry: {
-            components,
-            endsAt: iso(window.endsAt),
-            id: window.id,
-            kind: "maintenance",
-            startsAt: iso(window.startsAt),
-            title: window.title,
-          },
-          start: window.startsAt,
-        });
-      }
-    }
+    const entries = await historyEntries(storage, named);
     const place = historyMonth(
       entries.map((each) => each.start),
       month,
@@ -234,6 +247,20 @@ export function readHistory(
       previous: place.previous,
     };
   });
+}
+
+/** The first month the page's history shows, read as its history view reads it. */
+export function readHistoryFirst(
+  storage: ViewStorage,
+  pageId: string,
+  now: number
+): Promise<ViewResult<Month>> {
+  return readView(storage, pageId, async ({ named }) =>
+    historyFirst(
+      (await historyEntries(storage, named)).map((each) => each.start),
+      now
+    )
+  );
 }
 
 /** One incident as the page shows it: open or resolved, with every update. */

@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { connect } from "node:http2";
 import { authFor, operatorName } from "./server/auth/auth.ts";
-import type { Terminal } from "./server/auth/command.ts";
+import { resetPasswordCommand, type Terminal } from "./server/auth/command.ts";
 import { resolveBootSettings } from "./server/boot/settings.ts";
 import { createOperatorAccount } from "./server/onboarding/onboarding.ts";
 import { publish } from "./server/pages/fixture.ts";
@@ -29,6 +29,8 @@ import {
   main,
   maintenanceLine,
   preloadAssets,
+  type RenderLane,
+  type StrangerPace,
   stopSignals,
 } from "./server.ts";
 import { reasons } from "./shared/schemas/reason.ts";
@@ -204,6 +206,44 @@ function overHttp2(
     stream.on("error", reject);
     stream.end(init.body);
   });
+}
+
+/** A render pace for a test: renders `gapMs` apart, room for 100 in every lane but those named, and the checks unpaced unless given. */
+function testPace(
+  gapMs: number,
+  room: Partial<Record<RenderLane, number>>,
+  checks: { readonly gapMs: number; readonly waiting: number } = {
+    gapMs: 0,
+    waiting: 100,
+  }
+): StrangerPace {
+  const lanes: RenderLane[] = [
+    "cold",
+    "onboarding",
+    "others",
+    "pages",
+    "refresh",
+    "reset",
+    "subscriptions",
+  ];
+  return {
+    checks: {
+      burst: 1,
+      gapMs: checks.gapMs,
+      overrun: 2,
+      turnMs: 5000,
+      waiting: { checks: checks.waiting },
+    },
+    renders: {
+      burst: 1,
+      gapMs,
+      overrun: 2,
+      turnMs: 5000,
+      waiting: Object.fromEntries(
+        lanes.map((lane) => [lane, room[lane] ?? 100])
+      ) as Record<RenderLane, number>,
+    },
+  };
 }
 
 async function withServer(
@@ -397,11 +437,11 @@ describe("the raaqeb command", () => {
       dir,
       async (server) => {
         const origin = `http://127.0.0.1:${server.port}`;
-        const two = await overHttp2(origin, "/admin");
+        const two = await overHttp2(origin, "/sign-out");
         expect(two.status).toBe(200);
-        expect(two.body).toBe("handled /admin");
-        expect(await (await fetch(`${origin}/admin`)).text()).toBe(
-          "handled /admin"
+        expect(two.body).toBe("handled /sign-out");
+        expect(await (await fetch(`${origin}/sign-out`)).text()).toBe(
+          "handled /sign-out"
         );
       }
     );
@@ -522,6 +562,571 @@ describe("the raaqeb command", () => {
     }
   });
 
+  test("a burst of sign-in page loads costs one render, through a new host each or with a stale session cookie; another search renders", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "let renders = 0; export default { fetch: (r) => { renders += 1; return new Response('render ' + renders, { headers: { 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    await withServer(
+      ["--port", "0", "--data-dir", dataDir, "--trusted-proxies", "127.0.0.1"],
+      {},
+      dir,
+      async (server) => {
+        const at = async (path: string, headers: Record<string, string> = {}) =>
+          await (
+            await fetch(`http://127.0.0.1:${server.port}${path}`, { headers })
+          ).text();
+        for (let i = 0; i < 100; i += 1) {
+          // biome-ignore lint/performance/noAwaitInLoops: one request at a time, as a burst sends them
+          const page = await at("/sign-in", {
+            "x-forwarded-host": `host-${i}.example`,
+            "x-forwarded-proto": "https",
+          });
+          expect(page).toBe("render 1");
+        }
+        expect(
+          await at("/sign-in", { cookie: "raaqeb.session_token=forged" })
+        ).toBe("render 1");
+        expect(await at("/sign-in?x=1")).toBe("render 2");
+      }
+    );
+  });
+
+  test("a stranger's misses of the status page memo take turns in the visitors' lane, and 200 asking one address at once cost one render", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "let renders = 0; export default { fetch: async (r) => { renders += 1; const n = renders; await Bun.sleep(50); return new Response('render ' + n, { headers: { 'cache-control': 'public, max-age=0, must-revalidate', 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(200, { cold: 1, refresh: 1 }),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      const at = (path: string) =>
+        fetch(`http://127.0.0.1:${result.server.port}${path}`);
+      const distinct = await Promise.all(
+        ["/", "/en", "/badge.svg", "/.env"].map((path) => at(path))
+      );
+      expect(
+        distinct.map((each) => each.status).toSorted((a, b) => a - b)
+      ).toEqual([200, 200, 503, 503]);
+      await result.storage.bump();
+      await Bun.sleep(250);
+      const crowd = await Promise.all(
+        Array.from({ length: 200 }, () => at("/"))
+      );
+      expect(new Set(crowd.map((each) => each.status))).toEqual(new Set([200]));
+      const bodies = await Promise.all(crowd.map((each) => each.text()));
+      expect(new Set(bodies).size).toBe(1);
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a stranger's view the memo kept and that went stale renders in the refresh lane, apart from addresses it holds nothing for", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async () => { await Bun.sleep(100); return new Response('page', { headers: { 'cache-control': 'public, max-age=0, must-revalidate', 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(0, { cold: 1 }),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      const at = (path: string) =>
+        fetch(`http://127.0.0.1:${result.server.port}${path}`);
+      const kept = ["/", "/en", "/history", "/en/history"];
+      for (const path of kept) {
+        // biome-ignore lint/performance/noAwaitInLoops: one at a time, so each cold render has the lane to itself
+        expect((await at(path)).status, path).toBe(200);
+      }
+      await result.storage.bump();
+      const [stale, cold] = await Promise.all([
+        Promise.all(kept.map((path) => at(path))),
+        Promise.all(
+          ["/status/main", "/en/status/main"].map((path) => at(path))
+        ),
+      ]);
+      expect(stale.map((each) => each.status)).toEqual([200, 200, 200, 200]);
+      expect(cold.map((each) => each.status).toSorted((a, b) => a - b)).toEqual(
+        [200, 503]
+      );
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a stranger queued past Bun's idle timeout still gets its answer", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async () => new Response('page', { headers: { 'cache-control': 'public, max-age=0, must-revalidate', 'content-type': 'text/html; charset=utf-8' } }) };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      idleTimeoutSeconds: 1,
+      pace: testPace(1700, { cold: 4 }),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      // Bun's timer ticks every few seconds, so the last one waits well past a second.
+      const answers = await Promise.all(
+        ["/", "/en", "/history", "/en/history", "/status/main"].map(
+          async (path) =>
+            await fetch(`http://127.0.0.1:${result.server.port}${path}`).then(
+              (each) => each.status,
+              () => "closed"
+            )
+        )
+      );
+      expect(answers).toEqual([200, 200, 200, 200, 200]);
+    } finally {
+      await result.stop();
+    }
+  }, 20_000);
+
+  test("thirty subscribers opening their pages at once all get them: a subscription's page refreshes in the visitors' lane, never the cold one", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async () => { await Bun.sleep(20); return new Response('subscription', { headers: { 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(0, { cold: 0, others: 0 }),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      const tokens: string[] = [];
+      for (const address of ["a@example.test", "b@example.test"]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one sign-up at a time
+        const stored = await result.storage.subscriptions.request({
+          address,
+          channel: "email",
+          credentials: undefined,
+          locale: "ar",
+          pageId: created.page.id,
+          quietSince: 0,
+          requestedAt: Date.now(),
+        });
+        tokens.push(stored?.token ?? "");
+      }
+      const answers = await Promise.all(
+        Array.from({ length: 30 }, (_, i) =>
+          fetch(
+            `http://127.0.0.1:${result.server.port}/subscriptions/${tokens[i % 2]}`
+          ).then((each) => each.status)
+        )
+      );
+      expect(new Set(answers)).toEqual(new Set([200]));
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a stranger's made-up months and ids are checked one at a time in a lane of their own, before their not-found", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async () => new Response('<html><body>not found</body></html>', { headers: { 'content-type': 'text/html; charset=utf-8' }, status: 404 }) };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(0, {}, { gapMs: 200, waiting: 2 }),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      const paths = [
+        ...Array.from({ length: 6 }, (_, i) => `/history/200${i}-01`),
+        ...Array.from({ length: 6 }, (_, i) => `/incidents/made-up-${i}`),
+      ];
+      const answers = await Promise.all(
+        paths.map((path) =>
+          fetch(`http://127.0.0.1:${result.server.port}${path}`).then(
+            (each) => each.status
+          )
+        )
+      );
+      expect(answers.filter((status) => status === 503).length).toBeGreaterThan(
+        6
+      );
+      expect(answers.every((status) => status === 404 || status === 503)).toBe(
+        true
+      );
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("while the change counter moves faster than refreshes land, a stranger's view of a kept address is answered at once from memory, never a 503", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "let renders = 0; export default { fetch: async () => { renders += 1; const n = renders; await Bun.sleep(300); return new Response('render ' + n, { headers: { 'cache-control': 'public, max-age=0, must-revalidate', 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(300, { refresh: 2 }),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      const kept = ["/", "/en", "/history", "/en/history", "/badge.svg"];
+      for (const path of kept) {
+        // biome-ignore lint/performance/noAwaitInLoops: each kept once, before the counter moves
+        await fetch(`http://127.0.0.1:${result.server.port}${path}`);
+      }
+      const statuses: number[] = [];
+      let slowest = 0;
+      for (let round = 0; round < 3; round += 1) {
+        // biome-ignore lint/performance/noAwaitInLoops: the counter moves between rounds, as down checks move it
+        await result.storage.bump();
+        const answers = await Promise.all(
+          Array.from({ length: 30 }, async (_, i) => {
+            const started = performance.now();
+            const answer = await fetch(
+              `http://127.0.0.1:${result.server.port}${kept[i % kept.length]}`
+            );
+            await answer.arrayBuffer();
+            slowest = Math.max(slowest, performance.now() - started);
+            return answer.status;
+          })
+        );
+        statuses.push(...answers);
+      }
+      expect(new Set(statuses)).toEqual(new Set([200]));
+      expect(slowest).toBeLessThan(1000);
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a flood of one subscription's page leaves visitors their views, and a flood of made-up reset links and sign-in searches leaves a real reset link and the plain sign-in page", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async (r) => { await Bun.sleep(100); return new Response('page', { headers: { 'cache-control': new URL(r.url).pathname === '/' ? 'public, max-age=0, must-revalidate' : 'no-store', 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const booted = await resolveBootSettings({}, { RAAQEB_DATA_DIR: dataDir });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(100, {
+        others: 1,
+        refresh: 1,
+        reset: 4,
+        subscriptions: 1,
+      }),
+    });
+    if (typeof result === "number" || !result.storage || !booted.ok) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createOperatorAccount(
+        {
+          email: "operator@example.com",
+          locale: "ar",
+          password: "correct horse battery",
+          publicAddress: "http://raaqeb.test",
+        },
+        {
+          boot: booted.settings,
+          opener: databaseOpener(() => undefined),
+          storage: result.storage,
+        },
+        new Headers({ origin: "http://raaqeb.test" })
+      );
+      const page = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!(created.ok && page.ok)) {
+        throw new Error("seed");
+      }
+      await publish(result.storage, page.page.id);
+      const subscription = await result.storage.subscriptions.request({
+        address: "reader@example.test",
+        channel: "email",
+        credentials: undefined,
+        locale: "ar",
+        pageId: page.page.id,
+        quietSince: 0,
+        requestedAt: Date.now(),
+      });
+      const printed: string[] = [];
+      await resetPasswordCommand(
+        result.storage,
+        booted.settings,
+        { interactive: false },
+        {
+          askHidden: () => Promise.resolve(""),
+          err: () => undefined,
+          interactive: false,
+          out: (line) => printed.push(line),
+        }
+      );
+      const link = new URL(
+        printed.find((line) => line.startsWith("http")) ?? ""
+      );
+      const at = (path: string) =>
+        fetch(`http://127.0.0.1:${result.server.port}${path}`).then(
+          (each) => each.status
+        );
+      await at("/");
+      await at("/sign-in");
+      await result.storage.bump();
+      const [views, reset, signIn] = await Promise.all([
+        Promise.all(Array.from({ length: 10 }, () => at("/"))),
+        Promise.all([
+          ...Array.from({ length: 10 }, (_, i) =>
+            at(`/reset-password?token=made-up-${i}`)
+          ),
+          ...Array.from({ length: 10 }, (_, i) => at(`/sign-in?x=${i}`)),
+          ...Array.from({ length: 10 }, () =>
+            at(`/subscriptions/${subscription?.token ?? ""}`)
+          ),
+        ]).then(() => at(`${link.pathname}${link.search}`)),
+        at("/sign-in"),
+      ]);
+      expect(new Set(views)).toEqual(new Set([200]));
+      expect(reset).toBe(200);
+      expect(signIn).toBe(200);
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a kept-alive connection closes at the idle timeout once answered, even after a 503, and a request joining a slow render keeps its connection until it lands", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async () => { await Bun.sleep(6000); return new Response('slow', { headers: { 'cache-control': 'public, max-age=0, must-revalidate', 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      idleTimeoutSeconds: 1,
+      pace: testPace(0, {}),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      const joined = await Promise.all(
+        [1, 2].map(() =>
+          fetch(`http://127.0.0.1:${result.server.port}/`).then(
+            (each) => each.status,
+            () => "closed"
+          )
+        )
+      );
+      expect(joined).toEqual([200, 200]);
+      const closedAfter = await new Promise<number>((resolve) => {
+        const started = performance.now();
+        Bun.connect({
+          hostname: "127.0.0.1",
+          port: Number(result.server.port),
+          socket: {
+            close: () => resolve(performance.now() - started),
+            data: () => undefined,
+            error: () => resolve(-1),
+            open: (socket) => {
+              socket.write(
+                "GET /sign-in?x=1 HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: keep-alive\r\n\r\n"
+              );
+            },
+          },
+        }).catch(() => resolve(-1));
+      });
+      expect(closedAfter).toBeGreaterThan(0);
+      expect(closedAfter).toBeLessThan(15_000);
+    } finally {
+      await result.stop();
+    }
+  }, 30_000);
+
+  test("a flood that fills its lane's waiting room leaves another lane's room open, and a stranger's admin page load is sent on with no render", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "let renders = 0; export default { fetch: async (r) => { renders += 1; const n = renders; await Bun.sleep(200); return new Response('render ' + n + ' of ' + new URL(r.url).pathname, { headers: { 'cache-control': 'public, max-age=0, must-revalidate', 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(100, { cold: 2, others: 2 }),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      const at = (path: string, headers: Record<string, string> = {}) =>
+        fetch(`http://127.0.0.1:${result.server.port}${path}`, {
+          headers,
+          redirect: "manual",
+        });
+      const [view, ...others] = await Promise.all([
+        at("/"),
+        ...Array.from({ length: 6 }, (_, i) => at(`/sign-in?x=${i}`)),
+      ]);
+      expect(view?.status).toBe(200);
+      expect(
+        others.filter((each) => each.status === 503).length
+      ).toBeGreaterThanOrEqual(3);
+      const cookies: Record<string, string>[] = [
+        {},
+        { cookie: "raaqeb.session_token=stale" },
+      ];
+      for (const headers of cookies) {
+        // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+        const admin = await at("/admin/monitors", headers);
+        expect(admin.status).toBe(307);
+        expect(admin.headers.get("location")).toBe("/onboarding");
+      }
+      const download = await at("/admin/monitors/x/history.jsonl.zst");
+      expect(await download.text()).toEndWith(
+        " of /admin/monitors/x/history.jsonl.zst"
+      );
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("renders without a session take turns a gap apart and, past the waiting room, answer 503 to try again; a session's never wait", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async () => { await Bun.sleep(50); return new Response('page', { headers: { 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const booted = await resolveBootSettings({}, { RAAQEB_DATA_DIR: dataDir });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(300, { others: 1 }),
+    });
+    if (typeof result === "number" || !result.storage || !booted.ok) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const at = (path: string, headers: Record<string, string> = {}) =>
+        fetch(`http://127.0.0.1:${result.server.port}${path}`, { headers });
+      const started = performance.now();
+      const [first, second, third] = await Promise.all([
+        at("/forgot-password?x=1"),
+        at("/forgot-password?x=2"),
+        at("/forgot-password?x=3"),
+      ]);
+      const statuses = [first, second, third].map((each) => each.status);
+      expect(statuses.toSorted((a, b) => a - b)).toEqual([200, 200, 503]);
+      const refused = [first, second, third].find(
+        (each) => each.status === 503
+      );
+      expect(refused?.headers.get("retry-after")).toBe("1");
+      expect(performance.now() - started).toBeGreaterThanOrEqual(300);
+      const created = await createOperatorAccount(
+        {
+          email: "operator@example.com",
+          locale: "ar",
+          password: "correct horse battery",
+          publicAddress: "http://raaqeb.test",
+        },
+        {
+          boot: booted.settings,
+          opener: databaseOpener(() => undefined),
+          storage: result.storage,
+        },
+        new Headers({ origin: "http://raaqeb.test" })
+      );
+      if (!created.ok) {
+        throw new Error("the account was not created");
+      }
+      const cookie = created.setCookies
+        .map((each) => each.split(";")[0])
+        .join("; ");
+      const signedIn = await Promise.all(
+        [1, 2, 3].map(() => at("/admin/monitors", { cookie }))
+      );
+      expect(signedIn.map((each) => each.status)).toEqual([200, 200, 200]);
+    } finally {
+      await result.stop();
+    }
+  });
+
   test("a scanner's burst of not-founds, page and API, costs one render of the page's not-found, its stylesheet linked, and leaves the routes to the app", async () => {
     const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
     const dir = await serverBuild({
@@ -560,7 +1165,7 @@ describe("the raaqeb command", () => {
     const dir = await serverBuild({
       "server/handler.js": `let closes = 0; let fired; const closed = new Promise((resolve) => { fired = resolve; });
         export default { fetch: async (r, o) => {
-          if (new URL(r.url).pathname === "/admin/quiet") {
+          if (new URL(r.url).pathname === "/api/heartbeat/quiet") {
             await Promise.race([new Promise((resolve) => r.signal.addEventListener("abort", resolve)), Bun.sleep(8000)]);
             closes += 1;
             if (closes === 2) fired();
@@ -581,13 +1186,15 @@ describe("the raaqeb command", () => {
       const origin = `http://127.0.0.1:${result.server.port}`;
       // Over HTTP/2 the timer belongs to the connection, so the held request still keeps it open.
       const [held, heldOverHttp2, quiet, quietOverHttp2] = await Promise.all([
-        fetch(`${origin}/admin/held`).then((response) => response.text()),
-        overHttp2(origin, "/admin/held").then((answer) => answer.body),
-        fetch(`${origin}/admin/quiet`).then(
+        fetch(`${origin}/api/heartbeat/held`).then((response) =>
+          response.text()
+        ),
+        overHttp2(origin, "/api/heartbeat/held").then((answer) => answer.body),
+        fetch(`${origin}/api/heartbeat/quiet`).then(
           (response) => response.text(),
           () => "closed"
         ),
-        overHttp2(origin, "/admin/quiet").then(
+        overHttp2(origin, "/api/heartbeat/quiet").then(
           (answer) => answer.body || "closed",
           () => "closed"
         ),
@@ -1588,7 +2195,7 @@ describe("the trusted proxies saved on the general page", () => {
     const origin = `http://127.0.0.1:${result.server.port}`;
     const seen = async (method = "GET") =>
       await (
-        await fetch(`${origin}/admin/monitors`, {
+        await fetch(`${origin}/sign-out?x=1`, {
           headers: {
             "x-forwarded-for": "203.0.113.9",
             "x-forwarded-host": "status.example.test",
@@ -1759,9 +2366,9 @@ describe("the request log", () => {
   const handler = [
     "export default { fetch: async (r, o) => {",
     "const path = new URL(r.url).pathname;",
-    "if (path === '/admin/slow') await Bun.sleep(1100);",
+    "if (r.url.endsWith('?slow')) await Bun.sleep(1100);",
     // Start ends an abandoned request by throwing the abort's reason.
-    "if (path === '/admin/left') return await new Promise((_, reject) => r.signal.addEventListener('abort', () => reject(r.signal.reason)));",
+    "if (r.url.endsWith('?left')) return await new Promise((_, reject) => r.signal.addEventListener('abort', () => reject(r.signal.reason)));",
     "if (path === '/health' && r.headers.has('x-fail')) return new Response('', { status: 503 });",
     "return new Response('ok', { headers: o?.context?.publicTarget ? { 'cache-control': 'public, max-age=0' } : {} });",
     "} };",
@@ -1819,14 +2426,14 @@ describe("the request log", () => {
 
   test("while the switch is off, no request writes a line", async () => {
     await withLog(false, async (at, lines) => {
-      expect(await (await at("/admin")).text()).toBe("ok");
+      expect(await (await at("/sign-out?x=1")).text()).toBe("ok");
       await at("/api/v2/monitors", { body: "{}", method: "POST" });
       await at("/sign-in", {
         body: new Uint8Array(9 * 1024 * 1024),
         method: "POST",
       });
       const leaving = new AbortController();
-      const left = at("/admin/left", { signal: leaving.signal }).catch(
+      const left = at("/sign-out?left", { signal: leaving.signal }).catch(
         () => undefined
       );
       await Bun.sleep(50);
@@ -1839,7 +2446,7 @@ describe("the request log", () => {
 
   test("once the switch is saved on and the change counter moves, each request that reaches the handler writes one line naming its kind; a static file writes none", async () => {
     await withLog(true, async (at, lines) => {
-      await at("/admin/monitors?page=2");
+      await at("/forgot-password?page=2");
       await at("/_serverFn/4f2a9c", { body: "{}", method: "POST" });
       await at("/api/auth/get-session");
       await at("/api/openapi.json");
@@ -1854,7 +2461,7 @@ describe("the request log", () => {
         ).status
       ).toBe(413);
       expect(lines()).toEqual([
-        "raaqeb: request method=GET path=/admin/monitors status=200 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
+        "raaqeb: request method=GET path=/forgot-password status=200 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
         "raaqeb: request method=POST path=/_serverFn/4f2a9c status=200 ms=<n> ip=127.0.0.1 kind=function browser=curl/8.5",
         "raaqeb: request method=GET path=/api/auth/get-session status=200 ms=<n> ip=127.0.0.1 kind=auth browser=curl/8.5",
         "raaqeb: request method=GET path=/api/openapi.json status=200 ms=<n> ip=127.0.0.1 kind=api browser=curl/8.5",
@@ -1896,9 +2503,9 @@ describe("the request log", () => {
 
   test("a request slower than a second carries the process's memory", async () => {
     await withLog(true, async (at, lines) => {
-      await at("/admin/slow");
+      await at("/sign-out?slow");
       expect(lines()).toEqual([
-        "raaqeb: request method=GET path=/admin/slow status=200 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5 rss_mb=<n>",
+        "raaqeb: request method=GET path=/sign-out status=200 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5 rss_mb=<n>",
       ]);
     });
   });
@@ -1906,7 +2513,7 @@ describe("the request log", () => {
   test("a client that leaves before the answer still gets a line, its status named closed", async () => {
     await withLog(true, async (at, lines) => {
       const leaving = new AbortController();
-      const left = at("/admin/left", { signal: leaving.signal }).catch(
+      const left = at("/sign-out?left", { signal: leaving.signal }).catch(
         () => undefined
       );
       await Bun.sleep(100);
@@ -1918,7 +2525,7 @@ describe("the request log", () => {
         await Bun.sleep(20);
       }
       expect(lines()).toEqual([
-        "raaqeb: request method=GET path=/admin/left status=closed ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
+        "raaqeb: request method=GET path=/sign-out status=closed ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
       ]);
     });
   });
