@@ -102,6 +102,11 @@ function givenBy(
 const portDigits = /^\d{1,5}$/;
 const maxPort = 65_535;
 
+/** The log line for a data directory that is still open to group or others after Raaqeb tried to tighten it: `held` are the files in it that hold secrets. */
+export function wideDirectoryNote(held: readonly string[]): string {
+  return `the data directory's mode is wider than 0700 and Raaqeb cannot change it; ${held.join(" and ")} ${held.length === 1 ? "holds" : "hold"} secrets, so run chmod 700 on the folder as its owner`;
+}
+
 function refuse(message: string): BootSettingsResult {
   return { message, ok: false };
 }
@@ -178,9 +183,7 @@ export async function resolveBootSettings(
   if (widerThanOwner) {
     const held = await secretFilesIn(dataDir);
     if (held.length > 0) {
-      notes.push(
-        `the data directory's mode is wider than 0700; ${held.join(" and ")} ${held.length === 1 ? "holds" : "hold"} secrets`
-      );
+      notes.push(wideDirectoryNote(held));
     }
   }
 

@@ -50,13 +50,7 @@ With both set, Raaqeb writes nothing to the data directory, so it needs no volum
 fly volumes create raaqeb_data --size 1 --region <region>
 ```
 
-The volume is required: the SQLite file, its snapshots and `config.json` with the generated install key all live in `/data`. Fly mounts the volume owned by the image's user, uid 65532, so the non-root image writes to it unchanged. The mount's mode is 0755, which the image cannot change since it has no shell, so every boot logs this line, which is expected:
-
-```
-raaqeb: the data directory's mode is wider than 0700; config.json and raaqeb.sqlite hold secrets
-```
-
-Only the machine reaches the volume. With `RAAQEB_SECRET_KEY` set as a secret, `config.json` is not written and the line names `raaqeb.sqlite` alone. For the same 0755 mount, the setup check page under settings shows its data directory permissions check failing; that is expected on Fly too.
+The volume is required: the SQLite file, its snapshots and `config.json` with the generated install key all live in `/data`. Fly mounts the volume owned by the image's user, uid 65532, so the non-root image writes to it unchanged. Fly sets the mount's mode to 0755 on every boot, so Raaqeb, which owns the folder, tightens it to 0700 as it starts and logs nothing about it. Only the machine reaches the volume either way.
 
 ## 4. Deploy
 

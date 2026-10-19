@@ -13,6 +13,7 @@ import {
   bootVariables,
   resolveAddress,
   resolveBootSettings,
+  wideDirectoryNote,
 } from "./settings.ts";
 
 const base64urlKey = /^[A-Za-z0-9_-]{43}$/;
@@ -440,12 +441,12 @@ describe("the data directory", () => {
     expect(await modeOf(dataDir)).toBe("700");
   });
 
-  test("an existing directory wider than 0700 is noted, not changed", async () => {
+  test("an existing directory wider than 0700 is tightened to 0700 and draws no note", async () => {
     const dataDir = `${await scratch()}/data`;
     await Bun.$`mkdir ${dataDir} && chmod 755 ${dataDir}`.quiet();
     const notes = await notesOf({}, { RAAQEB_DATA_DIR: dataDir });
-    expect(notes.join("\n")).toContain("wider than 0700");
-    expect(await modeOf(dataDir)).toBe("755");
+    expect(notes.join("\n")).not.toContain("wider");
+    expect(await modeOf(dataDir)).toBe("700");
   });
 
   test("a wide directory with no config.json draws no note, since the key and the URL come from the environment", async () => {
@@ -463,40 +464,15 @@ describe("the data directory", () => {
     expect(await Bun.file(`${dataDir}/config.json`).exists()).toBe(false);
   });
 
-  test("a wide directory holding config.json draws the note even when the environment gives the key", async () => {
+  test("a wide directory holding config.json and the SQLite database is tightened, draws no note, and its files keep their modes", async () => {
     const dataDir = `${await scratch()}/data`;
     await Bun.$`mkdir ${dataDir} && chmod 755 ${dataDir}`.quiet();
     await writeConfigFile(dataDir, { installKey: generateInstallKey() });
-    const notes = await notesOf(
-      {},
-      { RAAQEB_DATA_DIR: dataDir, RAAQEB_SECRET_KEY: generateInstallKey() }
-    );
-    expect(notes).toContain(
-      "the data directory's mode is wider than 0700; config.json holds secrets"
-    );
-  });
-
-  test("a wide directory holding the SQLite database and no config.json draws a note naming the database", async () => {
-    const dataDir = `${await scratch()}/data`;
-    await Bun.$`mkdir ${dataDir} && chmod 755 ${dataDir}`.quiet();
-    await Bun.write(`${dataDir}/raaqeb.sqlite`, "");
-    const notes = await notesOf(
-      {},
-      { RAAQEB_DATA_DIR: dataDir, RAAQEB_SECRET_KEY: generateInstallKey() }
-    );
-    expect(notes).toContain(
-      "the data directory's mode is wider than 0700; raaqeb.sqlite holds secrets"
-    );
-  });
-
-  test("a wide directory holding both config.json and the SQLite database names both in one note", async () => {
-    const dataDir = `${await scratch()}/data`;
-    await Bun.$`mkdir ${dataDir} && chmod 755 ${dataDir}`.quiet();
     await Bun.write(`${dataDir}/raaqeb.sqlite`, "");
     const notes = await notesOf({}, { RAAQEB_DATA_DIR: dataDir });
-    expect(notes.filter((note) => note.includes("wider"))).toEqual([
-      "the data directory's mode is wider than 0700; config.json and raaqeb.sqlite hold secrets",
-    ]);
+    expect(notes.join("\n")).not.toContain("wider");
+    expect(await modeOf(dataDir)).toBe("700");
+    expect(await modeOf(`${dataDir}/config.json`)).toBe("600");
   });
 
   test("a directory of mode 0700 draws no note", async () => {
@@ -534,6 +510,20 @@ describe("the data directory", () => {
     expect(message).toContain("RAAQEB_DATA_DIR");
     expect(message).toContain(String(dataDir.length));
     expect(message).not.toContain(dataDir);
+  });
+});
+
+describe("the note for a data directory Raaqeb cannot tighten", () => {
+  test("names the one file that holds secrets and what the owner runs", () => {
+    expect(wideDirectoryNote(["config.json"])).toBe(
+      "the data directory's mode is wider than 0700 and Raaqeb cannot change it; config.json holds secrets, so run chmod 700 on the folder as its owner"
+    );
+  });
+
+  test("names both files that hold secrets in one sentence", () => {
+    expect(wideDirectoryNote(["config.json", "raaqeb.sqlite"])).toBe(
+      "the data directory's mode is wider than 0700 and Raaqeb cannot change it; config.json and raaqeb.sqlite hold secrets, so run chmod 700 on the folder as its owner"
+    );
   });
 });
 

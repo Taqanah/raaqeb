@@ -9,7 +9,7 @@ The data directory is the one folder Raaqeb owns. It holds:
 - `snapshots/`, the database copied before each upgrade that migrates it, the newest three kept;
 - `config.json`, mode 0600, holding the install key Raaqeb generated and the Postgres URL the onboarding page stored, sealed with that key.
 
-Raaqeb creates it with mode 0700 and logs one line at boot when a folder it did not create is wider and holds `config.json` or the SQLite file. Backing it up backs up an install on SQLite ([backups](/en/docs/operate/backups)).
+Raaqeb creates it with mode 0700 and, when an existing folder is wider (a platform that mounts its own volume, such as Fly, sets 0755), tightens it to 0700 as it starts. It logs one line only when it cannot, because another user owns the folder, and the folder holds `config.json` or the SQLite file; then run `chmod 700` on it as its owner. Backing it up backs up an install on SQLite ([backups](/en/docs/operate/backups)).
 
 On Windows a folder has no such mode: who may open it is its access list, which the Windows installer sets, and Raaqeb neither logs the line nor shows the mode check there.
 

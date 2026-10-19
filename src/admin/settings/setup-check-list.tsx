@@ -217,7 +217,7 @@ function modeWording(
   return {
     fix: (
       <>
-        {/* chmod on the server does not reach a volume, and the image has no shell to run it in. */}
+        {/* Raaqeb tightens a folder it owns at boot, so a failing check is a folder it cannot change, such as a volume another user owns; the image has no shell to chmod in. */}
         {check.onHostRoot ? (
           <>
             <Sentence>{t("setting_setup_mode_fix")}</Sentence>
