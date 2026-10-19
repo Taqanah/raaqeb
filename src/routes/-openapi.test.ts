@@ -43,7 +43,9 @@ const routeModule = z.object({
 const responseSchema = z.object({
   content: z
     .object({
-      "text/plain": z.object({ schema: z.object({ const: z.string() }) }),
+      "text/plain": z.object({
+        schema: z.object({ const: z.string().optional() }),
+      }),
     })
     .partial()
     .optional(),

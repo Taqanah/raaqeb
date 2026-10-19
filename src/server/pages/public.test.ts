@@ -845,6 +845,7 @@ describe("who answers an address no page resolves", () => {
       "/onboarding",
       "/onboarding/account",
       "/health",
+      "/metrics",
       "/subscriptions/token/",
       "/subscriptions/token/confirm",
       "/_serverFn/routes.__root--readDocument",
@@ -930,12 +931,13 @@ describe("a document the app renders", () => {
     }
   });
 
-  test("is never the API's answer, a server function's, the health check's, a badge's, feed's or summary's, or a subscription's links", () => {
+  test("is never the API's answer, a server function's, the health check's, the metrics endpoint's, a badge's, feed's or summary's, or a subscription's links", () => {
     for (const path of [
       "/api/openapi.json",
       "/api/auth/get-session",
       "/_serverFn/routes.__root--readDocument",
       "/health",
+      "/metrics",
       "/badge.svg",
       "/en/status/slug/feed.atom",
       "/status/slug/api/v2/summary.json",

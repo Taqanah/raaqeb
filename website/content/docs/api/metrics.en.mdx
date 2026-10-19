@@ -1,0 +1,60 @@
+---
+title: Metrics
+description: Every monitor's state at /metrics in the Prometheus format, behind a token you make in the settings.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+Raaqeb can show the state of every monitor at `/metrics` in the Prometheus text format, for Prometheus, Grafana Agent or any other scraper. It is off until you turn it on. A scrape reads each monitor's latest check and certificate record and renders no page, so it is cheap: with 200 monitors it takes a few milliseconds and about 1 MB. A monitor with no check today, paused or not yet checked since midnight, costs more, since Raaqeb opens its last sealed day to find its latest check: 200 of them took about 15 ms and 20 MB per scrape.
+
+## Turn it on
+
+Open **Settings**, then **Metrics**, and select **Turn on metrics**. Raaqeb makes a token and shows it once, with a Prometheus configuration that uses it. Copy the token then: Raaqeb keeps only its SHA-256, so it cannot show it again. **New token** makes another and stops the current one at once. **Turn off metrics** deletes the token, and `/metrics` answers `404` again. The token does not travel in an [export](/en/docs/operate/export-import).
+
+Prometheus sends the token as a bearer token:
+
+```yaml
+scrape_configs:
+  - job_name: raaqeb
+    scheme: https
+    authorization:
+      credentials_file: /etc/prometheus/raaqeb-token
+    static_configs:
+      - targets: ["status.example.com"]
+```
+
+`credentials_file` holds the token alone on one line; `credentials` puts it in the configuration instead, as the settings page shows it. A request with no token or a wrong one answers `401` and nothing else, so a scraper that cannot sign in is easy to see in Prometheus's targets page.
+
+## The metrics
+
+Every metric is a gauge, labelled `monitor` (the monitor's name, which two monitors may share), `monitor_id` (its id, which never repeats and keeps two monitors of one name apart), `group` (its group, empty when it has none) and `check_type` (`http`, `tcp`, `dns`, `postgres`, `mysql`, `redis`, `docker` or `heartbeat`).
+
+| Metric | Value |
+|---|---|
+| `raaqeb_monitor_up` | `1` when the latest check was up or degraded, `0` when it was down. Absent while the monitor is paused or before its first check. |
+| `raaqeb_monitor_degraded` | `1` when the latest check succeeded but was slower than the monitor's degraded threshold, else `0`. Absent as `raaqeb_monitor_up` is. |
+| `raaqeb_monitor_paused` | `1` while the monitor is paused, else `0`. |
+| `raaqeb_monitor_response_seconds` | The latest check's response time in seconds. Absent while paused, and for a check with no response time. |
+| `raaqeb_monitor_last_check_timestamp_seconds` | When the latest check started, in seconds since the Unix epoch. |
+| `raaqeb_certificate_expiry_timestamp_seconds` | When the monitor's TLS certificate expires, in seconds since the Unix epoch. Present for an HTTPS monitor with the certificate expiry option on, once Raaqeb has read the certificate. |
+| `raaqeb_build_info` | Always `1`, labelled with the running `version`. |
+
+A paused monitor has no `raaqeb_monitor_up`, because its latest check is from before it stopped; its time is no data, as on the status page.
+
+## Alerts and uptime
+
+The metrics are the latest check, not a history, so Prometheus keeps the history. For an alert when a monitor goes down:
+
+```yaml
+- alert: MonitorDown
+  expr: raaqeb_monitor_up == 0
+  for: 2m
+```
+
+For a certificate that expires within 14 days: `raaqeb_certificate_expiry_timestamp_seconds - time() < 14 * 86400`. For an uptime over a week, `avg_over_time(raaqeb_monitor_up[7d])`. Raaqeb's own uptime, which leaves maintenance windows and gaps out of the count, is on the status page and the monitor's page; it is not a metric, because working it out reads a day of checks for every monitor on each scrape, which would not fit the memory an install runs in.
+
+Scrape no faster than the monitors check: a monitor's value changes only when its check runs, at its interval (a minute by default). `raaqeb_monitor_last_check_timestamp_seconds` tells you whether a value is current.
+
+## Reference
+
+<ApiOperation path="/metrics" />

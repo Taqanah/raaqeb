@@ -296,7 +296,7 @@ export function missingView(
 /**
  * Who answers a path that names no page's view, document or resource: one
  * of the app's own routes (the admin, sign-in, sign-out and recovery,
- * onboarding, the health check, server functions, a subscription's pages,
+ * onboarding, the health check, the metrics endpoint, server functions, a subscription's pages,
  * the API's routes, every badge, feed and summary address, and the bare host,
  * which sends to onboarding or the admin), else a not-found: the API's under
  * `/api/`, a page's anywhere else.
@@ -316,7 +316,7 @@ const apiRoutes: readonly RegExp[] = [
 const appRoutes: readonly RegExp[] = [
   /^\/$/,
   /^\/admin(\/.*)?$/,
-  /^\/(forgot-password|health|reset-password|sign-in|sign-out)$/,
+  /^\/(forgot-password|health|metrics|reset-password|sign-in|sign-out)$/,
   /^\/onboarding(\/(account|database))?$/,
   /^\/subscriptions\/[^/]+(\/(confirm|unsubscribe))?$/,
   new RegExp(
@@ -344,7 +344,7 @@ export function unresolvedAt(pathname: string): Unresolved {
   return appRoutes.some((route) => route.test(path)) ? "route" : "page";
 }
 
-/** Whether a GET at `pathname` is a document the app renders: any route's but the API's, server functions, the health check, a badge, feed or summary, and a subscription's confirm and unsubscribe links. */
+/** Whether a GET at `pathname` is a document the app renders: any route's but the API's, server functions, the health check, the metrics endpoint, a badge, feed or summary, and a subscription's confirm and unsubscribe links. */
 export function rendersDocument(pathname: string): boolean {
   if (pathname.startsWith(serverFunctions)) {
     return false;
@@ -354,6 +354,7 @@ export function rendersDocument(pathname: string): boolean {
     path === "/api" ||
     path.startsWith("/api/") ||
     path === "/health" ||
+    path === "/metrics" ||
     notDocuments.some((route) => route.test(path))
   );
 }

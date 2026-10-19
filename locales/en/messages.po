@@ -5129,6 +5129,70 @@ msgid "setting_public_address_invalid"
 msgstr "Enter an address that starts with http or https and ends at the host or its port, with no path, like https://status.example.com."
 
 #. js-lingui-explicit-id
+msgid "setting_metrics"
+msgstr "Metrics"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_title"
+msgstr "Prometheus metrics"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_intro"
+msgstr "Raaqeb shows the state of every monitor in the Prometheus format, for Prometheus or Grafana Agent to read. It answers only a request that carries the token."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_off"
+msgstr "Metrics are off. Their address does not exist until you turn them on."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_on"
+msgstr "Metrics are on."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_address"
+msgstr "Address"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_no_address"
+msgstr "Save the public address on the general page to see the full address here."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_turn_on"
+msgstr "Turn on metrics"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_turn_off"
+msgstr "Turn off metrics"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_turn_off_note"
+msgstr "Turning off deletes the token, and the address does not exist until you turn metrics on again."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_new_token"
+msgstr "New token"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_new_token_note"
+msgstr "A new token stops the current one at once, so update the Prometheus configuration with it."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_token_title"
+msgstr "Metrics token"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_token_intro"
+msgstr "Copy the token now. Raaqeb stores only its hash, so the token is never shown again; if you lose it, make a new one."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_config"
+msgstr "Prometheus configuration"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_copied"
+msgstr "I have copied the token"
+
+#. js-lingui-explicit-id
 msgid "monitor_field_proxy"
 msgstr "Proxy"
 

@@ -2,7 +2,8 @@
  * The OpenAPI document of Raaqeb's public API:
  * OpenAPI 3.1, whose schema dialect is JSON Schema 2020-12, so every schema
  * in it is Zod's own `z.toJSONSchema` of the shared schema the route
- * answers with. It holds heartbeat ingest, `GET /health`, a status page's
+ * answers with. It holds heartbeat ingest, `GET /health`, `GET /metrics`
+ * behind its bearer token, a status page's
  * images, the JSON document of each of its views, its Statuspage-compatible
  * summary, its badge and its feed, a subscription's confirm and
  * unsubscribe, and itself, served at `/api/openapi.json`; each step that
@@ -49,6 +50,8 @@ export interface OpenApiDocument {
   /** The schemas several operations share, each written once and named by a `$ref` to `#/components/schemas/<name>`. */
   readonly components: {
     readonly schemas: Readonly<Record<string, Record<string, unknown>>>;
+    /** How a request proves itself where an operation asks for it: the metrics token. */
+    readonly securitySchemes: Readonly<Record<string, Record<string, unknown>>>;
   };
   readonly info: {
     readonly description: string;
@@ -135,7 +138,7 @@ function componentSchemas(): Record<string, Record<string, unknown>> {
 /** The document's areas, as a viewer groups its operations. */
 const tags = {
   Heartbeats: "The address a job calls to tell its heartbeat monitor it ran.",
-  Meta: "The install itself: its health, this document, and the reverse proxy's custom domain check.",
+  Meta: "The install itself: its health, its metrics for Prometheus, this document, and the reverse proxy's custom domain check.",
   "Status pages":
     "A published status page's view documents, images, summary, badge and feed, public to anyone.",
   Subscriptions:
@@ -239,6 +242,38 @@ const customDomain = {
     ),
   },
   summary: "Check a custom domain",
+};
+
+/** The Prometheus scrape: a GET behind the metrics token, off until the operator turns it on. */
+const metrics = {
+  description:
+    "The install's monitors in the Prometheus text exposition format: `raaqeb_monitor_up`, `raaqeb_monitor_degraded`, `raaqeb_monitor_paused`, `raaqeb_monitor_response_seconds`, `raaqeb_monitor_last_check_timestamp_seconds` and `raaqeb_certificate_expiry_timestamp_seconds`, each labelled with `monitor`, `monitor_id`, `group` and `check_type`, and `raaqeb_build_info`. Off until the operator turns it on in the settings, which makes the bearer token.",
+  responses: {
+    200: {
+      content: {
+        "text/plain": {
+          schema: {
+            description: "Prometheus text exposition format, version 0.0.4.",
+            type: "string",
+          },
+        },
+      },
+      description: "The metrics, never cached.",
+    },
+    401: {
+      description:
+        "The request has no bearer token or the wrong one. It answers with `WWW-Authenticate: Bearer` and no body.",
+    },
+    404: {
+      description:
+        "The metrics are off, or no database is open yet. It answers with no body.",
+    },
+    503: {
+      description: "The database did not answer. It answers with no body.",
+    },
+  },
+  security: [{ metricsToken: [] }],
+  summary: "The monitors' state for Prometheus",
 };
 
 /** A status page's logo, favicon or cover image: a GET or a HEAD, on any host that serves the page. */
@@ -696,6 +731,7 @@ export function inlineSchemas(document: OpenApiDocument): OpenApiDocument {
   return {
     ...document,
     components: {
+      ...document.components,
       schemas: Object.fromEntries(
         Object.entries(schemas).map(([id, schema]) => [id, record(schema)])
       ),
@@ -707,10 +743,20 @@ export function inlineSchemas(document: OpenApiDocument): OpenApiDocument {
 
 export function openApiDocument(): OpenApiDocument {
   return {
-    components: { schemas: componentSchemas() },
+    components: {
+      schemas: componentSchemas(),
+      securitySchemes: {
+        metricsToken: {
+          description:
+            "The metrics token the operator's settings page shows once when it turns the metrics on, sent as `Authorization: Bearer <token>`.",
+          scheme: "bearer",
+          type: "http",
+        },
+      },
+    },
     info: {
       description:
-        "Raaqeb's public API: a status page's read-only status data (its view documents, images, Statuspage-compatible summary, badge and feed), heartbeat ingest, and a subscription's confirm and unsubscribe. Its webhooks are what Raaqeb sends. There is no management API: the operator manages the install in its admin area.",
+        "Raaqeb's public API: a status page's read-only status data (its view documents, images, Statuspage-compatible summary, badge and feed), heartbeat ingest, the monitors' metrics for Prometheus behind a bearer token, and a subscription's confirm and unsubscribe. Its webhooks are what Raaqeb sends. There is no management API: the operator manages the install in its admin area.",
       title: "Raaqeb public API",
       version: "1",
     },
@@ -728,6 +774,7 @@ export function openApiDocument(): OpenApiDocument {
       }),
       "/subscriptions/{token}/confirm": subscriptionAction("confirm"),
       "/subscriptions/{token}/unsubscribe": subscriptionAction("unsubscribe"),
+      "/metrics": pathItem("Metrics", "Meta", { get: metrics }),
       "/api/openapi.json": pathItem("OpenApiDocument", "Meta", {
         get: {
           responses: {

@@ -137,6 +137,7 @@ describe("the OpenAPI document", () => {
         "/badge.svg",
         "/feed.atom",
         "/health",
+        "/metrics",
         "/status/{slug}/api/v2/summary.json",
         "/status/{slug}/badge.svg",
         "/status/{slug}/feed.atom",
@@ -491,6 +492,27 @@ describe("the OpenAPI document", () => {
         },
       });
     }
+  });
+
+  test("GET /metrics is the one operation behind a bearer token, answering the Prometheus text on 200 and nothing on 401, 404 and 503", () => {
+    const metrics = operation("/metrics", "get");
+    expect(metrics.responses).toMatchObject({
+      200: { content: { "text/plain": expect.anything() } },
+    });
+    expect(Object.keys(metrics.responses).toSorted(byName)).toEqual([
+      "200",
+      "401",
+      "404",
+      "503",
+    ]);
+    const document = openApiDocument();
+    expect(document.components.securitySchemes).toEqual({
+      metricsToken: expect.objectContaining({
+        scheme: "bearer",
+        type: "http",
+      }),
+    });
+    expect(JSON.stringify(document.paths).match(/"security"/g)).toHaveLength(1);
   });
 
   test("says what the API is, and that every path is relative to the install's public address", () => {

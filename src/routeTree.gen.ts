@@ -13,6 +13,7 @@ import { Route as AdminRouteImport } from "./routes/admin.tsx";
 import { Route as DesignRouteImport } from "./routes/design.tsx";
 import { Route as ForgotPasswordRouteImport } from "./routes/forgot-password.tsx";
 import { Route as HealthRouteImport } from "./routes/health.ts";
+import { Route as MetricsRouteImport } from "./routes/metrics.ts";
 import { Route as OnboardingRouteImport } from "./routes/onboarding.tsx";
 import { Route as ResetPasswordRouteImport } from "./routes/reset-password.tsx";
 import { Route as SignInRouteImport } from "./routes/sign-in.tsx";
@@ -49,6 +50,7 @@ import { Route as AdminSettingsIndexRouteImport } from "./routes/admin/settings/
 import { Route as AdminSettingsAccountRouteImport } from "./routes/admin/settings/account.tsx";
 import { Route as AdminSettingsAppearanceRouteImport } from "./routes/admin/settings/appearance.tsx";
 import { Route as AdminSettingsExportRouteImport } from "./routes/admin/settings/export.tsx";
+import { Route as AdminSettingsMetricsRouteImport } from "./routes/admin/settings/metrics.tsx";
 import { Route as AdminSettingsSetupCheckRouteImport } from "./routes/admin/settings/setup-check.tsx";
 import { Route as AdminSettingsSignInRouteImport } from "./routes/admin/settings/sign-in.tsx";
 import { Route as AdminSettingsStorageRouteImport } from "./routes/admin/settings/storage.tsx";
@@ -101,6 +103,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const HealthRoute = HealthRouteImport.update({
   id: "/health",
   path: "/health",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const MetricsRoute = MetricsRouteImport.update({
+  id: "/metrics",
+  path: "/metrics",
   getParentRoute: () => rootRouteImport,
 } as any);
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -284,6 +291,11 @@ const AdminSettingsAppearanceRoute = AdminSettingsAppearanceRouteImport.update({
 const AdminSettingsExportRoute = AdminSettingsExportRouteImport.update({
   id: "/export",
   path: "/export",
+  getParentRoute: () => AdminSettingsRoute,
+} as any);
+const AdminSettingsMetricsRoute = AdminSettingsMetricsRouteImport.update({
+  id: "/metrics",
+  path: "/metrics",
   getParentRoute: () => AdminSettingsRoute,
 } as any);
 const AdminSettingsSetupCheckRoute = AdminSettingsSetupCheckRouteImport.update({
@@ -475,6 +487,7 @@ export interface FileRoutesByFullPath {
   "/design": typeof DesignRoute;
   "/forgot-password": typeof ForgotPasswordRoute;
   "/health": typeof HealthRoute;
+  "/metrics": typeof MetricsRoute;
   "/onboarding": typeof OnboardingRouteWithChildren;
   "/reset-password": typeof ResetPasswordRoute;
   "/sign-in": typeof SignInRoute;
@@ -504,6 +517,7 @@ export interface FileRoutesByFullPath {
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
+  "/admin/settings/metrics": typeof AdminSettingsMetricsRoute;
   "/admin/settings/setup-check": typeof AdminSettingsSetupCheckRoute;
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
@@ -549,6 +563,7 @@ export interface FileRoutesByTo {
   "/design": typeof DesignRoute;
   "/forgot-password": typeof ForgotPasswordRoute;
   "/health": typeof HealthRoute;
+  "/metrics": typeof MetricsRoute;
   "/reset-password": typeof ResetPasswordRoute;
   "/sign-in": typeof SignInRoute;
   "/sign-out": typeof SignOutRoute;
@@ -576,6 +591,7 @@ export interface FileRoutesByTo {
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
+  "/admin/settings/metrics": typeof AdminSettingsMetricsRoute;
   "/admin/settings/setup-check": typeof AdminSettingsSetupCheckRoute;
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
@@ -623,6 +639,7 @@ export interface FileRoutesById {
   "/design": typeof DesignRoute;
   "/forgot-password": typeof ForgotPasswordRoute;
   "/health": typeof HealthRoute;
+  "/metrics": typeof MetricsRoute;
   "/onboarding": typeof OnboardingRouteWithChildren;
   "/reset-password": typeof ResetPasswordRoute;
   "/sign-in": typeof SignInRoute;
@@ -652,6 +669,7 @@ export interface FileRoutesById {
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
+  "/admin/settings/metrics": typeof AdminSettingsMetricsRoute;
   "/admin/settings/setup-check": typeof AdminSettingsSetupCheckRoute;
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
@@ -700,6 +718,7 @@ export interface FileRouteTypes {
     | "/design"
     | "/forgot-password"
     | "/health"
+    | "/metrics"
     | "/onboarding"
     | "/reset-password"
     | "/sign-in"
@@ -729,6 +748,7 @@ export interface FileRouteTypes {
     | "/admin/settings/account"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
+    | "/admin/settings/metrics"
     | "/admin/settings/setup-check"
     | "/admin/settings/sign-in"
     | "/admin/settings/storage"
@@ -774,6 +794,7 @@ export interface FileRouteTypes {
     | "/design"
     | "/forgot-password"
     | "/health"
+    | "/metrics"
     | "/reset-password"
     | "/sign-in"
     | "/sign-out"
@@ -801,6 +822,7 @@ export interface FileRouteTypes {
     | "/admin/settings/account"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
+    | "/admin/settings/metrics"
     | "/admin/settings/setup-check"
     | "/admin/settings/sign-in"
     | "/admin/settings/storage"
@@ -847,6 +869,7 @@ export interface FileRouteTypes {
     | "/design"
     | "/forgot-password"
     | "/health"
+    | "/metrics"
     | "/onboarding"
     | "/reset-password"
     | "/sign-in"
@@ -876,6 +899,7 @@ export interface FileRouteTypes {
     | "/admin/settings/account"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
+    | "/admin/settings/metrics"
     | "/admin/settings/setup-check"
     | "/admin/settings/sign-in"
     | "/admin/settings/storage"
@@ -923,6 +947,7 @@ export interface RootRouteChildren {
   DesignRoute: typeof DesignRoute;
   ForgotPasswordRoute: typeof ForgotPasswordRoute;
   HealthRoute: typeof HealthRoute;
+  MetricsRoute: typeof MetricsRoute;
   OnboardingRoute: typeof OnboardingRouteWithChildren;
   ResetPasswordRoute: typeof ResetPasswordRoute;
   SignInRoute: typeof SignInRoute;
@@ -986,6 +1011,13 @@ declare module "@tanstack/react-router" {
       path: "/health";
       fullPath: "/health";
       preLoaderRoute: typeof HealthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/metrics": {
+      id: "/metrics";
+      path: "/metrics";
+      fullPath: "/metrics";
+      preLoaderRoute: typeof MetricsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/onboarding": {
@@ -1240,6 +1272,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AdminSettingsExportRouteImport;
       parentRoute: typeof AdminSettingsRoute;
     };
+    "/admin/settings/metrics": {
+      id: "/admin/settings/metrics";
+      path: "/metrics";
+      fullPath: "/admin/settings/metrics";
+      preLoaderRoute: typeof AdminSettingsMetricsRouteImport;
+      parentRoute: typeof AdminSettingsRoute;
+    };
     "/admin/settings/setup-check": {
       id: "/admin/settings/setup-check";
       path: "/setup-check";
@@ -1478,6 +1517,7 @@ interface AdminSettingsRouteChildren {
   AdminSettingsAccountRoute: typeof AdminSettingsAccountRoute;
   AdminSettingsAppearanceRoute: typeof AdminSettingsAppearanceRoute;
   AdminSettingsExportRoute: typeof AdminSettingsExportRoute;
+  AdminSettingsMetricsRoute: typeof AdminSettingsMetricsRoute;
   AdminSettingsSetupCheckRoute: typeof AdminSettingsSetupCheckRoute;
   AdminSettingsSignInRoute: typeof AdminSettingsSignInRoute;
   AdminSettingsStorageRoute: typeof AdminSettingsStorageRoute;
@@ -1488,6 +1528,7 @@ const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
   AdminSettingsAccountRoute: AdminSettingsAccountRoute,
   AdminSettingsAppearanceRoute: AdminSettingsAppearanceRoute,
   AdminSettingsExportRoute: AdminSettingsExportRoute,
+  AdminSettingsMetricsRoute: AdminSettingsMetricsRoute,
   AdminSettingsSetupCheckRoute: AdminSettingsSetupCheckRoute,
   AdminSettingsSignInRoute: AdminSettingsSignInRoute,
   AdminSettingsStorageRoute: AdminSettingsStorageRoute,
@@ -1580,6 +1621,7 @@ const rootRouteChildren: RootRouteChildren = {
   DesignRoute: DesignRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HealthRoute: HealthRoute,
+  MetricsRoute: MetricsRoute,
   OnboardingRoute: OnboardingRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   SignInRoute: SignInRoute,

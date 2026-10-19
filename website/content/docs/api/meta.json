@@ -1,4 +1,11 @@
 {
   "title": "الواجهة البرمجية",
-  "pages": ["heartbeats", "status-pages", "subscriptions", "webhooks", "health"]
+  "pages": [
+    "heartbeats",
+    "status-pages",
+    "subscriptions",
+    "webhooks",
+    "metrics",
+    "health"
+  ]
 }

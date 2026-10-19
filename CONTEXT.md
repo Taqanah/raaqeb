@@ -424,6 +424,16 @@ Arabic: تهيئة راقب
 One rule, shown on a read-only page under settings, that compares what the server sees with what the install is configured for and says, in plain words, what is wrong and how to fix it: forwarded headers from a peer that is not a trusted proxy, a public address that is not the origin the browser is at, no email channel, a data directory open to other users while it holds secrets, a data directory holding secrets on a container's overlay root filesystem, on a volume Docker made without a name, or in memory on tmpfs. Each judges facts the server already holds; none makes an outbound call or stores anything. A check that cannot know says nothing: a root filesystem that is no overlay may be a host's disk or a VM's ephemeral one, so it gets no verdict.
 _Avoid_: health check (that is `GET /health`), diagnostics, doctor, onboarding (that runs before the account exists)
 
+**Metrics endpoint**:
+Arabic: المقاييس
+`GET /metrics`, the install's monitors in the Prometheus text format for a Prometheus or Grafana Agent to read: per monitor whether it is up, degraded or paused, its latest response time and check time, and its certificate's expiry, labelled by monitor (name and id), group and check type. Off until the operator turns it on in settings; it answers only a request that carries the metrics token. It reads what the install already holds and renders no page.
+_Avoid_: exporter, stats, API (the install has no management API), status endpoint
+
+**Metrics token**:
+Arabic: رمز المقاييس
+The bearer token a request to the metrics endpoint carries. Turning the endpoint on makes it and shows it once; only its SHA-256 is stored, so a lost token is replaced, never read back. Making a new one stops the old one at once; turning the endpoint off forgets it. It does not travel in an export.
+_Avoid_: API key (a management API with keys may replace it later), password, secret (the install key's word)
+
 **Export**:
 Arabic: تصدير
 One file, `raaqeb-export.jsonl.zst` (JSON Lines under zstd), whose first line is the install's configuration (monitors, groups, tags, channels, components, status pages, incidents, maintenance windows, subscriptions and the settings that travel) and whose following lines, in the full mode, are the check history one record per line, so another install can import it as a stream. The way to move between hosts or backends. Credentials are written in clear, so the file is handled like a backup. One export downloads at a time, and the export page shows the full file's size as an estimate.

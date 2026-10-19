@@ -5153,6 +5153,70 @@ msgid "setting_public_address_invalid"
 msgstr "اكتب عنوانًا يبدأ بـ http أو https وينتهي عند المضيف أو منفذه، بلا مسار، مثل ⁦https://status.example.com⁩."
 
 #. js-lingui-explicit-id
+msgid "setting_metrics"
+msgstr "المقاييس"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_title"
+msgstr "مقاييس Prometheus"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_intro"
+msgstr "يعرض راقب حالة كل مراقبة بصيغة Prometheus، فيقرؤها Prometheus أو Grafana Agent. ولا يجيب إلا من يحمل الرمز."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_off"
+msgstr "المقاييس معطّلة. لا وجود لعنوانها حتى تفعّلها."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_on"
+msgstr "المقاييس مفعّلة."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_address"
+msgstr "العنوان"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_no_address"
+msgstr "احفظ العنوان العام في الإعدادات العامة ليظهر هنا العنوان كاملًا."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_turn_on"
+msgstr "تفعيل المقاييس"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_turn_off"
+msgstr "تعطيل المقاييس"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_turn_off_note"
+msgstr "التعطيل يحذف الرمز، ثم لا وجود للعنوان حتى تفعّل المقاييس من جديد."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_new_token"
+msgstr "رمز جديد"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_new_token_note"
+msgstr "الرمز الجديد يوقف الرمز الحالي فورًا، فحدّث إعداد Prometheus به."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_token_title"
+msgstr "رمز المقاييس"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_token_intro"
+msgstr "انسخ الرمز الآن. لا يخزّن راقب إلا بصمته، فلا يظهر الرمز مرة أخرى؛ وإن ضاع فأنشئ رمزًا جديدًا."
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_config"
+msgstr "إعداد Prometheus"
+
+#. js-lingui-explicit-id
+msgid "setting_metrics_copied"
+msgstr "نسخت الرمز"
+
+#. js-lingui-explicit-id
 msgid "maintenance_refused_weekdays"
 msgstr "اختر يومًا واحدًا على الأقل."
 
