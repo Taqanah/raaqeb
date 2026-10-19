@@ -2635,6 +2635,10 @@ msgid "channel_type_ntfy"
 msgstr "ntfy"
 
 #. js-lingui-explicit-id
+msgid "channel_type_pagerduty"
+msgstr "PagerDuty"
+
+#. js-lingui-explicit-id
 msgid "channel_type_webhook_lead"
 msgstr "Posts signed JSON to an address you set."
 
@@ -2657,6 +2661,10 @@ msgstr "To a chat or group through a bot."
 #. js-lingui-explicit-id
 msgid "channel_type_ntfy_lead"
 msgstr "A phone notification through an ntfy topic."
+
+#. js-lingui-explicit-id
+msgid "channel_type_pagerduty_lead"
+msgstr "An alert to your on-call team through an integration key."
 
 #. js-lingui-explicit-id
 msgid "channel_field_slack_url_hint"
@@ -2729,6 +2737,18 @@ msgstr "Enter the server's address alone, without the topic, such as https://ntf
 #. js-lingui-explicit-id
 msgid "channel_refused_access_token"
 msgstr "Enter the token as the server gave it, with no spaces."
+
+#. js-lingui-explicit-id
+msgid "channel_field_routing_key"
+msgstr "Integration key"
+
+#. js-lingui-explicit-id
+msgid "channel_field_routing_key_hint"
+msgstr "The Events API v2 integration key of your service in PagerDuty, 32 characters. Stored encrypted and never shown after saving."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_routing_key"
+msgstr "Enter the key as PagerDuty shows it: 32 Latin letters and digits."
 
 #. js-lingui-explicit-id
 msgid "auth_forgot_title"

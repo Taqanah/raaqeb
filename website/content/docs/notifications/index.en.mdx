@@ -10,7 +10,7 @@ Raaqeb sends two kinds of notification. Both go through one queue that stores ea
 
 ## Channels
 
-A notification channel is a destination your install owns, such as a Slack incoming webhook or an SMTP mailbox. You add channels under **Notification channels** in the admin area, then each monitor selects the channels it uses. Six channel types are built in:
+A notification channel is a destination your install owns, such as a Slack incoming webhook or an SMTP mailbox. You add channels under **Notification channels** in the admin area, then each monitor selects the channels it uses. Seven channel types are built in:
 
 | Channel type | What it does |
 | --- | --- |
@@ -20,6 +20,7 @@ A notification channel is a destination your install owns, such as a Slack incom
 | [Discord](/en/docs/notifications/discord) | Posts to a Discord channel through a webhook. |
 | [Telegram](/en/docs/notifications/telegram) | A bot writes to one chat, group or channel. |
 | [ntfy](/en/docs/notifications/ntfy) | Publishes a phone notification to an ntfy topic. |
+| [PagerDuty](/en/docs/notifications/pagerduty) | Opens an alert on a PagerDuty service and resolves it when the monitor recovers. |
 
 Every channel form has these fields, then the fields of its type:
 
@@ -30,7 +31,7 @@ Every channel form has these fields, then the fields of its type:
 | **Channel language** | The language the messages are written in. Not shown for a webhook, which sends machine values only. | No | **The install language** |
 | **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
 
-The channel list shows each channel's type, its destination (the webhook's host, the email recipients, the Telegram chat ID, the ntfy server), its channel language and its **Last notification**.
+The channel list shows each channel's type, its destination (the webhook's host, the email recipients, the Telegram chat ID, the ntfy server, PagerDuty's host), its channel language and its **Last notification**.
 
 ## Choosing channels and events on a monitor
 
@@ -98,7 +99,7 @@ Its subject is `Main website is down`. The lines each event carries:
 - The reason is the [reason](/en/docs/monitors) the check ended with, in words, such as `Timed out` or `Unexpected status code`.
 - Times are written in the install's time zone, clock and calendar, with the zone's name.
 - The Link line opens the monitor in the admin area, and the down notification's last line opens a new incident prefilled with the monitor. Both are made from the public address, so they are left out when the install stores none. See [the public address](/en/docs/get-started#onboarding).
-- Slack, Discord and Telegram show the subject as the first line and turn the two link lines into the words **Open the monitor** and **Open an incident**. ntfy turns them into buttons.
+- Slack, Discord and Telegram show the subject as the first line and turn the two link lines into the words **Open the monitor** and **Open an incident**. ntfy turns them into buttons, and PagerDuty attaches them to the alert as links.
 
 The text is fixed. There are no message templates.
 
@@ -114,7 +115,7 @@ Each channel writes in its own language: **The install language**, **العرب�
 
 A saved channel's page shows a **Notification preview**: each operator notification the channel can receive (down, the reminder, recovered, degraded started and ended, certificate expiring, domain expiring) as that channel type carries it, in the channel language. It uses a made-up monitor called "Main website" and example times, and sends nothing. For a webhook it shows the JSON body, and for email the HTML part as a mail client shows it, in the theme you chose, light or dark.
 
-**Send test** sends one test notification now with the saved settings. It makes one attempt, without retries and outside the queue, and the result appears at the top of **Recent notifications** marked **Test**. Save the form before you test a change.
+**Send test** sends one test notification now with the saved settings. It makes one attempt, without retries and outside the queue, and the result appears at the top of **Recent notifications** marked **Test**. Save the form before you test a change. A PagerDuty test opens an alert, which you resolve in PagerDuty.
 
 The test message reads:
 
@@ -165,7 +166,7 @@ Certificates are always verified. There is no option to skip verification.
 
 ## How secrets are stored
 
-Fields that hold a credential are secret: the webhook URL and signing secret, the SMTP password, the Slack and Discord webhook URLs, the Telegram bot token, and the ntfy topic and access token. Raaqeb seals them together with the install key (AES-256-GCM) before they reach the database. Every other field is stored as typed.
+Fields that hold a credential are secret: the webhook URL and signing secret, the SMTP password, the Slack and Discord webhook URLs, the Telegram bot token, the ntfy topic and access token, and the PagerDuty integration key. Raaqeb seals them together with the install key (AES-256-GCM) before they reach the database. Every other field is stored as typed.
 
 - A typed secret is write-only. After you save, its field is empty and reads **Stored. Leave it empty to keep it.** Type a new value to replace it.
 - An optional secret, such as the ntfy access token, cannot be emptied from the form once stored. Delete the channel and add it again to clear it.

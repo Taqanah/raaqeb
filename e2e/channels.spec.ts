@@ -252,6 +252,12 @@ const chats: readonly ChatCase[] = [
     summary: "-1001234567890",
     type: "telegram",
   },
+  {
+    carries: "routing_key",
+    fields: { routingKey: "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb" },
+    summary: "events.pagerduty.com",
+    type: "pagerduty",
+  },
 ];
 
 for (const chat of chats) {
@@ -349,6 +355,11 @@ const savedTwice: readonly SavedTwiceCase[] = [
     ],
     secrets: ["botToken"],
     type: "telegram",
+  },
+  {
+    fields: [["routingKey", "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb"]],
+    secrets: ["routingKey"],
+    type: "pagerduty",
   },
 ];
 

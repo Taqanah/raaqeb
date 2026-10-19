@@ -18,7 +18,7 @@ Raaqeb is a self-hosted, single-tenant uptime monitor and status page. It checks
 
 Checks run as often as every 20 seconds. A check that fails is retried before the monitor is called down, and each down spell is recorded as an outage.
 
-**Notification channels.** Email over SMTP, signed webhooks, Slack, Discord, Telegram and ntfy. Each monitor chooses its channels and the events that notify, and each channel writes in its own language. A reminder can repeat the down notification until you acknowledge the outage.
+**Notification channels.** Email over SMTP, signed webhooks, Slack, Discord, Telegram, ntfy and PagerDuty. Each monitor chooses its channels and the events that notify, and each channel writes in its own language. A reminder can repeat the down notification until you acknowledge the outage.
 
 **Status pages.** An install can publish several status pages. Each one shows the components you choose, with their status now and a day bar of their daily uptime, and the incidents and maintenance windows that affect them. A page has a slug, an optional custom domain, its own language with the other one beside it, and its own logo, colours and CSS. Visitors can subscribe by email or webhook, read an Atom feed, embed a status badge, and point a status aggregator at a Statuspage-compatible summary.
 

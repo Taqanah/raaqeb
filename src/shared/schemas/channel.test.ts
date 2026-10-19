@@ -11,6 +11,7 @@ import {
   fieldsFor,
   hintFor,
   ntfyDeclaration,
+  pagerdutyDeclaration,
   recipientsOf,
   senderOf,
   slackDeclaration,
@@ -476,5 +477,45 @@ describe("the chat channels' declarations", () => {
         topic: "raaqeb-alerts",
       })
     ).toBe("ntfy.example.test");
+  });
+
+  test("PagerDuty seals the integration key it takes, its only field", () => {
+    expect(pagerdutyDeclaration.fields.map((each) => each.name)).toEqual([
+      "routingKey",
+    ]);
+    expect(declared(pagerdutyDeclaration, "routingKey")).toMatchObject({
+      refusal: "channel_refused_routing_key",
+      secret: true,
+    });
+    expect(declared(pagerdutyDeclaration, "routingKey").shown).toBeUndefined();
+  });
+
+  test("an integration key is 32 Latin letters and digits", () => {
+    expect(
+      accepts(
+        pagerdutyDeclaration,
+        "routingKey",
+        "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb"
+      )
+    ).toBe(true);
+    for (const key of [
+      "",
+      "short",
+      "a".repeat(31),
+      "a".repeat(33),
+      `${"a".repeat(31)}-`,
+      `${"a".repeat(31)} `,
+      `${"a".repeat(31)}\u0663`,
+    ]) {
+      expect(accepts(pagerdutyDeclaration, "routingKey", key)).toBe(false);
+    }
+  });
+
+  test("the list shows a PagerDuty channel by PagerDuty's host, never its key", () => {
+    expect(
+      pagerdutyDeclaration.summary({
+        routingKey: "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb",
+      })
+    ).toBe("events.pagerduty.com");
   });
 });

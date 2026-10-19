@@ -19,6 +19,7 @@ export const channelTypes = [
   "discord",
   "telegram",
   "ntfy",
+  "pagerduty",
 ] as const;
 export const channelTypeSchema = z.enum(channelTypes);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
@@ -408,12 +409,35 @@ export const ntfyDeclaration: ChannelDeclaration = {
   type: "ntfy",
 };
 
+/** A PagerDuty integration key, which an Events API v2 integration shows as 32 letters and digits. */
+const routingKeyShape = /^[A-Za-z0-9]{32}$/;
+
+/** PagerDuty: a service's Events API v2 integration. Its key picks the service the alerts open on, so it is sealed. The Events API takes only a key, so the list shows PagerDuty's host in place of an address. */
+export const pagerdutyDeclaration: ChannelDeclaration = {
+  fields: [
+    {
+      hint: "channel_field_routing_key_hint",
+      kind: "text",
+      label: "channel_field_routing_key",
+      name: "routingKey",
+      refusal: "channel_refused_routing_key",
+      secret: true,
+      value: z.string().regex(routingKeyShape),
+    },
+  ],
+  label: "channel_type_pagerduty",
+  localized: true,
+  summary: () => "events.pagerduty.com",
+  type: "pagerduty",
+};
+
 export const channelDeclarations: Readonly<
   Record<ChannelType, ChannelDeclaration>
 > = {
   discord: discordDeclaration,
   email: emailDeclaration,
   ntfy: ntfyDeclaration,
+  pagerduty: pagerdutyDeclaration,
   slack: slackDeclaration,
   telegram: telegramDeclaration,
   webhook: webhookDeclaration,

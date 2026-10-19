@@ -1,0 +1,101 @@
+---
+title: PagerDuty
+description: How to get an Events API v2 integration key in PagerDuty, which alerts a PagerDuty channel opens and resolves, and how a refused event shows in Raaqeb.
+---
+
+A PagerDuty channel opens an alert on one PagerDuty service when a monitor goes down, becomes degraded, or has a certificate or a domain registration about to expire, and resolves the alert when the monitor recovers. PagerDuty then pages whoever is on call through the service's escalation policy. The alert's text is in the channel language.
+
+## What you need first
+
+An Events API v2 integration key for the service the alerts should open on. In PagerDuty:
+
+1. Open **Services**, then the service, then **Integrations**.
+2. Choose **Add an integration** and pick **Events API V2**.
+3. Copy the **Integration Key**. It is 32 letters and digits.
+
+A key from PagerDuty's EU service region works too: PagerDuty forwards the event to its EU region.
+
+## Fields
+
+| Field | Meaning | Required | Default |
+| --- | --- | --- | --- |
+| **Name** | What the admin area calls the channel, at most 80 characters. | Yes | None |
+| **Channel language** | The language of the alert's summary and details. | No | **The install language** |
+| **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
+| **Integration key** | The service's Events API v2 integration key. It decides which service the alerts open on, so it is a secret: stored encrypted with the install key and never shown after saving. | Yes | None |
+
+## Which alerts open and resolve
+
+Raaqeb sends every event to `https://events.pagerduty.com/v2/enqueue`. Each alert has a dedup key made from the monitor and the kind of problem, `raaqeb:<monitor id>:down`, `:degraded`, `:certificate` or `:domain`, so PagerDuty keeps one open alert per monitor and kind.
+
+| Monitor event | What it does | Severity | Dedup key kind |
+| --- | --- | --- | --- |
+| **Down** | Triggers an alert, then resolves the monitor's degraded alert if one is open. | `critical` | `down` |
+| **Reminder** | Triggers again, which adds to the open alert. If the alert was resolved in PagerDuty meanwhile, it opens a new one. | `critical` | `down` |
+| **Recovered** | Resolves the alert. | `info` | `down` |
+| **Degraded started** | Triggers an alert. | `warning` | `degraded` |
+| **Degraded ended** | Resolves the alert. A degraded monitor that goes down resolves it at **Down** instead. | `info` | `degraded` |
+| **Certificate expiring** | Triggers an alert. | `warning` | `certificate` |
+| **Domain expiring** | Triggers an alert, apart from the certificate's. | `warning` | `domain` |
+| **Send test** | Triggers an alert. | `info` | `test`, from the channel's ID |
+
+- A monitor that goes from degraded to down sends only **Down**, never **Degraded ended**, so the down event is followed by a second event that resolves the degraded alert. With none open it does nothing.
+- A monitor has at most one open outage, so the down and recovered events of an outage share one alert, and the next outage opens a new one once this one is resolved.
+- Nothing tells Raaqeb that a certificate or a domain was renewed, so a certificate or domain alert stays open until you resolve it in PagerDuty. A service's auto-resolve setting can close it for you.
+- A test opens one alert, and the next test adds to it. Resolve it in PagerDuty after you have seen it arrive.
+- Which events a monitor notifies is set on the monitor. See [Notifications](/en/docs/notifications).
+
+## The event
+
+Raaqeb posts this JSON, here for a down notification:
+
+```json
+{
+  "dedup_key": "raaqeb:0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d:down",
+  "event_action": "trigger",
+  "payload": {
+    "custom_details": {
+      "details": "The monitor is down.\n\nMonitor: Main website\nTarget: https://example.com\nReason: Timed out\nTime: Sep 25, 2026, 18:49 (UTC)"
+    },
+    "severity": "critical",
+    "source": "https://example.com",
+    "summary": "Main website is down",
+    "timestamp": "2026-09-25T18:49:00.000Z"
+  },
+  "routing_key": "<integration key>",
+  "links": [
+    {
+      "href": "https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d",
+      "text": "Open the monitor"
+    },
+    {
+      "href": "https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d",
+      "text": "Open an incident"
+    }
+  ]
+}
+```
+
+- **Summary**: the subject, such as `Main website is down`, cut to PagerDuty's 1024 characters.
+- **Source**: the monitor's target, or its name for a heartbeat monitor, which has none.
+- **Details**: the sentence and the label and value lines, without the link lines. See [What a notification says](/en/docs/notifications#what-a-notification-says).
+- **Links**: **Open the monitor**, and on a down notification **Open an incident**. They need a stored public address; without one they are left out.
+
+A resolve event carries the same fields, so the recovery's text appears in the alert's log.
+
+## Failures and limits
+
+PagerDuty answers `202` when it has accepted an event. That means the event was received, not that someone was paged: the service's escalation policy decides that. One attempt gives up after 10 seconds, and a failed attempt is retried 30 seconds, 2 minutes and 10 minutes later. PagerDuty's rate limit answers `429`, which retries on the same schedule.
+
+| Reason code | Text | Typical cause |
+| --- | --- | --- |
+| `unexpected_status` | Unexpected status code | PagerDuty refused the event. **Observed** shows the status and **Error text** PagerDuty's answer: `400` with `Invalid routing key` for a key PagerDuty does not know, and `429` for a rate limit. |
+| `timeout` | Timed out | No answer within 10 seconds. |
+| `dns_failed` | DNS lookup failed | `events.pagerduty.com` does not resolve from the server. |
+| `connection_refused` | Connection refused | Nothing answered at PagerDuty's host. |
+| `connection_failed` | Connection failed | The connection was reset or the host was unreachable. |
+| `certificate_expired` | Certificate expired | The certificate has expired. |
+| `certificate_invalid` | Certificate invalid | The certificate cannot be verified. |
+| `unknown` | Unknown error | Anything else. **Error text** says what happened. |
+
+The integration key is removed from every recorded error text.

@@ -72,6 +72,7 @@ import {
   MailIcon,
   MessageSquareIcon,
   SendIcon,
+  SirenIcon,
   TrashIcon,
   WebhookIcon,
 } from "@/shared/ui/icons.tsx";
@@ -114,6 +115,7 @@ const typeIcons: Readonly<Record<ChannelType, typeof BellIcon>> = {
   discord: MessageSquareIcon,
   email: MailIcon,
   ntfy: BellIcon,
+  pagerduty: SirenIcon,
   slack: HashIcon,
   telegram: SendIcon,
   webhook: WebhookIcon,

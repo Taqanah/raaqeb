@@ -60,7 +60,19 @@ const chat = async (payload: ChannelPayload): Promise<Shown> => {
   };
 };
 
-/** What each type's message carries of a notification, as its receiver shows it: a chat message's links as the words that open them, ntfy's as its buttons; Slack's, Discord's and Telegram's markup escapes and the length cuts are left out, since the receiver undoes the first and no sample reaches the second. */
+/** A title over a body, the links as buttons under it: how ntfy and PagerDuty show a notification. */
+const titled = async (payload: ChannelPayload): Promise<Shown> => {
+  const text = await notificationText(payload);
+  return {
+    body: plainText({ ...text, links: [] }).trimEnd(),
+    buttons: text.links.map(({ url, words }) => ({ url, words })),
+    html: undefined,
+    links: [],
+    subject: text.subject,
+  };
+};
+
+/** What each type's message carries of a notification, as its receiver shows it: a chat message's links as the words that open them, ntfy's and PagerDuty's as its buttons; Slack's, Discord's and Telegram's markup escapes and the length cuts are left out, since the receiver undoes the first and no sample reaches the second. */
 const shownBy: Readonly<
   Record<ChannelType, (payload: ChannelPayload) => Promise<Shown>>
 > = {
@@ -75,16 +87,8 @@ const shownBy: Readonly<
       subject: text.subject,
     };
   },
-  ntfy: async (payload) => {
-    const text = await notificationText(payload);
-    return {
-      body: plainText({ ...text, links: [] }).trimEnd(),
-      buttons: text.links.map(({ url, words }) => ({ url, words })),
-      html: undefined,
-      links: [],
-      subject: text.subject,
-    };
-  },
+  ntfy: titled,
+  pagerduty: titled,
   slack: chat,
   // Telegram writes a link it would drop as its plain line (telegram.ts).
   telegram: async (payload) => {

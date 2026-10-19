@@ -9,6 +9,7 @@ import type { NotificationChannel } from "./channel.ts";
 import { discordChannel } from "./discord.ts";
 import { emailChannel } from "./email.ts";
 import { ntfyChannel } from "./ntfy.ts";
+import { pagerdutyChannel } from "./pagerduty.ts";
 import { slackChannel } from "./slack.ts";
 import { telegramChannel } from "./telegram.ts";
 import { webhookChannel } from "./webhook.ts";
@@ -19,6 +20,7 @@ export const notificationChannels: Readonly<
   discord: discordChannel,
   email: emailChannel,
   ntfy: ntfyChannel,
+  pagerduty: pagerdutyChannel,
   slack: slackChannel,
   telegram: telegramChannel,
   webhook: webhookChannel,

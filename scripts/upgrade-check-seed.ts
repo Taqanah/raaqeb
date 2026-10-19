@@ -54,6 +54,11 @@ const moreChannels: readonly {
     secrets: { token: "tk_abcdef0123456789", topic: "raaqeb-alerts" },
     type: "ntfy",
   },
+  {
+    config: {},
+    secrets: { routingKey: "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb" },
+    type: "pagerduty",
+  },
 ];
 
 /** The monitors the fixture lacks: its install holds an HTTP, a DNS and a heartbeat monitor. A database monitor's connection URL is its credential. */

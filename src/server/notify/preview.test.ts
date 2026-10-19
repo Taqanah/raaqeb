@@ -91,6 +91,7 @@ const values: Readonly<Record<ChannelType, Record<string, string>>> = {
     to: "ops@example.com",
   },
   ntfy: { server: "https://ntfy.example.com", topic: "ops" },
+  pagerduty: { routingKey: "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb" },
   slack: { url: "https://hooks.slack.example.com/services/T/B/x" },
   telegram: { botToken: "1:x", chatId: "1" },
   webhook: { secret: `whsec_${"A".repeat(43)}=`, url: "https://example.com" },
@@ -184,6 +185,19 @@ async function carried(
         links: [],
         subject: sent.title,
       };
+    case "pagerduty":
+      return {
+        body: sent.payload.custom_details.details,
+        buttons: (sent.links ?? []).map(
+          (each: { href: string; text: string }) => ({
+            url: each.href,
+            words: each.text,
+          })
+        ),
+        html: undefined,
+        links: [],
+        subject: sent.payload.summary,
+      };
     default:
       return {
         body: JSON.stringify(sent),
@@ -198,7 +212,7 @@ async function carried(
 describe("the notification preview", () => {
   test("a channel previews down, its reminder, recovered, degraded started, degraded ended, certificate expiring and domain expiring", async () => {
     for (const type of channelTypes) {
-      // biome-ignore lint/performance/noAwaitInLoops: six types, one after the other
+      // biome-ignore lint/performance/noAwaitInLoops: seven types, one after the other
       const previews = await previewNotifications(type, english, now);
       expect(previews.map((each) => each.type)).toEqual([
         "monitor.down",

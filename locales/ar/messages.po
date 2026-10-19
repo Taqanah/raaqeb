@@ -2635,6 +2635,10 @@ msgid "channel_type_ntfy"
 msgstr "ntfy"
 
 #. js-lingui-explicit-id
+msgid "channel_type_pagerduty"
+msgstr "PagerDuty"
+
+#. js-lingui-explicit-id
 msgid "channel_type_webhook_lead"
 msgstr "يرسل JSON موقّعًا إلى عنوان تحدده."
 
@@ -2657,6 +2661,10 @@ msgstr "إلى محادثة أو مجموعة عبر بوت."
 #. js-lingui-explicit-id
 msgid "channel_type_ntfy_lead"
 msgstr "إشعار على الهاتف عبر موضوع ntfy."
+
+#. js-lingui-explicit-id
+msgid "channel_type_pagerduty_lead"
+msgstr "تنبيه إلى فريق المناوبة عبر مفتاح التكامل."
 
 #. js-lingui-explicit-id
 msgid "channel_field_slack_url_hint"
@@ -2729,6 +2737,18 @@ msgstr "اكتب عنوان الخادوم وحده دون اسم الموضوع
 #. js-lingui-explicit-id
 msgid "channel_refused_access_token"
 msgstr "اكتب الرمز كما أعطاك إياه الخادوم، دون مسافات."
+
+#. js-lingui-explicit-id
+msgid "channel_field_routing_key"
+msgstr "مفتاح التكامل"
+
+#. js-lingui-explicit-id
+msgid "channel_field_routing_key_hint"
+msgstr "مفتاح تكامل Events API v2 من خدمتك في PagerDuty، ومن 32 حرفًا. يُحفظ معمّى ولا يُعرض بعد الحفظ."
+
+#. js-lingui-explicit-id
+msgid "channel_refused_routing_key"
+msgstr "اكتب المفتاح كما يعرضه PagerDuty: 32 حرفًا من الحروف اللاتينية والأرقام."
 
 #. js-lingui-explicit-id
 msgid "auth_forgot_title"
