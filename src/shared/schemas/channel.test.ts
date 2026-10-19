@@ -9,6 +9,7 @@ import {
   discordDeclaration,
   emailDeclaration,
   fieldsFor,
+  googlechatDeclaration,
   hintFor,
   ntfyDeclaration,
   pagerdutyDeclaration,
@@ -551,5 +552,39 @@ describe("the chat channels' declarations", () => {
         url: "https://prod-12.westeurope.logic.azure.com:443/workflows/a?sig=s",
       })
     ).toBe("prod-12.westeurope.logic.azure.com");
+  });
+
+  test("Google Chat takes one URL, typed and sealed, since its key and token are in the address", () => {
+    expect(googlechatDeclaration.fields.map((each) => each.name)).toEqual([
+      "url",
+    ]);
+    expect(declared(googlechatDeclaration, "url")).toMatchObject({
+      kind: "url",
+      secret: true,
+    });
+  });
+
+  test("a Google Chat URL is any http or https URL, so a compatible receiver works too", () => {
+    for (const url of [
+      "https://chat.googleapis.com/v1/spaces/AAAA/messages?key=k&token=t",
+      "http://relay.lan:8080/chat",
+    ]) {
+      expect(accepts(googlechatDeclaration, "url", url)).toBe(true);
+    }
+    for (const url of [
+      "",
+      "chat.googleapis.com/v1/spaces/AAAA",
+      "ftp://example.test/x",
+    ]) {
+      expect(accepts(googlechatDeclaration, "url", url)).toBe(false);
+    }
+  });
+
+  test("the list shows a Google Chat channel by the URL's host, never its key or token", () => {
+    expect(
+      googlechatDeclaration.summary({
+        url: "https://chat.googleapis.com/v1/spaces/AAAA/messages?key=k&token=t",
+      })
+    ).toBe("chat.googleapis.com");
   });
 });

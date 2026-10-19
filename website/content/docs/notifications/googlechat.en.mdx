@@ -1,0 +1,84 @@
+---
+title: Google Chat
+description: How to get an incoming webhook URL for a Google Chat space, what a Google Chat channel posts, and how a refused post shows in Raaqeb.
+---
+
+A Google Chat channel posts each notification to one Google Chat space through the space's incoming webhook, as a card in the channel language: the subject as its title, the text under it, and buttons that open the monitor. The same text goes in the message's plain-text fallback, which a phone shows in its notification.
+
+## What you need first
+
+An incoming webhook URL for the space. In Google Chat:
+
+1. Open the space and choose its name at the top, then **Apps & integrations**.
+2. Choose **Manage webhooks**, then **Add webhook**.
+3. Name it, for example `Raaqeb`, and save.
+4. Copy the webhook URL. It starts with `https://chat.googleapis.com/v1/spaces/`.
+
+A Google Workspace administrator can turn webhooks off for the organisation; if the option is missing, ask them.
+
+## Fields
+
+| Field | Meaning | Required | Default |
+| --- | --- | --- | --- |
+| **Name** | What the admin area calls the channel, at most 80 characters. | Yes | None |
+| **Channel language** | The language of the card. | No | **The install language** |
+| **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
+| **URL** | The space's incoming webhook URL. The URL carries a key and a token, so it is a secret: stored encrypted with the install key and never shown after saving. | Yes | None |
+
+## The message
+
+Raaqeb posts this JSON to the webhook URL, here for a down notification:
+
+```json
+{
+  "cardsV2": [
+    {
+      "card": {
+        "header": { "title": "Main website is down" },
+        "sections": [
+          {
+            "widgets": [
+              {
+                "textParagraph": {
+                  "text": "The monitor is down.<br><br>Monitor: Main website<br>Target: https://example.com<br>Reason: Timed out<br>Time: Sep 25, 2026, 18:49 (UTC)"
+                }
+              },
+              {
+                "buttonList": {
+                  "buttons": [
+                    { "text": "Open the monitor", "onClick": { "openLink": { "url": "https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d" } } },
+                    { "text": "Open an incident", "onClick": { "openLink": { "url": "https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d" } } }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "fallbackText": "Main website is down\n\nThe monitor is down.\n\nMonitor: Main website\nTarget: https://example.com\nReason: Timed out\nTime: Sep 25, 2026, 18:49 (UTC)\nLink: https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d\nOpen an incident: https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d"
+}
+```
+
+- **Title**: the subject, such as `Main website is down`.
+- **Paragraph**: the sentence, then the label and value lines. A card paragraph is HTML, so Raaqeb writes `&`, `<` and `>` in it as entities and a name cannot make a tag or a link. See [What a notification says](/en/docs/notifications#what-a-notification-says).
+- **Buttons**: **Open the monitor**, and on a down notification **Open an incident**. They need a stored public address; without one they are left out.
+- **Fallback text**: the title, the paragraph's text and a line for each link, as plain text.
+
+## Failures and limits
+
+Google Chat takes one request a second for a space, shared by all of its webhooks, and a card of at most 32 KB. One attempt gives up after 10 seconds, and a failed attempt is retried 30 seconds, 2 minutes and 10 minutes later. A throttled answer, `429`, retries on the same schedule.
+
+| Reason code | Text | Typical cause |
+| --- | --- | --- |
+| `unexpected_status` | Unexpected status code | Google Chat refused the post. **Observed** shows the status and **Error text** Google's answer, for example when the webhook was deleted, its key or token was copied wrong, or the card was refused. |
+| `timeout` | Timed out | No answer within 10 seconds. |
+| `dns_failed` | DNS lookup failed | The URL's host does not resolve. |
+| `connection_refused` | Connection refused | Nothing listens at the URL's host and port. |
+| `connection_failed` | Connection failed | The connection was reset or the host was unreachable. |
+| `certificate_expired` | Certificate expired | The receiver's certificate has expired. |
+| `certificate_invalid` | Certificate invalid | The certificate cannot be verified. |
+| `unknown` | Unknown error | Anything else. **Error text** says what happened. |
+
+The webhook URL is removed from every recorded error text.

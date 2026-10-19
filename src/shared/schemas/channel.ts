@@ -21,6 +21,7 @@ export const channelTypes = [
   "ntfy",
   "pagerduty",
   "teams",
+  "googlechat",
 ] as const;
 export const channelTypeSchema = z.enum(channelTypes);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
@@ -450,11 +451,30 @@ export const teamsDeclaration: ChannelDeclaration = {
   type: "teams",
 };
 
+/** Google Chat: a space's incoming webhook, whose URL carries a key and a token and so counts as a secret. Any http or https URL, so a receiver that takes Google Chat's body works too. */
+export const googlechatDeclaration: ChannelDeclaration = {
+  fields: [
+    {
+      hint: "channel_field_googlechat_url_hint",
+      kind: "url",
+      label: "channel_field_url",
+      name: "url",
+      secret: true,
+      value: webhookUrl,
+    },
+  ],
+  label: "channel_type_googlechat",
+  localized: true,
+  summary: (values) => hostOf(values.url),
+  type: "googlechat",
+};
+
 export const channelDeclarations: Readonly<
   Record<ChannelType, ChannelDeclaration>
 > = {
   discord: discordDeclaration,
   email: emailDeclaration,
+  googlechat: googlechatDeclaration,
   ntfy: ntfyDeclaration,
   pagerduty: pagerdutyDeclaration,
   slack: slackDeclaration,

@@ -8,6 +8,7 @@ import type { ChannelType } from "@/shared/schemas/channel.ts";
 import type { NotificationChannel } from "./channel.ts";
 import { discordChannel } from "./discord.ts";
 import { emailChannel } from "./email.ts";
+import { googlechatChannel } from "./googlechat.ts";
 import { ntfyChannel } from "./ntfy.ts";
 import { pagerdutyChannel } from "./pagerduty.ts";
 import { slackChannel } from "./slack.ts";
@@ -20,6 +21,7 @@ export const notificationChannels: Readonly<
 > = {
   discord: discordChannel,
   email: emailChannel,
+  googlechat: googlechatChannel,
   ntfy: ntfyChannel,
   pagerduty: pagerdutyChannel,
   slack: slackChannel,

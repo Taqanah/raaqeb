@@ -253,6 +253,13 @@ const chats: readonly ChatCase[] = [
     type: "telegram",
   },
   {
+    carries: "fallbackText",
+    fields: { url: `${sinkOrigin}/ok/googlechat-${token}` },
+    path: `/ok/googlechat-${token}`,
+    summary: `127.0.0.1:${sinkPort}`,
+    type: "googlechat",
+  },
+  {
     carries: "type",
     fields: { url: `${sinkOrigin}/ok/teams-${token}` },
     path: `/ok/teams-${token}`,

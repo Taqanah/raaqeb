@@ -60,7 +60,7 @@ const chat = async (payload: ChannelPayload): Promise<Shown> => {
   };
 };
 
-/** A title over a body, the links as buttons under it: how ntfy, PagerDuty and Teams show a notification. */
+/** A title over a body, the links as buttons under it: how ntfy, PagerDuty, Teams and Google Chat show a notification. */
 const titled = async (payload: ChannelPayload): Promise<Shown> => {
   const text = await notificationText(payload);
   return {
@@ -72,7 +72,7 @@ const titled = async (payload: ChannelPayload): Promise<Shown> => {
   };
 };
 
-/** What each type's message carries of a notification, as its receiver shows it: a chat message's links as the words that open them, ntfy's, PagerDuty's and Teams' as its buttons; Slack's, Discord's and Telegram's markup escapes and the length cuts are left out, since the receiver undoes the first and no sample reaches the second. */
+/** What each type's message carries of a notification, as its receiver shows it: a chat message's links as the words that open them, ntfy's, PagerDuty's, Teams' and Google Chat's as its buttons; Slack's, Discord's and Telegram's markup escapes and the length cuts are left out, since the receiver undoes the first and no sample reaches the second. */
 const shownBy: Readonly<
   Record<ChannelType, (payload: ChannelPayload) => Promise<Shown>>
 > = {
@@ -87,6 +87,7 @@ const shownBy: Readonly<
       subject: text.subject,
     };
   },
+  googlechat: titled,
   ntfy: titled,
   pagerduty: titled,
   slack: chat,

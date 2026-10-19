@@ -70,6 +70,7 @@ import {
   BellIcon,
   HashIcon,
   MailIcon,
+  MessageCircleIcon,
   MessageSquareIcon,
   SendIcon,
   SirenIcon,
@@ -115,6 +116,7 @@ const noErrors: ChannelFieldErrors = {};
 const typeIcons: Readonly<Record<ChannelType, typeof BellIcon>> = {
   discord: MessageSquareIcon,
   email: MailIcon,
+  googlechat: MessageCircleIcon,
   ntfy: BellIcon,
   pagerduty: SirenIcon,
   slack: HashIcon,

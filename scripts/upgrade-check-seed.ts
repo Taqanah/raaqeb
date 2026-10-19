@@ -66,6 +66,13 @@ const moreChannels: readonly {
     },
     type: "teams",
   },
+  {
+    config: {},
+    secrets: {
+      url: "https://chat.googleapis.com/v1/spaces/AAAA1234/messages?key=abcdef&token=abcdef",
+    },
+    type: "googlechat",
+  },
 ];
 
 /** The monitors the fixture lacks: its install holds an HTTP, a DNS and a heartbeat monitor. A database monitor's connection URL is its credential. */

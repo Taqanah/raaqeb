@@ -90,6 +90,9 @@ const values: Readonly<Record<ChannelType, Record<string, string>>> = {
     security: "starttls",
     to: "ops@example.com",
   },
+  googlechat: {
+    url: "https://chat.googleapis.example.com/v1/spaces/S/messages?key=k&token=t",
+  },
   ntfy: { server: "https://ntfy.example.com", topic: "ops" },
   pagerduty: { routingKey: "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb" },
   slack: { url: "https://hooks.slack.example.com/services/T/B/x" },
@@ -186,6 +189,27 @@ async function carried(
         links: [],
         subject: sent.title,
       };
+    case "googlechat": {
+      // The card's title, its paragraph with HTML's line breaks and entities read back, and its buttons.
+      const { header, sections } = sent.cardsV2[0].card;
+      const [text, buttons] = sections[0].widgets;
+      return {
+        body: (text.textParagraph.text as string)
+          .replaceAll("<br>", "\n")
+          .replaceAll("&lt;", "<")
+          .replaceAll("&gt;", ">")
+          .replaceAll("&amp;", "&"),
+        buttons: (buttons?.buttonList.buttons ?? []).map(
+          (each: { onClick: { openLink: { url: string } }; text: string }) => ({
+            url: each.onClick.openLink.url,
+            words: each.text,
+          })
+        ),
+        html: undefined,
+        links: [],
+        subject: header.title,
+      };
+    }
     case "teams": {
       // The title, the sentence, then the lines, which the preview shows as text with the sentence apart; markdown's escapes read back.
       const [title, sentence, ...lines] = (
@@ -231,7 +255,7 @@ async function carried(
 describe("the notification preview", () => {
   test("a channel previews down, its reminder, recovered, degraded started, degraded ended, certificate expiring and domain expiring", async () => {
     for (const type of channelTypes) {
-      // biome-ignore lint/performance/noAwaitInLoops: eight types, one after the other
+      // biome-ignore lint/performance/noAwaitInLoops: nine types, one after the other
       const previews = await previewNotifications(type, english, now);
       expect(previews.map((each) => each.type)).toEqual([
         "monitor.down",
