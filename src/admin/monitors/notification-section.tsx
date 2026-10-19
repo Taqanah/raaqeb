@@ -1,7 +1,7 @@
 /**
  * The monitor form's notifications: the notification channels the monitor selects, the monitor events
  * that notify them, and the reminder while it stays down. A new monitor
- * starts with the channels that apply to new monitors and all five events
+ * starts with the channels that apply to new monitors and all six events
  * (draft.ts `draftOf`). An event that cannot happen for the monitor as the
  * form stands is greyed with the reason, or hidden where the check type
  * never raises it. With no channel yet, the section links to the
@@ -20,6 +20,7 @@ import {
   type MonitorEventKind,
   monitorEventKinds,
 } from "@/shared/schemas/monitor.ts";
+import { domainExpiryWarningDays } from "@/shared/schemas/registration.ts";
 import { Badge } from "@/shared/ui/badge.tsx";
 import { buttonVariants } from "@/shared/ui/button.tsx";
 import { Checkbox } from "@/shared/ui/checkbox.tsx";
@@ -35,7 +36,12 @@ import {
   NativeSelectOption,
 } from "@/shared/ui/native-select.tsx";
 import { Switch } from "@/shared/ui/switch.tsx";
-import { isHttps, type MonitorDraft, reminderChoicesMs } from "./draft.ts";
+import {
+  isHttps,
+  type MonitorDraft,
+  registrationHostOf,
+  reminderChoicesMs,
+} from "./draft.ts";
 import {
   type FieldChange,
   type FlagChange,
@@ -47,6 +53,7 @@ import {
 /** Each monitor event's label, which the recent sends reuse. */
 export const eventLabels: Readonly<Record<MonitorEventKind, MessageId>> = {
   certificate_expiring: "monitor_event_certificate_expiring",
+  domain_expiring: "monitor_event_domain_expiring",
   degraded_ended: "monitor_event_degraded_ended",
   degraded_started: "monitor_event_degraded_started",
   down: "monitor_event_down",
@@ -112,7 +119,7 @@ export function NotificationsSection({
   );
 }
 
-/** The five events as switches; the degraded pair is hidden for a heartbeat monitor, which is never degraded, and certificate expiring shows only once the form reads a certificate. */
+/** The six events as switches; the degraded pair is hidden for a heartbeat monitor, which is never degraded, certificate expiring shows only once the form reads a certificate, and domain expiring only once it reads a registration. */
 function EventChoices({
   draft,
   onEvent,
@@ -123,9 +130,14 @@ function EventChoices({
   const { locale, t } = useMessages();
   const withCertificate =
     draft.type === "http" && draft.tlsExpiry && isHttps(draft.url);
+  const withRegistration =
+    draft.domainExpiry && registrationHostOf(draft) !== undefined;
   const shown = monitorEventKinds.filter((kind) => {
     if (kind === "certificate_expiring") {
       return withCertificate;
+    }
+    if (kind === "domain_expiring") {
+      return withRegistration;
     }
     if (kind === "degraded_started" || kind === "degraded_ended") {
       return draft.type !== "heartbeat";
@@ -153,6 +165,10 @@ function EventChoices({
           hint = t("monitor_event_degraded_hint");
         } else if (kind === "certificate_expiring") {
           hint = certificateHint;
+        } else if (kind === "domain_expiring") {
+          hint = t("monitor_event_domain_hint", {
+            days: formatUnit(locale, domainExpiryWarningDays, "day", "long"),
+          });
         }
         return (
           <EventSwitch

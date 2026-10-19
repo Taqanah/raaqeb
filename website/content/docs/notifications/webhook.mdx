@@ -64,6 +64,7 @@ webhook-signature: v1,ZQq6cK+z7eUi6D9zZWTUyqr1MZ/7a41TG2GEWUF7CAs=
 | `monitor.degraded_started` | `reason`. |
 | `monitor.degraded_ended` | لا شيء. |
 | `monitor.certificate_expiring` | `certificate`: فيه `daysLeft`، الأيام الكاملة المتبقية مقرّبة إلى الأدنى، و`notAfter`، لحظة انتهاء الصلاحية. |
+| `monitor.domain_expiring` | `domain`: فيه `name`، النطاق المسجّل، و`daysLeft`، الأيام الكاملة المتبقية مقرّبة إلى الأدنى، و`expiresAt`، لحظة انتهاء التسجيل. |
 | `channel.test` | `channel`: فيه `id` القناة و`name`. ولا `monitor` فيه. |
 
 `reason` رمز علة مثل `timeout` أو `dns_failed` أو `connection_refused` أو `unexpected_status` أو `assertion_failed` أو `slow` أو `heartbeat_late`. وهذا إشعار تعافٍ:

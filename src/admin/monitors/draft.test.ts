@@ -21,6 +21,7 @@ import {
   intervalChoicesMs,
   type MonitorDraft,
   newAssertion,
+  registrationHostOf,
   reminderChoicesMs,
   tagsOf,
   withChannel,
@@ -381,6 +382,17 @@ describe("every field round-trips through the draft and the Zod schema", () => {
       expect(credentials).toBe(undefined);
     });
   }
+
+  test("a stored monitor with the domain expiry option off posts it off again", () => {
+    for (const fields of [httpFields, tcpFields, dnsFields]) {
+      const off = {
+        ...fields,
+        config: { ...fields.config, domainExpiry: false as const },
+      };
+      const parsed = inputOf(draftOf(monitorOf(off), noCredentials));
+      expect(parsed.ok && parsed.input.config).toEqual(off.config);
+    }
+  });
 
   test("an interval the list does not offer is kept as stored", () => {
     const parsed = inputOf(
@@ -883,6 +895,82 @@ describe("an input changes the draft field it names", () => {
   });
 });
 
+describe("the domain expiry option in the form", () => {
+  test("a new monitor has it on, and a stored one reads as it was saved", () => {
+    expect(draftOf(undefined, noCredentials).domainExpiry).toBe(true);
+    expect(draftOf(monitorOf(tcpFields), noCredentials).domainExpiry).toBe(
+      true
+    );
+    const off: MonitorFields = {
+      ...tcpFields,
+      config: {
+        host: "mail.example.test",
+        port: 587,
+        type: "tcp",
+        domainExpiry: false,
+      },
+    };
+    expect(draftOf(monitorOf(off), noCredentials).domainExpiry).toBe(false);
+  });
+
+  test("off posts it off for an HTTP, TCP or DNS monitor, and on posts nothing, since on is the default", () => {
+    for (const fields of [
+      {},
+      { host: "db.raaqeb.dev", port: "5432", type: "tcp" },
+      { dnsName: "raaqeb.dev", type: "dns" },
+    ] as const) {
+      const off = inputOf(typed({ ...fields, domainExpiry: false }));
+      expect(off.ok && off.input.config).toMatchObject({ domainExpiry: false });
+      const on = inputOf(typed({ ...fields, domainExpiry: true }));
+      expect(on.ok && on.input.config).not.toHaveProperty("domainExpiry");
+    }
+  });
+
+  test("another check type posts no option, whatever the switch held", () => {
+    const parsed = inputOf(
+      typed({
+        connectionUrl: "postgres://u:p@127.0.0.1:1/app",
+        domainExpiry: false,
+        type: "postgres",
+      })
+    );
+    expect(parsed.ok && parsed.input.config).not.toHaveProperty("domainExpiry");
+  });
+
+  test("the host whose registration is read is the typed URL's, TCP host or DNS name, in lower case", () => {
+    expect(
+      registrationHostOf(typed({ url: "https://Status.Raaqeb.DEV/health" }))
+    ).toBe("status.raaqeb.dev");
+    expect(
+      registrationHostOf(typed({ host: "db.raaqeb.dev", type: "tcp" }))
+    ).toBe("db.raaqeb.dev");
+    expect(
+      registrationHostOf(typed({ dnsName: "raaqeb.dev.", type: "dns" }))
+    ).toBe("raaqeb.dev");
+  });
+
+  test("the host is read whatever the switch holds, so the switch can say why it is greyed", () => {
+    expect(
+      registrationHostOf(
+        typed({ domainExpiry: false, url: "https://raaqeb.dev/" })
+      )
+    ).toBe("raaqeb.dev");
+  });
+
+  test("an IP address, a reserved name, an address that is not one yet, or another check type has no host", () => {
+    for (const draft of [
+      typed({ url: "http://192.0.2.10/" }),
+      typed({ url: "https://api.example.test/" }),
+      typed({ url: "https://" }),
+      typed({ url: "" }),
+      typed({ host: "", type: "tcp" }),
+      typed({ type: "heartbeat" }),
+    ]) {
+      expect(registrationHostOf(draft)).toBeUndefined();
+    }
+  });
+});
+
 describe("edge cases of the posted input", () => {
   test("the certificate expiry option posts no day count for an http address, which has no certificate", () => {
     const parsed = inputOf(
@@ -1364,6 +1452,7 @@ describe("the monitor's events and reminder in the form", () => {
       "degraded_started",
       "degraded_ended",
       "certificate_expiring",
+      "domain_expiring",
     ]);
     expect(withEvent(without, "down", true).events).toEqual([
       ...monitorEventKinds,

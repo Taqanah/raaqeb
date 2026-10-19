@@ -26,6 +26,7 @@ const eventTypeLabels: Readonly<
   Record<Exclude<NotificationType, "channel.test">, MessageId>
 > = {
   "monitor.certificate_expiring": eventLabels.certificate_expiring,
+  "monitor.domain_expiring": eventLabels.domain_expiring,
   "monitor.degraded_ended": eventLabels.degraded_ended,
   "monitor.degraded_started": eventLabels.degraded_started,
   "monitor.down": eventLabels.down,

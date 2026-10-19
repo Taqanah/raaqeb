@@ -1,0 +1,13 @@
+Domain Name:                     google.com.qa
+Registrar ID:                    agip_epp
+Registrar Name:                  AGIP dba Tag-Domains.com
+Status:                          ok
+
+Registrant:                      Google LLC
+Eligibility Type:                Trademark
+Eligibility ID:                  Legacy Domain Name
+
+Name Server:                     ns1.google.com
+Name Server:                     ns3.google.com
+Name Server:                     ns2.google.com
+Name Server:                     ns4.google.com

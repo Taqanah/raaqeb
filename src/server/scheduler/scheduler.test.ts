@@ -2092,6 +2092,88 @@ describe("the scheduler hands monitor events to the operator notifications", () 
       data: { certificate: { daysLeft: 10 } },
     });
   });
+
+  test("a monitor whose domain registration expires within 30 days queues one warning, a restart does not queue it again, and its registry is asked once that day", async () => {
+    const h = await harness();
+    const channel = await webhookChannel(h);
+    const expiresAt = h.io.now() + 10 * 86_400_000 + 60_000;
+    const asked: string[] = [];
+    // A fake registry world: IANA's bootstrap file, raaqeb.dev's RDAP server, and the check's own target.
+    const registry = ((request: string | URL | Request) => {
+      const url = String(request);
+      asked.push(url);
+      if (url === "https://data.iana.org/rdap/dns.json") {
+        return Promise.resolve(
+          Response.json({
+            services: [[["dev"], ["https://rdap.registry.test/"]]],
+          })
+        );
+      }
+      if (url === "https://rdap.registry.test/domain/raaqeb.dev") {
+        return Promise.resolve(
+          Response.json({
+            events: [
+              {
+                eventAction: "expiration",
+                eventDate: new Date(expiresAt).toISOString(),
+              },
+            ],
+            ldhName: "raaqeb.dev",
+          })
+        );
+      }
+      if (url.startsWith("https://rdap.registry.test/")) {
+        return Promise.resolve(new Response("{}", { status: 404 }));
+      }
+      return Promise.resolve(new Response("hello"));
+    }) as typeof fetch;
+    const io: LiveIo = {
+      ...h.io,
+      fetch: registry,
+      whois: () => Promise.reject(new Error("no WHOIS in this test")),
+    };
+    const { id } = await h.storage.monitors.create(
+      input(
+        "Status",
+        { ...http(1), url: "https://status.raaqeb.dev/" },
+        { channels: [channel], events: ["domain_expiring"] }
+      )
+    );
+    const quiet = spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      for (let boot = 0; boot < 2; boot += 1) {
+        const s = createScheduler(h.storage, io, {
+          installKey: key,
+          onEvent: (event) => h.events.push(event),
+          refreshPeriodMs: Number.POSITIVE_INFINITY,
+        });
+        // biome-ignore lint/performance/noAwaitInLoops: two boots, one after the other
+        await s.tick();
+        await s.idle();
+        await s.stop();
+      }
+    } finally {
+      quiet.mockRestore();
+    }
+    const queued = await queuedFor(h, channel);
+    expect(queued.map((each) => each.payload.type)).toEqual([
+      "monitor.domain_expiring",
+    ]);
+    expect(queued[0]?.payload).toMatchObject({
+      data: { domain: { daysLeft: 10, name: "raaqeb.dev" } },
+    });
+    expect(await h.storage.registrations.find(id)).toMatchObject({
+      domain: "raaqeb.dev",
+      expiresAt,
+      warned: true,
+    });
+    expect(
+      asked.filter((url) => url.startsWith("https://rdap.registry.test/"))
+    ).toEqual([
+      "https://rdap.registry.test/domain/status.raaqeb.dev",
+      "https://rdap.registry.test/domain/raaqeb.dev",
+    ]);
+  });
 });
 
 describe("edges of the operator notifications on the scheduler", () => {

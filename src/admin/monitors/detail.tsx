@@ -5,13 +5,14 @@
  * day's outages and zooms the chart to the day, one large response-time
  * chart (a heartbeat monitor shows its URL instead), the recent checks
  * with "show more" (zoomed, the span's checks at their clock time) with the failure detail and capture a down check kept, the outages with
- * "detected at", and the certificate record. Every time is in the operator's time zone, relative
+ * "detected at", the certificate record and the domain registration. Every time is in the operator's time zone, relative
  * to the moment the server read the page, so hydration sees the same text.
  */
 import { type ReactNode, useCallback, useState } from "react";
 import { certificateExpiresWithin } from "@/shared/domain/certificates.ts";
 import { dayZoom, zoomedChart } from "@/shared/domain/chart.ts";
 import { spanChecksShown } from "@/shared/domain/checks.ts";
+import { registrationExpiring } from "@/shared/domain/registrations.ts";
 import {
   displayedUptime,
   type UptimeReading,
@@ -46,6 +47,7 @@ import {
 import type { CaptureMode, Monitor } from "@/shared/schemas/monitor.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
 import { reasonMessageId, reasonName } from "@/shared/schemas/reason.ts";
+import type { DomainRegistration } from "@/shared/schemas/registration.ts";
 import { Alert, AlertDescription } from "@/shared/ui/alert.tsx";
 import { Badge } from "@/shared/ui/badge.tsx";
 import { Button, buttonVariants } from "@/shared/ui/button.tsx";
@@ -208,6 +210,13 @@ export function MonitorDetailView({
           monitor={monitor}
           now={detail.now}
           record={detail.certificate}
+        />
+      ) : null}
+      {detail.registration ? (
+        <RegistrationCard
+          clock={clock}
+          now={detail.now}
+          record={detail.registration}
         />
       ) : null}
     </div>
@@ -1021,6 +1030,68 @@ function CertificateCard({
           </Pair>
           <Pair label={t("monitor_certificate_last_seen")}>
             {formatWhen(locale, record.lastSeenAt, { ...clock, now })}
+          </Pair>
+        </dl>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The domain registration: the registered domain, when it expires or that the date is unknown, and when it was last read; marked once it is expiring. */
+function RegistrationCard({
+  clock,
+  now,
+  record,
+}: {
+  readonly clock: TimeOptions;
+  readonly now: number;
+  readonly record: DomainRegistration;
+}): ReactNode {
+  const { locale, t } = useMessages();
+  const { domain, expiresAt } = record;
+  let warning: ReactNode = null;
+  if (expiresAt !== undefined && expiresAt <= now) {
+    warning = (
+      <Badge data-warning="expired" variant="down">
+        {t("monitor_registration_expired")}
+      </Badge>
+    );
+  } else if (expiresAt !== undefined && registrationExpiring(expiresAt, now)) {
+    warning = (
+      <Badge data-warning="expiring" variant="degraded">
+        {t("monitor_registration_expiring")}
+      </Badge>
+    );
+  }
+  return (
+    <Card data-slot="registration">
+      <CardHeader className="flex flex-row flex-wrap items-center gap-3">
+        <CardTitle>{t("monitor_registration_title")}</CardTitle>
+        {warning}
+      </CardHeader>
+      <CardContent>
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 text-sm">
+          {domain === undefined ? null : (
+            <Pair label={t("monitor_registration_domain")}>
+              <Token>{domain}</Token>
+            </Pair>
+          )}
+          <Pair label={t("monitor_registration_expires")}>
+            {expiresAt === undefined ? (
+              <span className="flex flex-col gap-0.5">
+                <span data-slot="registration-unknown">
+                  {t("monitor_registration_unknown")}
+                </span>
+                <span className="text-muted-foreground">
+                  {t("monitor_registration_unknown_hint")}
+                </span>
+              </span>
+            ) : (
+              formatDateTimeWithZone(locale, expiresAt, clock)
+            )}
+          </Pair>
+          <Pair label={t("monitor_registration_last_read")}>
+            {formatWhen(locale, record.readAt, { ...clock, now })}
           </Pair>
         </dl>
       </CardContent>

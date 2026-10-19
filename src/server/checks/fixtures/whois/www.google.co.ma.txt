@@ -1,0 +1,5 @@
+Domain Name: www.google.co.ma
+The queried object does not exist: No Object Found
+>>> Last update of WHOIS database: 2026-10-18T14:45:26.137Z <<<
+
+Le service Whois permet la vérification de la disponibilité d’un nom de domaine « .ma » et l’identification de son titulaire. La base de données Whois est maintenue à jour par les prestataires, à chaque fois qu’une modification sur les données enregistrées leur est communiquée par le titulaire. Tout usage abusif du service WHOIS et des données d’identification qu’il publie engage la responsabilité des personnes concernées. 

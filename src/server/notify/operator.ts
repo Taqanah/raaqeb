@@ -11,7 +11,7 @@
  * missed while stopped are not sent. A notification
  * the queue refuses is not lost: a check event's waits in memory and goes
  * first at the next pass, a reminder is tried again at the next pass, and
- * a certificate warning is raised again by the certificate pass. A monitor
+ * a certificate or domain expiring warning is raised again by its pass. A monitor
  * a maintenance window covers notifies nothing and gets no reminder; when
  * windows completing leave it uncovered while it is still down, its down
  * notification goes then, whether or not one went before. An outage the operator acknowledged reminds no more; its
@@ -115,6 +115,19 @@ export function notificationOf(
         timestamp,
         type: "monitor.degraded_ended",
       };
+    case "domain_expiring":
+      return {
+        data: {
+          domain: {
+            daysLeft: daysLeft(event.expiresAt, event.at),
+            expiresAt: iso(event.expiresAt),
+            name: event.domain,
+          },
+          monitor: named,
+        },
+        timestamp,
+        type: "monitor.domain_expiring",
+      };
     default:
       return {
         data: {
@@ -174,7 +187,7 @@ export interface OperatorNotifications {
   adopt: () => void;
   /** Resolves once no reminder pass is under way; tests wait on it, and stop does. */
   idle: () => Promise<void>;
-  /** Queues what the event sends for each of the monitor's channels, and starts or ends the outage's reminders. A check event the queue refuses is kept and queued again at the next pass; a certificate warning is not, and the answer is false so the pass raises it again. Never throws; a failure is logged. */
+  /** Queues what the event sends for each of the monitor's channels, and starts or ends the outage's reminders. A check event the queue refuses is kept and queued again at the next pass; a certificate or domain expiring warning is not, and the answer is false so its pass raises it again. Never throws; a failure is logged. */
   raise: (
     event: MonitorEvent,
     monitor: Monitor,
@@ -416,16 +429,19 @@ export function createOperatorNotifications(
         down.delete(event.monitorId);
         acknowledgedEarly.delete(event.monitorId);
       }
-      // A covered monitor notifies nothing; its outage stays known for the notification at the window's end, and a certificate warning answers not queued, so it is raised again once the window ends.
+      const warning =
+        event.kind === "certificate_expiring" ||
+        event.kind === "domain_expiring";
+      // A covered monitor notifies nothing; its outage stays known for the notification at the window's end, and a warning answers not queued, so it is raised again once the window ends.
       if (options.covers?.(monitor.id)) {
-        return event.kind !== "certificate_expiring";
+        return !warning;
       }
       const payload = notificationOf(event, monitor, options.context());
       if (!payload) {
         return true;
       }
-      // The certificate pass raises a refused warning again itself, and a restart does not lose it.
-      if (event.kind === "certificate_expiring") {
+      // The certificate and registration passes raise a refused warning again themselves, and a restart does not lose it.
+      if (warning) {
         return await send(monitor, payload, now);
       }
       unsent.push({ monitor, now, payload });

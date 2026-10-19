@@ -108,6 +108,11 @@ Arabic: بيانات الشهادة
 What Raaqeb knows about an HTTPS monitor's current certificate: subject, issuer, validity dates, names, fingerprint, last seen. One per monitor, replaced when the certificate changes.
 _Avoid_: TLS info, cert log, certificate history
 
+**Domain registration**:
+Arabic: تسجيل النطاق
+What Raaqeb knows about the registration of the domain an HTTP, TCP or DNS monitor's host is in: the registered domain, when the registration expires or that the date is unknown, last read. Read from the domain's registry once a day. One per monitor, on by default; an unknown date never warns.
+_Avoid_: WHOIS record, domain expiry info, DNS record (that is what a DNS check queries)
+
 **Success rules**:
 Arabic: معايير النجاح
 An HTTP monitor's ordered list of assertions that must all pass for a check to be up. "Response time under N" is an assertion and fails the check; the degraded threshold is a separate field and never fails one.
@@ -225,7 +230,7 @@ _Avoid_: availability, SLA, health, readiness
 
 **Size budget**:
 Arabic: ميزانية التخزين
-The maximum database size setting, default unlimited. When set, Raaqeb deletes the oldest history before a write that would cross it: raw days, then hourly, then daily rollups; never outages, incidents, certificate records or settings. With or without a number, a local SQLite file keeps a 64 MB reserve of free disk; Postgres has no such signal.
+The maximum database size setting, default unlimited. When set, Raaqeb deletes the oldest history before a write that would cross it: raw days, then hourly, then daily rollups; never outages, incidents, certificate records, domain registrations or settings. With or without a number, a local SQLite file keeps a 64 MB reserve of free disk; Postgres has no such signal.
 _Avoid_: quota, disk limit, cap
 
 ### Notifications
@@ -237,11 +242,11 @@ _Avoid_: notifier, integration, alert target
 
 **Monitor event**:
 Arabic: حدث المراقبة
-One of five things a monitor can report: down, recovered, degraded started, degraded ended, certificate expiring. A late heartbeat is "down" for a heartbeat monitor. Toggled per monitor.
+One of six things a monitor can report: down, recovered, degraded started, degraded ended, certificate expiring, domain expiring. A late heartbeat is "down" for a heartbeat monitor. Toggled per monitor.
 _Avoid_: alert, trigger, state change
 
 **Operator notification**:
-Arabic: إشعار المشغّل; one about a problem (down, still down, degraded started, certificate expiring) is a تنبيه
+Arabic: إشعار المشغّل; one about a problem (down, still down, degraded started, certificate expiring, domain expiring) is a تنبيه
 A message sent by a monitor event to the team's notification channels. Distinct from subscriber notifications.
 _Avoid_: alert (ambiguous), alarm
 
@@ -252,7 +257,7 @@ _Avoid_: re-alert, escalation
 
 **Notification preview**:
 Arabic: معاينة الإشعارات
-On a notification channel's page, each operator notification the channel can receive (down, the reminder, recovered, degraded started and ended, certificate expiring) as that channel's type carries it, in the channel language, written by the same code that sends it with sample values: a made-up monitor and target, the install's clock and calendar, a sample downtime and time left. Marked as a sample; it sends nothing and writes nothing.
+On a notification channel's page, each operator notification the channel can receive (down, the reminder, recovered, degraded started and ended, certificate expiring, domain expiring) as that channel's type carries it, in the channel language, written by the same code that sends it with sample values: a made-up monitor and target, the install's clock and calendar, a sample downtime and time left. Marked as a sample; it sends nothing and writes nothing.
 _Avoid_: dry run, mock notification, template
 
 **Subscriber notification**:

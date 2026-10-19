@@ -24,8 +24,10 @@ const tcp = (tcpHost: string, tcpPort: number): Config => ({
   type: "tcp",
 });
 // Every target is a loopback port nothing listens on, and the DNS resolver
-// too, so the scheduler's checks never leave the machine.
+// too, so the scheduler's checks never leave the machine. The one domain
+// name has its domain expiry option off, so no registry is asked either.
 const dns = (name: string): Config => ({
+  domainExpiry: false,
   name,
   recordType: "A",
   resolver: "127.0.0.1:1",

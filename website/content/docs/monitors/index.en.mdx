@@ -75,6 +75,7 @@ A monitor reports five monitor events, each switched on or off under **Events th
 | **Degraded started** | A check is degraded and the monitor was not. When the monitor was down, it is sent together with the recovered notification. Needs a degraded threshold. |
 | **Degraded ended** | The monitor was degraded and a check is up. Needs a degraded threshold. |
 | **Certificate expiring** | An HTTPS monitor's certificate is within its warning threshold, then within one day. See [Certificate record](/en/docs/monitors/certificates). |
+| **Domain expiring** | An HTTP, TCP or DNS monitor's domain registration is within 30 days of its end. See [Domain registration](/en/docs/monitors/domains). |
 
 A degraded monitor that goes down raises down alone. A heartbeat that is late is down. After a restart, Raaqeb reads each monitor's last check, so a restart never repeats an event.
 
@@ -106,7 +107,7 @@ A maintenance window covers a monitor while the window is in progress and the mo
 While a monitor is covered:
 
 - Its checks keep running and are recorded, and outages open and close as usual.
-- It sends no operator notifications and no reminders. If it is still down when the window ends, the down notification is sent then. A certificate warning waits for the window's end too.
+- It sends no operator notifications and no reminders. If it is still down when the window ends, the down notification is sent then. A certificate or domain expiring warning waits for the window's end too.
 - The time is not observed time, so it does not count against uptime.
 - The list shows it as **Under maintenance**.
 
@@ -122,6 +123,7 @@ Open a monitor from the list to see:
 - **Recent checks**: the newest 20, each with its time, result, reason, response time and attempts. **Details** opens what was kept with it: the failure detail of a down check (the failed assertion, the expected and observed values, the error text) and the capture, if the capture mode kept one.
 - **Outages**: the newest 20 of the last 90 days, with how many there were in those 90 days.
 - **Certificate record**, for an HTTPS monitor with the certificate warning on.
+- **Domain registration**, for an HTTP, TCP or DNS monitor whose host is a domain name, with the domain expiry option on.
 
 ## Uptime
 

@@ -29,6 +29,7 @@ import { MonitorShapeError } from "@/server/storage/monitors.ts";
 import { OutageShapeError } from "@/server/storage/outages.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { connectionAddress } from "@/shared/domain/monitors.ts";
+import { registrationHost } from "@/shared/domain/registrations.ts";
 import type { ChannelChoice } from "@/shared/schemas/channel.ts";
 import type { CheckOutcome, CheckResult } from "@/shared/schemas/check.ts";
 import type { Component } from "@/shared/schemas/component.ts";
@@ -82,6 +83,7 @@ type MonitorStorage = Pick<
   | "monitors"
   | "outages"
   | "pages"
+  | "registrations"
   | "settings"
 >;
 
@@ -327,6 +329,13 @@ export async function editMonitor(
     // A new host, port or scheme, or the expiry option switched off, makes the record stale; without one the reader is due at once. Dropped before the write, so a write that fails costs a re-read, never a stale record.
     if (before && certificateHost(before) !== certificateHost(input)) {
       await storage.certificates.remove(id);
+    }
+    // So does a new host for the registration, or its option switched off.
+    if (
+      before &&
+      registrationHost(before.config) !== registrationHost(input.config)
+    ) {
+      await storage.registrations.remove(id);
     }
     const monitor = await storage.monitors.update(
       id,

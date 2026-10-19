@@ -1,0 +1,52 @@
+% IANA WHOIS server
+% for more information on IANA, visit http://www.iana.org
+% This query returned 1 object
+
+domain:       SA
+
+organisation: Communications, Space and Technology Commission
+address:      P. O. Box 75606
+address:      Riyadh 11588
+address:      Saudi Arabia
+
+contact:      administrative
+name:         Head of Saudi Network Information Center
+organisation: Communications, Space and Technology Commission
+address:      P. O. Box 75606
+address:      Riyadh 11588
+address:      Saudi Arabia
+phone:        REDACTED
+fax-no:       REDACTED
+e-mail:       REDACTED
+
+contact:      technical
+name:         SA-TLD Technical Contact
+organisation: Communications, Space and Technology Commission
+address:      P. O. Box 75606
+address:      Riyadh 11588
+address:      Saudi Arabia
+phone:        REDACTED
+fax-no:       REDACTED
+e-mail:       REDACTED
+
+nserver:      C1.DNS.SA 2001:67c:18c8:10:0:0:0:c1 86.111.192.9
+nserver:      C2.DNS.SA 2001:67c:130:10:0:0:0:9 86.111.196.9
+nserver:      I1.DNS.SA 2001:1490:0:800:0:0:0:118 212.138.118.118
+nserver:      M1.DNS.SA 2a02:ce0:1:30:0:0:0:5 86.51.77.213
+nserver:      M2.DNS.SA 2a02:ce0:1:91:0:0:0:5 86.51.28.37
+nserver:      N1.DNS.SA 194.146.106.102 2001:67c:1010:26:0:0:0:53
+nserver:      P1.DNS.SA 2001:500:14:6041:ad:0:0:1 204.61.216.41
+nserver:      S1.DNS.SA 2001:16a0:1:3002:0:0:0:2 37.107.223.170
+nserver:      S2.DNS.SA 2001:16a0:2:3002:0:0:0:2 37.107.255.170
+nserver:      SH1.DNS.SA 213.236.36.92 2a02:d70:64:68:0:0:0:2
+ds-rdata:     2990 8 2 9f357b0a83134174b0e581c252ad172e9e5f750ab95a4c900c9655a919b560c0
+
+whois:        whois.nic.net.sa
+
+status:       ACTIVE
+remarks:      Registration information: http://www.nic.net.sa/
+
+created:      1994-05-17
+changed:      2026-10-13
+source:       IANA
+

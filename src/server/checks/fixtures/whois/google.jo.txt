@@ -1,0 +1,32 @@
+Domain Name: google.jo
+Registrar WHOIS Server: whois.nic.net.jo
+Registrar URL: http://www.dns.jo
+Updated Date: Jul 26 2005 12:00AM
+Creation Date: 2005-07-25T21:00:00Z
+Registrar: Ministry Of Digital Economy and Entrepreneurship
+Registrar Abuse Contact: abuse@modee.gov.jo
+Registrar Abuse Contact Phone: REDACTED
+Domain Status: Active
+Registrant Name: Google LLC, 
+Registrant Organization: Google LLC
+Description: 
+Registrant Address: 
+Registrant City: 
+Registrant Postal Code: 
+Registrant Fax: 
+Registrant Phone: 
+Registrant Mobile: REDACTED
+Registrant Email: REDACTED
+Admin Name: Talal Abu-Ghazaleh Intellectual Property (AGIP)
+Admin Email: REDACTED
+Admin Phone: REDACTED
+Admin Mobile: REDACTED
+Tech Name: MarkMonitor Inc.
+Tech Email: REDACTED
+Tech Phone: 
+Tech Mobile: REDACTED
+Status: Active
+Name Server: ns1.google.com
+Name Server: ns2.google.com
+DNSSEC: unsigned
+>>> Last update of WHOIS database: 2026-10-18T16:40:19Z <<<

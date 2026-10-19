@@ -1,0 +1,11 @@
+Domain Name: GOOGLE.COM.SA
+
+Registrant Name: GOOGLE LLC
+
+Name Server: NS1.GOOGLE.COM
+Name Server: NS2.GOOGLE.COM
+Name Server: NS4.GOOGLE.COM
+Name Server: NS3.GOOGLE.COM
+DNSSEC: unsigned
+
+

@@ -73,7 +73,7 @@ docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data
 
 ## What it watches
 
-HTTP sites, TCP ports, DNS records, Postgres, MySQL and Redis databases, Docker containers, the heartbeats of scheduled jobs and TLS certificate expiry.
+HTTP sites, TCP ports, DNS records, Postgres, MySQL and Redis databases, Docker containers, the heartbeats of scheduled jobs, TLS certificate expiry and domain registration expiry.
 
 ## Size
 

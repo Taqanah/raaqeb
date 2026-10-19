@@ -4,12 +4,12 @@
  * the checks that are due, and settles each as it ends: records the row, the
  * failure detail and the capture, opens or closes the outage, raises the
  * monitor events, and moves the change counter on a transition and on
- * every failing check while down. Five parts own their state and timing
+ * every failing check while down. Six parts own their state and timing
  * and are handed the tick's time: the maintenance pass (`maintenance.ts`)
  * moves the windows at their edges before the checks start; the
- * certificate reader's pass (`certificates.ts`), the nightly job
- * (`nightly.ts`) and the notification queue's drain (`notify/queue.ts`)
- * run beside the checks; and before a check's row is written the size
+ * certificate reader's pass (`certificates.ts`), the registration pass
+ * (`registrations.ts`), the nightly job (`nightly.ts`) and the
+ * notification queue's drain (`notify/queue.ts`) run beside the checks; and before a check's row is written the size
  * guard (`budget.ts`) holds the history under the size budget and the
  * reserve.
  * Every check and timer stays on this loop;
@@ -23,6 +23,7 @@ import {
   heartbeatsKept,
 } from "@/server/checks/heartbeat.ts";
 import type { LiveIo } from "@/server/checks/io.ts";
+import { createRegistrationReader } from "@/server/checks/registration.ts";
 import { runCheck } from "@/server/checks/run.ts";
 import { error as logError, reasonOf } from "@/server/log.ts";
 import { openCredentials } from "@/server/monitors/credentials.ts";
@@ -51,6 +52,7 @@ import { createCertificatePass } from "./certificates.ts";
 import { type Liveness, tickVerdict } from "./health.ts";
 import { createMaintenancePass } from "./maintenance.ts";
 import { createNightlyJob } from "./nightly.ts";
+import { createRegistrationPass } from "./registrations.ts";
 import {
   afterCheck,
   arrivedWhileDown,
@@ -83,6 +85,7 @@ export type SchedulerStorage = Pick<
   | "notifications"
   | "outages"
   | "pages"
+  | "registrations"
   | "settings"
   | "size"
   | "subscriptions"
@@ -101,7 +104,7 @@ export interface SchedulerOptions {
   readonly installKey: InstallKey;
   /** How often the size guard measures before a check's row is written. */
   readonly measurePeriodMs?: number;
-  /** Called with every monitor event, raised by a settled check or by the certificate pass; the entry logs them. Their notifications go to the queue whatever this does. */
+  /** Called with every monitor event, raised by a settled check, the certificate pass or the registration pass; the entry logs them. Their notifications go to the queue whatever this does. */
   readonly onEvent?: (event: MonitorEvent) => void;
   /** Called with each maintenance window the scheduler moved, in its new stage; the entry logs them. */
   readonly onMaintenance?: (window: MaintenanceWindow) => void;
@@ -141,7 +144,7 @@ export interface Scheduler
   start: () => void;
   /** Stops the timers and waits for a settlement already under way; a check still in flight is not recorded. */
   stop: () => Promise<void>;
-  /** One tick: reads what changed, starts the due checks, runs the certificate pass and the nightly job when their time has come. */
+  /** One tick: reads what changed, starts the due checks, runs the certificate and registration passes and the nightly job when their time has come. */
   tick: () => Promise<void>;
   /** The watchdog's look: calls `onStale` when the last tick is older than the exit bound. */
   watch: () => void;
@@ -352,6 +355,23 @@ export function createScheduler(
     periodMs: options.certificatePeriodMs,
   });
 
+  /** Reads the due domain registrations over the monitors the tick already read, one at a time, beside the checks and never in their way; raises each domain expiring warning that falls due. */
+  const registrations = createRegistrationPass(
+    storage,
+    createRegistrationReader(io),
+    {
+      covers: (monitorId) => maintenance.covers(monitorId),
+      isStopped,
+      onExpiring: async (event) => {
+        options.onEvent?.(event);
+        const monitor = monitors.find((each) => each.id === event.monitorId);
+        if (monitor && !(await operator.raise(event, monitor, io.now()))) {
+          throw new Error("its notification was not queued");
+        }
+      },
+    }
+  );
+
   /** Once a closed day is safe to seal, the sealing pass and then the purge, beside the checks. */
   const nightly = createNightlyJob(storage, {
     bump,
@@ -557,6 +577,7 @@ export function createScheduler(
       operator.remind(now, monitors, (id) => states.get(id) === "down");
     }
     certificates.run(now, monitors);
+    registrations.run(now, monitors);
     nightly.run(now, monitors, timeZone);
     refreshedAt ??= now;
     if (now - refreshedAt >= refreshPeriod) {
@@ -604,6 +625,7 @@ export function createScheduler(
       await Promise.all([
         ...inFlight.values(),
         certificates.idle(),
+        registrations.idle(),
         maintenance.idle(),
         nightly.idle(),
         operator.idle(),
@@ -622,7 +644,7 @@ export function createScheduler(
       stopped = true;
       clearTimeout(timer);
       clearInterval(watchdog);
-      // The job ends at the next monitor, so a day it is sealing or purging lands whole; a certificate read or a notification still out writes nothing.
+      // The job ends at the next monitor, so a day it is sealing or purging lands whole; a certificate or registration read or a notification still out writes nothing.
       // A window's move under way lands whole, with its bump and its notifications.
       await maintenance.idle();
       await Promise.all([
@@ -631,6 +653,7 @@ export function createScheduler(
         operator.idle(),
         subscribers.idle(),
         certificates.flush(),
+        registrations.flush(),
         queue.flush(),
       ]);
       await bumps;

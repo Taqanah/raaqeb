@@ -534,6 +534,8 @@ const sentWhen: Readonly<Record<NotificationType, string>> = {
   "channel.test": "Sent when the operator presses the channel's send test.",
   "monitor.certificate_expiring":
     "Sent when an HTTPS monitor's certificate expires within the monitor's warning threshold, then once more within one day. A new certificate starts over.",
+  "monitor.domain_expiring":
+    "Sent once when the registration of the domain an HTTP, TCP or DNS monitor's host is in expires within 30 days. A renewed registration starts over.",
   "monitor.degraded_ended":
     "Sent when a check is up again after the monitor was degraded. A degraded monitor that goes down sends only `monitor.down`.",
   "monitor.degraded_started":

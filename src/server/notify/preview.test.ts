@@ -196,7 +196,7 @@ async function carried(
 }
 
 describe("the notification preview", () => {
-  test("a channel previews down, its reminder, recovered, degraded started, degraded ended and certificate expiring", async () => {
+  test("a channel previews down, its reminder, recovered, degraded started, degraded ended, certificate expiring and domain expiring", async () => {
     for (const type of channelTypes) {
       // biome-ignore lint/performance/noAwaitInLoops: six types, one after the other
       const previews = await previewNotifications(type, english, now);
@@ -207,6 +207,7 @@ describe("the notification preview", () => {
         "monitor.degraded_started",
         "monitor.degraded_ended",
         "monitor.certificate_expiring",
+        "monitor.domain_expiring",
       ]);
     }
   });
@@ -229,8 +230,8 @@ describe("the notification preview", () => {
         const sent = await Promise.all(
           notifications.map((each) => carried(type, each, context))
         );
-        expect(previews).toHaveLength(6);
-        expect(sent).toHaveLength(6);
+        expect(previews).toHaveLength(7);
+        expect(sent).toHaveLength(7);
         for (const [index, preview] of previews.entries()) {
           const carriedText = sent[index];
           if (type === "webhook") {
@@ -287,6 +288,12 @@ describe("the notification preview", () => {
     expect(certificate).toContain("Time left: 14 days");
     expect(certificate).toContain(
       `Expires: ${formatDateTimeWithZone("en", now + 14 * 86_400_000, utc)}`
+    );
+    const domain = byType(previews, "monitor.domain_expiring").body;
+    expect(domain).toContain("Domain: example.com");
+    expect(domain).toContain("Time left: 30 days");
+    expect(domain).toContain(
+      `Expires: ${formatDateTimeWithZone("en", now + 30 * 86_400_000, utc)}`
     );
   });
 

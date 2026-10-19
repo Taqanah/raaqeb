@@ -33,6 +33,18 @@ describe("a notification's payload", () => {
         timestamp,
         type: "monitor.certificate_expiring",
       },
+      {
+        data: {
+          domain: {
+            daysLeft: 29,
+            expiresAt: "2026-11-07T00:00:00.000Z",
+            name: "raaqeb.dev",
+          },
+          monitor,
+        },
+        timestamp,
+        type: "monitor.domain_expiring",
+      },
     ];
     for (const payload of payloads) {
       expect<unknown>(notificationPayloadSchema.parse(payload)).toEqual(

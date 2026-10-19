@@ -3,13 +3,16 @@
  * event"): the ones switched on that can happen for it. Down and
  * recovered can for every monitor; the degraded pair only with a
  * response-time threshold; certificate expiring only for an https monitor
- * with the expiry option on. The form greys what cannot happen, and the
- * scheduler sends nothing for it. No I/O.
+ * with the expiry option on; domain expiring only for an HTTP, TCP or DNS
+ * monitor whose host is in a domain, with the domain expiry option on. The
+ * form greys what cannot happen, and the scheduler sends nothing for it.
+ * No I/O.
  */
 import type {
   MonitorEventKind,
   MonitorFields,
 } from "@/shared/schemas/monitor.ts";
+import { registrationHost } from "./registrations.ts";
 
 /** Whether the event can happen for the monitor as configured. */
 export function eventApplies(
@@ -28,6 +31,8 @@ export function eventApplies(
         config.url.toLowerCase().startsWith("https:")
       );
     }
+    case "domain_expiring":
+      return registrationHost(monitor.config) !== undefined;
     default:
       return true;
   }

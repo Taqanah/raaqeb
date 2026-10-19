@@ -64,6 +64,7 @@ The types and what they add to `data`:
 | `monitor.degraded_started` | `reason`. |
 | `monitor.degraded_ended` | Nothing. |
 | `monitor.certificate_expiring` | `certificate`: `daysLeft`, whole days left rounded down, and `notAfter`, the expiry instant. |
+| `monitor.domain_expiring` | `domain`: `name`, the registered domain; `daysLeft`, whole days left rounded down; and `expiresAt`, the instant the registration ends. |
 | `channel.test` | `channel`: the channel's `id` and `name`. No `monitor`. |
 
 `reason` is a reason code such as `timeout`, `dns_failed`, `connection_refused`, `unexpected_status`, `assertion_failed`, `slow` or `heartbeat_late`. A recovered notification:

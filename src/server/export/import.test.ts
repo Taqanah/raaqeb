@@ -547,6 +547,43 @@ describe("an import", () => {
     expect(outages[0]?.acknowledgedAt).toBeUndefined();
   });
 
+  test("of a version 1 file, written before domain expiring, switches the event on for each monitor with an event on, as the migration does, and keeps a silenced one silent", async () => {
+    const from = await source();
+    const into = await target();
+    const lines = await exportLines(from, "configuration");
+    const header = JSON.parse(lines[0] ?? "{}");
+    asVersion1(header);
+    const rows: { events: string[]; id: string }[] =
+      header.configuration.monitors;
+    for (const row of rows) {
+      row.events = row.events.filter((kind) => kind !== "domain_expiring");
+    }
+    const [silent, ...others] = rows;
+    if (!silent) {
+      throw new Error("the fixture has monitors");
+    }
+    silent.events = [];
+    expect(
+      (
+        await importInstall(
+          into.storage,
+          into.key,
+          fileOf([JSON.stringify(header)]),
+          now
+        )
+      ).ok
+    ).toBe(true);
+    expect((await into.storage.monitors.find(silent.id))?.events).toEqual([]);
+    for (const row of others) {
+      // biome-ignore lint/performance/noAwaitInLoops: one monitor at a time
+      const monitor = await into.storage.monitors.find(row.id);
+      expect<unknown>(monitor?.events).toEqual([
+        ...row.events,
+        "domain_expiring",
+      ]);
+    }
+  });
+
   test("of a version 1 file, a 0.1 or 0.2 backup with no proxy on any monitor, imports as it always did", async () => {
     const from = await source();
     const into = await target();

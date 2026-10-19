@@ -1,0 +1,49 @@
+% IANA WHOIS server
+% for more information on IANA, visit http://www.iana.org
+% This query returned 1 object
+
+domain:       EG
+
+organisation: Egyptian Universities Network (EUN), Supreme Council of Universities
+address:      Cairo University
+address:      Giza - Orman
+address:      Cairo 268
+address:      Egypt
+
+contact:      administrative
+name:         Egyptian Universities Network (EUN)
+organisation: Egyptian Universities Network (EUN)
+organisation: Supreme Council of Universities
+address:      Cairo University
+address:      Giza - Orman
+address:      Cairo 268
+address:      Egypt
+phone:        REDACTED
+fax-no:       REDACTED
+e-mail:       REDACTED
+
+contact:      technical
+name:         Egyptian Universities Network (EUN)
+organisation: Egyptian Universities Network (EUN)
+organisation: Supreme Council of Universities
+address:      Cairo University
+address:      Giza - Orman
+address:      Cairo 268
+address:      Egypt
+phone:        REDACTED
+fax-no:       REDACTED
+e-mail:       REDACTED
+
+nserver:      DNS-EG.UNIVIE.AC.AT 2001:628:453:bb:0:0:0:8 78.104.145.8
+nserver:      FRCU.EUN.EG 193.227.1.1
+nserver:      RIP.PSG.COM 147.28.0.39 2001:418:1:0:0:0:0:39
+
+whois:        
+
+status:       ACTIVE
+remarks:      Registration information: http://www.egregistry.eg/
+
+created:      1990-11-30
+changed:      2026-08-04
+source:       IANA
+

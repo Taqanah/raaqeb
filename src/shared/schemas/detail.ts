@@ -12,6 +12,7 @@ import type { Assertion, Monitor } from "./monitor.ts";
 import type { Outage } from "./outage.ts";
 import type { OverviewDay } from "./overview.ts";
 import type { ReasonParams } from "./reason.ts";
+import type { DomainRegistration } from "./registration.ts";
 
 /** The chart's ranges; nothing beyond 90 days. */
 export const chartRanges = ["24h", "7d", "30d", "90d"] as const;
@@ -99,6 +100,8 @@ export interface MonitorDetail {
   readonly outagesTotal: number;
   /** The newest checks, newest first. */
   readonly recent: readonly Check[];
+  /** The domain registration, while the domain expiry option is on and a read has stored one. */
+  readonly registration: DomainRegistration | undefined;
   /** The checks list's first page: the span the chart is zoomed into or, unzoomed, the raw checks' window. */
   readonly spanChecks: SpanChecks;
   /** The latest check's result; none before the first check. */

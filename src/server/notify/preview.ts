@@ -25,6 +25,7 @@ import {
 } from "@/shared/schemas/monitor.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
+import { domainExpiryWarningDays } from "@/shared/schemas/registration.ts";
 import type { ChannelPayload } from "./channel.ts";
 import { notificationHtml } from "./email.ts";
 import { notificationOf, reminderOf } from "./operator.ts";
@@ -163,6 +164,12 @@ export async function previewNotifications(
       kind: "certificate_expiring",
       validTo: now + tlsExpiryDefaultDays * dayMs,
       warning: "threshold",
+    },
+    {
+      ...base,
+      domain: new URL(sampleTarget).hostname,
+      expiresAt: now + domainExpiryWarningDays * dayMs,
+      kind: "domain_expiring",
     },
   ];
   const [down, ...others] = events.map((event) =>

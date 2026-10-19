@@ -742,6 +742,34 @@ describe("the monitor detail's read", () => {
     expect(result.ok && result.detail.certificate).toEqual(record);
   });
 
+  test("a monitor's domain registration is read with it, and one with none reads as nothing", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    const other = await store.monitors.create({ ...site, name: "Other" });
+    const read = {
+      domain: "raaqeb.dev",
+      expiresAt: monitor.updatedAt + 90 * day,
+      monitorId: monitor.id,
+      readAt: monitor.updatedAt,
+    };
+    await store.registrations.replace(read);
+    const result = await readMonitorDetail(
+      store,
+      monitor.id,
+      options(monitor.updatedAt + minute)
+    );
+    expect(result.ok && result.detail.registration).toEqual({
+      ...read,
+      warned: false,
+    });
+    const none = await readMonitorDetail(
+      store,
+      other.id,
+      options(other.updatedAt + minute)
+    );
+    expect(none.ok && none.detail.registration).toBeUndefined();
+  });
+
   test("a stored check this version cannot read names the monitor", async () => {
     const store = await storage();
     const monitor = await store.monitors.create(site);

@@ -141,6 +141,7 @@ const allEvents: MonitorEventKind[] = [
   "degraded_started",
   "degraded_ended",
   "certificate_expiring",
+  "domain_expiring",
 ];
 
 /** The order roles are created in, and the page's share of each. */

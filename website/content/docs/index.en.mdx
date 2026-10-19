@@ -9,7 +9,7 @@ Raaqeb is a self-hosted, single-tenant uptime monitor and status page. It checks
 
 **Monitors.** A monitor watches one target with one check type:
 
-- HTTP and HTTPS, with success rules: assertions on the status code, the body, a JSON value, a header and the response time. An HTTPS monitor can warn before its certificate expires.
+- HTTP and HTTPS, with success rules: assertions on the status code, the body, a JSON value, a header and the response time. An HTTPS monitor can warn before its certificate expires, and an HTTP, TCP or DNS monitor before its domain's registration does.
 - TCP: whether a port accepts a connection.
 - DNS: the records a name answers, against the ones you expect.
 - Database: Postgres, MySQL or Redis. Each check signs in, runs a query and can compare the answer.

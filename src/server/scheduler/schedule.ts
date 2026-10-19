@@ -217,7 +217,7 @@ export function arrivedWhileDown(
     .map(({ monitor }) => monitor);
 }
 
-/** A monitor event (CONTEXT.md "Monitor event"): the four a settled check raises, and certificate expiring, which the certificate pass raises. */
+/** A monitor event (CONTEXT.md "Monitor event"): the four a settled check raises, certificate expiring, which the certificate pass raises, and domain expiring, which the registration pass raises. */
 export type MonitorEvent =
   | {
       readonly at: number;
@@ -239,6 +239,15 @@ export type MonitorEvent =
       readonly monitorId: string;
       readonly validTo: number;
       readonly warning: CertificateWarning;
+    }
+  | {
+      readonly at: number;
+      /** The registered domain, as the registry named it. */
+      readonly domain: string;
+      /** When the registration expires, in UTC milliseconds. */
+      readonly expiresAt: number;
+      readonly kind: "domain_expiring";
+      readonly monitorId: string;
     };
 
 /** What a recorded check changed: whether it opened an outage, the outage it closed, and the state before it. */

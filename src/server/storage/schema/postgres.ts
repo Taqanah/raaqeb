@@ -183,7 +183,7 @@ export const monitors = pgTable(
     credentials: text(),
     /** A heartbeat monitor's token, in its unique URL; null for every other check type. */
     heartbeatToken: text("heartbeat_token"),
-    /** The monitor events that notify its channels, as a JSON array of their names; existing monitors get all five. */
+    /** The monitor events that notify its channels, as a JSON array of their names; the monitors there were got all five, and domain expiring after them when it came. */
     events: text()
       .notNull()
       .default(
@@ -295,6 +295,20 @@ export const certificateRecords = pgTable("certificate_records", {
   fingerprint: text().notNull(),
   lastSeenAt: bigint("last_seen_at", { mode: "number" }).notNull(),
   /** The last warning sent for this certificate: 0 none, 1 at the threshold, 2 at 1 day. A new fingerprint starts at 0. */
+  warned: integer().notNull().default(0),
+});
+
+/** What Raaqeb knows about the registration of the domain an HTTP, TCP or DNS monitor's host is in (CONTEXT.md "Domain registration"): one row per monitor, replaced at each read. */
+export const domainRegistrations = pgTable("domain_registrations", {
+  monitorId: text("monitor_id")
+    .primaryKey()
+    .references(() => monitors.id, { onDelete: "cascade" }),
+  /** The registered domain the registry answered for; none when no registry named one. */
+  domain: text(),
+  /** None when no expiry date could be read. */
+  expiresAt: bigint("expires_at", { mode: "number" }),
+  readAt: bigint("read_at", { mode: "number" }).notNull(),
+  /** 1 once the warning went for this expiry date; a new date starts at 0. */
   warned: integer().notNull().default(0),
 });
 

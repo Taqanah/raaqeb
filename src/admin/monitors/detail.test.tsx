@@ -31,6 +31,7 @@ function check(result: Check["result"], startedAt: number): Check {
 function detail(captureMode: CaptureMode): MonitorDetail {
   return {
     certificate: undefined,
+    registration: undefined,
     chart: undefined,
     covered: false,
     days: [],
@@ -490,5 +491,55 @@ describe("the checks of a zoomed span", () => {
         unzoomed(false, [dayOf(edge + 1440 * minute, 3_600_000)])
       ).not.toContain(end);
     });
+  });
+});
+
+describe("the domain registration card", () => {
+  const day = 1440 * minute;
+  function card(registration: MonitorDetail["registration"]): string {
+    return render(
+      "en",
+      <MonitorDetailView
+        clock={clock}
+        detail={{ ...detail("off"), registration }}
+        onRange={noRange}
+        openRecord={noRecord}
+      />
+    );
+  }
+  const read = {
+    domain: "raaqeb.dev",
+    expiresAt: now + 300 * day,
+    monitorId: "m",
+    readAt: now - 2 * 60 * minute,
+    warned: false,
+  };
+
+  test("shows the registered domain, when it expires with its zone, and when it was last read", () => {
+    const html = card(read);
+    expect(html).toContain('data-slot="registration"');
+    expect(html).toContain("raaqeb.dev");
+    expect(html).toContain("Sep 9, 2024, 22:13 (UTC)");
+    expect(html).toContain("2 hours ago");
+    expect(html).not.toContain("data-warning");
+  });
+
+  test("a registration within 30 days of its end reads expiring, and one past it expired", () => {
+    expect(card({ ...read, expiresAt: now + 30 * day })).toContain(
+      'data-warning="expiring"'
+    );
+    expect(card({ ...read, expiresAt: now - day })).toContain(
+      'data-warning="expired"'
+    );
+  });
+
+  test("an unknown expiry date says so and that no warning goes, with no mark", () => {
+    const html = card({ ...read, domain: undefined, expiresAt: undefined });
+    expect(html).toContain('data-slot="registration-unknown"');
+    expect(html).not.toContain("data-warning");
+  });
+
+  test("a monitor with no registration shows no card", () => {
+    expect(card(undefined)).not.toContain('data-slot="registration"');
   });
 });

@@ -618,7 +618,16 @@ describe("an HTTP monitor's request body", () => {
 });
 
 describe("a monitor's events and reminder", () => {
-  test("a monitor has all five events on and no reminder by default", () => {
+  test("the domain expiry option is stored only when off, so a monitor saved before it has it on", () => {
+    const tcp = { host: "db.raaqeb.dev", port: 5432, type: "tcp" } as const;
+    expect(monitorConfigSchema.parse(tcp)).toEqual(tcp);
+    expect(monitorConfigSchema.parse({ ...tcp, domainExpiry: false })).toEqual({
+      ...tcp,
+      domainExpiry: false,
+    });
+  });
+
+  test("a monitor has all six events on and no reminder by default", () => {
     const parsed = monitorInputSchema.parse(base);
     expect(parsed.events).toEqual([
       "down",
@@ -626,6 +635,7 @@ describe("a monitor's events and reminder", () => {
       "degraded_started",
       "degraded_ended",
       "certificate_expiring",
+      "domain_expiring",
     ]);
     expect(parsed.reminderMs).toBe(undefined);
   });

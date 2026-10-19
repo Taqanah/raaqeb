@@ -47,6 +47,10 @@ const wording: Readonly<
     sentence: "channel_text_degraded_ended",
     subject: "channel_subject_degraded_ended",
   },
+  "monitor.domain_expiring": {
+    sentence: "channel_text_domain_expiring",
+    subject: "channel_subject_domain_expiring",
+  },
   "monitor.degraded_started": {
     sentence: "channel_text_degraded_started",
     subject: "channel_subject_degraded_started",
@@ -115,10 +119,9 @@ export async function notificationText(
       )
     );
   }
-  if ("certificate" in notification.data) {
-    const { daysLeft, notAfter } = notification.data.certificate;
-    const left = Date.parse(notAfter) - Date.parse(notification.timestamp);
-    // Under a day the hours say more than "0 days"; an expired certificate has no time left to give.
+  /** Under a day the hours say more than "0 days"; what has expired has no time left to give. */
+  const timeLeft = (daysLeft: number, endsAt: string) => {
+    const left = Date.parse(endsAt) - Date.parse(notification.timestamp);
     if (daysLeft >= 1) {
       lines.push(
         line("channel_line_time_left", formatUnit(locale, daysLeft, "day"))
@@ -126,7 +129,17 @@ export async function notificationText(
     } else if (left > 0) {
       lines.push(line("channel_line_time_left", formatDuration(locale, left)));
     }
+  };
+  if ("certificate" in notification.data) {
+    const { daysLeft, notAfter } = notification.data.certificate;
+    timeLeft(daysLeft, notAfter);
     lines.push(line("channel_line_expires_at", when(notAfter)));
+  }
+  if ("domain" in notification.data) {
+    const { daysLeft, expiresAt, name } = notification.data.domain;
+    lines.push(line("channel_line_domain", name));
+    timeLeft(daysLeft, expiresAt);
+    lines.push(line("channel_line_registration_expires", when(expiresAt)));
   }
   lines.push(line("channel_line_time", when(notification.timestamp)));
   const links: TextLink[] = [];

@@ -26,6 +26,16 @@ afterEach(async () => {
   }
 });
 
+/** Runs the earlier migrations copied to `root` and checks each applied: the migrator alone, since the tables a later migration creates are rightly missing yet. */
+async function migrateEarlier(
+  connection: Connection,
+  root: string,
+  names: readonly string[]
+): Promise<void> {
+  await runMigrator(connection, root);
+  expect(await appliedMigrations(connection)).toEqual([...names]);
+}
+
 async function snapshots(connection: Connection): Promise<string[]> {
   if (connection.backend !== "sqlite") {
     return [];
@@ -185,8 +195,7 @@ describe("the published switch arriving on an install that has pages", () => {
         sql`INSERT INTO status_pages (id, slug, title, locale, is_default, customization, created_at, updated_at) VALUES (${id}, ${id}, ${id}, 'ar', 0, '{}', 0, 0)`
       );
     try {
-      // The migrator alone: the tables a later migration creates are rightly missing yet.
-      await runMigrator(connection, root);
+      await migrateEarlier(connection, root, before);
       await page("live");
       expect((await migrateDatabase(connection)).ok).toBe(true);
       await page("new");
@@ -196,6 +205,64 @@ describe("the published switch arriving on an install that has pages", () => {
       expect(rows.map((row) => [row.id, Number(row.published)])).toEqual([
         ["live", 1],
         ["new", 0],
+      ]);
+    } finally {
+      await Bun.$`rm -rf ${root}`.quiet();
+    }
+  });
+});
+
+describe("the domain expiring event arriving on an install that has monitors", () => {
+  test("every monitor that exists when the migration runs gets the event on after its own, and one with every event off stays silent", async () => {
+    const connection = await fresh();
+    const root = (await Bun.$`mktemp -d`.text()).trim();
+    const local = await localMigrations(connection.backend);
+    const before = local.slice(
+      0,
+      local.findIndex((name) => name.endsWith("_domain_registrations"))
+    );
+    await Promise.all(
+      before.map((name) =>
+        Bun.write(
+          `${root}/${connection.backend}/${name}/migration.sql`,
+          Bun.file(
+            `${migrationsFolder(connection.backend)}/${name}/migration.sql`
+          )
+        )
+      )
+    );
+    const run = executor(connection);
+    const monitor = (id: string, events?: string) =>
+      run.run(
+        events === undefined
+          ? sql`INSERT INTO monitors (id, name, check_type, target, config, interval_ms, timeout_ms, retries, paused, created_at, updated_at) VALUES (${id}, ${id}, 'tcp', 'db.raaqeb.dev:5432', '{"host":"db.raaqeb.dev","port":5432,"type":"tcp"}', 60000, 10000, 0, 0, 0, 0)`
+          : sql`INSERT INTO monitors (id, name, check_type, target, config, interval_ms, timeout_ms, retries, paused, created_at, updated_at, events) VALUES (${id}, ${id}, 'tcp', 'db.raaqeb.dev:5432', '{"host":"db.raaqeb.dev","port":5432,"type":"tcp"}', 60000, 10000, 0, 0, 0, 0, ${events})`
+      );
+    try {
+      await migrateEarlier(connection, root, before);
+      await monitor("all");
+      await monitor("quiet", '["recovered"]');
+      await monitor("none", "[]");
+      expect((await migrateDatabase(connection)).ok).toBe(true);
+      await monitor("new", '["down"]');
+      const rows = await run.rows<{ id: string; events: string }>(
+        sql`SELECT id, events FROM monitors ORDER BY id`
+      );
+      expect(rows.map((row) => [row.id, JSON.parse(row.events)])).toEqual([
+        [
+          "all",
+          [
+            "down",
+            "recovered",
+            "degraded_started",
+            "degraded_ended",
+            "certificate_expiring",
+            "domain_expiring",
+          ],
+        ],
+        ["new", ["down"]],
+        ["none", []],
+        ["quiet", ["recovered", "domain_expiring"]],
       ]);
     } finally {
       await Bun.$`rm -rf ${root}`.quiet();
@@ -255,8 +322,7 @@ describe("content, one text per locale", () => {
       );
     try {
       await copy(local.slice(0, at));
-      // The migrator alone: the tables a later migration creates are rightly missing yet.
-      await runMigrator(connection, root);
+      await migrateEarlier(connection, root, local.slice(0, at));
       for (const row of rows) {
         // biome-ignore lint/performance/noAwaitInLoops: the rows go in one after the other
         await executor(connection).run(row);

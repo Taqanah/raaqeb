@@ -347,15 +347,19 @@ const eventWords: Readonly<Record<MonitorEvent["kind"], string>> = {
   certificate_expiring: "has a certificate expiring",
   degraded_ended: "is no longer degraded",
   degraded_started: "is degraded",
+  domain_expiring: "has a domain registration expiring",
   down: "is down",
   recovered: "recovered",
 };
 
-/** One log line per monitor event: the monitor's id, the event, a down event's reason, and when an expiring certificate ends. */
+/** One log line per monitor event: the monitor's id, the event, a down event's reason, and when an expiring certificate or domain registration ends. */
 export function eventLine(event: MonitorEvent): string {
   const line = `monitor ${event.monitorId} ${eventWords[event.kind]}`;
   if (event.kind === "certificate_expiring") {
     return `${line} at ${new Date(event.validTo).toISOString()}`;
+  }
+  if (event.kind === "domain_expiring") {
+    return `${line}: ${event.domain} at ${new Date(event.expiresAt).toISOString()}`;
   }
   return event.kind === "down"
     ? `${line} (${reasonName(event.reason) ?? event.reason})`

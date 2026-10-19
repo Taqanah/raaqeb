@@ -1,0 +1,128 @@
+{
+  "rdapConformance": [
+    "rdap_level_0",
+    "icann_rdap_technical_implementation_guide_1",
+    "icann_rdap_response_profile_1"
+  ],
+  "objectClassName": "domain",
+  "links": [
+    {
+      "value": "https://rdap.nic.ly/domain/com.ly",
+      "rel": "related",
+      "href": "https://rdap.nic.ly/domain/com.ly",
+      "type": "application/rdap+json"
+    }
+  ],
+  "notices": [
+    {
+      "title": "Terms of Service",
+      "description": [
+        "Access to RDAP information is provided to assist persons interested in domains, nameservers, or associated entities."
+      ],
+      "links": [
+        {
+          "value": "https://rdap.nic.ly/domain/com.ly",
+          "rel": "terms-of-service",
+          "href": "https://rdap.nic.ly",
+          "title": "Terms of Use",
+          "type": "application/json"
+        }
+      ]
+    },
+    {
+      "title": "Status Codes",
+      "description": ["URL of ICANN EPP Status code descriptions"],
+      "links": [
+        {
+          "value": "https://rdap.nic.ly/domain/com.ly",
+          "rel": "glossary",
+          "href": "https://icann.org/epp",
+          "title": "More information on domain status codes",
+          "type": "text/html"
+        }
+      ]
+    }
+  ],
+  "events": [
+    { "eventAction": "registration", "eventDate": "2020-10-20T12:13:52Z" },
+    { "eventAction": "expiration", "eventDate": "2021-10-20T12:13:52Z" },
+    {
+      "eventAction": "registrar expiration",
+      "eventDate": "2021-10-20T12:13:52Z"
+    },
+    { "eventAction": "last changed", "eventDate": "2020-10-25T14:00:21Z" },
+    {
+      "eventAction": "last update of RDAP database",
+      "eventDate": "2026-10-18T14:30:59Z"
+    }
+  ],
+  "status": [
+    "inactive",
+    "client hold",
+    "client renew prohibited",
+    "server renew prohibited",
+    "client transfer prohibited",
+    "server transfer prohibited",
+    "client update prohibited",
+    "server update prohibited",
+    "client delete prohibited",
+    "server delete prohibited",
+    "DS automation disabled",
+    "NS automation disabled"
+  ],
+  "handle": "48810-nicly",
+  "ldhName": "com.ly",
+  "unicodeName": "com.ly",
+  "secureDNS": { "delegationSigned": false },
+  "entities": [
+    {
+      "objectClassName": "entity",
+      "handle": "48806-nicly",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["fn", {}, "text", "NIC LY"],
+          [
+            "adr",
+            { "cc": "LY" },
+            "text",
+            ["", "", "Tripoli", "Tripoli", "", "", "LY"]
+          ],
+          ["org", {}, "text", "ccTLD Registry"],
+          ["tel", { "type": "voice" }, "uri", "tel:+218.912123880"],
+          ["email", {}, "text", "noc@nic.ly"]
+        ]
+      ],
+      "roles": ["registrant"]
+    },
+    {
+      "objectClassName": "entity",
+      "links": [
+        {
+          "value": "https://rdap.nic.ly/domain/com.ly",
+          "rel": "about",
+          "href": "https://rdap.nic.ly/entity/146388-nicly",
+          "type": "application/rdap+json"
+        }
+      ],
+      "handle": "146388-nicly",
+      "vcardArray": [
+        "vcard",
+        [["version", {}, "text", "4.0"], ["fn", {}, "text", "NIC Reserved"]]
+      ],
+      "roles": ["registrar"],
+      "entities": [
+        {
+          "objectClassName": "entity",
+          "handle": "146388-nicly",
+          "vcardArray": [
+            "vcard",
+            [["version", {}, "text", "4.0"], ["fn", {}, "text", "NIC Reserved"]]
+          ],
+          "roles": ["abuse"]
+        }
+      ]
+    }
+  ]
+}

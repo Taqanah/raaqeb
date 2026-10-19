@@ -48,13 +48,14 @@ export function isDatabaseCheckType(type: string): type is DatabaseCheckType {
   return databaseCheckTypes.some((each) => each === type);
 }
 
-/** The five monitor events (CONTEXT.md "Monitor event"), in the order the form lists them. */
+/** The six monitor events (CONTEXT.md "Monitor event"), in the order the form lists them. */
 export const monitorEventKinds = [
   "down",
   "recovered",
   "degraded_started",
   "degraded_ended",
   "certificate_expiring",
+  "domain_expiring",
 ] as const;
 export type MonitorEventKind = (typeof monitorEventKinds)[number];
 
@@ -158,6 +159,9 @@ function hasCredentials(url: URL): boolean {
   return url.username !== "" || url.password !== "";
 }
 
+/** Stored only when off, so a monitor saved before the option has it on. */
+const domainExpirySchema = z.literal(false).optional();
+
 export const captureModes = ["off", "on_failure", "always"] as const;
 export const captureModeSchema = z.enum(captureModes);
 export type CaptureMode = z.infer<typeof captureModeSchema>;
@@ -173,6 +177,8 @@ export const httpConfigSchema = z.object({
   // Absent or text: an empty body would read back from the form as absent.
   body: z.string().min(1).max(65_536).optional(),
   captureMode: captureModeSchema.default("off"),
+  /** The domain expiry option: absent means on, the default; `false` switches it off. */
+  domainExpiry: domainExpirySchema,
   followRedirects: z.boolean().default(true),
   ignoreTlsErrors: z.boolean().default(false),
   method: z.enum(httpMethods).default("GET"),
@@ -202,6 +208,8 @@ const ipv4 = z.ipv4();
 const ipv6 = z.ipv6();
 
 export const tcpConfigSchema = z.object({
+  /** The domain expiry option: absent means on, the default; `false` switches it off. */
+  domainExpiry: domainExpirySchema,
   /** A host name, an IPv4 address or an IPv6 address without brackets, as the socket takes it. */
   host: z.union([z.hostname(), ipv6]),
   port: z.int().min(1).max(65_535),
@@ -244,6 +252,8 @@ const dnsName = new RegExp(
 );
 
 export const dnsConfigSchema = z.object({
+  /** The domain expiry option: absent means on, the default; `false` switches it off. */
+  domainExpiry: domainExpirySchema,
   expected: z.string().trim().min(1).optional(),
   name: z.string().regex(dnsName),
   recordType: z.enum(dnsRecordTypes).default("A"),
@@ -440,7 +450,7 @@ export const monitorFieldsSchema = z.object({
   /** A response time; never above the longest timeout, so it fits a 32-bit column on Postgres. */
   degradedMs: z.int().positive().max(timeoutMaxMs).optional(),
   description: z.string().trim().max(descriptionMaxLength).optional(),
-  /** The monitor events that notify the selected channels, in the canonical order; all five by default. The degraded pair and certificate expiring notify only where they can happen (shared/domain/events.ts). */
+  /** The monitor events that notify the selected channels, in the canonical order; all six by default. The degraded pair and the two expiring events notify only where they can happen (shared/domain/events.ts). */
   events: z
     .array(z.enum(monitorEventKinds))
     .transform((kinds) =>

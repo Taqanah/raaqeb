@@ -1,0 +1,19 @@
+Domain Name: google.com.om
+Registry Domain ID: DAEF7B17E7D680E18B1839D29F3D8115D-OMREG
+Registrar WHOIS Server:
+Registrar URL:
+Registrar: Abu Ghazaleh Intellectual Property (AGIP)
+Registrar IANA ID: 700000001
+Registrar Abuse Contact Email:
+Registrant Name: Google  LLC
+Registrant Organization: Google LLC
+Registrant Email: REDACTED
+Admin Organization: Abu-Ghazaleh Intellectual Property  LLC
+Name Server: ns1.google.com
+Name Server: ns2.google.com
+URL of the ICANN Whois Inaccuracy Complaint Form: https://www.icann.org/wicf/
+>>> Last update of WHOIS database: 2026-10-18T14:44:18Z <<<
+
+https://tra.gov.om
+
+

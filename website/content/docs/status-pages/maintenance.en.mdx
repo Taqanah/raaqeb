@@ -76,7 +76,7 @@ While a window is in progress:
 - **Components.** Every affected component shows under maintenance. This wins over its monitors, its incidents and its status set by hand.
 - **Covered monitors.** Every monitor linked to an affected component is covered, whatever its other components show. A monitor linked to no component is never covered.
 - **Checks go on.** Covered monitors keep running their checks, and an outage is still recorded.
-- **No operator notifications.** A covered monitor sends no down, recovered, degraded or certificate notification and no reminder. A certificate warning is raised again once the window ends.
+- **No operator notifications.** A covered monitor sends no down, recovered, degraded, certificate or domain notification and no reminder. A certificate or domain expiring warning is raised again once the window ends.
 - **No uptime cost.** The window's time is not observed time for its components or for the covered monitors, so it is neither downtime nor uptime. It shows as no data where nothing else was observed that day.
 
 When the window ends, each covered monitor that is still down sends its down notification then, whether or not one was sent before the window began.

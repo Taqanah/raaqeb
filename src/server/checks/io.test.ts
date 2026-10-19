@@ -4,12 +4,14 @@ import type { PeerCertificate } from "./certificate.ts";
 import type { DnsQuery } from "./dns.ts";
 import { requestDocker } from "./docker-io.ts";
 import {
+  askWhois,
   liveIo,
   openConnection,
   type RecordResolver,
   readPeerCertificate,
   resolveRecords,
   type SocketOpener,
+  whoisReplyBytes,
 } from "./io.ts";
 import { runCheck } from "./run.ts";
 
@@ -574,5 +576,101 @@ describe("the live bundle", () => {
     } finally {
       server.stop(true);
     }
+  });
+
+  test("asks WHOIS over Bun's own sockets, on port 43", async () => {
+    // Nothing listens on the loopback's port 43, so the ask fails as the platform reports it.
+    await expect(
+      liveIo().whois("127.0.0.1", "raaqeb.dev")
+    ).rejects.toMatchObject({ code: "ECONNREFUSED" });
+  });
+});
+
+describe("asking a WHOIS server", () => {
+  /** A local WHOIS server: records each query and answers it with the parts, then ends, unless told to stay open. */
+  function whoisServer(parts: readonly (string | Uint8Array)[], end = true) {
+    const queries: string[] = [];
+    const server = Bun.listen({
+      hostname: "127.0.0.1",
+      port: 0,
+      socket: {
+        data(socket, data) {
+          queries.push(new TextDecoder().decode(data));
+          for (const part of parts) {
+            socket.write(part);
+          }
+          if (end) {
+            socket.end();
+          }
+        },
+      },
+    });
+    const asked: Bun.TCPSocketConnectOptions<undefined>[] = [];
+    /** `Bun.connect` with the port asked for swapped for the local server's. */
+    const connect = ((options: Bun.TCPSocketConnectOptions<undefined>) => {
+      asked.push(options);
+      return Bun.connect({ ...options, port: server.port });
+    }) as SocketOpener;
+    return { asked, connect, queries, server };
+  }
+
+  test("sends the query on its own line and answers the whole reply once the server closes", async () => {
+    const { connect, queries, server } = whoisServer([
+      "Domain Name: google.tn\r\n",
+      "Supported ccTLDs : .tn , .تونس\r\n",
+    ]);
+    try {
+      expect(await askWhois("127.0.0.1", "google.tn", connect, 2000)).toBe(
+        "Domain Name: google.tn\r\nSupported ccTLDs : .tn , .تونس\r\n"
+      );
+      expect(queries).toEqual(["google.tn\r\n"]);
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("asks port 43 of the server named", async () => {
+    const { asked, connect, server } = whoisServer(["No Data Found\n"]);
+    try {
+      await askWhois("127.0.0.1", "raaqeb.ae", connect, 2000);
+      expect(asked).toMatchObject([{ hostname: "127.0.0.1", port: 43 }]);
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("a reply past the cap is no answer", async () => {
+    const { connect, server } = whoisServer([
+      new Uint8Array(whoisReplyBytes + 1).fill(65),
+    ]);
+    try {
+      await expect(
+        askWhois("127.0.0.1", "example.so", connect, 2000)
+      ).rejects.toThrow();
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("a server that never closes rejects at the timeout", async () => {
+    const { connect, server } = whoisServer(
+      ["Domain Name: example.so\n"],
+      false
+    );
+    try {
+      await expect(
+        askWhois("127.0.0.1", "example.so", connect, 200)
+      ).rejects.toMatchObject({ name: "TimeoutError" });
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("a server that refuses the connection rejects with the platform's error", async () => {
+    const { connect, server } = whoisServer([]);
+    server.stop(true);
+    await expect(
+      askWhois("127.0.0.1", "example.so", connect, 2000)
+    ).rejects.toMatchObject({ code: "ECONNREFUSED" });
   });
 });

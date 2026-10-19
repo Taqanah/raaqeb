@@ -783,6 +783,14 @@ msgid "monitor_event_certificate_hint"
 msgstr "At {days} before expiry, then one day before."
 
 #. js-lingui-explicit-id
+msgid "monitor_event_domain_expiring"
+msgstr "Domain expiring"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_domain_hint"
+msgstr "At {days} before the registration expires."
+
+#. js-lingui-explicit-id
 msgid "monitor_field_reminder"
 msgstr "Remind while down"
 
@@ -1891,6 +1899,18 @@ msgid "monitor_field_tls_expiry_hint"
 msgstr "For https addresses only."
 
 #. js-lingui-explicit-id
+msgid "monitor_field_domain_expiry"
+msgstr "Warn before the domain's registration expires"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_domain_expiry_hint"
+msgstr "Reads the domain's registration from its registry once a day."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_domain_expiry_disabled"
+msgstr "For a domain name only."
+
+#. js-lingui-explicit-id
 msgid "monitor_field_capture_mode"
 msgstr "Capture mode"
 
@@ -2347,6 +2367,38 @@ msgid "monitor_certificate_expired"
 msgstr "Expired"
 
 #. js-lingui-explicit-id
+msgid "monitor_registration_title"
+msgstr "Domain registration"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_domain"
+msgstr "Domain"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_expires"
+msgstr "Expires"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_unknown"
+msgstr "Unknown"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_unknown_hint"
+msgstr "Raaqeb found no expiry date for this domain's registration, so it sends no warning."
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_last_read"
+msgstr "Last read"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_expiring"
+msgstr "Expiring soon"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_expired"
+msgstr "Expired"
+
+#. js-lingui-explicit-id
 msgid "monitor_detail_corrupt"
 msgstr "The monitor cannot be shown: a stored record of it does not fit this version. The monitor's id:"
 
@@ -2463,6 +2515,10 @@ msgid "channel_subject_certificate_expiring"
 msgstr "{monitor}: the certificate expires soon"
 
 #. js-lingui-explicit-id
+msgid "channel_subject_domain_expiring"
+msgstr "{monitor}: the domain registration expires soon"
+
+#. js-lingui-explicit-id
 msgid "channel_subject_test"
 msgstr "Test message from Raaqeb"
 
@@ -2487,6 +2543,10 @@ msgid "channel_text_certificate_expiring"
 msgstr "The monitor's certificate expires soon."
 
 #. js-lingui-explicit-id
+msgid "channel_text_domain_expiring"
+msgstr "The registration of the monitor's domain expires soon."
+
+#. js-lingui-explicit-id
 msgid "channel_text_test"
 msgstr "This is a test message from Raaqeb. Its arrival means the channel works."
 
@@ -2497,6 +2557,10 @@ msgstr "Monitor: {value}"
 #. js-lingui-explicit-id
 msgid "channel_line_target"
 msgstr "Target: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_domain"
+msgstr "Domain: {value}"
 
 #. js-lingui-explicit-id
 msgid "channel_line_reason"
@@ -2512,6 +2576,10 @@ msgstr "Time left: {value}"
 
 #. js-lingui-explicit-id
 msgid "channel_line_expires_at"
+msgstr "Expires: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_registration_expires"
 msgstr "Expires: {value}"
 
 #. js-lingui-explicit-id

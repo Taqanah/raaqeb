@@ -54,6 +54,7 @@ function io() {
       return Promise.resolve(["192.0.2.1"]);
     },
     sleep: () => Promise.resolve(),
+    whois: () => Promise.reject(new Error("not in this test")),
   };
   return { live, used };
 }

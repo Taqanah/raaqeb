@@ -619,7 +619,10 @@ describe("a monitor's events and reminder", () => {
       ]
     );
     const old = await monitors.find("old");
-    expect(old?.events).toEqual([...monitorEventKinds]);
+    // The column's default is what the events migration gave every monitor; domain expiring came with a data step of its own (migrate.test.ts).
+    expect(old?.events).toEqual(
+      monitorEventKinds.filter((kind) => kind !== "domain_expiring")
+    );
     expect(old?.reminderMs).toBe(undefined);
   });
 

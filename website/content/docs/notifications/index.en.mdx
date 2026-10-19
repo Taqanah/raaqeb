@@ -5,7 +5,7 @@ description: How Raaqeb tells your team about monitor events through channels, h
 
 Raaqeb sends two kinds of notification. Both go through one queue that stores each notification before it is sent, so a restart loses nothing.
 
-- An **operator notification** goes to your team's notification channels when a monitor event happens: a monitor goes down, recovers, becomes degraded, stops being degraded, or its certificate is about to expire. This page and the channel pages cover it.
+- An **operator notification** goes to your team's notification channels when a monitor event happens: a monitor goes down, recovers, becomes degraded, stops being degraded, or its certificate or its domain's registration is about to expire. This page and the channel pages cover it.
 - A **subscriber notification** goes to a status page's subscribers when an incident or a maintenance window affects a component the page shows. It is covered in [Subscriptions](/en/docs/status-pages/subscriptions).
 
 ## Channels
@@ -49,6 +49,7 @@ An event that cannot happen for the monitor sends nothing, even when its switch 
 | **Degraded started** | A check succeeds but is slower than the monitor's degraded threshold. | The monitor has a degraded threshold. Heartbeat monitors are never degraded. |
 | **Degraded ended** | A check is up again after the monitor was degraded. A degraded monitor that goes down sends only **Down**. | The monitor has a degraded threshold. |
 | **Certificate expiring** | The certificate expires within the monitor's warning threshold, then once more within one day. A new certificate starts over. | An HTTPS monitor with the certificate expiry option on. See [Certificates](/en/docs/monitors/certificates). |
+| **Domain expiring** | The registration of the domain the monitor's host is in expires within 30 days, once for each expiry date. A renewed registration starts over. An unknown expiry date never sends it. | An HTTP, TCP or DNS monitor whose host is a domain name, with the domain expiry option on. See [Domain registration](/en/docs/monitors/domains). |
 
 Raaqeb sends one notification per monitor event and per channel. It does not group several monitors into one message.
 
@@ -91,6 +92,7 @@ Its subject is `Main website is down`. The lines each event carries:
 | Degraded started | `{monitor} is degraded` | Reason, Time, Link |
 | Degraded ended | `{monitor} is no longer degraded` | Time, Link |
 | Certificate expiring | `{monitor}: the certificate expires soon` | Time left, Expires, Time, Link |
+| Domain expiring | `{monitor}: the domain registration expires soon` | Domain, Time left, Expires, Time, Link |
 
 - A heartbeat monitor has no target, so its messages have no Target line.
 - The reason is the [reason](/en/docs/monitors) the check ended with, in words, such as `Timed out` or `Unexpected status code`.
@@ -110,7 +112,7 @@ Each channel writes in its own language: **The install language**, **العرب�
 
 ## Notification preview and Send test
 
-A saved channel's page shows a **Notification preview**: each operator notification the channel can receive (down, the reminder, recovered, degraded started and ended, certificate expiring) as that channel type carries it, in the channel language. It uses a made-up monitor called "Main website" and example times, and sends nothing. For a webhook it shows the JSON body, and for email the HTML part as a mail client shows it, in the theme you chose, light or dark.
+A saved channel's page shows a **Notification preview**: each operator notification the channel can receive (down, the reminder, recovered, degraded started and ended, certificate expiring, domain expiring) as that channel type carries it, in the channel language. It uses a made-up monitor called "Main website" and example times, and sends nothing. For a webhook it shows the JSON body, and for email the HTML part as a mail client shows it, in the theme you chose, light or dark.
 
 **Send test** sends one test notification now with the saved settings. It makes one attempt, without retries and outside the queue, and the result appears at the top of **Recent notifications** marked **Test**. Save the form before you test a change.
 

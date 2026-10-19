@@ -91,12 +91,12 @@ const kinds: readonly Kind[] = [
   },
   {
     fields: {
-      dnsName: "example.com",
+      dnsName: "example.test",
       expected: "mail.example.com",
       resolver: "127.0.0.1:1",
     },
     select: ["recordType", "MX"],
-    target: "example.com",
+    target: "example.test",
     type: "dns",
   },
   {
@@ -213,6 +213,42 @@ for (const kind of kinds) {
     }
   });
 }
+
+test("the domain expiry switch is on for a domain name and brings its event, is greyed for an IP address, and a monitor saved with it off keeps it off", async ({
+  page,
+}) => {
+  const name = unique("domain");
+  await signIn(page);
+  await page.goto(`${englishOrigin}/admin/monitors/new`);
+  await page.fill("input[name=name]", name);
+  await page.click("[data-name=type] [role=radio][data-value=dns]");
+  const form = page.locator("[data-slot=monitor-form]");
+  const option = form.locator(
+    "[role=switch][aria-labelledby=domainExpiry-label]"
+  );
+  const event = form.locator("[data-event=domain_expiring]");
+  await form.locator("[name=dnsName]").fill("raaqeb.dev");
+  await form.locator("[name=resolver]").fill("127.0.0.1:1");
+  await expect(option).toHaveAttribute("aria-checked", "true");
+  await expect(event).toBeVisible();
+  await form.locator("[name=dnsName]").fill("192.0.2.10");
+  await expect(option).toHaveAttribute("aria-disabled", "true");
+  await expect(event).toHaveCount(0);
+  await form.locator("[name=dnsName]").fill("raaqeb.dev");
+  await option.click();
+  await expect(option).toHaveAttribute("aria-checked", "false");
+  await expect(event).toHaveCount(0);
+  await page.fill("input[name=group]", name);
+  await untickChannels(page);
+  // Saved with the option off, so the scheduler asks no registry for it.
+  await page.click("[data-slot=save-monitor]");
+  await expect.poll(() => new URL(page.url()).pathname).toMatch(detailPath);
+  await expect(page.locator("[data-slot=registration]")).toHaveCount(0);
+  const detail = new URL(page.url()).pathname;
+  await page.click("[data-slot=edit-monitor]");
+  await expectPath(page, `${detail}/edit`);
+  await expect(option).toHaveAttribute("aria-checked", "false");
+});
 
 test("a heartbeat monitor on a cron schedule saves, opens its edit page, and keeps its expression and grace period", async ({
   page,

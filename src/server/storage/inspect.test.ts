@@ -72,6 +72,7 @@ describe("what Raaqeb owns", () => {
       "component_monitors",
       "components",
       "daily_rollups",
+      "domain_registrations",
       "failure_details",
       "groups",
       "heartbeats",

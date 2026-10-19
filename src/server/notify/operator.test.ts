@@ -50,6 +50,17 @@ function monitor(overrides: Partial<Monitor> = {}): Monitor {
   };
 }
 
+/** The sample monitor's check on a host in a registered domain, so domain expiring can happen for it. */
+const registeredSite: Monitor["config"] = {
+  assertions: [{ codes: ["2xx"], kind: "status" }],
+  captureMode: "off",
+  followRedirects: true,
+  ignoreTlsErrors: false,
+  method: "GET",
+  type: "http",
+  url: "https://api.raaqeb.dev/health",
+};
+
 const opened: Outage = {
   endedAt: undefined,
   monitorId: "0199",
@@ -172,6 +183,56 @@ describe("what a monitor event sends", () => {
       timestamp: "2026-09-26T09:00:00.000Z",
       type: "monitor.certificate_expiring",
     });
+  });
+
+  test("domain expiring sends the registered domain, the whole days left, rounded down, and when it expires", () => {
+    const site = monitor({
+      config: registeredSite,
+      target: "https://api.raaqeb.dev/health",
+    });
+    expect(
+      notificationOf(
+        {
+          at: t0,
+          domain: "raaqeb.dev",
+          expiresAt: t0 + 29 * day + 23 * hour,
+          kind: "domain_expiring",
+          monitorId: "0199",
+        },
+        site,
+        address
+      )
+    ).toEqual({
+      data: {
+        domain: {
+          daysLeft: 29,
+          expiresAt: "2026-10-26T08:00:00.000Z",
+          name: "raaqeb.dev",
+        },
+        monitor: {
+          ...sampleMonitorData,
+          target: "https://api.raaqeb.dev/health",
+        },
+      },
+      timestamp: "2026-09-26T09:00:00.000Z",
+      type: "monitor.domain_expiring",
+    });
+  });
+
+  test("domain expiring of a monitor whose host is in no registered domain sends nothing", () => {
+    expect(
+      notificationOf(
+        {
+          at: t0,
+          domain: "example.test",
+          expiresAt: t0 + day,
+          kind: "domain_expiring",
+          monitorId: "0199",
+        },
+        monitor(),
+        address
+      )
+    ).toBeUndefined();
   });
 
   test("an event the monitor switched off sends nothing", () => {
@@ -627,6 +688,32 @@ describe("a notification the queue refuses", () => {
     expect(w.queued).toEqual([]);
   });
 
+  test("a domain expiring warning the queue refuses is not kept: the pass raises it again, and it answers so", async () => {
+    const w = world();
+    const site = monitor({
+      config: registeredSite,
+    });
+    w.failQueue();
+    let accepted = true;
+    await quietly(async () => {
+      accepted = await w.notifications.raise(
+        {
+          at: t0,
+          domain: "raaqeb.dev",
+          expiresAt: t0 + 5 * day,
+          kind: "domain_expiring",
+          monitorId: "0199",
+        },
+        site,
+        t0
+      );
+    });
+    expect(accepted).toBe(false);
+    w.queueWorks();
+    await remindAt(w, t0 + minute, [site]);
+    expect(w.queued).toEqual([]);
+  });
+
   test("a kept event goes out at the next pass even when nothing newer is raised, and before the reminder that repeats it", async () => {
     const w = world();
     await remindAt(w, t0, [reminding]);
@@ -779,6 +866,22 @@ describe("edges of a covered monitor's notifications", () => {
       warning: "threshold",
     };
     expect(await w.notifications.raise(warning, monitor(), t0)).toBe(false);
+    expect(w.queued).toEqual([]);
+  });
+
+  test("a domain expiring warning of a covered monitor is not sent and answers not queued, so the pass raises it again", async () => {
+    const w = world([], new Set(["0199"]));
+    const site = monitor({
+      config: registeredSite,
+    });
+    const warning: MonitorEvent = {
+      at: t0,
+      domain: "raaqeb.dev",
+      expiresAt: t0 + 10 * day,
+      kind: "domain_expiring",
+      monitorId: "0199",
+    };
+    expect(await w.notifications.raise(warning, site, t0)).toBe(false);
     expect(w.queued).toEqual([]);
   });
 

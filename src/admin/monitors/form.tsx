@@ -61,6 +61,7 @@ import {
   intervalChoicesMs,
   type MonitorDraft,
   newAssertion,
+  registrationHostOf,
   tagsOf,
   typeChoiceOf,
   typeChoices,
@@ -73,6 +74,7 @@ import {
   type FieldChange,
   type FieldChoice,
   type FlagChange,
+  FlagField,
   intervalLabel,
   Problem,
   Section,
@@ -405,6 +407,7 @@ function BasicsSection({
   listContainers,
   onChoice,
   onField,
+  onFlag,
 }: SectionProps & { readonly listContainers: ListContainers }): ReactNode {
   const { t } = useMessages();
   return (
@@ -457,6 +460,9 @@ function BasicsSection({
         onChoice={onChoice}
         onField={onField}
       />
+      {draft.type === "http" || draft.type === "tcp" || draft.type === "dns" ? (
+        <DomainExpiryField draft={draft} onFlag={onFlag} />
+      ) : null}
       <Field>
         <FieldLabel htmlFor="description">
           {t("monitor_field_description")}
@@ -472,6 +478,29 @@ function BasicsSection({
         <Problem errors={errors} path="description" />
       </Field>
     </Section>
+  );
+}
+
+/** The domain expiry option under the target it reads: greyed, and saying why, while the target is not a name a registry holds. */
+function DomainExpiryField({
+  draft,
+  onFlag,
+}: Pick<SectionProps, "draft" | "onFlag">): ReactNode {
+  const { t } = useMessages();
+  const registered = registrationHostOf(draft) !== undefined;
+  return (
+    <FlagField
+      checked={registered && draft.domainExpiry}
+      disabled={!registered}
+      hint={t(
+        registered
+          ? "monitor_field_domain_expiry_hint"
+          : "monitor_field_domain_expiry_disabled"
+      )}
+      label={t("monitor_field_domain_expiry")}
+      name="domainExpiry"
+      onFlag={onFlag}
+    />
   );
 }
 

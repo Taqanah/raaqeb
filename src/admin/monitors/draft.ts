@@ -7,6 +7,7 @@
  * Pure: the form holds one draft in state and calls these.
  */
 import type { z } from "zod";
+import { registrableHost } from "@/shared/domain/registrations.ts";
 import { normalizeDigits } from "@/shared/i18n/format.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { tlsExpiryDefaultDays } from "@/shared/schemas/certificate.ts";
@@ -135,6 +136,8 @@ export interface MonitorDraft {
   readonly dnsName: string;
   /** A Docker monitor's endpoint: a Unix socket's path or an Engine API's URL. */
   readonly dockerEndpoint: string;
+  /** The domain expiry option of an HTTP, TCP or DNS monitor; on by default. */
+  readonly domainExpiry: boolean;
   /** The monitor events switched on, in the canonical order. */
   readonly events: readonly MonitorEventKind[];
   /** A heartbeat monitor's "every N", as typed in `everyUnit`. */
@@ -238,6 +241,12 @@ export function draftOf(
     ...dockerDraft(config?.type === "docker" ? config : undefined),
     ...credentialsDraft(credentials),
     ...heartbeatDraft(config?.type === "heartbeat" ? config : undefined),
+    // Stored only when off (shared/schemas/monitor.ts), so a monitor saved before the option has it on.
+    domainExpiry: !(
+      config &&
+      "domainExpiry" in config &&
+      config.domainExpiry === false
+    ),
     channels:
       monitor?.channels ??
       channels.filter((each) => each.appliesToNew).map((each) => each.id),
@@ -626,6 +635,25 @@ function heartbeatConfigOf(draft: MonitorDraft, refusals: Refusals): unknown {
   };
 }
 
+/** The host the typed HTTP, TCP or DNS target is in, whose domain registration the monitor reads; nothing for an IP address, a name no registry holds or another check type, whatever the option says. */
+export function registrationHostOf(draft: MonitorDraft): string | undefined {
+  let host = "";
+  if (draft.type === "http") {
+    const url = draft.url.trim();
+    host = URL.canParse(url) ? new URL(url).hostname : "";
+  } else if (draft.type === "tcp") {
+    host = draft.host.trim();
+  } else if (draft.type === "dns") {
+    host = draft.dnsName.trim();
+  }
+  return host === "" ? undefined : registrableHost(host);
+}
+
+/** The option as posted: off is stored, on is the default and posts nothing. */
+function domainExpiryOf(draft: MonitorDraft) {
+  return draft.domainExpiry ? {} : { domainExpiry: false };
+}
+
 /** Whether the address is https, the only kind with a certificate to warn about. */
 export function isHttps(url: string): boolean {
   return url.trim().toLowerCase().startsWith("https://");
@@ -674,6 +702,7 @@ function configOf(draft: MonitorDraft, refusals: Refusals): unknown {
         host: refusals.required("config.host", draft.host),
         port: refusals.number("config.port", draft.port, true),
         type: "tcp",
+        ...domainExpiryOf(draft),
       };
     case "dns":
       return {
@@ -682,6 +711,7 @@ function configOf(draft: MonitorDraft, refusals: Refusals): unknown {
         recordType: draft.recordType,
         resolver: optionalText(draft.resolver),
         type: "dns",
+        ...domainExpiryOf(draft),
       };
     default:
       return {
@@ -695,6 +725,7 @@ function configOf(draft: MonitorDraft, refusals: Refusals): unknown {
         method: draft.method,
         ...(draft.proxy.trim() !== "" && { proxy: draft.proxy.trim() }),
         type: "http",
+        ...domainExpiryOf(draft),
         url: refusals.required("config.url", draft.url),
         // Off posts no day count at all (absent means off); only an https address has a certificate to read.
         ...(draft.tlsExpiry &&

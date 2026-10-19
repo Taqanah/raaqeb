@@ -1,0 +1,167 @@
+{
+  "rdapConformance": [
+    "rdap_level_0",
+    "icann_rdap_technical_implementation_guide_1",
+    "icann_rdap_response_profile_1"
+  ],
+  "objectClassName": "domain",
+  "links": [
+    {
+      "value": "https://rdap.nic.ly/domain/google.com.ly",
+      "rel": "related",
+      "href": "https://rdap.nic.ly/domain/google.com.ly",
+      "type": "application/rdap+json"
+    }
+  ],
+  "notices": [
+    {
+      "title": "Terms of Service",
+      "description": [
+        "Access to RDAP information is provided to assist persons interested in domains, nameservers, or associated entities."
+      ],
+      "links": [
+        {
+          "value": "https://rdap.nic.ly/domain/google.com.ly",
+          "rel": "terms-of-service",
+          "href": "https://rdap.nic.ly",
+          "title": "Terms of Use",
+          "type": "application/json"
+        }
+      ]
+    },
+    {
+      "title": "Status Codes",
+      "description": ["URL of ICANN EPP Status code descriptions"],
+      "links": [
+        {
+          "value": "https://rdap.nic.ly/domain/google.com.ly",
+          "rel": "glossary",
+          "href": "https://icann.org/epp",
+          "title": "More information on domain status codes",
+          "type": "text/html"
+        }
+      ]
+    }
+  ],
+  "events": [
+    { "eventAction": "registration", "eventDate": "2003-07-16T22:00:00Z" },
+    {
+      "eventAction": "reregistration",
+      "eventActor": "Libyan Spider Network (int)",
+      "eventDate": "2020-11-30T20:35:46Z"
+    },
+    { "eventAction": "expiration", "eventDate": "2026-12-31T22:00:00Z" },
+    {
+      "eventAction": "registrar expiration",
+      "eventDate": "2026-12-31T22:00:00Z"
+    },
+    { "eventAction": "last changed", "eventDate": "2025-12-02T16:46:42Z" },
+    {
+      "eventAction": "last update of RDAP database",
+      "eventDate": "2026-10-18T14:30:59Z"
+    }
+  ],
+  "status": ["active", "DS automation disabled", "NS automation disabled"],
+  "handle": "22477-CoCCA",
+  "ldhName": "google.com.ly",
+  "unicodeName": "google.com.ly",
+  "secureDNS": { "delegationSigned": false },
+  "entities": [
+    {
+      "objectClassName": "entity",
+      "handle": "9776-CoCCA",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["fn", {}, "text", "Domain Administrator"],
+          [
+            "adr",
+            { "cc": "US" },
+            "text",
+            [
+              "",
+              "",
+              "1600 Amphitheatre Parkway",
+              "Mountain View",
+              "CA",
+              "94043",
+              "US"
+            ]
+          ],
+          ["org", {}, "text", "Google LLC"],
+          ["tel", { "type": "voice" }, "uri", "tel:+1.6502530000"],
+          ["tel", { "type": "fax" }, "uri", "tel:+1.6502530001"],
+          ["email", {}, "text", "dns-admin@google.com"]
+        ]
+      ],
+      "roles": ["registrant"]
+    },
+    {
+      "objectClassName": "entity",
+      "links": [
+        {
+          "value": "https://rdap.nic.ly/domain/google.com.ly",
+          "rel": "about",
+          "href": "https://rdap.nic.ly/entity/146380-nicly",
+          "type": "application/rdap+json"
+        }
+      ],
+      "handle": "146380-nicly",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["fn", {}, "text", "Libyan Spider Network (int)"]
+        ]
+      ],
+      "roles": ["registrar"],
+      "entities": [
+        {
+          "objectClassName": "entity",
+          "handle": "146380-nicly",
+          "vcardArray": [
+            "vcard",
+            [
+              ["version", {}, "text", "4.0"],
+              ["fn", {}, "text", "Libyan Spider Network (int)"],
+              ["tel", { "type": "voice" }, "uri", "tel:+1.8448469791"],
+              ["email", {}, "text", "abuse@register.ly"]
+            ]
+          ],
+          "roles": ["abuse"]
+        }
+      ]
+    }
+  ],
+  "nameservers": [
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nic.ly/domain/google.com.ly",
+          "rel": "related",
+          "href": "https://rdap.nic.ly/nameserver/ns1.google.com",
+          "type": "application/rdap+json"
+        }
+      ],
+      "status": ["associated"],
+      "ldhName": "ns1.google.com",
+      "unicodeName": "ns1.google.com"
+    },
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nic.ly/domain/google.com.ly",
+          "rel": "related",
+          "href": "https://rdap.nic.ly/nameserver/ns2.google.com",
+          "type": "application/rdap+json"
+        }
+      ],
+      "status": ["associated"],
+      "ldhName": "ns2.google.com",
+      "unicodeName": "ns2.google.com"
+    }
+  ]
+}

@@ -68,6 +68,27 @@ describe("which monitor events can happen for a monitor", () => {
       eventApplies("certificate_expiring", monitor({ config: plain }))
     ).toBe(false);
   });
+
+  test("domain expiring can happen for an HTTP, TCP or DNS monitor whose host is in a domain, with the domain expiry option on", () => {
+    const site = { ...https(), url: "https://status.raaqeb.dev/" } as const;
+    const tcp = { host: "db.raaqeb.dev", port: 5432, type: "tcp" } as const;
+    const dns = { name: "example.com", recordType: "A", type: "dns" } as const;
+    for (const config of [site, tcp, dns]) {
+      expect(eventApplies("domain_expiring", monitor({ config }))).toBe(true);
+    }
+    expect(
+      eventApplies(
+        "domain_expiring",
+        monitor({ config: { ...tcp, domainExpiry: false } })
+      )
+    ).toBe(false);
+    expect(
+      eventApplies(
+        "domain_expiring",
+        monitor({ config: { ...tcp, host: "192.0.2.10" } })
+      )
+    ).toBe(false);
+  });
 });
 
 describe("which monitor events notify a monitor's channels", () => {

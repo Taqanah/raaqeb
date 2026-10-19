@@ -170,7 +170,7 @@ describe("the export file's format", () => {
     }
   });
 
-  test("a header of version 1, the format before an HTTP monitor's own proxy, is still this format", () => {
+  test("a header of version 1, the format before an HTTP monitor's own proxy and domain expiring, is still this format", () => {
     const {
       maintenanceSeries: _,
       maintenanceSeriesComponents: __,

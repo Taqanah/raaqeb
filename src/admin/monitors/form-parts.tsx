@@ -35,6 +35,7 @@ export type FieldChange = (
 export type FieldChoice = (name: string, value: string) => void;
 export type FlagChange = (
   name:
+    | "domainExpiry"
     | "followRedirects"
     | "ignoreTlsErrors"
     | "ownRetention"

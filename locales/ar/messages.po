@@ -783,6 +783,14 @@ msgid "monitor_event_certificate_hint"
 msgstr "قبل الانتهاء بـ {days}، ثم قبله بيوم واحد."
 
 #. js-lingui-explicit-id
+msgid "monitor_event_domain_expiring"
+msgstr "قرب انتهاء تسجيل النطاق"
+
+#. js-lingui-explicit-id
+msgid "monitor_event_domain_hint"
+msgstr "قبل انتهاء التسجيل بـ {days}."
+
+#. js-lingui-explicit-id
 msgid "monitor_field_reminder"
 msgstr "التذكير أثناء التعطّل"
 
@@ -1891,6 +1899,18 @@ msgid "monitor_field_tls_expiry_hint"
 msgstr "لعناوين https فقط."
 
 #. js-lingui-explicit-id
+msgid "monitor_field_domain_expiry"
+msgstr "نبّه قبل انتهاء تسجيل النطاق"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_domain_expiry_hint"
+msgstr "يقرأ تسجيل النطاق من سجل النطاقات مرة كل يوم."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_domain_expiry_disabled"
+msgstr "لأسماء النطاقات فقط."
+
+#. js-lingui-explicit-id
 msgid "monitor_field_capture_mode"
 msgstr "حفظ الاستجابة"
 
@@ -2347,6 +2367,38 @@ msgid "monitor_certificate_expired"
 msgstr "منتهية"
 
 #. js-lingui-explicit-id
+msgid "monitor_registration_title"
+msgstr "تسجيل النطاق"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_domain"
+msgstr "النطاق"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_expires"
+msgstr "ينتهي في"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_unknown"
+msgstr "غير معروف"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_unknown_hint"
+msgstr "لم يجد راقب تاريخ انتهاء لتسجيل هذا النطاق، فلا يرسل عنه تنبيهًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_last_read"
+msgstr "آخر قراءة"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_expiring"
+msgstr "ينتهي قريبًا"
+
+#. js-lingui-explicit-id
+msgid "monitor_registration_expired"
+msgstr "منتهٍ"
+
+#. js-lingui-explicit-id
 msgid "monitor_detail_corrupt"
 msgstr "تعذّر عرض المراقبة: بيانات مخزَّنة لها لا تطابق هذا الإصدار. معرّف المراقبة:"
 
@@ -2463,6 +2515,10 @@ msgid "channel_subject_certificate_expiring"
 msgstr "{monitor}: الشهادة على وشك الانتهاء"
 
 #. js-lingui-explicit-id
+msgid "channel_subject_domain_expiring"
+msgstr "{monitor}: تسجيل النطاق على وشك الانتهاء"
+
+#. js-lingui-explicit-id
 msgid "channel_subject_test"
 msgstr "رسالة تجريبية من راقب"
 
@@ -2487,6 +2543,10 @@ msgid "channel_text_certificate_expiring"
 msgstr "شهادة المراقبة على وشك الانتهاء."
 
 #. js-lingui-explicit-id
+msgid "channel_text_domain_expiring"
+msgstr "تسجيل نطاق المراقبة على وشك الانتهاء."
+
+#. js-lingui-explicit-id
 msgid "channel_text_test"
 msgstr "هذه رسالة تجريبية من راقب. وصولها يعني أن القناة تعمل."
 
@@ -2497,6 +2557,10 @@ msgstr "المراقبة: {value}"
 #. js-lingui-explicit-id
 msgid "channel_line_target"
 msgstr "الهدف: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_domain"
+msgstr "النطاق: {value}"
 
 #. js-lingui-explicit-id
 msgid "channel_line_reason"
@@ -2513,6 +2577,10 @@ msgstr "المدة المتبقية: {value}"
 #. js-lingui-explicit-id
 msgid "channel_line_expires_at"
 msgstr "تنتهي في: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_registration_expires"
+msgstr "ينتهي في: {value}"
 
 #. js-lingui-explicit-id
 msgid "channel_line_time"

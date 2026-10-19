@@ -194,6 +194,71 @@ describe("a notification as text", () => {
     );
   });
 
+  test("a domain expiring warning names the domain on its own line, then the time left and the expiry with its zone", async () => {
+    const text = await notificationText(
+      sent({
+        data: {
+          domain: {
+            daysLeft: 29,
+            expiresAt: "2026-10-25T12:00:00.000Z",
+            name: "raaqeb.dev",
+          },
+          monitor,
+        },
+        timestamp,
+        type: "monitor.domain_expiring",
+      })
+    );
+    expect(text).toEqual({
+      lines: [
+        "المراقبة: API",
+        "الهدف: https://api.example.test/health",
+        "النطاق: raaqeb.dev",
+        "المدة المتبقية: 29 يومًا",
+        "ينتهي في: 25 أكتوبر 2026، 3:00 م (غرينتش+3)",
+        "الوقت: 25 سبتمبر 2026، 9:49 م (غرينتش+3)",
+      ],
+      links: [
+        {
+          line: "الرابط: https://status.example.test/admin/monitors/0199",
+          url: "https://status.example.test/admin/monitors/0199",
+          words: "فتح المراقبة",
+        },
+      ],
+      sentence: "تسجيل نطاق المراقبة على وشك الانتهاء.",
+      subject: "API: تسجيل النطاق على وشك الانتهاء",
+    });
+  });
+
+  test("a domain registration with less than a day left gives the hours left, and an expired one no time left", async () => {
+    const domain = (daysLeft: number, expiresAt: string) =>
+      notificationText(
+        sent(
+          {
+            data: {
+              domain: { daysLeft, expiresAt, name: "raaqeb.dev" },
+              monitor,
+            },
+            timestamp,
+            type: "monitor.domain_expiring",
+          },
+          "en",
+          utc
+        )
+      );
+    expect((await domain(0, "2026-09-25T23:49:00.000Z")).lines).toContain(
+      "Time left: 5 hr"
+    );
+    const expired = await domain(-1, "2026-09-25T12:00:00.000Z");
+    expect(expired.lines.some((line) => line.startsWith("Time left"))).toBe(
+      false
+    );
+    expect(expired.lines).toContain("Expires: Sep 25, 2026, 12:00 (UTC)");
+    expect(expired.sentence).toBe(
+      "The registration of the monitor's domain expires soon."
+    );
+  });
+
   test("a down notification with the open-incident link gives it its words and its line after the monitor's link", async () => {
     const text = await notificationText(
       sent({

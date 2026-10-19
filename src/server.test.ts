@@ -307,6 +307,20 @@ describe("a monitor event as a log line", () => {
       })
     ).toBe("monitor m1 has a certificate expiring at 2026-10-08T12:00:00.000Z");
   });
+
+  test("an expiring domain registration names the domain and when it ends", () => {
+    expect(
+      eventLine({
+        at: 1,
+        domain: "raaqeb.dev",
+        expiresAt: Date.UTC(2026, 10, 7),
+        kind: "domain_expiring",
+        monitorId: "m1",
+      })
+    ).toBe(
+      "monitor m1 has a domain registration expiring: raaqeb.dev at 2026-11-07T00:00:00.000Z"
+    );
+  });
 });
 
 describe("a maintenance window's move as a log line", () => {

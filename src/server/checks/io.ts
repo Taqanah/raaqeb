@@ -21,6 +21,10 @@ import {
 import type { RequestDocker } from "./docker.ts";
 import { requestDocker } from "./docker-io.ts";
 import type { CheckIo } from "./http.ts";
+import {
+  type RegistrationIo,
+  registrationReadTimeoutMs,
+} from "./registration.ts";
 import type { Connect, ConnectTarget } from "./tcp.ts";
 
 /** Everything a check type may borrow. */
@@ -30,6 +34,7 @@ export interface LiveIo extends CheckIo {
   readonly readTls: ReadTls;
   readonly requestDocker: RequestDocker;
   readonly resolve: Resolve;
+  readonly whois: RegistrationIo["whois"];
 }
 
 /** What `Bun.connect` is to the adapters: the options they pass and the socket they get back. */
@@ -178,6 +183,53 @@ export function readPeerCertificate(
   });
 }
 
+/** A WHOIS reply past this many bytes is no answer; a registry's runs to a few kilobytes. */
+export const whoisReplyBytes = 65_536;
+
+/** Sends the query to the WHOIS server on port 43 and answers the reply as text once the server closes; rejects on a connection error, the timeout or a reply past the cap. */
+export function askWhois(
+  server: string,
+  query: string,
+  connect: SocketOpener,
+  timeoutMs = registrationReadTimeoutMs
+): Promise<string> {
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  return withinTimeout<string>(timeoutMs, ({ reject, resolve }) => {
+    // The server closing its side ends the reply (RFC 3912).
+    const replied = () => {
+      resolve(new TextDecoder().decode(Bun.concatArrayBuffers(chunks)));
+    };
+    const socket: Handlers = {
+      close: replied,
+      connectError: (_socket, error) => {
+        reject(error);
+      },
+      data: (opened, data) => {
+        size += data.byteLength;
+        if (size > whoisReplyBytes) {
+          if (reject(new Error("the WHOIS reply is past its cap"))) {
+            opened.end();
+          }
+          return;
+        }
+        chunks.push(new Uint8Array(data));
+      },
+      end: (opened) => {
+        replied();
+        opened.end();
+      },
+      error: (_socket, error) => {
+        reject(error);
+      },
+      open: (opened) => {
+        opened.write(`${query}\r\n`);
+      },
+    };
+    return connect({ hostname: server, port: 43, socket });
+  });
+}
+
 /** Runs one query on a fresh resolver, pointed at the custom server when the query names one, and answers each record as text. */
 export async function resolveRecords(
   query: DnsQuery,
@@ -234,5 +286,6 @@ export function liveIo(): LiveIo {
     requestDocker,
     resolve: (query) => resolveRecords(query, nodeResolver),
     sleep: Bun.sleep,
+    whois: (server, query) => askWhois(server, query, Bun.connect),
   };
 }

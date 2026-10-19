@@ -31,6 +31,7 @@ import { emailInTheme } from "./email-theme.ts";
 
 const labels: Readonly<Record<NotificationPreview["type"], MessageId>> = {
   "monitor.certificate_expiring": "monitor_event_certificate_expiring",
+  "monitor.domain_expiring": "monitor_event_domain_expiring",
   "monitor.degraded_ended": "monitor_event_degraded_ended",
   "monitor.degraded_started": "monitor_event_degraded_started",
   "monitor.down": "monitor_event_down",

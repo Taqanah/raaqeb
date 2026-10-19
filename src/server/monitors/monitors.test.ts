@@ -30,6 +30,7 @@ import {
   type MonitorInput,
   monitorEventKinds,
   monitorFieldsSchema,
+  type TcpConfig,
   tagsMax,
 } from "@/shared/schemas/monitor.ts";
 import { defaultCustomization } from "@/shared/schemas/page.ts";
@@ -342,6 +343,92 @@ describe("the monitors module", () => {
       const id = await withRecord(store);
       await deleteMonitors(store, [id]);
       expect(await store.certificates.find(id)).toBeUndefined();
+    });
+  });
+
+  describe("the domain registration on an edit", () => {
+    const database: TcpConfig = {
+      host: "db.raaqeb.dev",
+      port: 5432,
+      type: "tcp",
+    };
+    const tcp: MonitorInput = { ...site, config: database };
+
+    async function withRegistration(store: Storage): Promise<string> {
+      const created = await createMonitor(store, key, tcp);
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await store.registrations.replace({
+        domain: "raaqeb.dev",
+        expiresAt: 1_710_000_000_000,
+        monitorId: created.monitor.id,
+        readAt: 1_700_000_000_000,
+      });
+      return created.monitor.id;
+    }
+
+    test("an edit that changes the host removes the registration, so the pass reads it again", async () => {
+      const store = await storage();
+      const id = await withRegistration(store);
+      await editMonitor(store, key, id, {
+        ...tcp,
+        config: { host: "mail.raaqeb.dev", port: 5432, type: "tcp" },
+      });
+      expect(await store.registrations.find(id)).toBeUndefined();
+    });
+
+    test("an edit that switches the domain expiry option off removes the registration", async () => {
+      const store = await storage();
+      const id = await withRegistration(store);
+      await editMonitor(store, key, id, {
+        ...tcp,
+        config: { ...database, domainExpiry: false },
+      });
+      expect(await store.registrations.find(id)).toBeUndefined();
+    });
+
+    test("an edit that keeps the host keeps the registration, whatever else changes", async () => {
+      const store = await storage();
+      const id = await withRegistration(store);
+      await editMonitor(store, key, id, {
+        ...tcp,
+        config: { host: "DB.raaqeb.dev", port: 6432, type: "tcp" },
+        name: "renamed",
+      });
+      expect(await store.registrations.find(id)).toMatchObject({
+        domain: "raaqeb.dev",
+      });
+    });
+
+    test("an HTTP monitor turned into a TCP one on the same host keeps its registration", async () => {
+      const store = await storage();
+      const created = await createMonitor(store, key, {
+        ...site,
+        config: {
+          assertions: [{ codes: ["2xx"], kind: "status" }],
+          captureMode: "off",
+          followRedirects: true,
+          ignoreTlsErrors: false,
+          method: "GET",
+          type: "http",
+          url: "https://db.raaqeb.dev/",
+        },
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      const { id } = created.monitor;
+      await store.registrations.replace({
+        domain: "raaqeb.dev",
+        expiresAt: 1_710_000_000_000,
+        monitorId: id,
+        readAt: 1_700_000_000_000,
+      });
+      await editMonitor(store, key, id, tcp);
+      expect(await store.registrations.find(id)).toMatchObject({
+        domain: "raaqeb.dev",
+      });
     });
   });
 

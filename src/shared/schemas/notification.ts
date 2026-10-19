@@ -92,6 +92,19 @@ export const notificationPayloadSchema = z.discriminatedUnion("type", [
       })
       .describe("The monitor's certificate."),
   }),
+  event("monitor.domain_expiring", {
+    domain: z
+      .object({
+        daysLeft: z.int().describe("Whole days left, rounded down."),
+        expiresAt: instant.describe(
+          "When the domain's registration expires, in UTC."
+        ),
+        name: z
+          .string()
+          .describe("The registered domain, as its registry names it."),
+      })
+      .describe("The registration of the domain the monitor's host is in."),
+  }),
   z.object({
     data: z
       .object({

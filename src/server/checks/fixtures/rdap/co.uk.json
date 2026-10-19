@@ -1,0 +1,303 @@
+{
+  "rdapConformance": ["rdap_level_0"],
+  "objectClassName": "domain",
+  "links": [
+    {
+      "value": "https://rdap.nominet.uk/uk/domain/co.uk",
+      "rel": "self",
+      "href": "https://rdap.nominet.uk/uk/domain/co.uk",
+      "type": "application/rdap+json"
+    }
+  ],
+  "notices": [
+    {
+      "title": "Terms of Service",
+      "description": [
+        "The Registry Operator, offers this Registration Data Access Protocol (RDAP) service and provides access to the records in the RDAP database for information purposes only, to assist you in obtaining information about the registration records of existing domain names. The stored information in the RDAP database is provided as is. We do not guarantee its accuracy or completeness, and cannot be held liable if the stored information in the RDAP database is wrong, incomplete, or inaccurate in any way. By querying the RDAP database in any way, you agree that you will not use this data: (i) to allow, enable or otherwise support the transmission of unsolicited, commercial advertising or other solicitations in any form or by any means; (ii) to enable high volume, automated, electronic processes that query or send data to the Registry Operator or any registrar or registrant; (iii) for target advertising; (iv) to cause nuisance to registrants by sending (by any means) messages to or contacting them; (v) to violate any law, rule, regulation or statute; and/or (vi) in violation of applicable data and privacy protection acts. You are explicitly prohibited from extracting, copying and/or using or re-using in any form and by any means (electronically or not) all or part (quantitatively or qualitatively) of the contents of the RDAP database without prior and explicit permission from the Registry Operator. Any copying or transmission of data for commercial purposes violates this prohibition. You agree that we can take measures to limit the use of the RDAP service to protect the privacy of registrants or the integrity of the database. We reserve the right to make changes to this website, the RDAP service, and these Terms and Conditions at any time without prior notice to you. You should review these Terms and Conditions each time you access or use the RDAP database and the RDAP service to learn of any changes. If you do not agree to the changes we have made, your only remedy is to stop your use of the RDAP database and the RDAP service. By executing a query, in any means whatsoever, you agree to these Terms of Service."
+      ],
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/domain/co.uk",
+          "rel": "terms-of-service",
+          "href": "https://nominet.uk/rdap-tos",
+          "type": "text/html"
+        }
+      ]
+    },
+    {
+      "title": "Status Codes",
+      "description": [
+        "For more information on domain status codes, please visit https://icann.org/epp"
+      ],
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/domain/co.uk",
+          "rel": "glossary",
+          "href": "https://icann.org/epp",
+          "type": "text/html"
+        }
+      ]
+    },
+    {
+      "title": "RDDS Inaccuracy Complaint Form",
+      "description": [
+        "URL of the Nominet WHOIS data complaint process: https://www.nominet.uk/complaints/#complaining-about-incorrect-whois-data"
+      ],
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/domain/co.uk",
+          "rel": "help",
+          "href": "https://www.nominet.uk/complaints/#complaining-about-incorrect-whois-data",
+          "type": "text/html"
+        }
+      ]
+    }
+  ],
+  "remarks": [
+    { "title": "Public suffix", "description": ["This is a public suffix"] }
+  ],
+  "events": [
+    {
+      "eventAction": "last update of RDAP database",
+      "eventDate": "2026-10-18T14:45:00.519Z"
+    }
+  ],
+  "status": [
+    "server update prohibited",
+    "server delete prohibited",
+    "server transfer prohibited"
+  ],
+  "handle": "RD_2-UK",
+  "ldhName": "co.uk",
+  "unicodeName": "co.uk",
+  "secureDNS": {
+    "delegationSigned": true,
+    "maxSigLife": 3024000,
+    "dsData": [
+      {
+        "keyTag": 11810,
+        "algorithm": 8,
+        "digest": "1DF4681BDACC3E6296AC7667C42CA33CB57EFBC2005CE23064F15FBFFA286FF5",
+        "digestType": 2
+      }
+    ]
+  },
+  "entities": [
+    {
+      "objectClassName": "entity",
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/entity/NOMINET",
+          "rel": "self",
+          "href": "https://rdap.nominet.uk/uk/entity/NOMINET",
+          "type": "application/rdap+json"
+        }
+      ],
+      "handle": "NOMINET",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["fn", {}, "text", "Nominet UK"],
+          ["url", {}, "uri", "http://www.nominet.uk"]
+        ]
+      ],
+      "roles": ["registrar"],
+      "publicIds": [{ "type": "Registry Identifier", "identifier": "NOMINET" }],
+      "entities": [
+        {
+          "objectClassName": "entity",
+          "vcardArray": [
+            "vcard",
+            [
+              ["version", {}, "text", "4.0"],
+              ["fn", {}, "text", "Abuse contact"],
+              ["tel", { "type": "voice" }, "uri", "tel:+44.1865332244"],
+              ["email", {}, "text", "abuse@nominet.uk"]
+            ]
+          ],
+          "roles": ["abuse"]
+        }
+      ]
+    }
+  ],
+  "publicIds": [{ "type": "Registry Identifier", "identifier": "RD_2-UK" }],
+  "nameservers": [
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/nameserver/dns1.nic.uk.",
+          "rel": "self",
+          "href": "https://rdap.nominet.uk/uk/nameserver/dns1.nic.uk.",
+          "type": "application/rdap+json"
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventActor": "SYSTEM",
+          "eventDate": "2017-01-17T15:19:39Z"
+        }
+      ],
+      "status": ["active", "associated"],
+      "ldhName": "dns1.nic.uk.",
+      "unicodeName": "dns1.nic.uk.",
+      "ipAddresses": { "v4": ["213.248.216.1"], "v6": ["2a01:618:400::1"] }
+    },
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/nameserver/dns2.nic.uk.",
+          "rel": "self",
+          "href": "https://rdap.nominet.uk/uk/nameserver/dns2.nic.uk.",
+          "type": "application/rdap+json"
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventActor": "SYSTEM",
+          "eventDate": "2017-01-17T15:19:39Z"
+        }
+      ],
+      "status": ["active", "associated"],
+      "ldhName": "dns2.nic.uk.",
+      "unicodeName": "dns2.nic.uk.",
+      "ipAddresses": { "v4": ["103.49.80.1"], "v6": ["2401:fd80:400::1"] }
+    },
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/nameserver/dns3.nic.uk.",
+          "rel": "self",
+          "href": "https://rdap.nominet.uk/uk/nameserver/dns3.nic.uk.",
+          "type": "application/rdap+json"
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventActor": "SYSTEM",
+          "eventDate": "2017-01-17T15:19:39Z"
+        }
+      ],
+      "status": ["active", "associated"],
+      "ldhName": "dns3.nic.uk.",
+      "unicodeName": "dns3.nic.uk.",
+      "ipAddresses": { "v4": ["213.248.220.1"], "v6": ["2a01:618:404::1"] }
+    },
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/nameserver/dns4.nic.uk.",
+          "rel": "self",
+          "href": "https://rdap.nominet.uk/uk/nameserver/dns4.nic.uk.",
+          "type": "application/rdap+json"
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventActor": "SYSTEM",
+          "eventDate": "2017-01-17T15:19:39Z"
+        }
+      ],
+      "status": ["active", "associated"],
+      "ldhName": "dns4.nic.uk.",
+      "unicodeName": "dns4.nic.uk.",
+      "ipAddresses": { "v4": ["43.230.48.1"], "v6": ["2401:fd80:404::1"] }
+    },
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/nameserver/nsa.nic.uk.",
+          "rel": "self",
+          "href": "https://rdap.nominet.uk/uk/nameserver/nsa.nic.uk.",
+          "type": "application/rdap+json"
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventActor": "SYSTEM",
+          "eventDate": "2017-01-17T15:19:39Z"
+        }
+      ],
+      "status": ["active", "associated"],
+      "ldhName": "nsa.nic.uk.",
+      "unicodeName": "nsa.nic.uk.",
+      "ipAddresses": { "v4": ["156.154.100.3"], "v6": ["2001:502:ad09::3"] }
+    },
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/nameserver/nsb.nic.uk.",
+          "rel": "self",
+          "href": "https://rdap.nominet.uk/uk/nameserver/nsb.nic.uk.",
+          "type": "application/rdap+json"
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventActor": "SYSTEM",
+          "eventDate": "2017-01-17T15:19:39Z"
+        }
+      ],
+      "status": ["active", "associated"],
+      "ldhName": "nsb.nic.uk.",
+      "unicodeName": "nsb.nic.uk.",
+      "ipAddresses": { "v4": ["156.154.101.3"], "v6": ["2001:502:2eda::3"] }
+    },
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/nameserver/nsc.nic.uk.",
+          "rel": "self",
+          "href": "https://rdap.nominet.uk/uk/nameserver/nsc.nic.uk.",
+          "type": "application/rdap+json"
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventActor": "SYSTEM",
+          "eventDate": "2017-01-17T15:19:39Z"
+        }
+      ],
+      "status": ["active", "associated"],
+      "ldhName": "nsc.nic.uk.",
+      "unicodeName": "nsc.nic.uk.",
+      "ipAddresses": { "v4": ["156.154.102.3"], "v6": ["2610:a1:1009::3"] }
+    },
+    {
+      "objectClassName": "nameserver",
+      "links": [
+        {
+          "value": "https://rdap.nominet.uk/uk/nameserver/nsd.nic.uk.",
+          "rel": "self",
+          "href": "https://rdap.nominet.uk/uk/nameserver/nsd.nic.uk.",
+          "type": "application/rdap+json"
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventActor": "SYSTEM",
+          "eventDate": "2017-01-17T15:19:39Z"
+        }
+      ],
+      "status": ["active", "associated"],
+      "ldhName": "nsd.nic.uk.",
+      "unicodeName": "nsd.nic.uk.",
+      "ipAddresses": { "v4": ["156.154.103.3"], "v6": ["2610:a1:1010::3"] }
+    }
+  ]
+}

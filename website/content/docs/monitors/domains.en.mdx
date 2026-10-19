@@ -1,0 +1,81 @@
+---
+title: Domain registration
+description: How Raaqeb reads the registration of a monitor's domain and warns before it expires.
+---
+
+A domain whose registration lapses stops resolving, and every check of every monitor under it fails at once. For an HTTP, TCP or DNS monitor whose host is a domain name, Raaqeb reads the domain's registration once a day, shows it on the monitor's page, and sends the domain expiring event 30 days before the registration ends.
+
+## The switch
+
+The option is on the monitor form, under the target, for HTTP, TCP and DNS monitors:
+
+| Field | What it means | Default |
+|---|---|---|
+| **Warn before the domain's registration expires** | Reads the domain's registration from its registry once a day and sends the domain expiring event. | On. For a domain name only. |
+
+The switch is greyed for an IP address, a name of one label such as `localhost`, and a name under a TLD set aside for special use (`.test`, `.example`, `.invalid`, `.localhost`, `.local`, `.internal`, `.arpa`, `.onion`, `.alt`), since no registry holds any of them.
+
+**Domain expiring** appears under **Events that notify** while the option is on, on by default. Switching the option off stops the reads and deletes the registration Raaqeb kept.
+
+## What the card shows
+
+The **Domain registration** card on the monitor's page shows:
+
+| Field | What it is |
+|---|---|
+| **Domain** | The registered domain the registry answered for, such as `example.com` for `www.example.com`. |
+| **Expires** | When the registration ends, or **Unknown**. |
+| **Last read** | When Raaqeb last read it. |
+
+The card marks a registration **Expiring soon** within 30 days of its end, and **Expired** once it has ended.
+
+## How it is read
+
+Raaqeb asks the domain's registry, never a third party:
+
+1. It reads IANA's [RDAP bootstrap file](https://data.iana.org/rdap/dns.json), which names the RDAP server of each TLD that has one, and keeps it in memory for a week.
+2. A TLD with an RDAP server is asked over RDAP, for the expiration date the registry publishes.
+3. A TLD with no RDAP server is asked over WHOIS, on port 43, at the server IANA's own WHOIS names for it. Raaqeb reads the expiry date from a line whose label says so, in a form that reads one way only, such as `2027-01-29` or `29-Jan-2027`. A date like `04/03/2027`, where the day and month could be either, is read as unknown.
+
+Raaqeb asks for the host first, then each parent name, until the registry answers for one: a registry holds what was registered and not the names under it, so no list of public suffixes is needed. For `www.shop.example.co.uk` it asks `www.shop.example.co.uk`, then `shop.example.co.uk`, then `example.co.uk`, and stops there. It never asks for a zone a country's registry runs for others to register under, such as `co.uk`, `com.mx` or `gov.qa`: the registry's own record of the zone is no one's registration.
+
+Only the registry's record of a name, or its answer that it holds no such name, counts. A record of another name, such as the domain above the name asked, is read when the walk reaches that name. Anything else, such as a rate limit, an error or an empty reply, is no answer: nothing above the name is asked in its place, and the read is tried again an hour later.
+
+- A monitor with no registration is read within about a minute of saving.
+- After that, every registration is read again on the first minute of each UTC day.
+- Monitors under one domain ask its registry once a day between them.
+- A read that fails, a registry or IANA that cannot be reached, leaves the registration as it was and is tried again an hour later.
+- Reads go one at a time, each request with a 10 second timeout. A paused monitor is not read.
+
+Changing the monitor's host, or switching the option off, deletes the registration, and the next read starts again.
+
+### An unknown date
+
+Many registries publish no expiry date, and some publish no WHOIS server at all. Their registrations show **Unknown**, and no warning goes for them: Raaqeb never guesses a date. Registries checked on 18 October 2026, for the Arab ccTLDs:
+
+| TLD | Asked over | Expiry date |
+|---|---|---|
+| `.bh`, `.lb`, `.ly`, `.ye` | RDAP | Published. |
+| `.sd` | RDAP | Unknown: its server answered "not found" for every name asked. |
+| `.ma`, `.so` | WHOIS | Published. |
+| `.sa`, `.ae`, `.qa`, `.om`, `.jo`, `.tn`, `.dz`, `.mr` | WHOIS | Not published, so unknown. |
+| `.iq`, `.sy` | WHOIS | Not read: the server closed the connection, so the page shows no card and the read is tried again each hour. |
+| `.eg`, `.kw`, `.ps`, `.dj`, `.km` | none | Unknown: IANA names no WHOIS server. |
+
+An expiry date more than 90 days gone is read as unknown too: a registry deletes a lapsed name well before then, so such a date belongs to a name above the registration, held by the registry itself.
+
+## The warning
+
+The domain expiring event goes once for each expiry date, when the registration is within 30 days of its end or has ended. A renewed registration has a new expiry date and starts over.
+
+A warning is sent only when the monitor is not paused, the **Domain expiring** event is on, and at least one notification channel is selected. One that could not go for those reasons is not counted as sent, so turning the event on or selecting a channel later still sends it. While a maintenance window covers the monitor, the warning waits for the window's end.
+
+## Privacy
+
+Each read sends the monitor's host name, and the names above it, to the domain's registry, and the TLD to IANA. Switch the option off for a host you would rather no registry hear of.
+
+## Related pages
+
+- [Monitors](/en/docs/monitors): monitor events and maintenance windows.
+- [Certificate record](/en/docs/monitors/certificates): the other expiry Raaqeb watches.
+- [Notifications](/en/docs/notifications): what each channel sends.

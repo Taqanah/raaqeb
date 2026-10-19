@@ -3,7 +3,7 @@
  * its uptime over the four windows, the response-time series of the chart,
  * its day bar's days with the outages that ran on each, the recent
  * checks, a page at a time back through the raw checks' window or, zoomed,
- * the span, the outages, the certificate record and, for a heartbeat monitor,
+ * the span, the outages, the certificate record, the domain registration and, for a heartbeat monitor,
  * its URL and last heartbeat; one check's failure detail and capture;
  * "check now", which hands the monitor to the scheduler; and acknowledging
  * the open outage, which stops its reminders. Uptime reads the checks over
@@ -65,6 +65,7 @@ type DetailStorage = Pick<
   | "maintenance"
   | "monitors"
   | "outages"
+  | "registrations"
   | "settings"
 >;
 
@@ -142,6 +143,7 @@ export async function readMonitorDetail(
       newest,
       buckets,
       certificate,
+      registration,
       beats,
       reach,
       barDays,
@@ -159,6 +161,7 @@ export async function readMonitorDetail(
         ? undefined
         : storage.checks.series(id, chartFrom, chartTo, bucketMs, tier),
       storage.certificates.find(id),
+      storage.registrations.find(id),
       heartbeatView(storage, monitor, requestOrigin),
       readReach(storage, since),
       // One read of each kind for the bar's 90 days, never one a day.
@@ -176,6 +179,7 @@ export async function readMonitorDetail(
     return {
       detail: {
         certificate,
+        registration,
         covered: coveredMonitors(windows, components).has(id),
         days: (barDays.get(id) ?? []).map((each) => ({
           ...dayView(each),

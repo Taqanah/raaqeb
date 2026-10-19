@@ -447,6 +447,7 @@ describe("send test", () => {
       "monitor.degraded_started",
       "monitor.degraded_ended",
       "monitor.certificate_expiring",
+      "monitor.domain_expiring",
     ]);
     const down = read.ok ? (read.form.preview[0]?.body ?? "") : "";
     expect(down).toContain("The monitor is down.");
@@ -532,7 +533,7 @@ describe("send test on a channel the install key cannot open", () => {
     );
     const read = await readChannelForm(store, key, channel.id, Date.now());
     expect(read.ok && read.form.summary).toBe("");
-    expect(read.ok && read.form.preview).toHaveLength(6);
+    expect(read.ok && read.form.preview).toHaveLength(7);
   });
 });
 
