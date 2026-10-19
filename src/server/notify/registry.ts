@@ -11,6 +11,7 @@ import { emailChannel } from "./email.ts";
 import { ntfyChannel } from "./ntfy.ts";
 import { pagerdutyChannel } from "./pagerduty.ts";
 import { slackChannel } from "./slack.ts";
+import { teamsChannel } from "./teams.ts";
 import { telegramChannel } from "./telegram.ts";
 import { webhookChannel } from "./webhook.ts";
 
@@ -22,6 +23,7 @@ export const notificationChannels: Readonly<
   ntfy: ntfyChannel,
   pagerduty: pagerdutyChannel,
   slack: slackChannel,
+  teams: teamsChannel,
   telegram: telegramChannel,
   webhook: webhookChannel,
 };

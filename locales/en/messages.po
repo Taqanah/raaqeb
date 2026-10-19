@@ -2639,6 +2639,10 @@ msgid "channel_type_pagerduty"
 msgstr "PagerDuty"
 
 #. js-lingui-explicit-id
+msgid "channel_type_teams"
+msgstr "Microsoft Teams"
+
+#. js-lingui-explicit-id
 msgid "channel_type_webhook_lead"
 msgstr "Posts signed JSON to an address you set."
 
@@ -2665,6 +2669,10 @@ msgstr "A phone notification through an ntfy topic."
 #. js-lingui-explicit-id
 msgid "channel_type_pagerduty_lead"
 msgstr "An alert to your on-call team through an integration key."
+
+#. js-lingui-explicit-id
+msgid "channel_type_teams_lead"
+msgstr "To a channel or chat through a Workflows webhook."
 
 #. js-lingui-explicit-id
 msgid "channel_field_slack_url_hint"
@@ -2749,6 +2757,10 @@ msgstr "The Events API v2 integration key of your service in PagerDuty, 32 chara
 #. js-lingui-explicit-id
 msgid "channel_refused_routing_key"
 msgstr "Enter the key as PagerDuty shows it: 32 Latin letters and digits."
+
+#. js-lingui-explicit-id
+msgid "channel_field_teams_url_hint"
+msgstr "The webhook URL of a workflow in the Workflows app in Teams, made from the template Send webhook alerts to a channel. Stored encrypted and never shown after saving."
 
 #. js-lingui-explicit-id
 msgid "auth_forgot_title"

@@ -253,6 +253,13 @@ const chats: readonly ChatCase[] = [
     type: "telegram",
   },
   {
+    carries: "type",
+    fields: { url: `${sinkOrigin}/ok/teams-${token}` },
+    path: `/ok/teams-${token}`,
+    summary: `127.0.0.1:${sinkPort}`,
+    type: "teams",
+  },
+  {
     carries: "routing_key",
     fields: { routingKey: "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb" },
     summary: "events.pagerduty.com",

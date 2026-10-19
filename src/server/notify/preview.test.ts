@@ -93,6 +93,7 @@ const values: Readonly<Record<ChannelType, Record<string, string>>> = {
   ntfy: { server: "https://ntfy.example.com", topic: "ops" },
   pagerduty: { routingKey: "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb" },
   slack: { url: "https://hooks.slack.example.com/services/T/B/x" },
+  teams: { url: "https://teams.example.com/workflows/1/triggers/manual" },
   telegram: { botToken: "1:x", chatId: "1" },
   webhook: { secret: `whsec_${"A".repeat(43)}=`, url: "https://example.com" },
 };
@@ -185,6 +186,24 @@ async function carried(
         links: [],
         subject: sent.title,
       };
+    case "teams": {
+      // The title, the sentence, then the lines, which the preview shows as text with the sentence apart; markdown's escapes read back.
+      const [title, sentence, ...lines] = (
+        sent.attachments[0].content.body as { text: string }[]
+      ).map((each) => each.text.replace(/\\(.)/g, "$1"));
+      return {
+        body: `${sentence}\n\n${lines.join("\n")}`,
+        buttons: (sent.attachments[0].content.actions ?? []).map(
+          (each: { title: string; url: string }) => ({
+            url: each.url,
+            words: each.title,
+          })
+        ),
+        html: undefined,
+        links: [],
+        subject: title,
+      };
+    }
     case "pagerduty":
       return {
         body: sent.payload.custom_details.details,
@@ -212,7 +231,7 @@ async function carried(
 describe("the notification preview", () => {
   test("a channel previews down, its reminder, recovered, degraded started, degraded ended, certificate expiring and domain expiring", async () => {
     for (const type of channelTypes) {
-      // biome-ignore lint/performance/noAwaitInLoops: seven types, one after the other
+      // biome-ignore lint/performance/noAwaitInLoops: eight types, one after the other
       const previews = await previewNotifications(type, english, now);
       expect(previews.map((each) => each.type)).toEqual([
         "monitor.down",

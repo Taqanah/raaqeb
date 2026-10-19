@@ -180,7 +180,7 @@ describe("the channels repository", () => {
     const { channels, location } = await repositories();
     const created = await channels.create(ops);
     await runSql(location, "UPDATE channels SET type = ? WHERE id = ?", [
-      "teams",
+      "opsgenie",
       created.id,
     ]);
     await expect(channels.find(created.id)).rejects.toBeInstanceOf(

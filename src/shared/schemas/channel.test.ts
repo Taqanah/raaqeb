@@ -15,6 +15,7 @@ import {
   recipientsOf,
   senderOf,
   slackDeclaration,
+  teamsDeclaration,
   telegramDeclaration,
   webhookDeclaration,
 } from "./channel.ts";
@@ -104,8 +105,8 @@ describe("what a channel form posts", () => {
     expect(
       channelInputSchema.safeParse({
         appliesToNew: false,
-        name: "Teams",
-        type: "teams",
+        name: "Opsgenie",
+        type: "opsgenie",
         values: {},
       }).success
     ).toBe(false);
@@ -517,5 +518,38 @@ describe("the chat channels' declarations", () => {
         routingKey: "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb",
       })
     ).toBe("events.pagerduty.com");
+  });
+
+  test("Teams takes one URL, typed and sealed, since its signature is in the address", () => {
+    expect(teamsDeclaration.fields.map((each) => each.name)).toEqual(["url"]);
+    expect(declared(teamsDeclaration, "url")).toMatchObject({
+      kind: "url",
+      secret: true,
+    });
+  });
+
+  test("a Teams URL is any http or https URL, a Power Automate trigger's of any region among them", () => {
+    for (const url of [
+      "https://prod-12.westeurope.logic.azure.com:443/workflows/a/triggers/manual/paths/invoke?api-version=2016-06-01&sig=s",
+      "https://default1.environment.api.powerplatform.com/powerautomate/automations/direct/workflows/a/triggers/manual/paths/invoke?api-version=1&sig=s",
+      "http://relay.lan:8080/teams",
+    ]) {
+      expect(accepts(teamsDeclaration, "url", url)).toBe(true);
+    }
+    for (const url of [
+      "",
+      "logic.azure.com/workflows",
+      "ftp://example.test/x",
+    ]) {
+      expect(accepts(teamsDeclaration, "url", url)).toBe(false);
+    }
+  });
+
+  test("the list shows a Teams channel by the URL's host, never its signature", () => {
+    expect(
+      teamsDeclaration.summary({
+        url: "https://prod-12.westeurope.logic.azure.com:443/workflows/a?sig=s",
+      })
+    ).toBe("prod-12.westeurope.logic.azure.com");
   });
 });

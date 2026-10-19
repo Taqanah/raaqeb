@@ -1,0 +1,88 @@
+---
+title: Microsoft Teams
+description: How to get a Workflows webhook URL in Microsoft Teams, what a Teams channel posts, and how a refused post shows in Raaqeb.
+---
+
+A Teams channel posts each notification to a Microsoft Teams channel or chat as an Adaptive Card, through a workflow's webhook in the Workflows app. The card is text in the channel language, its title coloured by the event, with buttons that open the monitor.
+
+Microsoft is retiring the Microsoft 365 connectors, Teams' old incoming webhooks, and Workflows (Power Automate) is its replacement. Raaqeb posts to a workflow's webhook URL, not to a connector.
+
+## What you need first
+
+A workflow that starts when a Teams webhook request arrives. In Teams:
+
+1. Open the team and channel (or the chat) that should receive the alerts.
+2. Choose **More options** (the three dots) next to the channel, then **Workflows**.
+3. Pick the template **Send webhook alerts to a channel**, or start from scratch with the trigger **When a Teams webhook request is received**, followed by a step that posts the card to the channel or chat.
+4. Name it, choose where it posts, and save.
+5. Copy the webhook URL the workflow shows.
+
+The URL carries the workflow's signature, so keep it private. A workflow belongs to the person who made it and posts as them or as the flow bot: if that person leaves the organisation, add a co-owner first or the workflow stops.
+
+## Fields
+
+| Field | Meaning | Required | Default |
+| --- | --- | --- | --- |
+| **Name** | What the admin area calls the channel, at most 80 characters. | Yes | None |
+| **Channel language** | The language of the card. | No | **The install language** |
+| **Apply to new monitors by default** | Every new monitor starts with this channel selected. | No | On |
+| **URL** | The workflow's webhook URL. It carries a signature, so it is a secret: stored encrypted with the install key and never shown after saving. Any `http` or `https` URL is accepted. | Yes | None |
+
+## The message
+
+Raaqeb posts this JSON to the URL, here for a down notification:
+
+```json
+{
+  "type": "message",
+  "attachments": [
+    {
+      "contentType": "application/vnd.microsoft.card.adaptive",
+      "contentUrl": null,
+      "content": {
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "type": "AdaptiveCard",
+        "version": "1.5",
+        "msteams": { "width": "Full" },
+        "body": [
+          { "type": "TextBlock", "text": "Main website is down", "wrap": true, "size": "Medium", "weight": "Bolder", "color": "Attention" },
+          { "type": "TextBlock", "text": "The monitor is down.", "wrap": true },
+          { "type": "TextBlock", "text": "Monitor: Main website", "wrap": true, "spacing": "None" },
+          { "type": "TextBlock", "text": "Target: https://example.com", "wrap": true, "spacing": "None" },
+          { "type": "TextBlock", "text": "Reason: Timed out", "wrap": true, "spacing": "None" },
+          { "type": "TextBlock", "text": "Time: Sep 25, 2026, 18:49 (UTC)", "wrap": true, "spacing": "None" }
+        ],
+        "actions": [
+          { "type": "Action.OpenUrl", "title": "Open the monitor", "url": "https://status.example.com/admin/monitors/0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d" },
+          { "type": "Action.OpenUrl", "title": "Open an incident", "url": "https://status.example.com/admin/incidents/new?monitor=0199a3c2-5f1e-7c3a-9b1d-2f6e8a4c1b7d" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+- **Title**: the subject, such as `Main website is down`. Its colour is `Attention` for down and its reminder, `Good` for recovered and degraded ended, and `Warning` for degraded, an expiring certificate and an expiring domain registration. A test has none.
+- **Lines**: the sentence, then one text block for each label and value line. See [What a notification says](/en/docs/notifications#what-a-notification-says).
+- **Buttons**: **Open the monitor**, and on a down notification **Open an incident**. They need a stored public address; without one they are left out.
+- **Direction**: an Arabic card sets `"rtl": true`, so it reads right to left.
+- **Markdown**: Teams reads markdown in a text block. Raaqeb escapes `\`, `*`, `_`, `~`, `` ` ``, `|`, `<`, `>`, `#`, `[` and `]` outside URLs, so a monitor's name shows as typed and cannot make a link, a mention or a style.
+
+If you build the workflow from scratch, its posting step must post the card found in `attachments`.
+
+## Failures and limits
+
+Teams takes a message of at most 28 KB and throttles a webhook above four requests a second. One attempt gives up after 10 seconds, and a failed attempt is retried 30 seconds, 2 minutes and 10 minutes later. A throttled answer, `429`, retries on the same schedule.
+
+| Reason code | Text | Typical cause |
+| --- | --- | --- |
+| `unexpected_status` | Unexpected status code | Workflows refused the post. **Observed** shows the status and **Error text** the answer, for example when the workflow is turned off or deleted, or the URL was copied wrong. |
+| `timeout` | Timed out | No answer within 10 seconds. |
+| `dns_failed` | DNS lookup failed | The URL's host does not resolve. |
+| `connection_refused` | Connection refused | Nothing listens at the URL's host and port. |
+| `connection_failed` | Connection failed | The connection was reset or the host was unreachable. |
+| `certificate_expired` | Certificate expired | The receiver's certificate has expired. |
+| `certificate_invalid` | Certificate invalid | The certificate cannot be verified. |
+| `unknown` | Unknown error | Anything else. **Error text** says what happened. |
+
+A success means Workflows accepted the request. Whether the workflow's own steps then post to Teams is shown in the workflow's run history in Teams, not in Raaqeb. The webhook URL is removed from every recorded error text.

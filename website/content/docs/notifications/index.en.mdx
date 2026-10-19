@@ -10,7 +10,7 @@ Raaqeb sends two kinds of notification. Both go through one queue that stores ea
 
 ## Channels
 
-A notification channel is a destination your install owns, such as a Slack incoming webhook or an SMTP mailbox. You add channels under **Notification channels** in the admin area, then each monitor selects the channels it uses. Seven channel types are built in:
+A notification channel is a destination your install owns, such as a Slack incoming webhook or an SMTP mailbox. You add channels under **Notification channels** in the admin area, then each monitor selects the channels it uses. Eight channel types are built in:
 
 | Channel type | What it does |
 | --- | --- |
@@ -21,6 +21,7 @@ A notification channel is a destination your install owns, such as a Slack incom
 | [Telegram](/en/docs/notifications/telegram) | A bot writes to one chat, group or channel. |
 | [ntfy](/en/docs/notifications/ntfy) | Publishes a phone notification to an ntfy topic. |
 | [PagerDuty](/en/docs/notifications/pagerduty) | Opens an alert on a PagerDuty service and resolves it when the monitor recovers. |
+| [Microsoft Teams](/en/docs/notifications/teams) | Posts an Adaptive Card to a Teams channel or chat through a workflow's webhook. |
 
 Every channel form has these fields, then the fields of its type:
 
@@ -99,7 +100,7 @@ Its subject is `Main website is down`. The lines each event carries:
 - The reason is the [reason](/en/docs/monitors) the check ended with, in words, such as `Timed out` or `Unexpected status code`.
 - Times are written in the install's time zone, clock and calendar, with the zone's name.
 - The Link line opens the monitor in the admin area, and the down notification's last line opens a new incident prefilled with the monitor. Both are made from the public address, so they are left out when the install stores none. See [the public address](/en/docs/get-started#onboarding).
-- Slack, Discord and Telegram show the subject as the first line and turn the two link lines into the words **Open the monitor** and **Open an incident**. ntfy turns them into buttons, and PagerDuty attaches them to the alert as links.
+- Slack, Discord and Telegram show the subject as the first line and turn the two link lines into the words **Open the monitor** and **Open an incident**. ntfy turns them into buttons, PagerDuty attaches them to the alert as links, and Teams shows the subject as the card's title and the two links as buttons.
 
 The text is fixed. There are no message templates.
 
@@ -166,7 +167,7 @@ Certificates are always verified. There is no option to skip verification.
 
 ## How secrets are stored
 
-Fields that hold a credential are secret: the webhook URL and signing secret, the SMTP password, the Slack and Discord webhook URLs, the Telegram bot token, the ntfy topic and access token, and the PagerDuty integration key. Raaqeb seals them together with the install key (AES-256-GCM) before they reach the database. Every other field is stored as typed.
+Fields that hold a credential are secret: the webhook URL and signing secret, the SMTP password, the Slack, Discord and Teams webhook URLs, the Telegram bot token, the ntfy topic and access token, and the PagerDuty integration key. Raaqeb seals them together with the install key (AES-256-GCM) before they reach the database. Every other field is stored as typed.
 
 - A typed secret is write-only. After you save, its field is empty and reads **Stored. Leave it empty to keep it.** Type a new value to replace it.
 - An optional secret, such as the ntfy access token, cannot be emptied from the form once stored. Delete the channel and add it again to clear it.

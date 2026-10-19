@@ -74,6 +74,7 @@ import {
   SendIcon,
   SirenIcon,
   TrashIcon,
+  UsersIcon,
   WebhookIcon,
 } from "@/shared/ui/icons.tsx";
 import { Input } from "@/shared/ui/input.tsx";
@@ -117,6 +118,7 @@ const typeIcons: Readonly<Record<ChannelType, typeof BellIcon>> = {
   ntfy: BellIcon,
   pagerduty: SirenIcon,
   slack: HashIcon,
+  teams: UsersIcon,
   telegram: SendIcon,
   webhook: WebhookIcon,
 };

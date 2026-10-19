@@ -20,6 +20,7 @@ export const channelTypes = [
   "telegram",
   "ntfy",
   "pagerduty",
+  "teams",
 ] as const;
 export const channelTypeSchema = z.enum(channelTypes);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
@@ -431,6 +432,24 @@ export const pagerdutyDeclaration: ChannelDeclaration = {
   type: "pagerduty",
 };
 
+/** Microsoft Teams: a workflow's webhook in the Workflows app, which posts an Adaptive Card to a channel or chat. Its URL carries a signature and so counts as a secret. Any http or https URL, so a Power Automate trigger URL of any region works. */
+export const teamsDeclaration: ChannelDeclaration = {
+  fields: [
+    {
+      hint: "channel_field_teams_url_hint",
+      kind: "url",
+      label: "channel_field_url",
+      name: "url",
+      secret: true,
+      value: webhookUrl,
+    },
+  ],
+  label: "channel_type_teams",
+  localized: true,
+  summary: (values) => hostOf(values.url),
+  type: "teams",
+};
+
 export const channelDeclarations: Readonly<
   Record<ChannelType, ChannelDeclaration>
 > = {
@@ -439,6 +458,7 @@ export const channelDeclarations: Readonly<
   ntfy: ntfyDeclaration,
   pagerduty: pagerdutyDeclaration,
   slack: slackDeclaration,
+  teams: teamsDeclaration,
   telegram: telegramDeclaration,
   webhook: webhookDeclaration,
 };

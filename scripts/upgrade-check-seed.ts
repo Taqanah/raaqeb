@@ -59,6 +59,13 @@ const moreChannels: readonly {
     secrets: { routingKey: "R0uT1nGk3yR0uT1nGk3yR0uT1nGk3yAb" },
     type: "pagerduty",
   },
+  {
+    config: {},
+    secrets: {
+      url: "https://prod-12.westeurope.logic.azure.com:443/workflows/abc/triggers/manual/paths/invoke?sig=abcdef",
+    },
+    type: "teams",
+  },
 ];
 
 /** The monitors the fixture lacks: its install holds an HTTP, a DNS and a heartbeat monitor. A database monitor's connection URL is its credential. */

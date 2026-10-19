@@ -287,7 +287,7 @@ describe("the channels module", () => {
     await runSql(
       open?.location ?? { backend: "sqlite", file: "" },
       "UPDATE channels SET type = ? WHERE id = ?",
-      ["teams", channel.id]
+      ["opsgenie", channel.id]
     );
     expect(await listChannels(store, key)).toEqual({
       id: channel.id,
