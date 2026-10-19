@@ -298,6 +298,11 @@ export function readMaintenanceView(
   });
 }
 
+/** The API's not-found, as every route under `/api/` answers one: plain text, never stored. */
+export function apiNotFound(): Response {
+  return plain(404, "Not Found");
+}
+
 function plain(status: 404 | 503, text: string): Response {
   return new Response(text, {
     headers: {

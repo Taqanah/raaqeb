@@ -531,7 +531,7 @@
         "website/vite.config.ts"
       ],
       "javascript": {
-        "globals": ["Bun"]
+        "globals": ["Bun", "HTMLRewriter"]
       }
     }
   ]

@@ -28,13 +28,23 @@ export function clientAddress(parallelIndex: number): string {
 }
 
 /**
- * `test` with `page.goto` and `page.reload` blocking until React's first commit, so a click never
+ * `test` with `page.goto` and `page.reload` blocking until React's first commit (or, on a still not-found, until the document is parsed), so a click never
  * lands before hydration. A click on server-rendered markup before hydration
  * does nothing, and Playwright's auto-wait cannot tell. React reports the
  * hydration commit to the devtools hook, so an init script installs a minimal
  * hook that records it; no product code is involved. Every request of the
  * context carries the test's own client address.
  */
+/** Waits for React's first commit, or for a parsed document that carries no app script: a not-found is served still and never hydrates. */
+function hydrated(page: Page): Promise<unknown> {
+  return page.waitForFunction(
+    () =>
+      window.__reactCommitted === true ||
+      (document.readyState !== "loading" &&
+        document.querySelector("script[type=module]") === null)
+  );
+}
+
 export const test = base.extend<{ address: string }>({
   // biome-ignore lint/correctness/noEmptyPattern: Playwright reads the destructuring to order fixtures
   address: async ({}, use, testInfo) => {
@@ -61,14 +71,14 @@ export const test = base.extend<{ address: string }>({
     const goto = page.goto.bind(page);
     page.goto = async (url, options) => {
       const response = await goto(url, options);
-      await page.waitForFunction(() => window.__reactCommitted === true);
+      await hydrated(page);
       return response;
     };
     // A reload is a fresh document too; the init script runs again and the flag is set on hydration.
     const reload = page.reload.bind(page);
     page.reload = async (options) => {
       const response = await reload(options);
-      await page.waitForFunction(() => window.__reactCommitted === true);
+      await hydrated(page);
       return response;
     };
     await use(page);
@@ -85,7 +95,7 @@ export const expect = baseExpect;
  */
 export async function expectPath(page: Page, pathname: string): Promise<void> {
   await baseExpect.poll(() => new URL(page.url()).pathname).toBe(pathname);
-  await page.waitForFunction(() => window.__reactCommitted === true);
+  await hydrated(page);
 }
 
 /**

@@ -515,10 +515,11 @@ export function PlainMissing(): ReactNode {
   const { t } = useMessages();
   return (
     <main
-      className="mx-auto flex min-h-dvh w-full max-w-3xl items-center justify-center px-5 text-center text-muted-foreground text-sm"
+      className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col items-center justify-center gap-2 px-5 text-center"
       data-slot="view-missing"
     >
-      {t("public_not_found")}
+      <h1 className="font-semibold text-lg">{t("public_not_found_title")}</h1>
+      <p className="text-muted-foreground text-sm">{t("public_not_found")}</p>
     </main>
   );
 }
