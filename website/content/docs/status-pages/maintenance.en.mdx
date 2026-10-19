@@ -1,11 +1,11 @@
 ---
 title: Maintenance windows
-description: How to schedule a maintenance window, what it does to components, monitors and notifications, and what status pages and subscribers see.
+description: How to schedule a maintenance window or repeat one, what it does to components, monitors and notifications, and what status pages and subscribers see.
 ---
 
 A maintenance window is a scheduled period, with a start and an end, during which its affected components show under maintenance. While it runs, the monitors linked to those components send no operator notifications and the time does not count against anyone's uptime. Like an incident, a window belongs to the install and shows on every status page that shows one of its components.
 
-A window is one period. Raaqeb has no recurring windows: schedule one window for each time.
+A window is one period, or one occurrence of a [maintenance series](#repeat) that repeats weekly or monthly, each occurrence an ordinary window.
 
 ## Schedule a window
 
@@ -25,6 +25,35 @@ A window names the components it covers, so at least one [component](/en/docs/st
 | **Ends** | At least one minute after the start, and not in the past. |
 
 Times are entered on your own clock, in the time zone shown under **Time zone**, and stored in UTC. **Title** and **Description** have one input per language; the install language's text is required.
+
+## Repeat a window [#repeat]
+
+A maintenance series schedules a window at each of its occurrences: weekly on one or more days, or monthly on a day of the month or on a weekday by its place in the month (the second Tuesday, the last Friday), at a start time on its time zone's clock, for a duration.
+
+1. In **New maintenance window**, fill in **Title** and **Description** as for a single window.
+2. Under **Times**, set **Repeats** to **Weekly** or **Monthly**.
+3. Choose the days, the start time, the duration and the time zone.
+4. Tick the **Affected components** and select **Schedule recurring maintenance**. Its page opens with its scheduled occurrences.
+
+| Field | Rule |
+| --- | --- |
+| **Repeats** | **Once**, **Weekly** or **Monthly**. |
+| **Days** | Weekly: at least one day of the week. |
+| **Each month on** | Monthly: **A day of the month**, 1 to 31, or **A day of the week** by its place in the month, first to fourth or last. Day 29, 30 or 31 falls on the last day of a shorter month. |
+| **Start time** | To the minute, on the chosen time zone's clock. |
+| **Duration** | One minute to 168 hours. |
+| **Time zone** | Yours to begin with. |
+
+Each occurrence is scheduled a week before it starts, and the coming week's are scheduled as soon as the series is created. Every occurrence is an ordinary window in every way: subscribers hear of it when it is scheduled, it shows on the status pages, and it covers its monitors while it runs. An occurrence whose start passed while Raaqeb was stopped is not scheduled.
+
+Each occurrence starts at its time on its time zone's clock, whatever the daylight-saving offset that day. When the clock jumps over the start time, the occurrence starts when the clock reaches it after the change: 02:30 on a day the clock jumps from 02:00 to 03:00 starts at 03:30. When the clock goes back over the start time, the occurrence starts the first time. The duration is elapsed time.
+
+| What you do | What happens |
+| --- | --- |
+| Change or cancel one occurrence on its own page | As with any window. The series and its other occurrences stay as they are, and a cancelled occurrence does not come back. |
+| Save the series after editing it | Its scheduled occurrences are replaced with the edited series'. One whose start stays is kept, with the new text, components and duration; the others are cancelled and the new ones scheduled. An occurrence you changed on its own follows the series again this way; one you cancelled on its own stays cancelled. One in progress and the completed ones stay as they are. |
+| Select **End series** | Its scheduled occurrences are cancelled, one in progress runs to its end, and the completed ones stay in the history. Ending cannot be undone. |
+| Delete the last component it names | The series ends. |
 
 ## Stages
 
@@ -75,10 +104,10 @@ Confirmed subscribers of every published page that shows an affected component r
 
 | Event | When |
 | --- | --- |
-| `maintenance.scheduled` | You schedule a window. Not sent for a window that starts in the current minute, which sends `maintenance.started` alone. |
-| `maintenance.rescheduled` | An edit moves the start or the end, while scheduled or in progress. Not sent when the new start or end is the current minute. |
+| `maintenance.scheduled` | You schedule a window, or an occurrence of a series is scheduled. Not sent for a window that starts in the current minute, which sends `maintenance.started` alone. |
+| `maintenance.rescheduled` | An edit moves the start or the end, while scheduled or in progress, or a series' edit changes a scheduled occurrence's duration. Not sent when the new start or end is the current minute. |
 | `maintenance.started` | The window starts. A window that went straight to completed sends `maintenance.completed` alone. |
 | `maintenance.completed` | The window ends: at its time, through **End now**, or by an edit that sets the end to now. |
-| `maintenance.cancelled` | You cancel a scheduled window. |
+| `maintenance.cancelled` | You cancel a scheduled window, or a series' edit or end cancels a scheduled occurrence. |
 
 Editing only the title or description sends nothing. An email's subject is "Maintenance:" followed by the title. A webhook receives the window in Statuspage's body, as an incident with impact `maintenance`. See [What subscribers receive](/en/docs/status-pages/subscriptions#what-subscribers-receive).

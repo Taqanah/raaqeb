@@ -303,7 +303,12 @@ describe("deleting a component a window affects", () => {
     await storage.maintenance.advance(noon + 3 * hour);
     expect(await deleteComponent(storage, web)).toEqual({ ok: true });
     expect(await listWindows(storage, noon + 3 * hour)).toEqual({
-      list: { anyComponent: false, now: noon + 3 * hour, windows: [] },
+      list: {
+        anyComponent: false,
+        now: noon + 3 * hour,
+        series: [],
+        windows: [],
+      },
       ok: true,
     });
     for (const window of [done, running, later]) {
@@ -596,6 +601,12 @@ describe("a storage that cannot answer", () => {
         remove: failing,
         since: failing,
         unfinished: failing,
+        createSeries: failing,
+        editSeries: failing,
+        endSeries: failing,
+        extendSeries: failing,
+        findSeries: failing,
+        listSeries: failing,
       },
     };
     const unavailable = { ok: false, reason: "unavailable" } as const;

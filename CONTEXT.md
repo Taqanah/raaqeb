@@ -349,8 +349,18 @@ _Avoid_: severity, priority
 
 **Maintenance window**:
 Arabic: وقت الصيانة. Stages: مُجدوَل، جارٍ، مكتمل.
-A scheduled period, with a start and end, during which affected components show under maintenance. Lifecycle: scheduled, in progress, completed; the scheduler moves it at its start and its end. Deleting the last of its affected components deletes it at any stage, since it would be on no page. While in progress it covers every monitor linked to one of its components, whatever their other components show; for a covered monitor operator notifications are suppressed and the time is not observed. An unlinked monitor is never in maintenance. If a covered monitor is still down when the window ends, the down notification is sent then.
+A scheduled period, with a start and end, during which affected components show under maintenance. Lifecycle: scheduled, in progress, completed; the scheduler moves it at its start and its end. Deleting the last of its affected components deletes it at any stage, since it would be on no page. While in progress it covers every monitor linked to one of its components, whatever their other components show; for a covered monitor operator notifications are suppressed and the time is not observed. An unlinked monitor is never in maintenance. If a covered monitor is still down when the window ends, the down notification is sent then. A window is one period, or one occurrence of a maintenance series.
 _Avoid_: scheduled incident, downtime, planned outage
+
+**Maintenance series**:
+Arabic: وقت صيانة متكرر. Its recurrence: التكرار (أسبوعيًا، شهريًا).
+A maintenance window that repeats, by a recurrence: weekly on one or more days, or monthly on a day of the month or on an nth weekday (the second Tuesday, the last Friday); at a start time on the clock of its time zone, for a duration. Each occurrence starts at that wall-clock time whatever the daylight-saving offset that day; a start time the clock skips that day starts when the clock reaches it after the change, one it repeats starts the first time. Day 29, 30 or 31 falls on the last day of a shorter month. The series schedules each occurrence a week before it starts, or at once when it is created or edited. Editing the series replaces its scheduled occurrences with the new recurrence's, one changed on its own included; one cancelled on its own stays cancelled, and one in progress and the completed ones stay as they are. Ending the series cancels its scheduled occurrences; one in progress runs to its end. Deleting the last of its components ends it.
+_Avoid_: recurring incident, cron, schedule (that is a monitor's)
+
+**Occurrence**:
+Arabic: موعد
+One maintenance window a maintenance series scheduled. It is an ordinary window in every way: it is announced to subscribers when scheduled, shows on the status pages, covers its monitors while in progress, and may be changed or cancelled on its own, which leaves the series and its other occurrences as they are.
+_Avoid_: instance, event, repetition
 
 ### Product shape
 

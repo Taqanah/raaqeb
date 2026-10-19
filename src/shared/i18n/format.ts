@@ -167,6 +167,32 @@ export function formatDateTime(
   })(ms);
 }
 
+/** A time of day (`14:30`) on the clock format: `2:30 م`, `14:30`. */
+export function formatClockTime(
+  locale: Locale,
+  time: string,
+  clock: Clock
+): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    ...clockParts(clock),
+    timeZone: "UTC",
+  }).format(
+    Date.UTC(2026, 0, 1, Number(time.slice(0, 2)), Number(time.slice(3, 5)))
+  );
+}
+
+/** The days of the week in the locale, Sunday first: `الأحد`, `Sunday`. */
+export function weekdayNames(locale: Locale): readonly string[] {
+  const format = new Intl.DateTimeFormat(intlLocale(locale), {
+    timeZone: "UTC",
+    weekday: "long",
+  });
+  // 4 January 2026 is a Sunday.
+  return Array.from({ length: 7 }, (_, day) =>
+    format.format(Date.UTC(2026, 0, 4 + day))
+  );
+}
+
 // One formatter a locale and calendar: a page of bars formats a thousand days, and building one costs what formatting a hundred does.
 const dayFormats = new Map<string, (dayStart: number) => string>();
 

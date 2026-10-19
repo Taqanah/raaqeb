@@ -3,6 +3,7 @@ import {
   type Configuration,
   configurationSchema,
   exportFileName,
+  fromVersion1,
   headerSchema,
   recordSchema,
   versionProbeSchema,
@@ -18,6 +19,8 @@ const empty: Configuration = {
   incidentUpdates: [],
   incidents: [],
   maintenanceComponents: [],
+  maintenanceSeries: [],
+  maintenanceSeriesComponents: [],
   maintenanceWindows: [],
   monitorChannels: [],
   monitorTags: [],
@@ -167,16 +170,48 @@ describe("the export file's format", () => {
     }
   });
 
+  test("a header of version 1 reads as this format with no maintenance series and every window of none", () => {
+    const encoded = configurationSchema.encode(empty);
+    const {
+      maintenanceSeries: _,
+      maintenanceSeriesComponents: __,
+      ...older
+    } = encoded;
+    const window = {
+      createdAt: "2026-09-28T12:00:00.000Z",
+      endsAt: "2026-09-28T14:00:00.000Z",
+      id: "w1",
+      message: { ar: "نص" },
+      stage: "scheduled",
+      startsAt: "2026-09-28T13:00:00.000Z",
+      title: { ar: "صيانة" },
+      updatedAt: "2026-09-28T12:00:00.000Z",
+    };
+    const first = {
+      configuration: { ...older, maintenanceWindows: [window] },
+      exportedAt: "2026-09-28T12:00:00.000Z",
+      mode: "full",
+      raaqeb: "export",
+      version: 1,
+    };
+    const read = headerSchema.parse(fromVersion1(first));
+    expect(read.configuration.maintenanceSeries).toEqual([]);
+    expect(read.configuration.maintenanceSeriesComponents).toEqual([]);
+    expect(read.configuration.maintenanceWindows[0]?.seriesId).toBeNull();
+    // Anything else stays as it came, for the schema to refuse.
+    expect(fromVersion1("not a header")).toBe("not a header");
+  });
+
   test("a header of another version is not this format, though its version can still be read", () => {
     const other = {
       configuration: configurationSchema.encode(empty),
       exportedAt: "2026-09-28T12:00:00.000Z",
       mode: "full",
       raaqeb: "export",
-      version: 2,
+      version: 1,
     };
     expect(headerSchema.safeParse(other).success).toBe(false);
-    expect(versionProbeSchema.parse(other).version).toBe(2);
+    expect(versionProbeSchema.parse(other).version).toBe(1);
   });
 
   test("a check record names its result and reason by name and its time in ISO 8601", () => {

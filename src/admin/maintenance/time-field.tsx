@@ -4,7 +4,8 @@
  * year in Umm al-Qura, the Gregorian date under them for Hijri with
  * Gregorian; then the hour and minute on the operator's clock in either.
  * The value is `datetime-local` text in the operator's zone, so the draft
- * and what the form sends are the same in every calendar.
+ * and what the form sends are the same in every calendar. A series' start
+ * time is the clock's part alone.
  */
 import { type ChangeEvent, type ReactNode, useCallback } from "react";
 import {
@@ -33,16 +34,18 @@ import {
 } from "@/shared/ui/native-select.tsx";
 import { Segmented, SegmentedItem } from "@/shared/ui/segmented.tsx";
 
-export interface TimeFieldProps {
+export interface TimeFieldProps<Name extends string = "ends" | "starts"> {
   /** The operator's calendar, clock and zone, from the loader. */
   readonly clock: TimeOptions;
+  /** The time of day alone, as a series' start time: the date is left as given. */
+  readonly dateless?: boolean;
   /** The refusal shown under the field. */
   readonly error?: string;
   readonly label: string;
-  readonly name: "ends" | "starts";
+  readonly name: Name;
   /** The server's read time: the Hijri years offered start at its year. */
   readonly now: number;
-  readonly onChange: (name: "ends" | "starts", value: string) => void;
+  readonly onChange: (name: Name, value: string) => void;
   /** `datetime-local` text in the operator's zone. */
   readonly value: string;
 }
@@ -104,8 +107,10 @@ export function withPart(
   );
 }
 
-export function TimeField(props: TimeFieldProps): ReactNode {
-  const { clock, error, label, name, onChange, value } = props;
+export function TimeField<Name extends string>(
+  props: TimeFieldProps<Name>
+): ReactNode {
+  const { clock, dateless, error, label, name, now, onChange, value } = props;
   const { locale, t } = useMessages();
   const twelve = clock.clock === "12h";
   const onPart = useCallback(
@@ -134,6 +139,34 @@ export function TimeField(props: TimeFieldProps): ReactNode {
   const [am, pm] = dayPeriods(locale);
   const common = { invalid: Boolean(error), onChange: onPart };
   const gregorian = clock.calendar === "gregorian";
+  let date: ReactNode = null;
+  if (dateless) {
+    date = null;
+  } else if (gregorian) {
+    date = (
+      <Input
+        aria-invalid={error ? true : undefined}
+        className="w-auto self-start"
+        dir="ltr"
+        id={name}
+        name={`${name}-date`}
+        onChange={onDate}
+        type="date"
+        value={value.slice(0, 10)}
+      />
+    );
+  } else {
+    date = (
+      <HijriDate
+        clock={clock}
+        error={error}
+        name={name}
+        now={now}
+        onPart={onPart}
+        value={value}
+      />
+    );
+  }
   return (
     <Field>
       <FieldLabel htmlFor={name} id={`${name}-label`}>
@@ -145,25 +178,13 @@ export function TimeField(props: TimeFieldProps): ReactNode {
         data-slot={gregorian ? "gregorian-time" : "hijri-time"}
         data-value={value}
       >
-        {gregorian ? (
-          <Input
-            aria-invalid={error ? true : undefined}
-            className="w-auto self-start"
-            dir="ltr"
-            id={name}
-            name={`${name}-date`}
-            onChange={onDate}
-            type="date"
-            value={value.slice(0, 10)}
-          />
-        ) : (
-          <HijriDate {...props} onPart={onPart} />
-        )}
+        {date}
         <div className="flex items-center gap-2">
           {/* Hours before minutes, as a time is written in either language. */}
           <div className="flex items-center gap-1" dir="ltr">
             <Part
               {...common}
+              id={dateless ? name : undefined}
               label={t("maintenance_field_hour")}
               name={`${name}-hour`}
               options={
@@ -200,7 +221,7 @@ export function TimeField(props: TimeFieldProps): ReactNode {
             </Segmented>
           ) : null}
         </div>
-        {clock.calendar === "hijri_gregorian" ? (
+        {clock.calendar === "hijri_gregorian" && !dateless ? (
           <FieldDescription data-slot="gregorian-date">
             {formatDay(locale, Date.parse(value.slice(0, 10)), "gregorian")}
           </FieldDescription>
@@ -219,7 +240,10 @@ function HijriDate({
   now,
   onPart,
   value,
-}: TimeFieldProps & {
+}: Pick<
+  TimeFieldProps<string>,
+  "clock" | "error" | "name" | "now" | "value"
+> & {
   readonly onPart: (event: ChangeEvent<HTMLSelectElement>) => void;
 }): ReactNode {
   const { locale, t } = useMessages();

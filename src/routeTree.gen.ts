@@ -62,6 +62,7 @@ import { Route as Char123LocaleChar125HistoryIndexRouteImport } from "./routes/{
 import { Route as Char123LocaleChar125HistoryMonthRouteImport } from "./routes/{-$locale}/history/$month.tsx";
 import { Route as Char123LocaleChar125IncidentsIdRouteImport } from "./routes/{-$locale}/incidents/$id.tsx";
 import { Route as Char123LocaleChar125MaintenanceIdRouteImport } from "./routes/{-$locale}/maintenance/$id.tsx";
+import { Route as AdminMaintenanceSeriesIdRouteImport } from "./routes/admin/maintenance/series/$id.tsx";
 import { Route as AdminMonitorsIdIndexRouteImport } from "./routes/admin/monitors/$id/index.tsx";
 import { Route as AdminMonitorsIdEditRouteImport } from "./routes/admin/monitors/$id/edit.tsx";
 import { Route as AdminMonitorsIdHistoryDotjsonlDotzstRouteImport } from "./routes/admin/monitors/$id/history[.]jsonl[.]zst.ts";
@@ -356,6 +357,12 @@ const Char123LocaleChar125MaintenanceIdRoute =
     path: "/{-$locale}/maintenance/$id",
     getParentRoute: () => rootRouteImport,
   } as any);
+const AdminMaintenanceSeriesIdRoute =
+  AdminMaintenanceSeriesIdRouteImport.update({
+    id: "/maintenance/series/$id",
+    path: "/maintenance/series/$id",
+    getParentRoute: () => AdminRoute,
+  } as any);
 const AdminMonitorsIdIndexRoute = AdminMonitorsIdIndexRouteImport.update({
   id: "/monitors/$id/",
   path: "/monitors/$id/",
@@ -517,6 +524,7 @@ export interface FileRoutesByFullPath {
   "/admin/settings/": typeof AdminSettingsIndexRoute;
   "/subscriptions/$token/": typeof SubscriptionsTokenIndexRoute;
   "/{-$locale}/history/": typeof Char123LocaleChar125HistoryIndexRoute;
+  "/admin/maintenance/series/$id": typeof AdminMaintenanceSeriesIdRoute;
   "/admin/monitors/$id/edit": typeof AdminMonitorsIdEditRoute;
   "/admin/monitors/$id/history.jsonl.zst": typeof AdminMonitorsIdHistoryDotjsonlDotzstRoute;
   "/admin/pages/$id/subscribers": typeof AdminPagesIdSubscribersRoute;
@@ -588,6 +596,7 @@ export interface FileRoutesByTo {
   "/admin/settings": typeof AdminSettingsIndexRoute;
   "/subscriptions/$token": typeof SubscriptionsTokenIndexRoute;
   "/{-$locale}/history": typeof Char123LocaleChar125HistoryIndexRoute;
+  "/admin/maintenance/series/$id": typeof AdminMaintenanceSeriesIdRoute;
   "/admin/monitors/$id/edit": typeof AdminMonitorsIdEditRoute;
   "/admin/monitors/$id/history.jsonl.zst": typeof AdminMonitorsIdHistoryDotjsonlDotzstRoute;
   "/admin/pages/$id/subscribers": typeof AdminPagesIdSubscribersRoute;
@@ -663,6 +672,7 @@ export interface FileRoutesById {
   "/admin/settings/": typeof AdminSettingsIndexRoute;
   "/subscriptions/$token/": typeof SubscriptionsTokenIndexRoute;
   "/{-$locale}/history/": typeof Char123LocaleChar125HistoryIndexRoute;
+  "/admin/maintenance/series/$id": typeof AdminMaintenanceSeriesIdRoute;
   "/admin/monitors/$id/edit": typeof AdminMonitorsIdEditRoute;
   "/admin/monitors/$id/history.jsonl.zst": typeof AdminMonitorsIdHistoryDotjsonlDotzstRoute;
   "/admin/pages/$id/subscribers": typeof AdminPagesIdSubscribersRoute;
@@ -739,6 +749,7 @@ export interface FileRouteTypes {
     | "/admin/settings/"
     | "/subscriptions/$token/"
     | "/{-$locale}/history/"
+    | "/admin/maintenance/series/$id"
     | "/admin/monitors/$id/edit"
     | "/admin/monitors/$id/history.jsonl.zst"
     | "/admin/pages/$id/subscribers"
@@ -810,6 +821,7 @@ export interface FileRouteTypes {
     | "/admin/settings"
     | "/subscriptions/$token"
     | "/{-$locale}/history"
+    | "/admin/maintenance/series/$id"
     | "/admin/monitors/$id/edit"
     | "/admin/monitors/$id/history.jsonl.zst"
     | "/admin/pages/$id/subscribers"
@@ -884,6 +896,7 @@ export interface FileRouteTypes {
     | "/admin/settings/"
     | "/subscriptions/$token/"
     | "/{-$locale}/history/"
+    | "/admin/maintenance/series/$id"
     | "/admin/monitors/$id/edit"
     | "/admin/monitors/$id/history.jsonl.zst"
     | "/admin/pages/$id/subscribers"
@@ -1318,6 +1331,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof Char123LocaleChar125MaintenanceIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/admin/maintenance/series/$id": {
+      id: "/admin/maintenance/series/$id";
+      path: "/maintenance/series/$id";
+      fullPath: "/admin/maintenance/series/$id";
+      preLoaderRoute: typeof AdminMaintenanceSeriesIdRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
     "/admin/monitors/$id/": {
       id: "/admin/monitors/$id/";
       path: "/monitors/$id";
@@ -1499,6 +1519,7 @@ interface AdminRouteChildren {
   AdminMaintenanceIndexRoute: typeof AdminMaintenanceIndexRoute;
   AdminMonitorsIndexRoute: typeof AdminMonitorsIndexRoute;
   AdminPagesIndexRoute: typeof AdminPagesIndexRoute;
+  AdminMaintenanceSeriesIdRoute: typeof AdminMaintenanceSeriesIdRoute;
   AdminMonitorsIdEditRoute: typeof AdminMonitorsIdEditRoute;
   AdminMonitorsIdHistoryDotjsonlDotzstRoute: typeof AdminMonitorsIdHistoryDotjsonlDotzstRoute;
   AdminPagesIdSubscribersRoute: typeof AdminPagesIdSubscribersRoute;
@@ -1527,6 +1548,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMaintenanceIndexRoute: AdminMaintenanceIndexRoute,
   AdminMonitorsIndexRoute: AdminMonitorsIndexRoute,
   AdminPagesIndexRoute: AdminPagesIndexRoute,
+  AdminMaintenanceSeriesIdRoute: AdminMaintenanceSeriesIdRoute,
   AdminMonitorsIdEditRoute: AdminMonitorsIdEditRoute,
   AdminMonitorsIdHistoryDotjsonlDotzstRoute:
     AdminMonitorsIdHistoryDotjsonlDotzstRoute,

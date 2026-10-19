@@ -80,6 +80,8 @@ describe("what Raaqeb owns", () => {
       "incident_updates",
       "incidents",
       "maintenance_components",
+      "maintenance_series",
+      "maintenance_series_components",
       "maintenance_windows",
       "monitor_channels",
       "monitor_tags",

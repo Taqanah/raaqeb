@@ -594,17 +594,55 @@ export const incidentStatuses = sqliteTable(
   ]
 );
 
-/** A scheduled period during which its components show under maintenance (CONTEXT.md "Maintenance window"); only the scheduler moves `stage`. */
-export const maintenanceWindows = sqliteTable("maintenance_windows", {
+/** A maintenance window that repeats (CONTEXT.md "Maintenance series"): its recurrence as JSON text, the starts of the scheduled occurrences cancelled on their own as a JSON array, and the time before which every occurrence was scheduled. */
+export const maintenanceSeries = sqliteTable("maintenance_series", {
   id: text().primaryKey(),
   title: text().notNull(),
   message: text().notNull(),
-  startsAt: integer("starts_at").notNull(),
-  endsAt: integer("ends_at").notNull(),
-  stage: text().notNull(),
+  recurrence: text().notNull(),
+  skippedStarts: text("skipped_starts").notNull().default("[]"),
+  scheduledUntil: integer("scheduled_until").notNull(),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
+
+/** A component a maintenance series affects, and so each occurrence it schedules. */
+export const maintenanceSeriesComponents = sqliteTable(
+  "maintenance_series_components",
+  {
+    seriesId: text("series_id")
+      .notNull()
+      .references(() => maintenanceSeries.id, { onDelete: "cascade" }),
+    componentId: text("component_id")
+      .notNull()
+      .references(() => components.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.seriesId, table.componentId] }),
+    index("maintenance_series_components_component_id").on(table.componentId),
+  ]
+);
+
+/** A scheduled period during which its components show under maintenance (CONTEXT.md "Maintenance window"); only the scheduler moves `stage`. An occurrence names its series. */
+export const maintenanceWindows = sqliteTable(
+  "maintenance_windows",
+  {
+    id: text().primaryKey(),
+    title: text().notNull(),
+    message: text().notNull(),
+    startsAt: integer("starts_at").notNull(),
+    endsAt: integer("ends_at").notNull(),
+    stage: text().notNull(),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+    seriesId: text("series_id").references(() => maintenanceSeries.id, {
+      onDelete: "set null",
+    }),
+    /** The start its series gave an occurrence, kept when the operator moves it: the series knows it by this. */
+    seriesStartsAt: integer("series_starts_at"),
+  },
+  (table) => [index("maintenance_windows_series_id").on(table.seriesId)]
+);
 
 /** A component a maintenance window affects. */
 export const maintenanceComponents = sqliteTable(

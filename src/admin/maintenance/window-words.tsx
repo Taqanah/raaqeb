@@ -1,14 +1,18 @@
 /**
  * The words and marks the maintenance screens share (CONTEXT.md
- * "Maintenance window"): a window's stage as a badge, blue while
- * it runs as the maintenance status is, and a refusal by its reason.
+ * "Maintenance window", "Maintenance series"): a window's stage as a badge,
+ * blue while it runs as the maintenance status is, a refusal by its reason,
+ * and a series' recurrence in words.
  */
 import type { ReactNode } from "react";
+import { formatClockTime, intlLocale } from "@/shared/i18n/format.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
-import { useMessages } from "@/shared/i18n/react.tsx";
+import { type MessagesContext, useMessages } from "@/shared/i18n/react.tsx";
+import type { Clock } from "@/shared/schemas/clock.ts";
 import type {
   MaintenanceRefusal,
   MaintenanceStage,
+  Recurrence,
 } from "@/shared/schemas/maintenance.ts";
 import { Badge, type BadgeProps } from "@/shared/ui/badge.tsx";
 
@@ -48,4 +52,37 @@ export function StageBadge({
       {t(stageWords[stage])}
     </Badge>
   );
+}
+
+/** A series' recurrence in words, its time on the clock format: «كل أحد وثلاثاء، الساعة 2:00 ص», "The second Tuesday of every month at 2:00 AM". */
+export function recurrenceWords(
+  { locale, t }: MessagesContext,
+  recurrence: Recurrence,
+  clock: Clock
+): string {
+  const { days } = recurrence;
+  const time = formatClockTime(locale, recurrence.time, clock);
+  if (days.repeat === "monthly_day") {
+    return t("maintenance_recurrence_monthly_day", {
+      day: String(days.day),
+      time,
+    });
+  }
+  if (days.repeat === "monthly_weekday") {
+    return t("maintenance_recurrence_monthly_weekday", {
+      time,
+      week: days.week,
+      weekday: t("maintenance_weekday", { weekday: String(days.weekday) }),
+    });
+  }
+  if (days.weekdays.length === 7) {
+    return t("maintenance_recurrence_daily", { time });
+  }
+  const names = days.weekdays.map((weekday) =>
+    t("maintenance_weekday", { weekday: String(weekday) })
+  );
+  return t("maintenance_recurrence_weekly", {
+    days: new Intl.ListFormat(intlLocale(locale)).format(names),
+    time,
+  });
 }

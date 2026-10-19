@@ -7,18 +7,21 @@ import { FormSkeleton } from "@/admin/shell/page-skeleton.tsx";
 import { useSavedToast } from "@/admin/shell/toasts.tsx";
 import {
   createMaintenanceFn,
+  createSeriesFn,
   readNewMaintenanceFn,
 } from "@/routes/-maintenance.ts";
 import { readOperatorClockFn } from "@/routes/-monitors.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type {
   MaintenanceInput,
+  MaintenanceSeries,
   MaintenanceWindow,
+  SeriesInput,
 } from "@/shared/schemas/maintenance.ts";
 import { Alert, AlertDescription } from "@/shared/ui/alert.tsx";
 import { Token } from "@/shared/ui/token.tsx";
 
-// A new maintenance window. Scheduling it opens its page.
+// A new maintenance window, or a series of them. Scheduling it opens its page.
 export const Route = createFileRoute("/admin/maintenance/new")({
   component: NewWindowPage,
   pendingComponent: FormSkeleton,
@@ -41,6 +44,23 @@ function NewWindowPage() {
   const create = useCallback(
     (input: MaintenanceInput) => createFn({ data: input }),
     [createFn]
+  );
+  const createSeriesWith = useServerFn(createSeriesFn);
+  const createSeries = useCallback(
+    (input: SeriesInput) => createSeriesWith({ data: input }),
+    [createSeriesWith]
+  );
+  const seriesCreated = useCallback(
+    (series: MaintenanceSeries) => {
+      toast(t("maintenance_series_created"));
+      router
+        .navigate({
+          params: { id: series.id },
+          to: "/admin/maintenance/series/$id",
+        })
+        .catch(() => undefined);
+    },
+    [router, t, toast]
   );
   const created = useCallback(
     (window: MaintenanceWindow) => {
@@ -78,8 +98,10 @@ function NewWindowPage() {
     <NewWindowForm
       clock={clock}
       create={create}
+      createSeries={createSeries}
       form={result.form}
       onCreated={created}
+      onSeriesCreated={seriesCreated}
     />
   );
 }

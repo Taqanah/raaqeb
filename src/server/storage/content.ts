@@ -16,7 +16,8 @@ export function storedContent(text: string): Content | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
-function parseJson(text: string): unknown {
+/** The value JSON text holds, or nothing when it is not JSON. */
+export function parseJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {

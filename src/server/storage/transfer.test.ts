@@ -266,6 +266,7 @@ describe("the transfer repository", () => {
       "tags",
       "incidents",
       "maintenance_windows",
+      "maintenance_series",
       "subscriptions",
       "checks",
       "outages",

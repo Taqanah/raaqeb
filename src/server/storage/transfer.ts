@@ -29,6 +29,7 @@ export interface Restored {
   readonly components: readonly string[];
   readonly groups: readonly string[];
   readonly incidents: readonly string[];
+  readonly maintenanceSeries: readonly string[];
   readonly maintenanceWindows: readonly string[];
   readonly monitors: readonly string[];
   readonly statusPages: readonly string[];
@@ -88,6 +89,8 @@ const writeOrder: readonly Exclude<ConfigurationTable, "settings">[] = [
   "incidents",
   "incidentUpdates",
   "incidentStatuses",
+  "maintenanceSeries",
+  "maintenanceSeriesComponents",
   "maintenanceWindows",
   "maintenanceComponents",
   "subscriptions",
@@ -133,6 +136,7 @@ export function transferRepository(executor: Executor): TransferRepository {
     groups,
     hourlyRollups,
     incidents,
+    maintenanceSeries,
     maintenanceWindows,
     monitors,
     outages,
@@ -213,6 +217,7 @@ export function transferRepository(executor: Executor): TransferRepository {
       | typeof components
       | typeof incidents
       | typeof maintenanceWindows
+      | typeof maintenanceSeries
       | typeof channels
       | typeof groups
       | typeof tags,
@@ -253,6 +258,11 @@ export function transferRepository(executor: Executor): TransferRepository {
           incidents: await read(tx, "incidents"),
           incidentUpdates: await read(tx, "incidentUpdates"),
           incidentStatuses: await read(tx, "incidentStatuses"),
+          maintenanceSeries: await read(tx, "maintenanceSeries"),
+          maintenanceSeriesComponents: await read(
+            tx,
+            "maintenanceSeriesComponents"
+          ),
           maintenanceWindows: await read(tx, "maintenanceWindows"),
           maintenanceComponents: await read(tx, "maintenanceComponents"),
           subscriptions: await read(tx, "subscriptions"),
@@ -295,6 +305,7 @@ export function transferRepository(executor: Executor): TransferRepository {
         await removeIds(tx, statusPages, restored.statusPages);
         await removeIds(tx, incidents, restored.incidents);
         await removeIds(tx, maintenanceWindows, restored.maintenanceWindows);
+        await removeIds(tx, maintenanceSeries, restored.maintenanceSeries);
         await removeIds(tx, components, restored.components);
         await removeIds(tx, channels, restored.channels);
         await removeIds(tx, groups, restored.groups);
@@ -337,6 +348,7 @@ export function transferRepository(executor: Executor): TransferRepository {
           components: idsOf(written.components),
           groups: idsOf(written.groups),
           incidents: idsOf(written.incidents),
+          maintenanceSeries: idsOf(written.maintenanceSeries),
           maintenanceWindows: idsOf(written.maintenanceWindows),
           monitors: idsOf(written.monitors),
           statusPages: idsOf(written.statusPages),

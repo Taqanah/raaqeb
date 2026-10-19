@@ -100,7 +100,7 @@ describe("an export", () => {
       exportedAt: new Date(now).toISOString(),
       mode: "full",
       raaqeb: "export",
-      version: 1,
+      version: 2,
     });
   });
 

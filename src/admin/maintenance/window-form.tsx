@@ -5,7 +5,9 @@
  * start and the end typed to the minute on the operator's clock, and the
  * affected components with their status now. While scheduled every field
  * changes and the window may be cancelled; in progress only the text and
- * the end change and it may be ended now; completed only the text. Every
+ * the end change and it may be ended now; completed only the text. A new
+ * window may repeat weekly or monthly instead, which creates a maintenance
+ * series; an occurrence's page names its series. Every
  * write reads the page again; a save the scheduler overtook says so and
  * keeps the text typed.
  */
@@ -34,6 +36,7 @@ import {
   type TimeOptions,
   zoneLabel,
 } from "@/shared/i18n/format.ts";
+import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type { ContentDraft } from "@/shared/schemas/content.ts";
 import type {
@@ -44,9 +47,12 @@ import type {
   MaintenancePage,
   MaintenanceRefusal,
   MaintenanceSaveResult,
+  MaintenanceSeries,
+  MaintenanceSeriesSaveResult,
   MaintenanceStage,
   MaintenanceWindow,
   NewMaintenance,
+  SeriesInput,
 } from "@/shared/schemas/maintenance.ts";
 import {
   maintenanceMessageMaxLength,
@@ -75,6 +81,12 @@ import { Checkbox } from "@/shared/ui/checkbox.tsx";
 import { cn } from "@/shared/ui/cn.ts";
 import { FieldError } from "@/shared/ui/field.tsx";
 import { StatusLevelBadge } from "@/shared/ui/status-level.tsx";
+import { RecurrenceCard, RepeatChoice } from "./recurrence-card.tsx";
+import {
+  type RecurrenceDraft,
+  recurrenceDraftOf,
+  seriesInputOf,
+} from "./series-draft.ts";
 import { TimeField } from "./time-field.tsx";
 import {
   editInputOf,
@@ -90,8 +102,12 @@ import { refusalWords, StageBadge } from "./window-words.tsx";
 const listPath = "/admin/maintenance";
 
 /** A save's outcome from its answer: nothing when the session check redirected and the page is leaving. */
-function outcomeOf(
-  result: MaintenanceSaveResult | MaintenanceDeleteResult | undefined
+export function outcomeOf(
+  result:
+    | MaintenanceSaveResult
+    | MaintenanceSeriesSaveResult
+    | MaintenanceDeleteResult
+    | undefined
 ):
   | { readonly kind: "saved" }
   | { readonly kind: "failed"; readonly reason: MaintenanceRefusal } {
@@ -108,47 +124,83 @@ export interface NewWindowFormProps {
   readonly create: (
     input: MaintenanceInput
   ) => Promise<MaintenanceSaveResult | undefined>;
+  readonly createSeries: (
+    input: SeriesInput
+  ) => Promise<MaintenanceSeriesSaveResult | undefined>;
   readonly form: NewMaintenance;
   /** Called with the scheduled window. */
   readonly onCreated: (window: MaintenanceWindow) => void;
+  /** Called with the series created. */
+  readonly onSeriesCreated: (series: MaintenanceSeries) => void;
+}
+
+/** The new form's draft: the window's fields and, unless it is once, how it repeats. */
+interface NewDraft {
+  readonly recurrence: RecurrenceDraft;
+  readonly window: WindowDraft;
 }
 
 export function NewWindowForm({
   clock,
   create,
+  createSeries,
   form,
   onCreated,
+  onSeriesCreated,
 }: NewWindowFormProps): ReactNode {
   const { t } = useMessages();
   const language = useInstallLanguage();
-  const [draft, setDraft] = useState(() =>
-    newWindowDraftOf(form.now, clock.timeZone)
+  const [draft, setDraft] = useState((): NewDraft => {
+    const window = newWindowDraftOf(form.now, clock.timeZone);
+    return { recurrence: recurrenceDraftOf(window, clock.timeZone), window };
+  });
+  const repeats = draft.recurrence.repeat !== "once";
+  const onWindow = useCallback(
+    (update: (current: WindowDraft) => WindowDraft) =>
+      setDraft((current) => ({ ...current, window: update(current.window) })),
+    []
+  );
+  const onRecurrence = useCallback(
+    (update: (current: RecurrenceDraft) => RecurrenceDraft) =>
+      setDraft((current) => {
+        const next = update(current.recurrence);
+        // Leaving once, the picker starts from the start and length the window has now.
+        const from =
+          current.recurrence.repeat === "once" && next.repeat !== "once"
+            ? {
+                ...recurrenceDraftOf(current.window, clock.timeZone),
+                repeat: next.repeat,
+              }
+            : next;
+        return { ...current, recurrence: from };
+      }),
+    [clock.timeZone]
+  );
+  const parse = useCallback(
+    (current: NewDraft) =>
+      current.recurrence.repeat === "once"
+        ? newWindowInputOf(current.window, clock.timeZone, Date.now(), language)
+        : seriesInputOf(current.window, current.recurrence, language),
+    [clock.timeZone, language]
   );
   const formRef = useRef<HTMLFormElement>(null);
   const judge = useCallback(
-    (current: WindowDraft): WindowFieldErrors => {
-      const parsed = newWindowInputOf(
-        current,
-        clock.timeZone,
-        Date.now(),
-        language
-      );
+    (current: NewDraft): WindowFieldErrors => {
+      const parsed = parse(current);
       return parsed.ok ? {} : parsed.errors;
     },
-    [clock.timeZone, language]
+    [parse]
   );
   const { clear, errors, refuse } = useRefusedFields(formRef, draft, judge);
-  const saving = useSaveFlow<WindowDraft, MaintenanceRefusal>(draft);
+  const saving = useSaveFlow<NewDraft, MaintenanceRefusal>(draft);
   const { report } = saving;
   const onSubmit = useCallback(
     async (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
-      const parsed = newWindowInputOf(
-        draft,
-        clock.timeZone,
-        Date.now(),
-        language
-      );
+      const recurring = draft.recurrence.repeat !== "once";
+      const parsed = recurring
+        ? seriesInputOf(draft.window, draft.recurrence, language)
+        : newWindowInputOf(draft.window, clock.timeZone, Date.now(), language);
       if (!parsed.ok) {
         refuse(parsed.errors);
         report({ draft, kind: "failed", reason: "invalid" });
@@ -158,13 +210,35 @@ export function NewWindowForm({
       if (!report({ draft, kind: "pending" })) {
         return;
       }
+      if ("recurrence" in parsed.input) {
+        const result = await createSeries(parsed.input).catch(() => undefined);
+        report({ draft, ...outcomeOf(result) });
+        if (result?.ok) {
+          onSeriesCreated(result.series);
+        }
+        return;
+      }
       const result = await create(parsed.input).catch(() => undefined);
       report({ draft, ...outcomeOf(result) });
       if (result?.ok) {
         onCreated(result.window);
       }
     },
-    [clear, clock.timeZone, create, draft, language, onCreated, refuse, report]
+    [
+      clear,
+      clock.timeZone,
+      create,
+      createSeries,
+      draft,
+      language,
+      onCreated,
+      onSeriesCreated,
+      refuse,
+      report,
+    ]
+  );
+  const repeat = (
+    <RepeatChoice onRecurrence={onRecurrence} value={draft.recurrence.repeat} />
   );
   return (
     <Page
@@ -196,13 +270,15 @@ export function NewWindowForm({
         <WindowFields
           clock={clock}
           components={form.components}
-          draft={draft}
+          draft={draft.window}
           errors={errors}
           footer={
             <SaveFooter
               disabled={form.components.length === 0}
               fresh
-              label={t("maintenance_create")}
+              label={t(
+                repeats ? "maintenance_series_create" : "maintenance_create"
+              )}
               pendingLabel={t("maintenance_creating")}
               refusals={refusalWords}
               slot="create-window"
@@ -216,9 +292,22 @@ export function NewWindowForm({
               </Link>
             </SaveFooter>
           }
+          lead={repeat}
           now={form.now}
-          onDraft={setDraft}
+          onDraft={onWindow}
           stage="scheduled"
+          times={
+            repeats ? (
+              <RecurrenceCard
+                clock={clock}
+                errors={errors}
+                lead={repeat}
+                now={form.now}
+                onRecurrence={onRecurrence}
+                recurrence={draft.recurrence}
+              />
+            ) : undefined
+          }
         />
       </form>
     </Page>
@@ -281,6 +370,7 @@ export function WindowPage({
         action={cancel}
         confirm="confirm-cancel"
         description="maintenance_cancel_description"
+        destructive
         label="maintenance_cancel"
         onChanged={onChanged}
         onDone={onRemoved}
@@ -323,6 +413,22 @@ function Summary({
           <StageBadge stage={window.stage} />
           {action}
         </div>
+        {page.series ? (
+          <p
+            className="text-muted-foreground text-sm"
+            data-slot="window-series"
+          >
+            {t("maintenance_occurrence_of")}{" "}
+            <Link
+              className="font-medium text-foreground underline underline-offset-4"
+              params={{ id: page.series.id }}
+              to="/admin/maintenance/series/$id"
+            >
+              <ContentText content={page.series.title} />
+            </Link>
+            . {t("maintenance_occurrence_alone")}
+          </p>
+        ) : null}
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
           <dt className="text-muted-foreground">
             {t("maintenance_column_starts")}
@@ -508,9 +614,11 @@ function WindowFields({
   draft,
   errors,
   footer,
+  lead,
   now,
   onDraft,
   stage,
+  times,
 }: {
   readonly clock: TimeOptions;
   readonly components: readonly MaintenanceComponent[];
@@ -518,84 +626,55 @@ function WindowFields({
   readonly errors: WindowFieldErrors;
   /** The save's footer, on whichever card the stage leaves last. */
   readonly footer: ReactNode;
+  /** Above the times: how a new window repeats. */
+  readonly lead?: ReactNode;
   /** The server's read time, for the zone's label. */
   readonly now: number;
   readonly onDraft: (update: (current: WindowDraft) => WindowDraft) => void;
   readonly stage: MaintenanceStage;
+  /** In place of the start and the end: a series' recurrence. */
+  readonly times?: ReactNode;
 }): ReactNode {
-  const { t } = useMessages();
-  const language = useInstallLanguage();
   const onTime = useCallback(
     (name: "ends" | "starts", value: string) =>
       onDraft((current) => ({ ...current, [name]: value })),
     [onDraft]
   );
-  const onTitle = useCallback(
-    (title: ContentDraft) => onDraft((current) => ({ ...current, title })),
-    [onDraft]
-  );
-  const onMessage = useCallback(
-    (message: ContentDraft) => onDraft((current) => ({ ...current, message })),
-    [onDraft]
-  );
   const onComponent = useCallback(
-    (id: string, chosen: boolean) => {
+    (id: string, chosen: boolean) =>
       onDraft((current) => ({
         ...current,
-        componentIds: chosen
-          ? [...current.componentIds.filter((each) => each !== id), id]
-          : current.componentIds.filter((each) => each !== id),
-      }));
-    },
+        componentIds: chosenOf(current.componentIds, id, chosen),
+      })),
     [onDraft]
   );
   const scheduled = stage === "scheduled";
   return (
     <>
-      <Card>
-        <CardHeader divided>
-          <CardTitle>{t("maintenance_section_details")}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <ContentField
-            description={t("maintenance_field_title_hint")}
-            error={errors.title && t(errors.title)}
-            id="title"
-            label={t("maintenance_field_title")}
-            max={maintenanceTitleMaxLength}
-            onChange={onTitle}
-            required={language}
-            value={draft.title}
-          />
-          <ContentField
-            description={t("maintenance_field_message_hint")}
-            error={errors.message && t(errors.message)}
-            id="message"
-            label={t("maintenance_field_message")}
-            max={maintenanceMessageMaxLength}
-            multiline={4}
-            onChange={onMessage}
-            required={language}
-            value={draft.message}
-          />
-        </CardContent>
-        {stage === "completed" ? footer : null}
-      </Card>
-      {stage === "completed" ? null : (
-        <TimesCard
-          clock={clock}
-          draft={draft}
-          errors={errors}
-          footer={scheduled ? null : footer}
-          now={now}
-          onTime={onTime}
-          scheduled={scheduled}
-        />
-      )}
+      <DetailsCard
+        draft={draft}
+        errors={errors}
+        footer={stage === "completed" ? footer : null}
+        onDraft={onDraft}
+      />
+      {stage === "completed"
+        ? null
+        : (times ?? (
+            <TimesCard
+              clock={clock}
+              draft={draft}
+              errors={errors}
+              footer={scheduled ? null : footer}
+              lead={lead}
+              now={now}
+              onTime={onTime}
+              scheduled={scheduled}
+            />
+          ))}
       {scheduled ? (
         <ComponentsCard
+          chosen={draft.componentIds}
           components={components}
-          draft={draft}
           errors={errors}
           footer={footer}
           onComponent={onComponent}
@@ -605,12 +684,80 @@ function WindowFields({
   );
 }
 
+/** The components chosen once one is ticked or unticked, the last ticked last. */
+export function chosenOf(
+  ids: readonly string[],
+  id: string,
+  chosen: boolean
+): string[] {
+  const rest = ids.filter((each) => each !== id);
+  return chosen ? [...rest, id] : rest;
+}
+
+/** The text visitors read: the title and the description. */
+export function DetailsCard<
+  Draft extends Pick<WindowDraft, "message" | "title">,
+>({
+  draft,
+  errors,
+  footer,
+  onDraft,
+}: {
+  readonly draft: Draft;
+  readonly errors: WindowFieldErrors;
+  readonly footer: ReactNode;
+  readonly onDraft: (update: (current: Draft) => Draft) => void;
+}): ReactNode {
+  const { t } = useMessages();
+  const language = useInstallLanguage();
+  const onTitle = useCallback(
+    (title: ContentDraft) => onDraft((current) => ({ ...current, title })),
+    [onDraft]
+  );
+  const onMessage = useCallback(
+    (message: ContentDraft) => onDraft((current) => ({ ...current, message })),
+    [onDraft]
+  );
+  return (
+    <Card>
+      <CardHeader divided>
+        <CardTitle>{t("maintenance_section_details")}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        <ContentField
+          description={t("maintenance_field_title_hint")}
+          error={errors.title && t(errors.title)}
+          id="title"
+          label={t("maintenance_field_title")}
+          max={maintenanceTitleMaxLength}
+          onChange={onTitle}
+          required={language}
+          value={draft.title}
+        />
+        <ContentField
+          description={t("maintenance_field_message_hint")}
+          error={errors.message && t(errors.message)}
+          id="message"
+          label={t("maintenance_field_message")}
+          max={maintenanceMessageMaxLength}
+          multiline={4}
+          onChange={onMessage}
+          required={language}
+          value={draft.message}
+        />
+      </CardContent>
+      {footer}
+    </Card>
+  );
+}
+
 /** The times: the start while the window is scheduled, the end until it completes. */
 function TimesCard({
   clock,
   draft,
   errors,
   footer,
+  lead,
   now,
   onTime,
   scheduled,
@@ -619,6 +766,8 @@ function TimesCard({
   readonly draft: WindowDraft;
   readonly errors: WindowFieldErrors;
   readonly footer: ReactNode;
+  /** Above the times: how the window repeats, on a new window. */
+  readonly lead?: ReactNode;
   readonly now: number;
   readonly onTime: (name: "ends" | "starts", value: string) => void;
   readonly scheduled: boolean;
@@ -631,6 +780,7 @@ function TimesCard({
         <CardDescription>{t("maintenance_times_hint")}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
+        {lead}
         <div className={cn("grid gap-5", scheduled && "sm:grid-cols-2")}>
           {scheduled ? (
             <TimeField
@@ -670,16 +820,16 @@ function TimesCard({
   );
 }
 
-/** The components to tick, while the window is scheduled. */
-function ComponentsCard({
+/** The components to tick, while the window is scheduled, and on a series. */
+export function ComponentsCard({
+  chosen,
   components,
-  draft,
   errors,
   footer,
   onComponent,
 }: {
+  readonly chosen: readonly string[];
   readonly components: readonly MaintenanceComponent[];
-  readonly draft: WindowDraft;
   readonly errors: WindowFieldErrors;
   readonly footer: ReactNode;
   readonly onComponent: (id: string, chosen: boolean) => void;
@@ -702,7 +852,7 @@ function ComponentsCard({
           <ul className="flex flex-col" data-slot="window-components">
             {components.map((component) => (
               <ComponentChoice
-                chosen={draft.componentIds.includes(component.id)}
+                chosen={chosen.includes(component.id)}
                 component={component}
                 key={component.id}
                 onChoose={onComponent}
@@ -757,11 +907,12 @@ function ComponentChoice({
   );
 }
 
-/** An action taken after the operator confirms: ending a window now, or cancelling a scheduled one. A window the scheduler moved meanwhile reads the page again. */
-function Confirmed({
+/** An action taken after the operator confirms: ending a window now, cancelling a scheduled one, or ending a series. A window the scheduler moved meanwhile reads the page again. */
+export function Confirmed({
   action,
   confirm,
   description,
+  destructive = false,
   label,
   onChanged,
   onDone,
@@ -772,15 +923,15 @@ function Confirmed({
     MaintenanceSaveResult | MaintenanceDeleteResult | undefined
   >;
   readonly confirm: string;
-  readonly description:
-    | "maintenance_cancel_description"
-    | "maintenance_end_now_description";
-  readonly label: "maintenance_cancel" | "maintenance_end_now";
+  readonly description: MessageId;
+  /** A destructive action's button is red. */
+  readonly destructive?: boolean;
+  readonly label: MessageId;
   /** Called when the window moved since the page read it, so the page shows it as it is. */
   readonly onChanged: () => void;
   readonly onDone: () => void;
   readonly slot: string;
-  readonly title: "maintenance_cancel_title" | "maintenance_end_now_title";
+  readonly title: MessageId;
 }): ReactNode {
   const { t } = useMessages();
   const [open, setOpen] = useState(false);
@@ -823,9 +974,7 @@ function Confirmed({
             <AlertDialogAction
               data-slot={confirm}
               onClick={confirmed}
-              variant={
-                label === "maintenance_cancel" ? "destructive" : "default"
-              }
+              variant={destructive ? "destructive" : "default"}
             >
               {t(label)}
             </AlertDialogAction>

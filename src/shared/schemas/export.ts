@@ -18,7 +18,7 @@ import { contentSchema } from "./content.ts";
 import { credentialsSchema } from "./credentials.ts";
 import { chartRangeSchema } from "./detail.ts";
 import { impactLevelSchema, incidentStageSchema } from "./incident.ts";
-import { maintenanceStageSchema } from "./maintenance.ts";
+import { maintenanceStageSchema, recurrenceSchema } from "./maintenance.ts";
 import {
   checkTypeSchema,
   monitorConfigSchema,
@@ -37,8 +37,8 @@ import { subscriptionStatusSchema } from "./subscription.ts";
 /** The file's name, which the download carries. */
 export const exportFileName = "raaqeb-export.jsonl.zst";
 
-/** The format this version writes; an importer refuses any other. Raise it with any change to the file's shape (ADR-0011). */
-export const exportVersion = 1;
+/** The format this version writes; an importer reads it and version 1 (`readableExportVersions`) and refuses any other. Raise it with any change to the file's shape (ADR-0011). */
+export const exportVersion = 2;
 
 /** The full mode carries the history after the header; the configuration mode is the header alone. */
 export const exportModes = ["full", "configuration"] as const;
@@ -244,6 +244,22 @@ export const configurationSchema = z.object({
       statusBefore: statusLevelSchema.nullable().default(null),
     })
   ),
+  maintenanceSeries: z.array(
+    z.object({
+      id,
+      title: content,
+      message: content,
+      recurrence: jsonTextCodec(recurrenceSchema),
+      // The starts of occurrences cancelled on their own, which an edit of the series keeps cancelled.
+      skippedStarts: jsonTextCodec(z.array(z.int())),
+      scheduledUntil: timeCodec,
+      createdAt: timeCodec,
+      updatedAt: timeCodec,
+    })
+  ),
+  maintenanceSeriesComponents: z.array(
+    z.object({ seriesId: id, componentId: id })
+  ),
   maintenanceWindows: z.array(
     z.object({
       id,
@@ -254,6 +270,8 @@ export const configurationSchema = z.object({
       stage: maintenanceStageSchema,
       createdAt: timeCodec,
       updatedAt: timeCodec,
+      seriesId: id.nullable(),
+      seriesStartsAt: timeCodec.nullable(),
     })
   ),
   maintenanceComponents: z.array(z.object({ windowId: id, componentId: id })),
@@ -289,6 +307,40 @@ export const headerSchema = z.object({
   configuration: configurationSchema,
 });
 export type Header = z.output<typeof headerSchema>;
+
+/** The versions an import reads: this one, and version 1, written before maintenance series. */
+export const readableExportVersions: readonly number[] = [1, exportVersion];
+
+/** A first line of version 1 as this version reads it: no maintenance series, and every window of none. Anything that is not such a line comes back as it came, for the header's schema to refuse. */
+export function fromVersion1(first: unknown): unknown {
+  const parsed = version1Schema.safeParse(first);
+  if (!parsed.success) {
+    return first;
+  }
+  const { configuration } = parsed.data;
+  return {
+    ...parsed.data,
+    configuration: {
+      ...configuration,
+      maintenanceSeries: [],
+      maintenanceSeriesComponents: [],
+      maintenanceWindows: configuration.maintenanceWindows.map((window) => ({
+        ...window,
+        seriesId: null,
+        seriesStartsAt: null,
+      })),
+    },
+    version: exportVersion,
+  };
+}
+
+/** Just enough of a version 1 first line to rewrite it; the header's schema checks the rest. */
+const version1Schema = z.looseObject({
+  configuration: z.looseObject({
+    maintenanceWindows: z.array(z.looseObject({})),
+  }),
+  version: z.literal(1),
+});
 
 /** The version a first line names, read before the rest of it, so a file of another version is refused as such. */
 export const versionProbeSchema = z.object({

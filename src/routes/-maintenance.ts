@@ -1,6 +1,7 @@
 /**
  * The maintenance server functions: the list, the new-window
- * page's read, a window's page, schedule, edit, end now and cancel. Each
+ * page's read, a window's page, schedule, edit, end now and cancel, and a
+ * series' page, create, edit and end. Each
  * sits behind the operator session check. Not a route file (the leading
  * dash); the maintenance routes share them. A function parses with the Zod
  * schema and calls one module.
@@ -16,16 +17,26 @@ import {
   readNewWindow,
   readWindow,
 } from "@/server/maintenance/maintenance.ts";
+import {
+  createSeries,
+  editSeries,
+  endSeries,
+  readSeries,
+} from "@/server/maintenance/series.ts";
 import { announceThrough } from "@/server/notify/subscribers.ts";
 import {
   type MaintenanceDeleteResult,
   type MaintenanceListResult,
   type MaintenancePageResult,
   type MaintenanceSaveResult,
+  type MaintenanceSeriesPageResult,
+  type MaintenanceSeriesSaveResult,
   maintenanceEditSchema,
   maintenanceIdSchema,
   maintenanceInputSchema,
   type NewMaintenanceResult,
+  seriesEditSchema,
+  seriesInputSchema,
 } from "@/shared/schemas/maintenance.ts";
 import { operatorMiddleware } from "./-admin.ts";
 
@@ -84,6 +95,54 @@ export const endMaintenanceFn = createServerFn({ method: "POST" })
   .handler(
     ({ context, data }): Promise<MaintenanceSaveResult> =>
       endWindow(context.storage, data.id, Date.now())
+  );
+
+export const readSeriesFn = createServerFn({ method: "GET" })
+  .middleware([operatorMiddleware])
+  .validator(maintenanceIdSchema)
+  .handler(
+    ({ context, data }): Promise<MaintenanceSeriesPageResult> =>
+      readSeries(context.storage, data.id, Date.now())
+  );
+
+export const createSeriesFn = createServerFn({ method: "POST" })
+  .middleware([operatorMiddleware])
+  .validator(seriesInputSchema)
+  .handler(
+    ({ context, data }): Promise<MaintenanceSeriesSaveResult> =>
+      createSeries(
+        context.storage,
+        data,
+        Date.now(),
+        announceThrough(context.scheduler?.subscribers)
+      )
+  );
+
+export const editSeriesFn = createServerFn({ method: "POST" })
+  .middleware([operatorMiddleware])
+  .validator(seriesEditSchema)
+  .handler(
+    ({ context, data }): Promise<MaintenanceSeriesSaveResult> =>
+      editSeries(
+        context.storage,
+        data.id,
+        data.input,
+        Date.now(),
+        announceThrough(context.scheduler?.subscribers)
+      )
+  );
+
+export const endSeriesFn = createServerFn({ method: "POST" })
+  .middleware([operatorMiddleware])
+  .validator(maintenanceIdSchema)
+  .handler(
+    ({ context, data }): Promise<MaintenanceDeleteResult> =>
+      endSeries(
+        context.storage,
+        data.id,
+        Date.now(),
+        announceThrough(context.scheduler?.subscribers)
+      )
   );
 
 export const deleteMaintenanceFn = createServerFn({ method: "POST" })

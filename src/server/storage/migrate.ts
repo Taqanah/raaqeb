@@ -88,7 +88,8 @@ export async function migrateDatabase(
   return { applied: pending, ok: true, snapshot };
 }
 
-async function runMigrator(
+/** Applies the folder's pending migrations with the stock migrator alone: no snapshot and no check of the tables after. */
+export async function runMigrator(
   connection: Connection,
   root: string | undefined
 ): Promise<void> {

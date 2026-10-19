@@ -5015,3 +5015,197 @@ msgstr "Use 8 to 128 characters."
 #. js-lingui-explicit-id
 msgid "setting_public_address_invalid"
 msgstr "Enter an address that starts with http or https and ends at the host or its port, with no path, like https://status.example.com."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_weekdays"
+msgstr "Choose at least one day."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_duration"
+msgstr "Enter a length from one minute to 168 hours, in whole hours."
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_repeat"
+msgstr "Repeats"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_once"
+msgstr "Once"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_weekly"
+msgstr "Weekly"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_monthly"
+msgstr "Monthly"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_once_hint"
+msgstr "One window with a start and an end."
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_weekly_hint"
+msgstr "An occurrence on each day of the week you choose. Each one is scheduled, and announced to subscribers, a week before it starts."
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_monthly_hint"
+msgstr "One occurrence a month. Each one is scheduled, and announced to subscribers, a week before it starts."
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_weekdays"
+msgstr "Days"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_monthly_on"
+msgstr "Each month on"
+
+#. js-lingui-explicit-id
+msgid "maintenance_monthly_on_day"
+msgstr "A day of the month"
+
+#. js-lingui-explicit-id
+msgid "maintenance_monthly_on_weekday"
+msgstr "A day of the week"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_day_of_month"
+msgstr "Day of the month"
+
+#. js-lingui-explicit-id
+msgid "maintenance_day_of_month_short"
+msgstr "In a shorter month it falls on the month's last day."
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_week"
+msgstr "Which one"
+
+#. js-lingui-explicit-id
+msgid "maintenance_week"
+msgstr "{week, select, first {First} second {Second} third {Third} fourth {Fourth} other {Last}}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_weekday"
+msgstr "Day of the week"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_time"
+msgstr "Start time"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_duration"
+msgstr "Duration"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_hours"
+msgstr "Hours"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_minutes"
+msgstr "Minutes"
+
+#. js-lingui-explicit-id
+msgid "maintenance_hours_unit"
+msgstr "hr"
+
+#. js-lingui-explicit-id
+msgid "maintenance_minutes_unit"
+msgstr "min"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_times_hint"
+msgstr "Each occurrence starts at its time on the chosen time zone's clock, across daylight-saving changes."
+
+#. js-lingui-explicit-id
+msgid "maintenance_weekday"
+msgstr "{weekday, select, 0 {Sunday} 1 {Monday} 2 {Tuesday} 3 {Wednesday} 4 {Thursday} 5 {Friday} other {Saturday}}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_recurrence_daily"
+msgstr "Every day at {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_recurrence_weekly"
+msgstr "Every {days} at {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_recurrence_monthly_day"
+msgstr "Day {day} of every month at {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_recurrence_monthly_weekday"
+msgstr "The {week, select, first {first} second {second} third {third} fourth {fourth} other {last}} {weekday} of every month at {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_list_title"
+msgstr "Recurring maintenance"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_column_repeats"
+msgstr "Repeats"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_column_next"
+msgstr "Next occurrence"
+
+#. js-lingui-explicit-id
+msgid "maintenance_windows_list_title"
+msgstr "All windows"
+
+#. js-lingui-explicit-id
+msgid "maintenance_occurrence_mark"
+msgstr "Recurring"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_occurrences"
+msgstr "Scheduled occurrences"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_occurrences_hint"
+msgstr "Each occurrence is scheduled, and announced to subscribers, a week before it starts. Open one to change or cancel it on its own."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_occurrences_none"
+msgstr "No occurrence in the coming week."
+
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_edit_hint"
+msgstr "Saving replaces the scheduled occurrences with the edited recurrence's, one you changed on its own included. One you cancelled on its own stays cancelled; one in progress and the completed ones stay as they are."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_create"
+msgstr "Schedule recurring maintenance"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_created"
+msgstr "Recurring maintenance scheduled."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_saved"
+msgstr "Saved, with its scheduled occurrences."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_end"
+msgstr "End series"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_end_title"
+msgstr "End this series?"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_end_description"
+msgstr "Its scheduled occurrences are cancelled and subscribers are told; one in progress runs to its end. Ending cannot be undone."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_ended"
+msgstr "Series ended."
+
+
+#. js-lingui-explicit-id
+msgid "maintenance_occurrence_of"
+msgstr "An occurrence of the series"
+
+#. js-lingui-explicit-id
+msgid "maintenance_occurrence_alone"
+msgstr "Changing or cancelling it here leaves the series and its other occurrences as they are."

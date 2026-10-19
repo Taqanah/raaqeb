@@ -26,6 +26,8 @@ import {
 } from "@/server/storage/maintenance.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { runningEnd, windowTimes } from "@/shared/domain/maintenance.ts";
+import { nextOccurrenceStart } from "@/shared/domain/series.ts";
+import type { Content } from "@/shared/schemas/content.ts";
 import type {
   MaintenanceComponent,
   MaintenanceDeleteResult,
@@ -35,6 +37,7 @@ import type {
   MaintenanceListResult,
   MaintenancePageResult,
   MaintenanceSaveResult,
+  MaintenanceSeriesItem,
   MaintenanceStage,
   MaintenanceWindow,
   NewMaintenanceResult,
@@ -58,7 +61,7 @@ const invalid = { ok: false, reason: "invalid" } as const;
 const changed = { ok: false, reason: "changed" } as const;
 
 /** A failed read's result: the record this version cannot read, or unavailable. */
-function failedRead(
+export function failedRead(
   error: unknown
 ):
   | { readonly ok: false; readonly reason: "unavailable" }
@@ -68,7 +71,7 @@ function failedRead(
 }
 
 /** Every component with its status now, in creation order; throws what the storage throws. */
-async function componentsNow(
+export async function componentsNow(
   storage: MaintenanceStorage
 ): Promise<MaintenanceComponent[]> {
   const { components, statuses } = await readComponentStatuses(storage);
@@ -99,34 +102,68 @@ function byStage(a: MaintenanceListItem, b: MaintenanceListItem): number {
     : b.endsAt - a.endsAt;
 }
 
+/** The affected components that still exist, with their names. */
+function affectedOf(
+  componentIds: readonly string[],
+  names: ReadonlyMap<string, Content>
+): MaintenanceListItem["components"] {
+  return componentIds.flatMap((id) => {
+    const name = names.get(id);
+    return name === undefined ? [] : [{ id, name }];
+  });
+}
+
+/** A window as the list shows it, by the names of the components that exist. */
+export function listItemOf(
+  window: MaintenanceWindow,
+  names: ReadonlyMap<string, Content>
+): MaintenanceListItem {
+  return {
+    components: affectedOf(window.componentIds, names),
+    endsAt: window.endsAt,
+    id: window.id,
+    ...(window.seriesId === undefined ? {} : { seriesId: window.seriesId }),
+    stage: window.stage,
+    startsAt: window.startsAt,
+    title: window.title,
+  };
+}
+
 /** The list: in progress first, then scheduled ones soonest first, then completed ones newest first, with their affected components' names. */
 export async function listWindows(
   storage: MaintenanceStorage,
   now: number
 ): Promise<MaintenanceListResult> {
   try {
-    const [windows, components] = await Promise.all([
+    const [windows, series, components] = await Promise.all([
       storage.maintenance.list(),
+      storage.maintenance.listSeries(),
       storage.components.list(),
     ]);
     const names = new Map(components.map((each) => [each.id, each.name]));
-    const items = windows.map(
-      (window): MaintenanceListItem => ({
-        components: window.componentIds.flatMap((id) => {
-          const name = names.get(id);
-          return name === undefined ? [] : [{ id, name }];
-        }),
-        endsAt: window.endsAt,
-        id: window.id,
-        stage: window.stage,
-        startsAt: window.startsAt,
-        title: window.title,
-      })
-    );
+    const items = windows.map((window) => listItemOf(window, names));
     return {
       list: {
         anyComponent: components.length > 0,
         now,
+        series: series.map((each): MaintenanceSeriesItem => {
+          const scheduled = windows
+            .filter(
+              (window) =>
+                window.seriesId === each.id && window.stage === "scheduled"
+            )
+            .map((window) => window.startsAt);
+          return {
+            components: affectedOf(each.componentIds, names),
+            id: each.id,
+            next:
+              scheduled.length > 0
+                ? Math.min(...scheduled)
+                : nextOccurrenceStart(each.recurrence, each.scheduledUntil),
+            recurrence: each.recurrence,
+            title: each.title,
+          };
+        }),
         windows: items.toSorted(byStage),
       },
       ok: true,
@@ -162,9 +199,18 @@ export async function readWindow(
     if (!window) {
       return notFound;
     }
+    const series =
+      window.seriesId === undefined
+        ? undefined
+        : await storage.maintenance.findSeries(window.seriesId);
     return {
       ok: true,
-      page: { components: await componentsNow(storage), now, window },
+      page: {
+        components: await componentsNow(storage),
+        now,
+        ...(series ? { series: { id: series.id, title: series.title } } : {}),
+        window,
+      },
     };
   } catch (error) {
     return failedRead(error);

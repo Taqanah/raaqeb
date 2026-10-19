@@ -3,7 +3,7 @@ import { type SQL, sql } from "drizzle-orm";
 import { type Connection, closeConnection, executor } from "./connection.ts";
 import { connectTo, scratchDatabase } from "./fixture.ts";
 import { listTables, raaqebTables } from "./inspect.ts";
-import { appliedMigrations, migrateDatabase } from "./migrate.ts";
+import { appliedMigrations, migrateDatabase, runMigrator } from "./migrate.ts";
 import { localMigrations, migrationsFolder } from "./migrationfiles.ts";
 import { snapshotDir } from "./sqlite.ts";
 
@@ -185,9 +185,8 @@ describe("the published switch arriving on an install that has pages", () => {
         sql`INSERT INTO status_pages (id, slug, title, locale, is_default, customization, created_at, updated_at) VALUES (${id}, ${id}, ${id}, 'ar', 0, '{}', 0, 0)`
       );
     try {
-      expect((await migrateDatabase(connection, { migrations: root })).ok).toBe(
-        true
-      );
+      // The migrator alone: the tables a later migration creates are rightly missing yet.
+      await runMigrator(connection, root);
       await page("live");
       expect((await migrateDatabase(connection)).ok).toBe(true);
       await page("new");
@@ -256,9 +255,8 @@ describe("content, one text per locale", () => {
       );
     try {
       await copy(local.slice(0, at));
-      expect((await migrateDatabase(connection, { migrations: root })).ok).toBe(
-        true
-      );
+      // The migrator alone: the tables a later migration creates are rightly missing yet.
+      await runMigrator(connection, root);
       for (const row of rows) {
         // biome-ignore lint/performance/noAwaitInLoops: the rows go in one after the other
         await executor(connection).run(row);
@@ -297,7 +295,7 @@ describe("content, one text per locale", () => {
       sql`INSERT INTO incident_updates (id, incident_id, stage, message, author, created_at) VALUES ('u1', 'i1', 'investigating', 'Looking into it.', 'owner@example.com', 0)`,
       sql`INSERT INTO maintenance_windows (id, title, message, starts_at, ends_at, stage, created_at, updated_at) VALUES ('w1', 'Upgrade', 'A new server.', 0, 1, 'completed', 0, 0)`,
     ]);
-    expect(applied).toHaveLength(1);
+    expect(applied[0]).toEndWith("_bilingual_content");
     expect(
       await column(
         connection,
@@ -358,7 +356,7 @@ describe("content, one text per locale", () => {
       sql`INSERT INTO settings (key, value, updated_at) VALUES ('install_language', 'en', 0)`,
       sql`INSERT INTO components (id, name, description, status, created_at, updated_at) VALUES ('c1', 'الموقع', NULL, 'operational', 0, 0)`,
     ]);
-    expect(applied).toHaveLength(1);
+    expect(applied[0]).toEndWith("_bilingual_content");
     expect(
       await column(connection, sql`SELECT name AS v FROM components`)
     ).toEqual([{ ar: "الموقع" }]);

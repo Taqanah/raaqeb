@@ -477,12 +477,49 @@ describe("an import", () => {
     expect(outages[0]?.acknowledgedAt).toBeUndefined();
   });
 
+  test("of a file of version 1, written before maintenance series, imports its windows with no series", async () => {
+    const from = await source();
+    const into = await target();
+    const lines = await exportLines(from, "configuration");
+    const header = JSON.parse(lines[0] ?? "{}");
+    header.version = 1;
+    header.configuration.maintenanceSeries = undefined;
+    header.configuration.maintenanceSeriesComponents = undefined;
+    // A version 1 window has no series, so the series' occurrence goes with it.
+    header.configuration.maintenanceWindows =
+      header.configuration.maintenanceWindows
+        .filter((each: { seriesId: string | null }) => each.seriesId === null)
+        .map((each: { seriesId?: string | null }) => {
+          const { seriesId: _, ...window } = each;
+          return window;
+        });
+    header.configuration.maintenanceComponents =
+      header.configuration.maintenanceComponents.filter(
+        (link: { windowId: string }) =>
+          header.configuration.maintenanceWindows.some(
+            (each: { id: string }) => each.id === link.windowId
+          )
+      );
+    expect(
+      await importInstall(
+        into.storage,
+        into.key,
+        fileOf([JSON.stringify(header)]),
+        now
+      )
+    ).toMatchObject({ ok: true });
+    expect(await into.storage.maintenance.listSeries()).toEqual([]);
+    expect(
+      (await into.storage.maintenance.list()).map((each) => each.title)
+    ).toEqual([{ ar: "ترقية", en: "Upgrade" }]);
+  });
+
   test("of a file of another version is refused as such", async () => {
     const from = await source();
     const into = await target();
     const lines = await exportLines(from, "configuration");
     const header = JSON.parse(lines[0] ?? "{}");
-    header.version = 2;
+    header.version = 3;
     expect(
       await importInstall(
         into.storage,

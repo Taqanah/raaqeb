@@ -313,6 +313,21 @@ export async function sourceInstall(): Promise<Install & { ids: SourceIds }> {
     startsAt: today + 2 * day,
     title: { ar: "ترقية", en: "Upgrade" },
   });
+  await storage.maintenance.createSeries(
+    {
+      componentIds: [website.id],
+      message: { ar: "نحدّث الخوادم كل أسبوع.", en: "Weekly server upkeep." },
+      recurrence: {
+        days: { repeat: "weekly", weekdays: [2, 4] },
+        minutes: 90,
+        time: "03:00",
+        timeZone: "Asia/Riyadh",
+      },
+      title: { ar: "صيانة أسبوعية", en: "Weekly upkeep" },
+    },
+    [{ endsAt: today + 4 * day + 90 * 60_000, startsAt: today + 4 * day }],
+    today + 5 * day
+  );
 
   const confirmed = await storage.subscriptions.request({
     address: "visitor@example.test",

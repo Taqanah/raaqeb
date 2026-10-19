@@ -73,7 +73,7 @@ test.describe("the full export, downloaded and then imported into the empty inst
     expect(header).toMatchObject({
       mode: "full",
       raaqeb: "export",
-      version: 1,
+      version: 2,
     });
     expect(
       header.configuration.statusPages.map((row: { slug: string }) => row.slug)

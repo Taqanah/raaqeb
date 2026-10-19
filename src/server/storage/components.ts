@@ -2,8 +2,8 @@
  * The components repository (CONTEXT.md "Component", "Link"):
  * one row per component with its hand-set status, and its links to
  * monitors as rows beside it, written in the same transaction. Deleting a
- * component takes it off every page, and with it every incident and
- * maintenance window that names no other component; deleting a monitor
+ * component takes it off every page, and with it every incident,
+ * maintenance window and maintenance series that names no other component; deleting a monitor
  * drops its links.
  * Rows never leave this file: every answer is a `Component` of
  * shared/schemas.
@@ -63,6 +63,8 @@ export function componentsRepository(
     incidentUpdates,
     incidents,
     maintenanceComponents,
+    maintenanceSeries,
+    maintenanceSeriesComponents,
     maintenanceWindows,
     monitors,
   } = executor.tables;
@@ -128,12 +130,15 @@ export function componentsRepository(
     list: () => read(executor, sql``),
     remove: (id) =>
       executor.transaction(async (tx) => {
-        // An incident or a window that names no other component would be on no page, so it goes with this one; one left so before goes too.
+        // An incident, a window or a series that names no other component would be on no page, so it goes with this one; one left so before goes too.
         await tx.run(
           sql`DELETE FROM ${incidents} WHERE NOT EXISTS (SELECT 1 FROM ${incidentStatuses} JOIN ${incidentUpdates} ON ${incidentUpdates.id} = ${incidentStatuses.updateId} WHERE ${incidentUpdates.incidentId} = ${incidents.id} AND ${incidentStatuses.componentId} <> ${id})`
         );
         await tx.run(
           sql`DELETE FROM ${maintenanceWindows} WHERE NOT EXISTS (SELECT 1 FROM ${maintenanceComponents} WHERE ${maintenanceComponents.windowId} = ${maintenanceWindows.id} AND ${maintenanceComponents.componentId} <> ${id})`
+        );
+        await tx.run(
+          sql`DELETE FROM ${maintenanceSeries} WHERE NOT EXISTS (SELECT 1 FROM ${maintenanceSeriesComponents} WHERE ${maintenanceSeriesComponents.seriesId} = ${maintenanceSeries.id} AND ${maintenanceSeriesComponents.componentId} <> ${id})`
         );
         return (
           (await tx.run(

@@ -2,7 +2,10 @@
  * The maintenance list: windows in
  * progress first, then scheduled ones soonest first, then completed ones
  * newest first, each with its stage, its affected components, its start,
- * its end and its length. The title opens the window's page.
+ * its end and its length. The title opens the window's page; an
+ * occurrence carries the series' mark. Above them the maintenance series,
+ * each with how it repeats and when its next occurrence starts, the title
+ * opening the series' page.
  */
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -12,10 +15,12 @@ import { Page } from "@/admin/shell/page.tsx";
 import { formatDuration, type TimeOptions } from "@/shared/i18n/format.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type {
+  MaintenanceList,
   MaintenanceListItem,
   MaintenanceListResult,
 } from "@/shared/schemas/maintenance.ts";
 import { Alert, AlertDescription } from "@/shared/ui/alert.tsx";
+import { Badge } from "@/shared/ui/badge.tsx";
 import { buttonVariants } from "@/shared/ui/button.tsx";
 import {
   Empty,
@@ -34,7 +39,7 @@ import {
   tableRowLink,
 } from "@/shared/ui/table.tsx";
 import { Token } from "@/shared/ui/token.tsx";
-import { StageBadge } from "./window-words.tsx";
+import { recurrenceWords, StageBadge } from "./window-words.tsx";
 
 const newWindowPath = "/admin/maintenance/new";
 
@@ -56,7 +61,10 @@ export function WindowList({
     </Link>
   );
   // While the list is empty its card holds the one add button, which says what to add.
-  const empty = result.ok && result.list.windows.length === 0;
+  const empty =
+    result.ok &&
+    result.list.windows.length === 0 &&
+    result.list.series.length === 0;
   return (
     <Page action={empty ? undefined : add} title={t("maintenance_list_title")}>
       <ListBody add={add} clock={clock} result={result} />
@@ -89,7 +97,7 @@ function ListBody({
       </Alert>
     );
   }
-  if (result.list.windows.length === 0) {
+  if (result.list.windows.length === 0 && result.list.series.length === 0) {
     return (
       <Empty>
         <EmptyHeader>
@@ -118,7 +126,7 @@ function ListBody({
       </Empty>
     );
   }
-  return (
+  const windows = (
     <Table data-slot="window-list" framed stacked>
       <TableHeader>
         <TableRow>
@@ -133,6 +141,85 @@ function ListBody({
       <TableBody>
         {result.list.windows.map((item) => (
           <Row clock={clock} item={item} key={item.id} now={result.list.now} />
+        ))}
+      </TableBody>
+    </Table>
+  );
+  if (result.list.series.length === 0) {
+    return windows;
+  }
+  return (
+    <div className="flex flex-col gap-8">
+      <section className="flex flex-col gap-3">
+        <h2 className="font-semibold text-base">
+          {t("maintenance_series_list_title")}
+        </h2>
+        <SeriesTable clock={clock} list={result.list} />
+      </section>
+      {result.list.windows.length === 0 ? null : (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-semibold text-base">
+            {t("maintenance_windows_list_title")}
+          </h2>
+          {windows}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function SeriesTable({
+  clock,
+  list,
+}: {
+  readonly clock: TimeOptions;
+  readonly list: MaintenanceList;
+}): ReactNode {
+  const messages = useMessages();
+  const { t } = messages;
+  return (
+    <Table data-slot="series-list" framed stacked>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t("maintenance_column_title")}</TableHead>
+          <TableHead>{t("maintenance_series_column_repeats")}</TableHead>
+          <TableHead>{t("maintenance_column_components")}</TableHead>
+          <TableHead>{t("maintenance_series_column_next")}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {list.series.map((item) => (
+          <TableRow data-series={item.id} key={item.id}>
+            <TableCell className="min-w-48 whitespace-normal">
+              <Link
+                className={tableRowLink}
+                data-slot="series-title"
+                params={{ id: item.id }}
+                to="/admin/maintenance/series/$id"
+              >
+                <ContentText content={item.title} />
+              </Link>
+            </TableCell>
+            <TableCell
+              className="whitespace-normal text-sm"
+              label={t("maintenance_series_column_repeats")}
+            >
+              {recurrenceWords(messages, item.recurrence, clock.clock)}
+            </TableCell>
+            <TableCell label={t("maintenance_column_components")}>
+              <span className="text-sm">
+                <ContentList
+                  contents={item.components.map((component) => component.name)}
+                />
+              </span>
+            </TableCell>
+            <TableCell
+              className="whitespace-nowrap"
+              label={t("maintenance_series_column_next")}
+            >
+              <When at={item.next} clock={clock} now={list.now} />
+            </TableCell>
+          </TableRow>
         ))}
       </TableBody>
     </Table>
@@ -163,7 +250,14 @@ function Row({
         </Link>
       </TableCell>
       <TableCell>
-        <StageBadge stage={item.stage} />
+        <span className="flex flex-wrap items-center gap-2">
+          <StageBadge stage={item.stage} />
+          {item.seriesId === undefined ? null : (
+            <Badge data-slot="window-occurrence" variant="outline">
+              {t("maintenance_occurrence_mark")}
+            </Badge>
+          )}
+        </span>
       </TableCell>
       <TableCell label={t("maintenance_column_components")}>
         <span className="text-sm" data-slot="window-components">

@@ -44,9 +44,10 @@ import type { Check } from "@/shared/schemas/check.ts";
 import {
   type Configuration,
   type ExportRecord,
-  exportVersion,
+  fromVersion1,
   headerSchema,
   type ImportAnswer,
+  readableExportVersions,
   recordSchema,
   type TravellingSetting,
   versionProbeSchema,
@@ -238,10 +239,10 @@ async function importOnce(
     if (!probe.success) {
       throw new InvalidLineError(1);
     }
-    if (probe.data.version !== exportVersion) {
+    if (!readableExportVersions.includes(probe.data.version)) {
       return { ok: false, reason: "version" };
     }
-    const header = headerSchema.safeParse(json);
+    const header = headerSchema.safeParse(fromVersion1(json));
     if (!header.success) {
       throw new InvalidLineError(1);
     }

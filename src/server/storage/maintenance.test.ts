@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ComponentFields } from "@/shared/schemas/component.ts";
+import type { Recurrence } from "@/shared/schemas/maintenance.ts";
 import {
   type ComponentsRepository,
   componentsRepository,
@@ -11,6 +12,7 @@ import {
   MaintenanceShapeError,
   maintenanceRepository,
   NoWindowComponentError,
+  type SeriesFields,
   type WindowFields,
 } from "./maintenance.ts";
 import { migrateDatabase } from "./migrate.ts";
@@ -381,5 +383,408 @@ describe("an operator's edit of a window", () => {
         ['{"ar":"نص"}', created.id]
       );
     }
+  });
+});
+
+const weekly: Recurrence = {
+  days: { repeat: "weekly", weekdays: [2] },
+  minutes: 120,
+  time: "02:00",
+  timeZone: "UTC",
+};
+
+function seriesFields(
+  componentIds: readonly string[],
+  overrides: Partial<SeriesFields> = {}
+): SeriesFields {
+  return {
+    componentIds,
+    message: { ar: "نحدّث الخوادم كل أسبوع." },
+    recurrence: weekly,
+    title: { ar: "صيانة أسبوعية" },
+    ...overrides,
+  };
+}
+
+const at = (start: number, length = 2 * hour) => ({
+  endsAt: start + length,
+  startsAt: start,
+});
+
+describe("a maintenance series and its occurrences", () => {
+  test("a series is stored with its components and schedules an ordinary window at each time given", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const write = await maintenance.createSeries(
+      seriesFields([web.id]),
+      [at(t0 + hour), at(t0 + 8 * hour)],
+      t0 + 10 * hour
+    );
+    expect(write.series).toEqual({
+      componentIds: [web.id],
+      createdAt: t0,
+      id: write.series.id,
+      message: { ar: "نحدّث الخوادم كل أسبوع." },
+      recurrence: weekly,
+      scheduledUntil: t0 + 10 * hour,
+      title: { ar: "صيانة أسبوعية" },
+      updatedAt: t0,
+    });
+    expect(write.scheduled).toEqual([
+      {
+        componentIds: [web.id],
+        createdAt: t0,
+        endsAt: t0 + 3 * hour,
+        id: write.scheduled[0]?.id ?? "",
+        message: { ar: "نحدّث الخوادم كل أسبوع." },
+        seriesId: write.series.id,
+        stage: "scheduled",
+        startsAt: t0 + hour,
+        title: { ar: "صيانة أسبوعية" },
+        updatedAt: t0,
+      },
+      expect.objectContaining({
+        seriesId: write.series.id,
+        startsAt: t0 + 8 * hour,
+      }),
+    ]);
+    expect(await maintenance.findSeries(write.series.id)).toEqual(write.series);
+    expect(await maintenance.listSeries()).toEqual([write.series]);
+    expect((await maintenance.list()).map((each) => each.id)).toEqual(
+      write.scheduled.map((each) => each.id)
+    );
+  });
+
+  test("a series none of whose components exists is not stored, nor any occurrence", async () => {
+    const { maintenance } = await repositories();
+    const error = await maintenance
+      .createSeries(seriesFields(["no-such-component"]), [at(t0 + hour)], t0)
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(NoWindowComponentError);
+    expect(await maintenance.listSeries()).toEqual([]);
+    expect(await maintenance.list()).toEqual([]);
+  });
+
+  test("extending schedules the occurrences while the series is scheduled until the time read, and only then", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const { series } = await maintenance.createSeries(
+      seriesFields([web.id]),
+      [],
+      t0
+    );
+    const added = await maintenance.extendSeries(
+      series.id,
+      t0,
+      [at(t0 + 5 * hour)],
+      t0 + 6 * hour
+    );
+    expect(added?.map((each) => [each.seriesId, each.startsAt])).toEqual([
+      [series.id, t0 + 5 * hour],
+    ]);
+    expect((await maintenance.findSeries(series.id))?.scheduledUntil).toBe(
+      t0 + 6 * hour
+    );
+    // A second pass that read the series before the first moved it schedules nothing more.
+    expect(
+      await maintenance.extendSeries(
+        series.id,
+        t0,
+        [at(t0 + 5 * hour)],
+        t0 + 6 * hour
+      )
+    ).toBeUndefined();
+    expect(
+      await maintenance.extendSeries("no-such-series", t0, [], t0)
+    ).toBeUndefined();
+    expect(await maintenance.list()).toHaveLength(1);
+  });
+
+  test("an edit keeps a scheduled occurrence at a start it names with the new end and text, cancels the others and schedules the new starts", async () => {
+    const { components, maintenance, tick } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const api = await components.create(component("API"));
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      [at(t0 + 2 * hour), at(t0 + 4 * hour)],
+      t0 + 5 * hour
+    );
+    const [kept, dropped] = created.scheduled;
+    if (!(kept && dropped)) {
+      throw new Error("the series scheduled fewer than two occurrences");
+    }
+    tick(hour);
+    const edited = await maintenance.editSeries(
+      created.series.id,
+      seriesFields([api.id], { title: { ar: "صيانة جديدة" } }),
+      [at(t0 + 2 * hour, hour), at(t0 + 6 * hour)],
+      t0 + hour,
+      t0 + 8 * hour
+    );
+    expect(edited?.series).toMatchObject({
+      componentIds: [api.id],
+      scheduledUntil: t0 + 8 * hour,
+      title: { ar: "صيانة جديدة" },
+      updatedAt: t0 + hour,
+    });
+    expect(edited?.rescheduled).toEqual([
+      {
+        ...kept,
+        componentIds: [api.id],
+        endsAt: t0 + 3 * hour,
+        title: { ar: "صيانة جديدة" },
+        updatedAt: t0 + hour,
+      },
+    ]);
+    expect(edited?.cancelled).toEqual([dropped]);
+    expect(edited?.scheduled.map((each) => each.startsAt)).toEqual([
+      t0 + 6 * hour,
+    ]);
+    expect(await maintenance.find(dropped.id)).toBeUndefined();
+  });
+
+  test("an edit leaves the occurrences in progress and completed, and a kept one whose end did not move is not rescheduled", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      [at(t0 + hour), at(t0 + 3 * hour), at(t0 + 8 * hour)],
+      t0 + 9 * hour
+    );
+    await maintenance.advance(t0 + 4 * hour);
+    const [done, running, later] = created.scheduled;
+    const edited = await maintenance.editSeries(
+      created.series.id,
+      seriesFields([web.id], { title: { ar: "عنوان آخر" } }),
+      [at(t0 + 8 * hour)],
+      t0 + 4 * hour,
+      t0 + 9 * hour
+    );
+    expect(edited).toMatchObject({
+      cancelled: [],
+      rescheduled: [],
+      scheduled: [],
+    });
+    expect((await maintenance.find(done?.id ?? ""))?.title).toEqual({
+      ar: "صيانة أسبوعية",
+    });
+    expect((await maintenance.find(running?.id ?? ""))?.stage).toBe(
+      "in_progress"
+    );
+    expect((await maintenance.find(later?.id ?? ""))?.title).toEqual({
+      ar: "عنوان آخر",
+    });
+    expect(
+      await maintenance.editSeries(
+        "no-such-series",
+        seriesFields([web.id]),
+        [],
+        t0,
+        t0
+      )
+    ).toBeUndefined();
+  });
+
+  test("an occurrence moved on its own is kept by the start its series gave it: an edit puts it back at the series' times, rescheduled once", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const plan = [at(t0 + 2 * hour), at(t0 + 4 * hour)];
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      plan,
+      t0 + 5 * hour
+    );
+    const [moved] = created.scheduled;
+    await maintenance.edit(moved?.id ?? "", "scheduled", {
+      endsAt: t0 + 3 * hour + 30 * 60_000,
+      message: { ar: "نقلناه نصف ساعة." },
+      startsAt: t0 + 3 * hour,
+      title: { ar: "صيانة أسبوعية" },
+    });
+    const edited = await maintenance.editSeries(
+      created.series.id,
+      seriesFields([web.id]),
+      plan,
+      t0,
+      t0 + 5 * hour
+    );
+    expect(edited?.cancelled).toEqual([]);
+    expect(edited?.scheduled).toEqual([]);
+    expect(
+      edited?.rescheduled.map((each) => [each.id, each.startsAt, each.endsAt])
+    ).toEqual([[moved?.id ?? "", t0 + 2 * hour, t0 + 4 * hour]]);
+  });
+
+  test("an occurrence moved and then cancelled on its own stays cancelled through an edit", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const plan = [at(t0 + 2 * hour), at(t0 + 4 * hour)];
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      plan,
+      t0 + 5 * hour
+    );
+    const [moved] = created.scheduled;
+    await maintenance.edit(moved?.id ?? "", "scheduled", {
+      endsAt: t0 + 3 * hour + 30 * 60_000,
+      message: { ar: "نقلناه نصف ساعة." },
+      startsAt: t0 + 3 * hour,
+      title: { ar: "صيانة أسبوعية" },
+    });
+    expect(await maintenance.remove(moved?.id ?? "")).toBe(true);
+    const edited = await maintenance.editSeries(
+      created.series.id,
+      seriesFields([web.id]),
+      plan,
+      t0,
+      t0 + 5 * hour
+    );
+    expect(edited?.scheduled).toEqual([]);
+    expect((await maintenance.list()).map((each) => each.startsAt)).toEqual([
+      t0 + 4 * hour,
+    ]);
+  });
+
+  test("two occurrences moved onto one start are each kept by their own on an edit", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const plan = [at(t0 + 2 * hour), at(t0 + 4 * hour)];
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      plan,
+      t0 + 5 * hour
+    );
+    const [moved, stayed] = created.scheduled;
+    await maintenance.edit(moved?.id ?? "", "scheduled", {
+      endsAt: t0 + 6 * hour,
+      message: { ar: "نص" },
+      startsAt: t0 + 4 * hour,
+      title: { ar: "صيانة أسبوعية" },
+    });
+    const edited = await maintenance.editSeries(
+      created.series.id,
+      seriesFields([web.id]),
+      plan,
+      t0,
+      t0 + 5 * hour
+    );
+    expect(edited?.cancelled).toEqual([]);
+    expect(edited?.scheduled).toEqual([]);
+    expect(
+      (await maintenance.list()).map((each) => [each.id, each.startsAt])
+    ).toEqual([
+      [moved?.id ?? "", t0 + 2 * hour],
+      [stayed?.id ?? "", t0 + 4 * hour],
+    ]);
+  });
+
+  test("on an edit, an occurrence whose start has come is left to the tick, never cancelled", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      [at(t0 + 2 * hour)],
+      t0 + 3 * hour
+    );
+    // A second past its start, before the tick moved it in progress; the new plan starts after it.
+    const edited = await maintenance.editSeries(
+      created.series.id,
+      seriesFields([web.id], { title: { ar: "عنوان آخر" } }),
+      [],
+      t0 + 2 * hour + 1000,
+      t0 + 3 * hour
+    );
+    expect(edited?.cancelled).toEqual([]);
+    expect(
+      (await maintenance.list()).map((each) => [each.startsAt, each.title])
+    ).toEqual([[t0 + 2 * hour, { ar: "صيانة أسبوعية" }]]);
+  });
+
+  test("occurrences cancelled at once each stay cancelled through an edit", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const plan = [at(t0 + 2 * hour), at(t0 + 4 * hour), at(t0 + 6 * hour)];
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      plan,
+      t0 + 7 * hour
+    );
+    const [first, second] = created.scheduled;
+    await Promise.all([
+      maintenance.remove(first?.id ?? ""),
+      maintenance.remove(second?.id ?? ""),
+    ]);
+    const edited = await maintenance.editSeries(
+      created.series.id,
+      seriesFields([web.id]),
+      plan,
+      t0,
+      t0 + 7 * hour
+    );
+    expect(edited?.scheduled).toEqual([]);
+    expect((await maintenance.list()).map((each) => each.startsAt)).toEqual([
+      t0 + 6 * hour,
+    ]);
+  });
+
+  test("ending a series cancels its scheduled occurrences and leaves the others as windows of no series", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      [at(t0 + hour), at(t0 + 8 * hour)],
+      t0 + 9 * hour
+    );
+    await maintenance.advance(t0 + hour);
+    const [running, later] = created.scheduled;
+    expect(await maintenance.endSeries(created.series.id)).toEqual(
+      later ? [later] : []
+    );
+    expect(await maintenance.findSeries(created.series.id)).toBeUndefined();
+    const left = await maintenance.list();
+    expect(left.map((each) => each.id)).toEqual([running?.id ?? ""]);
+    expect(left[0]?.seriesId).toBeUndefined();
+    expect(await maintenance.endSeries(created.series.id)).toBeUndefined();
+  });
+
+  test("deleting the last of a series' components deletes the series; one with another component keeps it", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const api = await components.create(component("API"));
+    const alone = await maintenance.createSeries(
+      seriesFields([web.id]),
+      [],
+      t0
+    );
+    const both = await maintenance.createSeries(
+      seriesFields([web.id, api.id]),
+      [],
+      t0
+    );
+    await components.remove(web.id);
+    expect(await maintenance.findSeries(alone.series.id)).toBeUndefined();
+    expect(
+      (await maintenance.findSeries(both.series.id))?.componentIds
+    ).toEqual([api.id]);
+  });
+
+  test("a stored recurrence this version cannot read is refused by name", async () => {
+    const { components, location, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const { series } = await maintenance.createSeries(
+      seriesFields([web.id]),
+      [],
+      t0
+    );
+    await runSql(
+      location,
+      "UPDATE maintenance_series SET recurrence = ? WHERE id = ?",
+      ['{"days":{"repeat":"yearly"}}', series.id]
+    );
+    const error = await maintenance
+      .findSeries(series.id)
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(MaintenanceShapeError);
+    expect(error).toMatchObject({ windowId: series.id });
   });
 });

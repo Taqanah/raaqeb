@@ -1,4 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
+import { d0, scratchPages } from "@/server/pages/fixture.ts";
 import { ComponentShapeError } from "@/server/storage/components.ts";
 import { MaintenanceShapeError } from "@/server/storage/maintenance.ts";
 import type { Component } from "@/shared/schemas/component.ts";
@@ -83,6 +84,8 @@ function world(
       },
     },
     maintenance: {
+      extendSeries: () => Promise.resolve(undefined),
+      listSeries: () => Promise.resolve([]),
       advance: (now: number) => {
         calls.push("advance");
         if (faults.advance) {
@@ -337,6 +340,8 @@ describe("the maintenance pass: edge cases", () => {
             await gate;
             return [window("w1", ["web"], t0, t0 + hour, "in_progress")];
           },
+          extendSeries: () => Promise.resolve(undefined),
+          listSeries: () => Promise.resolve([]),
           unfinished: () =>
             Promise.resolve([window("w1", ["web"], t0, t0 + hour)]),
         },
@@ -359,5 +364,126 @@ describe("the maintenance pass: edge cases", () => {
     await running;
     await waited;
     expect(idle).toBe(true);
+  });
+});
+
+const day = 24 * hour;
+
+/** A real install on SQLite whose series the pass schedules, and what it handed on. */
+async function seriesWorld() {
+  const opened = await scratchPages(d0);
+  const { storage } = opened;
+  const web = await storage.components.create({
+    description: undefined,
+    monitorIds: [],
+    name: { ar: "الموقع" },
+    status: "operational",
+  });
+  const scheduled: MaintenanceWindow[] = [];
+  let bumps = 0;
+  const pass = createMaintenancePass(storage, {
+    bump: () => {
+      bumps += 1;
+      return storage.bump().then(() => undefined);
+    },
+    isStopped: () => false,
+    onScheduled: (each) => {
+      scheduled.push(each);
+    },
+    onUncovered: () => Promise.resolve(),
+  });
+  /** A Tuesday series at 14:00 UTC for two hours, scheduled until `until`. */
+  const series = (until: number) =>
+    storage.maintenance.createSeries(
+      {
+        componentIds: [web.id],
+        message: { ar: "نحدّث الخوادم كل ثلاثاء." },
+        recurrence: {
+          days: { repeat: "weekly", weekdays: [2] },
+          minutes: 120,
+          time: "14:00",
+          timeZone: "UTC",
+        },
+        title: { ar: "صيانة الثلاثاء" },
+      },
+      [],
+      until
+    );
+  return {
+    bumps: () => bumps,
+    cleanup: opened.cleanup,
+    pass,
+    scheduled,
+    series,
+    storage,
+  };
+}
+
+/** Tuesday 1 September 2026 at 14:00 UTC, and the Tuesday after. */
+const tuesday = d0 + 14 * hour;
+const nextTuesday = tuesday + 7 * day;
+
+describe("the pass and a maintenance series", () => {
+  test("an occurrence is scheduled a week before it starts, once, as an ordinary window handed on after the counter moved", async () => {
+    const w = await seriesWorld();
+    try {
+      // Scheduled until just past this Tuesday's start: next Tuesday's is the next to schedule.
+      const { series } = await w.series(tuesday + 1);
+      await w.pass.read();
+      await w.pass.run(tuesday - 1);
+      expect(await w.storage.maintenance.list()).toEqual([]);
+      await w.pass.run(tuesday);
+      await w.pass.run(tuesday + 1000);
+      const windows = await w.storage.maintenance.list();
+      expect(windows).toMatchObject([
+        {
+          endsAt: nextTuesday + 2 * hour,
+          seriesId: series.id,
+          stage: "scheduled",
+          startsAt: nextTuesday,
+          title: { ar: "صيانة الثلاثاء" },
+        },
+      ]);
+      expect(w.scheduled.map((each) => each.id)).toEqual(
+        windows.map((each) => each.id)
+      );
+      expect(w.bumps()).toBe(1);
+    } finally {
+      await w.cleanup();
+    }
+  });
+
+  test("an occurrence skipped is not scheduled again, and the one after comes at its own time", async () => {
+    const w = await seriesWorld();
+    try {
+      await w.series(tuesday + 1);
+      await w.pass.read();
+      await w.pass.run(tuesday);
+      const [skipped] = await w.storage.maintenance.list();
+      await w.storage.maintenance.remove(skipped?.id ?? "");
+      await w.pass.read();
+      await w.pass.run(tuesday + day);
+      expect(await w.storage.maintenance.list()).toEqual([]);
+      await w.pass.run(nextTuesday);
+      expect(
+        (await w.storage.maintenance.list()).map((each) => each.startsAt)
+      ).toEqual([nextTuesday + 7 * day]);
+    } finally {
+      await w.cleanup();
+    }
+  });
+
+  test("occurrences that started while Raaqeb was stopped are not scheduled; the coming week's are", async () => {
+    const w = await seriesWorld();
+    try {
+      await w.series(d0 - 30 * day);
+      await w.pass.read();
+      await w.pass.run(tuesday + hour);
+      expect(
+        (await w.storage.maintenance.list()).map((each) => each.startsAt)
+      ).toEqual([nextTuesday]);
+    } finally {
+      await w.cleanup();
+    }
   });
 });

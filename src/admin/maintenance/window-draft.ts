@@ -53,7 +53,16 @@ export interface WindowDraft {
 /** The refusal of each field that did not fit. */
 export type WindowFieldErrors = Readonly<
   Partial<
-    Record<"components" | "ends" | "message" | "starts" | "title", MessageId>
+    Record<
+      | "components"
+      | "duration"
+      | "ends"
+      | "message"
+      | "starts"
+      | "title"
+      | "weekdays",
+      MessageId
+    >
   >
 >;
 
@@ -127,9 +136,9 @@ function refusalsOf(issues: readonly z.core.$ZodIssue[]): WindowFieldErrors {
 }
 
 /** The parse's input, or every refusal: the schema's, the text's without the install language's and the times'. */
-function judged<Input>(
+export function judged<Input>(
   parsed: z.ZodSafeParseResult<Input>,
-  draft: WindowDraft,
+  draft: Pick<WindowDraft, "message" | "title">,
   language: Locale,
   times: WindowFieldErrors
 ): DraftParse<Input> {

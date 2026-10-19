@@ -307,7 +307,7 @@ export function createScheduler(
     isStopped,
   });
 
-  /** Moves each maintenance window at its start and its end, and hands on the monitors a completed one left uncovered for their down notification; each move is a subscriber event. */
+  /** Moves each maintenance window at its start and its end, schedules each series' occurrences a week ahead, and hands on the monitors a completed window left uncovered for their down notification; each move and each occurrence scheduled is a subscriber event. */
   const maintenance = createMaintenancePass(storage, {
     bump,
     isStopped,
@@ -322,6 +322,14 @@ export function createScheduler(
                 : "maintenance.started",
             windowId: window.id,
           },
+          io.now()
+        )
+        .catch(() => undefined);
+    },
+    onScheduled: (window) => {
+      subscribers
+        .announce(
+          { type: "maintenance.scheduled", windowId: window.id },
           io.now()
         )
         .catch(() => undefined);

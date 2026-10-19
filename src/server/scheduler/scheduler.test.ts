@@ -2905,6 +2905,49 @@ describe("subscriber notifications on the scheduler", () => {
     await s.stop();
   });
 
+  test("an occurrence the tick schedules for a series reaches a subscriber as scheduled, started and completed, as any window does", async () => {
+    const h = await harness();
+    const { web } = await subscribed(h);
+    const net = receiver();
+    const io = { ...h.io, fetch: net.fetch, lookup: internet };
+    const s = createScheduler(h.storage, io, {
+      installKey: key,
+      refreshPeriodMs: Number.POSITIVE_INFINITY,
+    });
+    await s.tick();
+    await s.idle();
+    // Weekly on today's weekday, two minutes from now, scheduled until a minute from now: the tick schedules this one alone.
+    const start = new Date(io.now() + 2 * 60_000);
+    await h.storage.maintenance.createSeries(
+      {
+        componentIds: [web],
+        message: { ar: "Rotating the keys." },
+        recurrence: {
+          days: { repeat: "weekly", weekdays: [start.getUTCDay()] },
+          minutes: 2,
+          time: start.toISOString().slice(11, 16),
+          timeZone: "UTC",
+        },
+        title: { ar: "Key rotation" },
+      },
+      [],
+      io.now() + 60_000
+    );
+    await h.storage.bump();
+    await run(h, s, 5 * 60_000);
+    // As this one starts, next week's is a week away and is scheduled at that tick, before the start is handed on.
+    const every = [
+      "maintenance.scheduled",
+      "maintenance.scheduled",
+      "maintenance.started",
+      "maintenance.completed",
+    ];
+    expect(net.hooked("https://hooks.example.com/confirmed")).toEqual(every);
+    expect(mailed("reader@example.test")).toHaveLength(every.length);
+    expect(net.hooked("https://hooks.example.com/pending")).toEqual([]);
+    await s.stop();
+  });
+
   test("a window scheduled to start in the current minute reaches a subscriber once as started, by webhook and email alike", async () => {
     const h = await harness();
     const { web } = await subscribed(h);

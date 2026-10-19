@@ -5015,3 +5015,197 @@ msgstr "اكتب من 8 إلى 128 حرفًا."
 #. js-lingui-explicit-id
 msgid "setting_public_address_invalid"
 msgstr "اكتب عنوانًا يبدأ بـ http أو https وينتهي عند المضيف أو منفذه، بلا مسار، مثل ⁦https://status.example.com⁩."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_weekdays"
+msgstr "اختر يومًا واحدًا على الأقل."
+
+#. js-lingui-explicit-id
+msgid "maintenance_refused_duration"
+msgstr "اكتب مدة من دقيقة إلى 168 ساعة، بساعات كاملة."
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_repeat"
+msgstr "التكرار"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_once"
+msgstr "مرة واحدة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_weekly"
+msgstr "أسبوعيًا"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_monthly"
+msgstr "شهريًا"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_once_hint"
+msgstr "وقت صيانة واحد ببداية ونهاية."
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_weekly_hint"
+msgstr "موعد في كل يوم تختاره من أيام الأسبوع. يُجدول كل موعد ويُعلَن للمشتركين قبل بدايته بأسبوع."
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeat_monthly_hint"
+msgstr "موعد واحد كل شهر. يُجدول كل موعد ويُعلَن للمشتركين قبل بدايته بأسبوع."
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_weekdays"
+msgstr "الأيام"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_monthly_on"
+msgstr "في كل شهر"
+
+#. js-lingui-explicit-id
+msgid "maintenance_monthly_on_day"
+msgstr "يوم من الشهر"
+
+#. js-lingui-explicit-id
+msgid "maintenance_monthly_on_weekday"
+msgstr "يوم من أيام الأسبوع"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_day_of_month"
+msgstr "اليوم من الشهر"
+
+#. js-lingui-explicit-id
+msgid "maintenance_day_of_month_short"
+msgstr "في الشهر الأقصر يقع في آخر يوم منه."
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_week"
+msgstr "الترتيب في الشهر"
+
+#. js-lingui-explicit-id
+msgid "maintenance_week"
+msgstr "{week, select, first {الأول} second {الثاني} third {الثالث} fourth {الرابع} other {الأخير}}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_weekday"
+msgstr "يوم الأسبوع"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_time"
+msgstr "وقت البداية"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_duration"
+msgstr "المدة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_hours"
+msgstr "الساعات"
+
+#. js-lingui-explicit-id
+msgid "maintenance_field_minutes"
+msgstr "الدقائق"
+
+#. js-lingui-explicit-id
+msgid "maintenance_hours_unit"
+msgstr "ساعة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_minutes_unit"
+msgstr "دقيقة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_times_hint"
+msgstr "يبدأ كل موعد في وقته على ساعة المنطقة الزمنية المختارة، ولو تغيّر التوقيت الصيفي."
+
+#. js-lingui-explicit-id
+msgid "maintenance_weekday"
+msgstr "{weekday, select, 0 {أحد} 1 {اثنين} 2 {ثلاثاء} 3 {أربعاء} 4 {خميس} 5 {جمعة} other {سبت}}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_recurrence_daily"
+msgstr "كل يوم، الساعة {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_recurrence_weekly"
+msgstr "كل {days}، الساعة {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_recurrence_monthly_day"
+msgstr "يوم {day} من كل شهر، الساعة {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_recurrence_monthly_weekday"
+msgstr "{week, select, first {أول} second {ثاني} third {ثالث} fourth {رابع} other {آخر}} {weekday} من كل شهر، الساعة {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_list_title"
+msgstr "أوقات الصيانة المتكررة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_column_repeats"
+msgstr "التكرار"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_column_next"
+msgstr "الموعد التالي"
+
+#. js-lingui-explicit-id
+msgid "maintenance_windows_list_title"
+msgstr "كل أوقات الصيانة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_occurrence_mark"
+msgstr "متكرر"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_occurrences"
+msgstr "المواعيد المجدولة"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_occurrences_hint"
+msgstr "يُجدول كل موعد ويُعلَن للمشتركين قبل بدايته بأسبوع. افتح موعدًا لتغييره أو إلغائه وحده."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_occurrences_none"
+msgstr "لا مواعيد في الأسبوع القادم."
+
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_edit_hint"
+msgstr "يحلّ الحفظ محل المواعيد المجدولة بمواعيد التكرار بعد تعديله، ومنها موعد غيّرته وحده. ويبقى الموعد الذي ألغيته وحده ملغى، ولا يتغيّر الموعد الجاري ولا المكتمل."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_create"
+msgstr "جدولة وقت الصيانة المتكرر"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_created"
+msgstr "جُدول وقت الصيانة المتكرر."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_saved"
+msgstr "حُفظ وقت الصيانة المتكرر ومواعيده المجدولة."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_end"
+msgstr "إنهاء التكرار"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_end_title"
+msgstr "أتنهي هذا التكرار؟"
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_end_description"
+msgstr "تُلغى مواعيده المجدولة ويُعلَم المشتركون بإلغائها، ويستمر الموعد الجاري حتى نهايته. لا يمكن التراجع عن الإنهاء."
+
+#. js-lingui-explicit-id
+msgid "maintenance_series_ended"
+msgstr "انتهى التكرار."
+
+
+#. js-lingui-explicit-id
+msgid "maintenance_occurrence_of"
+msgstr "موعد من وقت الصيانة المتكرر"
+
+#. js-lingui-explicit-id
+msgid "maintenance_occurrence_alone"
+msgstr "تغييره أو إلغاؤه هنا لا يمسّ وقت الصيانة المتكرر ولا مواعيده الأخرى."
