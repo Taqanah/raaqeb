@@ -918,3 +918,140 @@ describe("a Docker monitor", () => {
     ).toBe(false);
   });
 });
+
+describe("an HTTP monitor's client certificate and CA bundle", () => {
+  const cert = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n";
+  const privateKey =
+    "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n";
+  const withCert = { ...http, clientCertificate: cert };
+  const input = (config: unknown, credentials?: unknown) =>
+    monitorInputSchema.safeParse({ ...base, config, credentials });
+
+  test("are PEM text kept in the config, none by default", () => {
+    expect(monitorConfigSchema.parse(http)).not.toHaveProperty(
+      "clientCertificate"
+    );
+    expect(
+      monitorConfigSchema.parse({ ...withCert, caCertificates: cert })
+    ).toMatchObject({ caCertificates: cert, clientCertificate: cert });
+  });
+
+  test("are refused when they are not certificates or are too long", () => {
+    for (const config of [
+      { ...http, clientCertificate: "not pem" },
+      { ...http, caCertificates: privateKey },
+      { ...http, clientCertificate: `${cert}${"A".repeat(16_384)}` },
+      { ...http, caCertificates: `${cert}${"A".repeat(65_536)}` },
+    ]) {
+      expect(monitorConfigSchema.safeParse(config).success).toBe(false);
+    }
+  });
+
+  test("a client key is a private key in PEM, and one is refused when it is not", () => {
+    expect(
+      input(withCert, { clientKey: { key: privateKey }, headers: [] }).success
+    ).toBe(true);
+    expect(
+      input(withCert, { clientKey: { key: "not pem" }, headers: [] }).success
+    ).toBe(false);
+    expect(
+      input(withCert, { clientKey: { key: cert }, headers: [] }).success
+    ).toBe(false);
+  });
+
+  test("a client key left out is allowed, so a stored one is kept", () => {
+    expect(input(withCert, { clientKey: {}, headers: [] }).success).toBe(true);
+  });
+
+  test("a client key without a client certificate is refused on the key", () => {
+    const result = input(http, {
+      clientKey: { key: privateKey },
+      headers: [],
+    });
+    expect(result.success).toBe(false);
+    expect(
+      !result.success &&
+        result.error.issues.map((issue) => issue.path.join("."))
+    ).toContain("credentials.clientKey");
+  });
+
+  test("a client certificate on an http address is refused on the certificate", () => {
+    const result = input({ ...withCert, url: "http://example.test/" });
+    expect(result.success).toBe(false);
+    expect(
+      !result.success &&
+        result.error.issues.map((issue) => issue.path.join("."))
+    ).toContain("config.clientCertificate");
+  });
+
+  test("another check type takes neither", () => {
+    expect(
+      input(
+        { host: "example.test", port: 22, type: "tcp" },
+        { clientKey: { key: privateKey }, headers: [] }
+      ).success
+    ).toBe(false);
+  });
+});
+
+describe("a custom CA or client certificate and an https proxy", () => {
+  const cert = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n";
+  const privateKey =
+    "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n";
+  const input = (config: unknown, credentials?: unknown) =>
+    monitorInputSchema.safeParse({ ...base, config, credentials });
+  const keyed = { clientKey: { key: privateKey }, headers: [] };
+  const issuesAt = (result: ReturnType<typeof input>) =>
+    result.success
+      ? []
+      : result.error.issues.map((issue) => issue.path.join("."));
+
+  test("are refused together on the field that asks for them, since Bun would check the proxy with the CA and show it the certificate", () => {
+    const https = "https://proxy.example.test:8443";
+    expect(
+      issuesAt(input({ ...http, caCertificates: cert, proxy: https }))
+    ).toContain("config.caCertificates");
+    expect(
+      issuesAt(input({ ...http, clientCertificate: cert, proxy: https }, keyed))
+    ).toContain("config.clientCertificate");
+  });
+
+  test("are fine with an http proxy, with none, and an https proxy fine with neither", () => {
+    expect(
+      input({
+        ...http,
+        caCertificates: cert,
+        proxy: "http://proxy.example.test:3128",
+      }).success
+    ).toBe(true);
+    expect(input({ ...http, caCertificates: cert }).success).toBe(true);
+    expect(
+      input({ ...http, proxy: "https://proxy.example.test:8443" }).success
+    ).toBe(true);
+  });
+});
+
+describe("PEM text that must start with its armour", () => {
+  const cert = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n";
+  test("is refused when anything comes before it", () => {
+    expect(
+      monitorConfigSchema.safeParse({ ...http, clientCertificate: cert })
+        .success
+    ).toBe(true);
+    for (const before of ["subject=/CN=x\n", " ", "text "]) {
+      expect(
+        monitorConfigSchema.safeParse({
+          ...http,
+          caCertificates: `${before}${cert}`,
+        }).success,
+        JSON.stringify(before)
+      ).toBe(false);
+      expect(
+        monitorConfigSchema.safeParse({
+          ...http,
+          clientCertificate: `${before}${cert}`,
+        }).success
+      ).toBe(false);
+    }
+  });
+});

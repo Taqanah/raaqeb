@@ -155,3 +155,22 @@ describe("a basic user name", () => {
     ).toBe(false);
   });
 });
+
+describe("a client key that must start with its armour", () => {
+  test("is refused when anything comes before it", () => {
+    const key =
+      "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n";
+    expect(
+      credentialsSchema.safeParse({ clientKey: { key }, headers: [] }).success
+    ).toBe(true);
+    for (const before of ["Bag Attributes\n", " ", "text "]) {
+      expect(
+        credentialsSchema.safeParse({
+          clientKey: { key: `${before}${key}` },
+          headers: [],
+        }).success,
+        JSON.stringify(before)
+      ).toBe(false);
+    }
+  });
+});

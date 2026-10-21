@@ -95,7 +95,7 @@ _Avoid_: ping, run, probe, attempt (that is one try inside a check), heartbeat (
 
 **Reason**:
 Arabic: علة for why a check failed (the notification line); سبب for why any check ended as it did (the checks table, passes included)
-Why a check ended as it did: one code from a fixed list (timeout, DNS failed, connection refused, certificate expired, unexpected status, assertion failed, slow, heartbeat late, heartbeat failed, and so on) with the values it saw. Rendered in the reader's locale; never free text.
+Why a check ended as it did: one code from a fixed list (timeout, DNS failed, connection refused, certificate expired, unexpected status, assertion failed, slow, heartbeat late, heartbeat failed, client certificate refused, and so on) with the values it saw. Rendered in the reader's locale; never free text.
 _Avoid_: error message (that is the raw text kept beside a failed check), status message, cause
 
 **Capture**:
@@ -453,6 +453,11 @@ _Avoid_: preference, option, config
 Arabic: الوكيل الصادر
 The HTTP proxy that the HTTP checks, the notification channels' senders and the daily release check connect through, for an install that reaches the internet only through one. Install-wide it is the runtime's `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` from the environment, read at each request. An HTTP monitor may set its own, an http or https address whose user name and password are sealed with its credentials; it overrides the environment for that monitor and ignores `NO_PROXY`. Never SOCKS. A TCP, DNS, database or Docker check, the certificate read and an SMTP send open their own connections and never go through it.
 _Avoid_: trusted proxies (the reverse proxy in front of Raaqeb, the other direction), gateway, tunnel
+
+**Client certificate**:
+Arabic: شهادة العميل
+The certificate an HTTP monitor presents to a server that requires the client to prove itself over TLS (mutual TLS), with the private key that belongs to it. The certificate, and the CA certificates the monitor trusts in place of the well-known ones, are public PEM text kept in the monitor's config; the key and its passphrase, when the key is encrypted, are sealed credentials, written and never read back. A certificate outside its validity dates fails the check before any request is sent, with its own reason; a server that closes the handshake of a request that carried one reads as the certificate refused. It needs an https address and works through the outbound proxy.
+_Avoid_: mTLS certificate, TLS credentials, PKI
 
 **Setup check**:
 Arabic: تهيئة راقب

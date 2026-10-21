@@ -1654,3 +1654,168 @@ describe("an HTTP monitor's own proxy in the draft", () => {
     ]);
   });
 });
+
+describe("an HTTP monitor's client certificate in the draft", () => {
+  const cert = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----";
+  const key = "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----";
+  const withCertificate: MonitorFields = {
+    ...httpFields,
+    config: {
+      assertions: [{ codes: ["2xx"], kind: "status" }],
+      caCertificates: cert,
+      captureMode: "off",
+      clientCertificate: cert,
+      followRedirects: true,
+      ignoreTlsErrors: false,
+      method: "GET",
+      type: "http",
+      url: "https://api.example.test/health",
+    },
+  };
+
+  test("a new monitor has none, and posts neither a certificate nor a key", () => {
+    const draft = draftOf(undefined, noCredentials);
+    expect([
+      draft.clientCertificate,
+      draft.clientKey,
+      draft.clientPassphrase,
+      draft.caCertificates,
+    ]).toEqual(["", "", "", ""]);
+    const parsed = inputOf(typed({}));
+    expect(parsed.ok && parsed.input.config).not.toHaveProperty(
+      "clientCertificate"
+    );
+    expect(parsed.ok && parsed.input.config).not.toHaveProperty(
+      "caCertificates"
+    );
+    expect(parsed.ok && parsed.input.credentials).toBe(undefined);
+  });
+
+  test("a stored certificate and CA bundle come back as text, the key and passphrase left out so the server keeps them", () => {
+    const view: CredentialsView = {
+      auth: undefined,
+      clientKey: true,
+      headers: [],
+      url: false,
+    };
+    const draft = draftOf(monitorOf(withCertificate), view);
+    expect([draft.clientCertificate, draft.caCertificates]).toEqual([
+      cert,
+      cert,
+    ]);
+    expect([draft.clientKey, draft.clientPassphrase]).toEqual(["", ""]);
+    expect(draft.storedClientKey).toBe(true);
+    const parsed = inputOf(draft);
+    expect(parsed.ok && parsed.input.config).toMatchObject({
+      caCertificates: cert,
+      clientCertificate: cert,
+    });
+    expect(parsed.ok && parsed.input.credentials).toEqual({
+      clientKey: {},
+      headers: [],
+    });
+  });
+
+  test("a typed certificate, key and passphrase are posted, the certificate trimmed", () => {
+    const parsed = inputOf(
+      typed({
+        clientCertificate: `\n${cert}\n\n`,
+        clientKey: key,
+        clientPassphrase: "pässphrase",
+      })
+    );
+    expect(parsed.ok && parsed.input.config).toMatchObject({
+      clientCertificate: cert,
+    });
+    expect(parsed.ok && parsed.input.credentials).toEqual({
+      clientKey: { key, passphrase: "pässphrase" },
+      headers: [],
+    });
+  });
+
+  test("a typed passphrase with no key typed and none stored is refused", () => {
+    const parsed = inputOf(
+      typed({ clientCertificate: cert, clientPassphrase: "new" })
+    );
+    expect(parsed.ok).toBe(false);
+  });
+
+  test("a typed passphrase beside a kept key is posted alone", () => {
+    const parsed = inputOf(
+      typed({
+        clientCertificate: cert,
+        clientPassphrase: "new",
+        storedClientKey: true,
+      })
+    );
+    expect(parsed.ok && parsed.input.credentials).toEqual({
+      clientKey: { passphrase: "new" },
+      headers: [],
+    });
+  });
+
+  test("a certificate with no key typed and none stored is refused on the key field", () => {
+    const parsed = inputOf(typed({ clientCertificate: cert }));
+    expect(parsed.ok).toBe(false);
+    expect(!parsed.ok && Object.keys(parsed.errors)).toContain(
+      "credentials.clientKey.key"
+    );
+  });
+
+  test("an emptied certificate drops the key and whatever the key fields still hold", () => {
+    const parsed = inputOf(
+      typed({
+        clientCertificate: "  ",
+        clientKey: key,
+        clientPassphrase: "pw",
+        storedClientKey: true,
+      })
+    );
+    expect(parsed.ok && parsed.input.config).not.toHaveProperty(
+      "clientCertificate"
+    );
+    expect(parsed.ok && parsed.input.credentials).toBe(undefined);
+  });
+
+  test("a certificate on an http address is refused on the certificate field", () => {
+    const parsed = inputOf(
+      typed({
+        clientCertificate: cert,
+        clientKey: key,
+        url: "http://api.example.test/",
+      })
+    );
+    expect(parsed.ok).toBe(false);
+    expect(!parsed.ok && Object.keys(parsed.errors)).toContain(
+      "config.clientCertificate"
+    );
+  });
+});
+
+describe("a custom CA or client certificate beside an https proxy in the draft", () => {
+  const cert = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----";
+  const key = "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----";
+
+  test("is refused on the CA and on the certificate with a line that says to use an http proxy or none", () => {
+    const proxy = "https://proxy.example.test:8443";
+    const ca = errorsOf(typed({ caCertificates: cert, proxy }));
+    expect(ca["config.caCertificates"]?.id).toBe("monitor_error_tls_proxy");
+    const client = errorsOf(
+      typed({ clientCertificate: cert, clientKey: key, proxy })
+    );
+    expect(client["config.clientCertificate"]?.id).toBe(
+      "monitor_error_tls_proxy"
+    );
+  });
+
+  test("is fine beside an http proxy", () => {
+    expect(
+      inputOf(
+        typed({
+          caCertificates: cert,
+          proxy: "http://proxy.example.test:3128",
+        })
+      ).ok
+    ).toBe(true);
+  });
+});

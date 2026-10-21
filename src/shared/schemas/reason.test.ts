@@ -36,6 +36,9 @@ describe("the reason dictionary", () => {
       smtp_no_greeting: 23,
       smtp_stalled: 24,
       heartbeat_failed: 25,
+      client_certificate_expired: 26,
+      client_certificate_refused: 27,
+      tls_proxy_unsupported: 29,
     });
   });
 
@@ -98,6 +101,33 @@ describe("the reason dictionary", () => {
     expect(
       reasonParamsSchema.safeParse({ reason: "later_reason" }).success
     ).toBe(false);
+  });
+});
+
+describe("the client certificate reasons", () => {
+  test("an expired or not yet valid certificate carries which, and a refused one the driver's code", () => {
+    for (const code of ["expired", "not_yet_valid"]) {
+      expect(
+        reasonParamsSchema.safeParse({
+          code,
+          reason: "client_certificate_expired",
+        }).success
+      ).toBe(true);
+    }
+    expect(
+      reasonParamsSchema.safeParse({
+        code: "revoked",
+        reason: "client_certificate_expired",
+      }).success
+    ).toBe(false);
+    expect(
+      reasonParamsSchema.safeParse({
+        code: "ECONNRESET",
+        reason: "client_certificate_refused",
+      }).success
+    ).toBe(true);
+    expect(reasonName(26)).toBe("client_certificate_expired");
+    expect(reasonName(27)).toBe("client_certificate_refused");
   });
 });
 

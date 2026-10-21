@@ -12,6 +12,10 @@
 import type { InstallKey } from "@/server/boot/installkey.ts";
 import { maskCredentialText } from "@/server/checks/capture.ts";
 import { certificateTarget } from "@/server/checks/certificate.ts";
+import {
+  caCertificatesReadable,
+  readClientCertificate,
+} from "@/server/checks/client-certificate.ts";
 import { answerText, secretsOf } from "@/server/checks/database.ts";
 import { scheduleFires } from "@/server/checks/heartbeat.ts";
 import type { LiveIo } from "@/server/checks/io.ts";
@@ -66,6 +70,7 @@ import {
 import { observedMaxLength, reasonName } from "@/shared/schemas/reason.ts";
 import {
   credentialsView,
+  isEmpty,
   mergeCredentials,
   openCredentials,
   sealCredentials,
@@ -265,6 +270,27 @@ function noneUnreadable(error: unknown): never[] {
   throw error;
 }
 
+/** What of an HTTP monitor's TLS material the server cannot use: a CA bundle that is not certificates, or a client certificate whose key is missing, does not open or is not its own. Nothing for any other monitor. */
+function tlsRefusal(
+  config: MonitorConfig,
+  credentials: Credentials
+): "ca_certificates" | "client_certificate" | undefined {
+  if (config.type !== "http") {
+    return;
+  }
+  const { caCertificates, clientCertificate } = config;
+  if (caCertificates !== undefined && !caCertificatesReadable(caCertificates)) {
+    return "ca_certificates";
+  }
+  if (clientCertificate === undefined) {
+    return;
+  }
+  const { key, passphrase } = credentials.clientKey ?? {};
+  return readClientCertificate(clientCertificate, key, passphrase).ok
+    ? undefined
+    : "client_certificate";
+}
+
 export async function createMonitor(
   storage: MonitorStorage,
   key: InstallKey,
@@ -274,6 +300,10 @@ export async function createMonitor(
   const credentials = credentialsFor(input, undefined);
   if (!credentials) {
     return invalid;
+  }
+  const refused = tlsRefusal(input.config, credentials);
+  if (refused) {
+    return { ok: false, reason: refused };
   }
   try {
     if (!(await fires(storage, input))) {
@@ -316,14 +346,14 @@ export async function editMonitor(
     if (!credentials) {
       return invalid;
     }
+    const refused = tlsRefusal(input.config, credentials);
+    if (refused) {
+      return { ok: false, reason: refused };
+    }
     // Credentials this key cannot open stay as they are when the edit posts none, so restoring the right key recovers them; typed ones replace them.
     const unreadable = sealedBefore !== undefined && stored === undefined;
-    const none =
-      credentials.auth === undefined &&
-      credentials.headers.length === 0 &&
-      credentials.url === undefined;
     const sealed =
-      unreadable && none
+      unreadable && isEmpty(credentials)
         ? sealedBefore
         : await sealCredentials(key, credentials);
     const before = await findLenient(storage.monitors, id);
@@ -488,8 +518,14 @@ export async function testMonitor(
   input: MonitorInput,
   id: string | undefined
 ): Promise<MonitorTestResult> {
-  // A form that leaves no secret out needs nothing stored; one that does needs the monitor it edits.
-  let credentials = credentialsFor(input, undefined);
+  // A form that leaves no secret out needs nothing stored; one that does needs the monitor it edits. A client key left out is a secret the merge cannot miss, so it asks for the stored ones itself.
+  const keyLeftOut =
+    input.credentials?.clientKey !== undefined &&
+    input.credentials.clientKey.key === undefined;
+  let credentials =
+    keyLeftOut && id !== undefined
+      ? undefined
+      : credentialsFor(input, undefined);
   if (!credentials && id !== undefined) {
     try {
       credentials = credentialsFor(
@@ -502,6 +538,10 @@ export async function testMonitor(
   }
   if (!credentials) {
     return invalid;
+  }
+  const refused = tlsRefusal(input.config, credentials);
+  if (refused) {
+    return { ok: false, reason: refused };
   }
   // What the one attempt's connection or query answered, which no check row keeps.
   const seen: {

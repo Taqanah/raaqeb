@@ -1419,6 +1419,18 @@ msgid "reason_heartbeat_failed"
 msgstr "The job reported a failure"
 
 #. js-lingui-explicit-id
+msgid "reason_client_certificate_expired"
+msgstr "The client certificate has expired or is not yet valid"
+
+#. js-lingui-explicit-id
+msgid "reason_client_certificate_refused"
+msgstr "The server closed the connection; it may have refused the client certificate"
+
+#. js-lingui-explicit-id
+msgid "reason_tls_proxy_unsupported"
+msgstr "A custom CA or client certificate cannot be used through an https proxy"
+
+#. js-lingui-explicit-id
 msgid "monitor_status_up"
 msgstr "Up"
 
@@ -1553,6 +1565,14 @@ msgstr "The form cannot open: this monitor's stored settings do not fit this ver
 #. js-lingui-explicit-id
 msgid "monitor_save_not_found"
 msgstr "This monitor no longer exists."
+
+#. js-lingui-explicit-id
+msgid "monitor_save_client_certificate"
+msgstr "The client certificate could not be used. Check that the certificate and its key are PEM text, that the key belongs to the certificate and, for an encrypted key, the passphrase."
+
+#. js-lingui-explicit-id
+msgid "monitor_save_ca_certificates"
+msgstr "The CA certificates are not valid PEM certificates."
 
 #. js-lingui-explicit-id
 msgid "monitor_section_basics"
@@ -1807,6 +1827,14 @@ msgid "monitor_section_request_hint"
 msgstr "What each attempt sends."
 
 #. js-lingui-explicit-id
+msgid "monitor_section_tls"
+msgstr "Certificates"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_tls_hint"
+msgstr "For a server that requires the client to present a certificate, or whose certificate a private authority signed."
+
+#. js-lingui-explicit-id
 msgid "monitor_field_body"
 msgstr "Request body"
 
@@ -1825,6 +1853,38 @@ msgstr "Ignore TLS errors"
 #. js-lingui-explicit-id
 msgid "monitor_field_ignore_tls_hint"
 msgstr "Accepts expired and self-signed certificates."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_certificate"
+msgstr "Client certificate"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_certificate_hint"
+msgstr "PEM text of the certificate and its intermediates, if any, for a server that requires the client to present one (mutual TLS). Needs an https address."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_key"
+msgstr "Private key"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_key_hint"
+msgstr "PEM text. Stored encrypted and never shown again."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_passphrase"
+msgstr "Key passphrase (optional)"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_passphrase_hint"
+msgstr "Only for an encrypted key."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_ca_certificates"
+msgstr "Trusted CA certificates"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_ca_certificates_hint"
+msgstr "PEM text of one or more certificate authorities the check trusts in place of the well-known ones, for a server whose certificate a private authority signed."
 
 #. js-lingui-explicit-id
 msgid "monitor_field_auth"
@@ -5235,6 +5295,22 @@ msgstr "Proxy password"
 #. js-lingui-explicit-id
 msgid "monitor_error_proxy"
 msgstr "Enter a full address starting with http or https."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_pem_certificate"
+msgstr "Not a PEM certificate; the text must start with -----BEGIN CERTIFICATE-----"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_pem_key"
+msgstr "Not a PEM private key; the text must start with -----BEGIN PRIVATE KEY----- or the like"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_tls_proxy"
+msgstr "A custom CA or client certificate does not work through an https proxy; use an http proxy or none"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_client_certificate_https"
+msgstr "A client certificate needs an https address"
 
 #. js-lingui-explicit-id
 msgid "monitor_error_proxy_credentials"

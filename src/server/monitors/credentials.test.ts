@@ -264,3 +264,88 @@ describe("the credentials of an HTTP monitor's own proxy", () => {
     expect(credentialsView(undefined).proxyUser).toBeUndefined();
   });
 });
+
+describe("the credentials of an HTTP monitor's client certificate", () => {
+  const key = "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n";
+  const newKey =
+    "-----BEGIN PRIVATE KEY-----\nBBBB\n-----END PRIVATE KEY-----\n";
+  const withKey: Credentials = {
+    clientKey: { key, passphrase: "pässphrase" },
+    headers: [],
+  };
+
+  test("a left-out key keeps the stored key and its passphrase", () => {
+    expect(mergeCredentials({ clientKey: {}, headers: [] }, withKey)).toEqual({
+      auth: undefined,
+      clientKey: { key, passphrase: "pässphrase" },
+      headers: [],
+    });
+  });
+
+  test("a typed passphrase beside a kept key replaces only the passphrase", () => {
+    expect(
+      mergeCredentials(
+        { clientKey: { passphrase: "new" }, headers: [] },
+        withKey
+      )
+    ).toEqual({
+      auth: undefined,
+      clientKey: { key, passphrase: "new" },
+      headers: [],
+    });
+  });
+
+  test("a typed key replaces the stored key and its passphrase, so a key with none leaves none", () => {
+    expect(
+      mergeCredentials({ clientKey: { key: newKey }, headers: [] }, withKey)
+    ).toEqual({ auth: undefined, clientKey: { key: newKey }, headers: [] });
+  });
+
+  test("a typed key with a typed passphrase stores both", () => {
+    expect(
+      mergeCredentials(
+        { clientKey: { key: newKey, passphrase: "typed" }, headers: [] },
+        withKey
+      )
+    ).toEqual({
+      auth: undefined,
+      clientKey: { key: newKey, passphrase: "typed" },
+      headers: [],
+    });
+  });
+
+  test("a key left out with none stored has nothing to keep, and the certificate is left without one", () => {
+    expect(mergeCredentials({ clientKey: {}, headers: [] }, undefined)).toEqual(
+      { auth: undefined, headers: [] }
+    );
+    expect(
+      mergeCredentials({ clientKey: { passphrase: "x" }, headers: [] }, stored)
+    ).toMatchObject({ headers: [] });
+    expect(
+      mergeCredentials({ clientKey: { passphrase: "x" }, headers: [] }, stored)
+    ).not.toHaveProperty("clientKey");
+  });
+
+  test("a post with no key drops the stored one", () => {
+    expect(mergeCredentials({ headers: [] }, withKey)).toEqual({
+      auth: undefined,
+      headers: [],
+    });
+  });
+
+  test("is sealed with the rest and opens again, and a monitor with only a key has something to seal", async () => {
+    const installKey = await scratchInstallKey();
+    const sealed = await sealCredentials(installKey, withKey);
+    expect(sealed).toBeDefined();
+    expect(sealed).not.toContain("AAAA");
+    expect(await openCredentials(installKey, sealed ?? "")).toEqual(withKey);
+  });
+
+  test("shows the form that a key is stored, never the key or its passphrase", () => {
+    const view = credentialsView(withKey);
+    expect(view.clientKey).toBe(true);
+    expect(JSON.stringify(view)).not.toContain("AAAA");
+    expect(JSON.stringify(view)).not.toContain("pässphrase");
+    expect(credentialsView(stored).clientKey).toBeUndefined();
+  });
+});

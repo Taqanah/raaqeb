@@ -16,7 +16,7 @@ import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type {
   Assertion,
-  MonitorRefusal,
+  MonitorSaveRefusal,
   MonitorTest,
 } from "@/shared/schemas/monitor.ts";
 import { reasonMessageId } from "@/shared/schemas/reason.ts";
@@ -45,7 +45,7 @@ export type TestState =
   | { readonly kind: "idle" }
   | { readonly kind: "running" }
   /** Refused before the check ran; "invalid" is the form itself, its fields marked. */
-  | { readonly kind: "refused"; readonly reason: MonitorRefusal }
+  | { readonly kind: "refused"; readonly reason: MonitorSaveRefusal }
   | {
       readonly kind: "done";
       /** The assertions the test ran with, so a later edit of the form does not relabel the result. */
@@ -99,17 +99,22 @@ export function TestPanel({
   );
 }
 
+/** What a refused test says; a refusal that is the server's, not the form's or the database's, reads as the test being unavailable. */
+const testRefusals: Readonly<Record<MonitorSaveRefusal, MessageId>> = {
+  ca_certificates: "monitor_save_ca_certificates",
+  client_certificate: "monitor_save_client_certificate",
+  invalid: "app_form_invalid",
+  not_found: "monitor_test_unavailable",
+  unavailable: "monitor_test_unavailable",
+};
+
 function TestOutcome({ state }: { readonly state: TestState }): ReactNode {
   const { t } = useMessages();
   switch (state.kind) {
     case "refused":
       return (
         <Alert variant="destructive">
-          <AlertDescription>
-            {state.reason === "invalid"
-              ? t("app_form_invalid")
-              : t("monitor_test_unavailable")}
-          </AlertDescription>
+          <AlertDescription>{t(testRefusals[state.reason])}</AlertDescription>
         </Alert>
       );
     case "done":

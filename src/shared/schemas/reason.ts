@@ -38,6 +38,9 @@ export const reasons = {
   smtp_no_greeting: 23,
   smtp_stalled: 24,
   heartbeat_failed: 25,
+  client_certificate_expired: 26,
+  client_certificate_refused: 27,
+  tls_proxy_unsupported: 29,
 } as const;
 
 export type ReasonName = keyof typeof reasons;
@@ -135,5 +138,17 @@ export const reasonParamsSchema = z.discriminatedUnion("reason", [
     exitCode: z.int().min(0).max(255).optional(),
     reason: z.literal("heartbeat_failed"),
   }),
+  /** The monitor's client certificate is outside its validity dates, judged before any request is sent: `expired` or `not_yet_valid`. */
+  z.object({
+    code: z.enum(["expired", "not_yet_valid"]),
+    reason: z.literal("client_certificate_expired"),
+  }),
+  /** The server closed the connection during the handshake of a request that carried a client certificate, which is how a server that requires one and does not accept this one answers; `code` is the driver's own. */
+  z.object({
+    code: z.string(),
+    reason: z.literal("client_certificate_refused"),
+  }),
+  /** The monitor has a custom CA or a client certificate and its proxy is an https one: Bun would verify the proxy with that CA and hand it the certificate, so no request is sent. */
+  z.object({ reason: z.literal("tls_proxy_unsupported") }),
 ]);
 export type ReasonParams = z.infer<typeof reasonParamsSchema>;

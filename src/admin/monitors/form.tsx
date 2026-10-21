@@ -37,7 +37,7 @@ import {
   type MonitorFormOptions,
   type MonitorInput,
   type MonitorOriginal,
-  type MonitorRefusal,
+  type MonitorSaveRefusal,
   type MonitorSaveResult,
   type MonitorTestResult,
 } from "@/shared/schemas/monitor.ts";
@@ -87,6 +87,7 @@ import {
   RequestSection,
   type RowActions,
   SuccessRuleSection,
+  TlsSection,
 } from "./http-sections.tsx";
 import { NotificationsSection } from "./notification-section.tsx";
 import { TestPanel, type TestState } from "./test-panel.tsx";
@@ -122,7 +123,9 @@ export interface MonitorFormProps {
   ) => Promise<MonitorTestResult | undefined>;
 }
 
-const saveRefusals: Readonly<Record<MonitorRefusal, MessageId>> = {
+const saveRefusals: Readonly<Record<MonitorSaveRefusal, MessageId>> = {
+  ca_certificates: "monitor_save_ca_certificates",
+  client_certificate: "monitor_save_client_certificate",
   invalid: "app_form_invalid",
   not_found: "monitor_save_not_found",
   unavailable: "monitor_unavailable",
@@ -157,7 +160,7 @@ export function MonitorForm({
   const [start] = useState(() =>
     original ? draftOf(undefined, credentials, options.channels) : draft
   );
-  const saving = useSaveFlow<MonitorDraft, MonitorRefusal>(draft, start);
+  const saving = useSaveFlow<MonitorDraft, MonitorSaveRefusal>(draft, start);
   const { report } = saving;
   // Refusals show once the operator has tried to save or test, then follow every keystroke.
   const [marked, setMarked] = useState(false);
@@ -318,6 +321,7 @@ export function MonitorForm({
             <>
               <SuccessRuleSection {...sections} {...rowActions} />
               <RequestSection {...sections} {...rowActions} />
+              <TlsSection {...sections} />
               <CaptureSection {...sections} />
             </>
           ) : null}

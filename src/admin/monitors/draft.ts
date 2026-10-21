@@ -52,6 +52,7 @@ import {
   type TcpConfig,
   timeoutMaxMs,
   timeoutMinMs,
+  tlsProxyMessage,
 } from "@/shared/schemas/monitor.ts";
 
 /** The form's first choice of check type: the three databases sit under one, with a choice of their own beside it. */
@@ -121,9 +122,17 @@ export interface MonitorDraft {
   readonly assertions: readonly AssertionDraft[];
   readonly auth: AuthKind;
   readonly body: string;
+  /** The HTTP monitor's CA certificates as typed, PEM; empty trusts the well-known ones. */
+  readonly caCertificates: string;
   readonly captureMode: CaptureMode;
   /** The ids of the channels the monitor selects. */
   readonly channels: readonly string[];
+  /** The HTTP monitor's client certificate as typed, PEM; empty presents none. */
+  readonly clientCertificate: string;
+  /** The client key as typed; empty keeps the stored one while a key is stored. */
+  readonly clientKey: string;
+  /** The client key's passphrase as typed; empty keeps the stored one beside a kept key, and means none beside a typed key. */
+  readonly clientPassphrase: string;
   /** A database monitor's connection URL as typed; empty keeps the stored one while the check type is the one it was stored for. */
   readonly connectionUrl: string;
   /** A Docker monitor's container name, as typed or chosen from the daemon's list. */
@@ -181,6 +190,8 @@ export interface MonitorDraft {
   readonly scheduleKind: ScheduleKind;
   /** The stored auth kind, whose secret an empty field keeps. */
   readonly storedAuth: "basic" | "bearer" | undefined;
+  /** Whether a client key is stored, which an empty field keeps. */
+  readonly storedClientKey: boolean;
   /** Whether the proxy has a user name and password stored, whose password an empty field keeps. */
   readonly storedProxyAuth: boolean;
   /** The check type of the monitor whose connection URL is stored, which an empty field keeps for that type alone. */
@@ -373,7 +384,9 @@ function httpDraft(config: HttpConfig | undefined) {
       (assertion, index) => assertionDraft(assertion, `a${index}`)
     ),
     body: config?.body ?? "",
+    caCertificates: config?.caCertificates ?? "",
     captureMode: config?.captureMode ?? "off",
+    clientCertificate: config?.clientCertificate ?? "",
     followRedirects: config?.followRedirects ?? true,
     ignoreTlsErrors: config?.ignoreTlsErrors ?? false,
     method: config?.method ?? "GET",
@@ -428,10 +441,18 @@ function dockerDraft(config: DockerConfig | undefined): {
 }
 
 /** The stored credentials' names, with every secret field empty. */
-function credentialsDraft({ auth, headers, proxyUser }: CredentialsView) {
+function credentialsDraft({
+  auth,
+  clientKey,
+  headers,
+  proxyUser,
+}: CredentialsView) {
   const kind: AuthKind = auth?.kind ?? "none";
   return {
     auth: kind,
+    clientKey: "",
+    clientPassphrase: "",
+    storedClientKey: clientKey === true,
     headers: headers.map((header, index) => ({
       key: `h${index}`,
       name: header.name,
@@ -723,6 +744,13 @@ function configOf(draft: MonitorDraft, refusals: Refusals): unknown {
         followRedirects: draft.followRedirects,
         ignoreTlsErrors: draft.ignoreTlsErrors,
         method: draft.method,
+        // PEM text, each posted only when typed.
+        ...(draft.caCertificates.trim() !== "" && {
+          caCertificates: draft.caCertificates.trim(),
+        }),
+        ...(draft.clientCertificate.trim() !== "" && {
+          clientCertificate: draft.clientCertificate.trim(),
+        }),
         ...(draft.proxy.trim() !== "" && { proxy: draft.proxy.trim() }),
         type: "http",
         ...domainExpiryOf(draft),
@@ -799,9 +827,38 @@ function credentialsOf(draft: MonitorDraft, refusals: Refusals): unknown {
     auth = { kind: "bearer", token: keep("bearer", draft.token) };
   }
   const proxyAuth = proxyAuthOf(draft, refusals);
-  return auth === undefined && headers.length === 0 && proxyAuth === undefined
+  const clientKey = clientKeyOf(draft, refusals);
+  return auth === undefined &&
+    clientKey === undefined &&
+    headers.length === 0 &&
+    proxyAuth === undefined
     ? undefined
-    : { auth, headers, ...(proxyAuth && { proxyAuth }) };
+    : {
+        auth,
+        ...(clientKey && { clientKey }),
+        headers,
+        ...(proxyAuth && { proxyAuth }),
+      };
+}
+
+/** The client key and passphrase, only beside a client certificate; a key left empty is left out when one is stored, so the server keeps it, and refused when none is. A passphrase left empty is left out, which keeps the stored one beside a kept key and means none beside a typed key. */
+function clientKeyOf(
+  draft: MonitorDraft,
+  refusals: Refusals
+): { key?: string; passphrase?: string } | undefined {
+  if (draft.clientCertificate.trim() === "") {
+    return;
+  }
+  const typed = draft.clientKey.trim() !== "";
+  if (!(typed || draft.storedClientKey)) {
+    refusals.required("credentials.clientKey.key", draft.clientKey);
+  }
+  return {
+    ...(typed && { key: draft.clientKey.trim() }),
+    ...(draft.clientPassphrase !== "" && {
+      passphrase: draft.clientPassphrase,
+    }),
+  };
 }
 
 /** The proxy's user name and password, only beside a proxy; a stored password left empty is left out, so the server keeps it. */
@@ -850,6 +907,12 @@ function refusalOf(
   if (docker?.code === issue.code) {
     return [path, { id: docker.id }];
   }
+  const tls =
+    tlsRefusals[`${path}:${issue.message}`] ??
+    tlsRefusals[`${path}:${issue.code}`];
+  if (tls) {
+    return [path, { id: tls }];
+  }
   return [path, wordingOf(issue, path)];
 }
 
@@ -862,6 +925,16 @@ const dockerRefusals: Readonly<
     id: "monitor_error_container",
   },
   "config.endpoint": { code: "custom", id: "monitor_error_docker_endpoint" },
+};
+
+/** The TLS material's fields, each refused naming its own rule: text that is not PEM, and a certificate on an address that is not https; a length is a length. */
+const tlsRefusals: Readonly<Partial<Record<string, MessageId>>> = {
+  [`config.caCertificates:${tlsProxyMessage}`]: "monitor_error_tls_proxy",
+  [`config.clientCertificate:${tlsProxyMessage}`]: "monitor_error_tls_proxy",
+  "config.caCertificates:invalid_format": "monitor_error_pem_certificate",
+  "config.clientCertificate:custom": "monitor_error_client_certificate_https",
+  "config.clientCertificate:invalid_format": "monitor_error_pem_certificate",
+  "credentials.clientKey.key:invalid_format": "monitor_error_pem_key",
 };
 
 /** A connection URL another check type reads is refused naming this type's schemes. */
@@ -1008,6 +1081,10 @@ export function assertionStates(
 const textFields = [
   "answerExpected",
   "body",
+  "caCertificates",
+  "clientCertificate",
+  "clientKey",
+  "clientPassphrase",
   "connectionUrl",
   "container",
   "cron",

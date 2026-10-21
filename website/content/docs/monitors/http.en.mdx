@@ -50,6 +50,30 @@ Authentication, request headers and the proxy's user name and password are crede
 
 When following redirects, a redirect to another origin drops the `Authorization`, `Cookie` and `Proxy-Authorization` headers; other headers go on. A `303`, or a `301` or `302` answering a `POST`, turns the next request into a `GET` with no body. A redirect to anything but `http` or `https` fails the attempt.
 
+### Certificates
+
+For an API behind mutual TLS, or whose certificate a private authority signed.
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Trusted CA certificates** | PEM text of one or more certificate authorities the check trusts for this monitor's server, in place of the well-known ones. | Empty: the well-known authorities. Up to 64 KB. |
+| **Client certificate** | PEM text of the certificate, and any intermediates after it, that the check presents to a server that requires one. | Empty: none. For `https` addresses only. Up to 16 KB. |
+| **Private key** | PEM text of the key that belongs to the certificate, encrypted or not. A credential: stored encrypted with the install key and never shown again. | Required with a client certificate. |
+| **Key passphrase** | Opens an encrypted key. | Empty: none. |
+
+When you save, Raaqeb checks that the certificate and the CA text are PEM certificates, that the key opens with its passphrase and belongs to the certificate, and refuses the form with the reason if not. The certificates are public, so they come back in the form; the key and passphrase do not: on edit, leave them empty to keep them, or paste a new key to replace both. Remove the client certificate and its key goes with it. **Test now** checks the same and presents the same certificate.
+
+Once **Trusted CA certificates** is set, only those authorities are trusted for this monitor. **Ignore TLS errors** still accepts any server certificate, and the client certificate is still presented. An `http` proxy, the monitor's own or the install's [outbound proxy](/en/docs/operate/outbound-proxy), tunnels the handshake as it does any `https` request, so the server sees the certificate. An `https` proxy does not work with **Trusted CA certificates** or a **Client certificate**: the runtime has no TLS option for the proxy itself, so it would check the proxy with the same CA and hand it the certificate. The form refuses the combination, and a check whose install proxy is an `https` one fails with "Custom CA or client certificate through an https proxy" without sending anything. A redirect to another origin leaves the CA, certificate, key and passphrase behind, since they were set for the first address, and the new address is verified with the well-known authorities.
+
+To try it against your own CA, make a client certificate and paste the files:
+
+```sh
+openssl req -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
+  -keyout client.key -out client.csr -subj "/CN=raaqeb"
+openssl x509 -req -in client.csr -CA ca.pem -CAkey ca.key -CAcreateserial \
+  -days 365 -out client.pem
+```
+
 ### Certificate and capture
 
 | Field | What it means | Default and limits |
@@ -77,6 +101,9 @@ The reasons a failed check reports:
 | Connection refused | Nothing accepted the connection at the host and port. |
 | Connection failed | The connection was reset, closed or unreachable, or the TLS handshake ended before any certificate. The code is kept. |
 | Certificate expired | The certificate's validity has ended. |
+| Custom CA or client certificate through an https proxy | The monitor has a custom CA or a client certificate and its requests go through an `https` proxy, which the runtime cannot do safely. No request is sent. |
+| Client certificate expired | The client certificate is past its end date, or before its start date. No request is sent. |
+| Client certificate refused | The server closed the connection while a request that carried a client certificate was setting it up, which is how a server that requires one and does not accept this one answers. The runtime reports a plain reset, so a network reset gives the same reason; the code is kept. |
 | Certificate invalid | The certificate did not verify: self-signed, issued for another name, or from an unknown issuer. The code is kept. |
 | Unexpected status code | **Status code in** failed. Shows the expected codes and the observed one. |
 | An assertion failed | A body, JSON or header assertion failed. Shows the expected and observed values, up to 200 characters each. |
@@ -84,7 +111,7 @@ The reasons a failed check reports:
 | Too many redirects | More than 10 redirects. |
 | Unknown error | Anything else. The raw error text is kept beside it. |
 
-With **Ignore TLS errors** on, the two certificate reasons do not happen.
+With **Ignore TLS errors** on, the two certificate reasons do not happen. The two client certificate reasons still do.
 
 ## Example
 

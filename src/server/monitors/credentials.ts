@@ -1,6 +1,6 @@
 /**
  * A monitor's credentials at rest: an
- * HTTP monitor's auth, headers and its own proxy's user name and password, a database monitor's connection URL,
+ * HTTP monitor's auth, headers, client certificate key and passphrase and its own proxy's user name and password, a database monitor's connection URL,
  * sealed with the install key into one column, opened only by what
  * sends them (the scheduler and "test now"), and read back into the form as
  * names only, and whether a URL is stored. A secret the form leaves out
@@ -22,6 +22,7 @@ export function mergeCredentials(
 ): Credentials | undefined {
   const auth = mergeAuth(input.auth, stored?.auth);
   const proxyAuth = mergeProxyAuth(input.proxyAuth, stored?.proxyAuth);
+  const clientKey = mergeClientKey(input.clientKey, stored?.clientKey);
   if (auth === false || proxyAuth === false) {
     return;
   }
@@ -39,7 +40,33 @@ export function mergeCredentials(
     }
     headers.push({ name: header.name, value });
   }
-  return { auth, headers, ...(proxyAuth && { proxyAuth }) };
+  return {
+    auth,
+    ...(clientKey && { clientKey }),
+    headers,
+    ...(proxyAuth && { proxyAuth }),
+  };
+}
+
+/** The client key and passphrase to store; none when none is posted, or when a left-out key has none stored to keep, which leaves the certificate without a key for the save to refuse by name. A typed key replaces the stored passphrase with its own, or none; a kept key keeps its passphrase unless one is typed. */
+function mergeClientKey(
+  input: CredentialsInput["clientKey"],
+  stored: Credentials["clientKey"]
+): Credentials["clientKey"] {
+  if (input === undefined) {
+    return;
+  }
+  if (input.key !== undefined) {
+    return {
+      key: input.key,
+      ...(input.passphrase !== undefined && { passphrase: input.passphrase }),
+    };
+  }
+  if (stored === undefined) {
+    return;
+  }
+  const passphrase = input.passphrase ?? stored.passphrase;
+  return { key: stored.key, ...(passphrase !== undefined && { passphrase }) };
 }
 
 /** The proxy's user name and password to store, a left-out password taken from the stored one, or false when none is stored to keep. */
@@ -79,15 +106,21 @@ export function sealCredentials(
   key: InstallKey,
   credentials: Credentials
 ): Promise<string | undefined> {
-  if (
-    credentials.auth === undefined &&
-    credentials.headers.length === 0 &&
-    credentials.proxyAuth === undefined &&
-    credentials.url === undefined
-  ) {
+  if (isEmpty(credentials)) {
     return Promise.resolve(undefined);
   }
   return encrypt(key, JSON.stringify(credentials));
+}
+
+/** Whether there is nothing to seal. */
+export function isEmpty(credentials: Credentials): boolean {
+  return (
+    credentials.auth === undefined &&
+    credentials.clientKey === undefined &&
+    credentials.headers.length === 0 &&
+    credentials.proxyAuth === undefined &&
+    credentials.url === undefined
+  );
 }
 
 /** The credentials behind a ciphertext, or nothing when the key cannot open it or what it holds no longer fits the schema. */
@@ -113,6 +146,7 @@ export function credentialsView(
       auth?.kind === "basic"
         ? { kind: "basic", user: auth.user }
         : auth && { kind: "bearer" },
+    ...(credentials?.clientKey && { clientKey: true as const }),
     headers: (credentials?.headers ?? []).map(({ name }) => ({ name })),
     proxyUser: credentials?.proxyAuth?.user,
     url: credentials?.url !== undefined,

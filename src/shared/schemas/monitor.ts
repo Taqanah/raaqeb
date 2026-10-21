@@ -169,6 +169,17 @@ export type CaptureMode = z.infer<typeof captureModeSchema>;
 /** Room for a proxy's address, as for a connection URL. */
 export const proxyUrlMaxLength = 2048;
 
+/** A PEM certificate: the text starts with its armour, whose contents are the server's to read. */
+const certificatePattern = /^-----BEGIN CERTIFICATE-----/;
+
+/** Why a custom CA or a client certificate and an https proxy do not go together: Bun checks the proxy with the same CA and hands it the certificate. */
+export const tlsProxyMessage =
+  "a custom CA or client certificate cannot go through an https proxy";
+/** Room for a leaf and a few intermediates. */
+export const clientCertificateMaxLength = 16_384;
+/** Room for a private CA's chain, or a handful of them. */
+export const caBundleMaxLength = 65_536;
+
 export const httpConfigSchema = z.object({
   assertions: z
     .array(assertionSchema)
@@ -176,7 +187,19 @@ export const httpConfigSchema = z.object({
     .default([...defaultAssertions]),
   // Absent or text: an empty body would read back from the form as absent.
   body: z.string().min(1).max(65_536).optional(),
+  /** CA certificates in PEM, which the check trusts in place of the well-known ones; public, so kept in clear. */
+  caCertificates: z
+    .string()
+    .regex(certificatePattern)
+    .max(caBundleMaxLength)
+    .optional(),
   captureMode: captureModeSchema.default("off"),
+  /** The client certificate in PEM (the leaf, then any intermediates) the check presents; public, so kept in clear. Its private key is a sealed credential. */
+  clientCertificate: z
+    .string()
+    .regex(certificatePattern)
+    .max(clientCertificateMaxLength)
+    .optional(),
   /** The domain expiry option: absent means on, the default; `false` switches it off. */
   domainExpiry: domainExpirySchema,
   followRedirects: z.boolean().default(true),
@@ -481,6 +504,51 @@ const refuseBesideOtherFields = {
     ),
 };
 
+/** The rules of an HTTP monitor's TLS material: a CA or certificate does not go through an https proxy (Bun has no TLS option of its own for a proxy: the CA would verify the proxy and the certificate would be presented to it), a key is a certificate's, and a certificate is presented over https. */
+function refineTls(
+  input: {
+    readonly config: MonitorConfig;
+    readonly credentials?: { readonly clientKey?: unknown } | undefined;
+  },
+  context: z.RefinementCtx
+): void {
+  const { config, credentials } = input;
+  const refuse = (message: string, path: (string | number)[]) =>
+    context.addIssue({ code: "custom", message, path });
+  if (
+    config.type === "http" &&
+    config.proxy !== undefined &&
+    URL.canParse(config.proxy) &&
+    new URL(config.proxy).protocol === "https:"
+  ) {
+    for (const field of ["caCertificates", "clientCertificate"] as const) {
+      if (config[field] !== undefined) {
+        refuse(tlsProxyMessage, ["config", field]);
+      }
+    }
+  }
+  if (
+    credentials?.clientKey !== undefined &&
+    !(config.type === "http" && config.clientCertificate !== undefined)
+  ) {
+    refuse("a client key needs a client certificate", [
+      "credentials",
+      "clientKey",
+    ]);
+  }
+  if (
+    config.type === "http" &&
+    config.clientCertificate !== undefined &&
+    URL.canParse(config.url) &&
+    new URL(config.url).protocol !== "https:"
+  ) {
+    refuse("a client certificate needs an https URL", [
+      "config",
+      "clientCertificate",
+    ]);
+  }
+}
+
 /**
  * What create and edit post: the fields and the credentials. A JSON path the
  * check cannot read is refused here, not in the stored config, so a monitor
@@ -502,6 +570,7 @@ export const monitorInputSchema = monitorFieldsSchema
         path: ["credentials", "url"],
       });
     }
+    refineTls(input, context);
     // A proxy's user name and password go with a proxy that is there to ask for them.
     if (
       credentials?.proxyAuth !== undefined &&
@@ -622,6 +691,14 @@ export type MonitorRefusal =
   /** No database is open, or it did not answer. */
   | "unavailable";
 
+/** Why a monitor save or "test now" did not happen: any refusal, or a TLS credential the server cannot use. */
+export type MonitorSaveRefusal =
+  | MonitorRefusal
+  /** The client certificate, its key or its passphrase cannot be used: not PEM, a key that is not the certificate's, a passphrase that does not open it, or a certificate with no key. */
+  | "client_certificate"
+  /** The CA certificates are not PEM certificates. */
+  | "ca_certificates";
+
 /** What the form reads beside the monitor: the names it may suggest and the install default it shows. */
 export interface MonitorFormOptions {
   /** Every channel, in creation order; a new monitor starts with those that apply to new monitors. */
@@ -724,11 +801,11 @@ export type ContainerListResult =
 
 export type MonitorTestResult =
   | { readonly ok: true; readonly test: MonitorTest }
-  | { readonly ok: false; readonly reason: MonitorRefusal };
+  | { readonly ok: false; readonly reason: MonitorSaveRefusal };
 
 export type MonitorSaveResult =
   | { readonly ok: true; readonly monitor: Monitor }
-  | { readonly ok: false; readonly reason: MonitorRefusal };
+  | { readonly ok: false; readonly reason: MonitorSaveRefusal };
 
 /** A bulk action's answer: how many monitors it reached. A change names a channel that does not exist as not found, and a tag one of the monitors has no room for as tags full. */
 export type MonitorBulkResult =

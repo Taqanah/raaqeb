@@ -39,11 +39,13 @@ const failedCodes = new Set([
   // A TLS handshake the server answered without TLS.
   "EPROTO",
 ]);
+/** The codes of a connection the peer closed. */
+const closedCodes = new Set(["ECONNRESET", "ConnectionClosed"]);
 /** OpenSSL's verification codes and Bun's own, apart from the expired one. */
 const certificateCodeShape =
   /CERT|SELF_SIGNED|UNABLE_TO_(GET|VERIFY)|HOSTNAME_MISMATCH/;
 
-/** The reason a thrown fetch error stands for; `target` supplies the host and port the reason names. The credentials sent are masked in the raw text before its cut, so one straddling the cut leaves no prefix. */
+/** The reason a thrown fetch error stands for; `target` supplies the host and port the reason names. The credentials sent are masked in the raw text before its cut, so one straddling the cut leaves no prefix. `clientCertificate` says the request presented one, which makes a connection the server closed its refusal of it. */
 export function reasonForError(
   error: unknown,
   target: {
@@ -51,7 +53,8 @@ export function reasonForError(
     readonly port: number;
     readonly timeoutMs: number;
   },
-  credentials: CredentialPatterns = []
+  credentials: CredentialPatterns = [],
+  options: { readonly clientCertificate?: boolean } = {}
 ): MappedError {
   const text = maskCredentialText(messageOf(error), credentials).slice(
     0,
@@ -80,6 +83,13 @@ export function reasonForError(
       host: target.host,
       port: target.port,
       reason: "connection_refused",
+    });
+  }
+  // A server that requires a client certificate and does not accept this one ends the handshake; the driver reports it as a reset, as it does any other.
+  if (options.clientCertificate && closedCodes.has(code)) {
+    return mapped("client_certificate_refused", {
+      code,
+      reason: "client_certificate_refused",
     });
   }
   if (failedCodes.has(code)) {

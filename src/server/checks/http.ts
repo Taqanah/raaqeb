@@ -14,6 +14,7 @@ import type { HttpConfig, Monitor } from "@/shared/schemas/monitor.ts";
 import { evaluateAssertions } from "./assertions.ts";
 import { type Attempt, type AttemptIo, runAttempts } from "./attempts.ts";
 import { type CredentialPatterns, credentialPatterns } from "./capture.ts";
+import { certificateDates, datesProblem } from "./client-certificate.ts";
 import { reasonForError, urlTarget } from "./errors.ts";
 
 /** The I/O a check borrows; tests hand in fakes. */
@@ -84,12 +85,25 @@ async function attemptOnce(
   const elapsed = () => Math.min(io.now() - start, timeoutMs);
   let statusCode: number | undefined;
   const progress = { read: 0 };
+  const expired = clientCertificateExpiry(config, start);
+  if (expired) {
+    return expired;
+  }
+  if (
+    (config.caCertificates !== undefined ||
+      presentsClientCertificate(monitor)) &&
+    viaHttpsProxy(config, process.env)
+  ) {
+    return tlsProxyAttempt();
+  }
+  const hop = { carriedCertificate: false };
   try {
     const response = await send(
       new URL(config.url),
       requestInit(config, timeoutMs, monitor.credentials),
       config.followRedirects,
-      io.fetch
+      io.fetch,
+      hop
     );
     statusCode = response.status;
     const body = await readBody(response, progress);
@@ -120,7 +134,8 @@ async function attemptOnce(
     const mapped = reasonForError(
       error,
       urlTarget(config.url, timeoutMs),
-      credentials
+      credentials,
+      { clientCertificate: hop.carriedCertificate }
     );
     return {
       assertion: undefined,
@@ -134,6 +149,114 @@ async function attemptOnce(
       succeeded: false,
     };
   }
+}
+
+/** The attempt a custom CA or client certificate beside an https proxy ends in, before any request is sent. */
+function tlsProxyAttempt(): Attempt {
+  return {
+    assertion: undefined,
+    bytes: 0,
+    error: undefined,
+    params: { reason: "tls_proxy_unsupported" },
+    reason: "tls_proxy_unsupported",
+    response: undefined,
+    responseMs: 0,
+    statusCode: undefined,
+    succeeded: false,
+  };
+}
+
+const noProxySeparator = /[\s,]+/;
+const leadingDot = /^\./;
+const trailingPort = /:\d+$/;
+
+/** Whether the host is one `NO_PROXY` exempts: `*`, the host, or a domain it is under (a leading dot optional), a port ignored. */
+function exempt(host: string, noProxy: string | undefined): boolean {
+  return (noProxy ?? "")
+    .split(noProxySeparator)
+    .filter((entry) => entry !== "")
+    .some((entry) => {
+      if (entry === "*") {
+        return true;
+      }
+      const domain = entry.replace(leadingDot, "").replace(trailingPort, "");
+      return host === domain || host.endsWith(`.${domain}`);
+    });
+}
+
+/** Whether the monitor's requests go through an https proxy: its own, or the install's from the environment when the target is one the proxy applies to. */
+export function viaHttpsProxy(
+  config: HttpConfig,
+  env: Readonly<Record<string, string | undefined>>
+): boolean {
+  if (config.proxy !== undefined) {
+    return new URL(config.proxy).protocol === "https:";
+  }
+  const target = new URL(config.url);
+  const names =
+    target.protocol === "https:"
+      ? ["HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"]
+      : ["HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"];
+  const proxy = names.map((name) => env[name]).find((value) => value);
+  return (
+    proxy?.toLowerCase().startsWith("https:") === true &&
+    !exempt(target.hostname, env.NO_PROXY ?? env.no_proxy)
+  );
+}
+
+/** Whether the request carries a client certificate: one is configured and its key opened with the credentials. */
+function presentsClientCertificate(monitor: HttpMonitor): boolean {
+  return (
+    monitor.config.clientCertificate !== undefined &&
+    monitor.credentials?.clientKey !== undefined
+  );
+}
+
+/** The attempt a client certificate outside its dates ends in, before any request is sent; nothing for one inside them, or for a monitor with none. */
+function clientCertificateExpiry(
+  config: HttpConfig,
+  now: number
+): Attempt | undefined {
+  const dates =
+    config.clientCertificate === undefined
+      ? undefined
+      : certificateDates(config.clientCertificate);
+  const code = dates && datesProblem(dates, now);
+  if (!code) {
+    return;
+  }
+  return {
+    assertion: undefined,
+    bytes: 0,
+    error: undefined,
+    params: { code, reason: "client_certificate_expired" },
+    reason: "client_certificate_expired",
+    response: undefined,
+    responseMs: 0,
+    statusCode: undefined,
+    succeeded: false,
+  };
+}
+
+/** The `tls` option: the monitor's own CA bundle, which replaces the well-known ones, its client certificate and key with the key's passphrase, and, when the monitor ignores TLS errors, no verification of the server. Nothing for a monitor with none of them. */
+function tlsOf(
+  config: HttpConfig,
+  credentials: Credentials | undefined
+): BunFetchRequestInit["tls"] {
+  const key = credentials?.clientKey;
+  const present = config.clientCertificate !== undefined && key !== undefined;
+  if (!(config.ignoreTlsErrors || config.caCertificates || present)) {
+    return;
+  }
+  return {
+    ...(config.caCertificates && { ca: config.caCertificates }),
+    ...(present && {
+      cert: config.clientCertificate,
+      key: key.key,
+      ...(key.passphrase !== undefined && { passphrase: key.passphrase }),
+    }),
+    ...(config.ignoreTlsErrors && { rejectUnauthorized: false }),
+  };
 }
 
 function requestInit(
@@ -151,7 +274,7 @@ function requestInit(
     // The check follows redirects itself (send), so the cap and the one timeout hold.
     redirect: "manual",
     signal: AbortSignal.timeout(timeoutMs),
-    ...(config.ignoreTlsErrors ? { tls: { rejectUnauthorized: false } } : {}),
+    tls: tlsOf(config, credentials),
   };
 }
 
@@ -172,8 +295,11 @@ async function send(
   init: BunFetchRequestInit,
   followRedirects: boolean,
   fetchHop: typeof fetch,
+  hop: { carriedCertificate: boolean },
   redirects = 0
 ): Promise<Response> {
+  // Whether the request in flight presents the client certificate, for the reading of how it failed.
+  hop.carriedCertificate = init.tls?.cert !== undefined;
   const response = await fetchHop(url.href, init);
   const location = response.headers.get("location");
   if (
@@ -205,22 +331,35 @@ async function send(
     nextHop(init, response.status, next.origin !== url.origin),
     followRedirects,
     fetchHop,
+    hop,
     redirects + 1
   );
 }
 
+/** The `tls` of a hop to another origin: the monitor's CA, client certificate, key and passphrase were configured for the first one, so they stay behind and the system roots verify this one; only the choice to ignore TLS errors, made for every address, goes on. */
+function tlsAcrossOrigins(
+  tls: BunFetchRequestInit["tls"]
+): BunFetchRequestInit["tls"] {
+  return tls?.rejectUnauthorized === false
+    ? { rejectUnauthorized: false }
+    : undefined;
+}
+
 /** The request of the next hop: credentials left behind on another origin, and a GET with no body where the status asks for one. */
 function nextHop(
-  init: BunFetchRequestInit,
+  from: BunFetchRequestInit,
   status: number,
   crossOrigin: boolean
 ): BunFetchRequestInit {
-  const headers = new Headers(init.headers);
+  const headers = new Headers(from.headers);
   if (crossOrigin) {
     for (const name of crossOriginHeaders) {
       headers.delete(name);
     }
   }
+  const init = crossOrigin
+    ? { ...from, tls: tlsAcrossOrigins(from.tls) }
+    : from;
   const method = init.method ?? "GET";
   const toGet =
     (status === 303 && method !== "GET" && method !== "HEAD") ||

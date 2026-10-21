@@ -423,6 +423,115 @@ export function RequestSection({
   );
 }
 
+/** A PEM text field: a monospace, left-to-right box for a certificate or a key, its hint and its refusal under it; a stored secret says so in its placeholder. */
+function PemField({
+  errors,
+  hint,
+  label,
+  name,
+  onField,
+  path,
+  placeholder,
+  value,
+}: Pick<SectionProps, "errors" | "onField"> & {
+  readonly hint?: string;
+  readonly label: string;
+  readonly name: string;
+  readonly path: string;
+  readonly placeholder?: string;
+  readonly value: string;
+}): ReactNode {
+  return (
+    <Field>
+      <FieldLabel htmlFor={name}>{label}</FieldLabel>
+      <Textarea
+        aria-invalid={errors[path] ? true : undefined}
+        autoComplete="off"
+        className="font-mono text-xs"
+        dir="ltr"
+        id={name}
+        name={name}
+        onChange={onField}
+        placeholder={placeholder}
+        rows={4}
+        spellCheck={false}
+        value={value}
+      />
+      {hint ? <FieldDescription>{hint}</FieldDescription> : null}
+      <Problem errors={errors} path={path} />
+    </Field>
+  );
+}
+
+/** The HTTP monitor's TLS material: the CA certificates it trusts and the client certificate it presents with its key and passphrase. The key and passphrase are secrets: stored sealed, never shown again, kept when the field stays empty. */
+export function TlsSection({
+  draft,
+  errors,
+  onField,
+}: SectionProps): ReactNode {
+  const { t } = useMessages();
+  const kept = t("monitor_secret_kept");
+  const presenting = draft.clientCertificate.trim() !== "";
+  return (
+    <Section
+      description={t("monitor_section_tls_hint")}
+      slot="tls"
+      title={t("monitor_section_tls")}
+    >
+      <PemField
+        errors={errors}
+        hint={t("monitor_field_ca_certificates_hint")}
+        label={t("monitor_field_ca_certificates")}
+        name="caCertificates"
+        onField={onField}
+        path="config.caCertificates"
+        value={draft.caCertificates}
+      />
+      <PemField
+        errors={errors}
+        hint={t("monitor_field_client_certificate_hint")}
+        label={t("monitor_field_client_certificate")}
+        name="clientCertificate"
+        onField={onField}
+        path="config.clientCertificate"
+        value={draft.clientCertificate}
+      />
+      {presenting ? (
+        <>
+          <PemField
+            errors={errors}
+            hint={t("monitor_field_client_key_hint")}
+            label={t("monitor_field_client_key")}
+            name="clientKey"
+            onField={onField}
+            path="credentials.clientKey.key"
+            placeholder={draft.storedClientKey ? kept : undefined}
+            value={draft.clientKey}
+          />
+          <TextField
+            autoComplete="new-password"
+            dir="ltr"
+            errors={errors}
+            hint={t("monitor_field_client_passphrase_hint")}
+            label={t("monitor_field_client_passphrase")}
+            name="clientPassphrase"
+            onField={onField}
+            path="credentials.clientKey.passphrase"
+            // Kept while the stored key is; a key typed anew brings its own passphrase, or none.
+            placeholder={
+              draft.storedClientKey && draft.clientKey.trim() === ""
+                ? kept
+                : undefined
+            }
+            type="password"
+            value={draft.clientPassphrase}
+          />
+        </>
+      ) : null}
+    </Section>
+  );
+}
+
 function Headers({
   draft,
   errors,

@@ -471,3 +471,36 @@ describe("the reason of a Docker endpoint's error", () => {
     });
   });
 });
+
+describe("the reason of a fetch error on a request that carried a client certificate", () => {
+  test("a connection the server closed during the handshake is the client certificate refused, with the driver's code", () => {
+    for (const code of ["ECONNRESET", "ConnectionClosed"]) {
+      expect(
+        reasonForError(coded(code), target, [], { clientCertificate: true })
+      ).toMatchObject({
+        params: { code, reason: "client_certificate_refused" },
+        reason: "client_certificate_refused",
+      });
+    }
+  });
+
+  test("the same code on a request with none is a connection failure, as it was", () => {
+    expect(reasonForError(coded("ECONNRESET"), target)).toMatchObject({
+      reason: "connection_failed",
+    });
+  });
+
+  test("every other error keeps its reason, a server certificate problem and a refused port among them", () => {
+    for (const [code, reason] of [
+      ["ECONNREFUSED", "connection_refused"],
+      ["ENOTFOUND", "dns_failed"],
+      ["CERT_HAS_EXPIRED", "certificate_expired"],
+      ["SELF_SIGNED_CERT_IN_CHAIN", "certificate_invalid"],
+      ["EHOSTUNREACH", "connection_failed"],
+    ] as const) {
+      expect(
+        reasonForError(coded(code), target, [], { clientCertificate: true })
+      ).toMatchObject({ reason });
+    }
+  });
+});

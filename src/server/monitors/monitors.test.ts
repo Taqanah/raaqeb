@@ -1,9 +1,22 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  test,
+} from "bun:test";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { credentialMask } from "@/server/checks/capture.ts";
 import type { DatabaseQuery } from "@/server/checks/database.ts";
 import type { DockerRequest } from "@/server/checks/docker.ts";
 import { liveIo } from "@/server/checks/io.ts";
+import {
+  keyPassphrase,
+  type MutualTls,
+  mutualTls,
+  serveMutualTls,
+} from "@/server/checks/mtls-fixture.ts";
 import {
   setProxyEnvironment,
   startProxy,
@@ -2659,6 +2672,238 @@ describe("an HTTP monitor's own proxy", () => {
       restore();
       seen.stop();
     }
+  });
+});
+
+describe("an HTTP monitor's client certificate", () => {
+  let certs: MutualTls;
+  let server: { stop: () => void; url: string };
+  beforeAll(async () => {
+    certs = await mutualTls();
+    server = serveMutualTls(certs);
+  });
+  afterAll(async () => {
+    server.stop();
+    await certs.cleanup();
+  });
+
+  const mutual = (over: Partial<MonitorInput> = {}): MonitorInput => ({
+    ...site,
+    config: {
+      ...probeConfig,
+      caCertificates: certs.ca,
+      clientCertificate: certs.client.cert,
+      url: server.url,
+    },
+    credentials: { clientKey: { key: certs.client.key }, headers: [] },
+    ...over,
+  });
+
+  test("is kept in the config, its key sealed beside the other credentials, and the form reads the certificate and that a key is stored", async () => {
+    const store = await storage();
+    const id = await createdId(store, mutual());
+    expect((await store.monitors.find(id))?.config).toMatchObject({
+      caCertificates: certs.ca,
+      clientCertificate: certs.client.cert,
+    });
+    const sealed = await store.monitors.credentialsOf(id);
+    expect(sealed).not.toContain("PRIVATE KEY");
+    expect((await storedCredentials(store, id))?.clientKey).toEqual({
+      key: certs.client.key,
+    });
+    const form = await readMonitorForm(store, key, id, undefined);
+    if (!form.ok) {
+      throw new Error(form.reason);
+    }
+    expect(form.credentials.clientKey).toBe(true);
+    expect(JSON.stringify(form)).not.toContain("PRIVATE KEY");
+  });
+
+  test("keeps its key and passphrase through an edit that leaves them out", async () => {
+    const store = await storage();
+    const id = await createdId(
+      store,
+      mutual({
+        config: {
+          ...probeConfig,
+          clientCertificate: certs.clientEncrypted.cert,
+          url: server.url,
+        },
+        credentials: {
+          clientKey: {
+            key: certs.clientEncrypted.key,
+            passphrase: keyPassphrase,
+          },
+          headers: [],
+        },
+      })
+    );
+    const edited = await editMonitor(
+      store,
+      key,
+      id,
+      mutual({
+        config: {
+          ...probeConfig,
+          clientCertificate: certs.clientEncrypted.cert,
+          url: server.url,
+        },
+        credentials: { clientKey: {}, headers: [] },
+        name: "renamed",
+      })
+    );
+    expect(edited.ok).toBe(true);
+    expect((await storedCredentials(store, id))?.clientKey).toEqual({
+      key: certs.clientEncrypted.key,
+      passphrase: keyPassphrase,
+    });
+  });
+
+  test("is dropped with its certificate by an edit that removes the certificate", async () => {
+    const store = await storage();
+    const id = await createdId(store, mutual());
+    const removed = await editMonitor(store, key, id, {
+      ...site,
+      config: { ...probeConfig, url: server.url },
+    });
+    expect(removed.ok).toBe(true);
+    expect(await store.monitors.credentialsOf(id)).toBeUndefined();
+  });
+
+  test("is refused, and nothing is stored, when the key is not the certificate's, the passphrase does not open it, the key is missing or a CA block is not a certificate", async () => {
+    const store = await storage();
+    const mismatch = mutual({
+      credentials: { clientKey: { key: certs.clientOther.key }, headers: [] },
+    });
+    const noPassphrase = mutual({
+      config: {
+        ...probeConfig,
+        clientCertificate: certs.clientEncrypted.cert,
+        url: server.url,
+      },
+      credentials: {
+        clientKey: { key: certs.clientEncrypted.key, passphrase: "wrong" },
+        headers: [],
+      },
+    });
+    const noKey = mutual({ credentials: undefined });
+    const keyKept = mutual({ credentials: { clientKey: {}, headers: [] } });
+    const badCa = mutual({
+      config: {
+        ...probeConfig,
+        caCertificates:
+          "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n",
+        clientCertificate: certs.client.cert,
+        url: server.url,
+      },
+    });
+    for (const input of [mismatch, noPassphrase, noKey, keyKept]) {
+      expect(
+        // biome-ignore lint/performance/noAwaitInLoops: one refusal after the other
+        await createMonitor(store, key, input)
+      ).toEqual({ ok: false, reason: "client_certificate" });
+    }
+    expect(await createMonitor(store, key, badCa)).toEqual({
+      ok: false,
+      reason: "ca_certificates",
+    });
+    expect(await store.monitors.list()).toEqual([]);
+  });
+
+  test("is refused on an edit that swaps in a certificate the kept key does not belong to", async () => {
+    const store = await storage();
+    const id = await createdId(store, mutual());
+    expect(
+      await editMonitor(
+        store,
+        key,
+        id,
+        mutual({
+          config: {
+            ...probeConfig,
+            clientCertificate: certs.clientOther.cert,
+            url: server.url,
+          },
+          credentials: { clientKey: {}, headers: [] },
+        })
+      )
+    ).toEqual({ ok: false, reason: "client_certificate" });
+  });
+
+  test("may be expired when saved: the check says so, the form does not refuse it", async () => {
+    const store = await storage();
+    expect(
+      (
+        await createMonitor(
+          store,
+          key,
+          mutual({
+            config: {
+              ...probeConfig,
+              clientCertificate: certs.clientExpired.cert,
+              url: server.url,
+            },
+            credentials: {
+              clientKey: { key: certs.clientExpired.key },
+              headers: [],
+            },
+          })
+        )
+      ).ok
+    ).toBe(true);
+  });
+
+  test("is what test now presents, an encrypted key opened with its passphrase", async () => {
+    const store = await storage();
+    const result = await testMonitor(
+      store,
+      key,
+      liveIo(),
+      mutual({
+        config: {
+          ...probeConfig,
+          caCertificates: certs.ca,
+          clientCertificate: certs.clientEncrypted.cert,
+          url: server.url,
+        },
+        credentials: {
+          clientKey: {
+            key: certs.clientEncrypted.key,
+            passphrase: keyPassphrase,
+          },
+          headers: [],
+        },
+      }),
+      undefined
+    );
+    expect(result.ok && result.test.result).toBe("up");
+  });
+
+  test("is refused by test now as by save, and test now reads a kept key from the monitor it edits", async () => {
+    const store = await storage();
+    expect(
+      await testMonitor(
+        store,
+        key,
+        liveIo(),
+        mutual({
+          credentials: {
+            clientKey: { key: certs.clientOther.key },
+            headers: [],
+          },
+        }),
+        undefined
+      )
+    ).toEqual({ ok: false, reason: "client_certificate" });
+    const id = await createdId(store, mutual());
+    const kept = await testMonitor(
+      store,
+      key,
+      liveIo(),
+      mutual({ credentials: { clientKey: {}, headers: [] } }),
+      id
+    );
+    expect(kept.ok && kept.test.result).toBe("up");
   });
 });
 

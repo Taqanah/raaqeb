@@ -1419,6 +1419,18 @@ msgid "reason_heartbeat_failed"
 msgstr "أبلغت المهمة عن فشلها"
 
 #. js-lingui-explicit-id
+msgid "reason_client_certificate_expired"
+msgstr "انتهت صلاحية شهادة العميل أو لم تبدأ بعد"
+
+#. js-lingui-explicit-id
+msgid "reason_client_certificate_refused"
+msgstr "أغلق الخادوم الاتصال، وربما رفض شهادة العميل"
+
+#. js-lingui-explicit-id
+msgid "reason_tls_proxy_unsupported"
+msgstr "لا يمكن استخدام سلطة شهادات مخصصة أو شهادة عميل عبر وكيل https"
+
+#. js-lingui-explicit-id
 msgid "monitor_status_up"
 msgstr "يعمل"
 
@@ -1553,6 +1565,14 @@ msgstr "تعذّر فتح النموذج: إعدادات هذه المراقبة
 #. js-lingui-explicit-id
 msgid "monitor_save_not_found"
 msgstr "لم تعد هذه المراقبة موجودة."
+
+#. js-lingui-explicit-id
+msgid "monitor_save_client_certificate"
+msgstr "تعذّر استخدام شهادة العميل. تأكد أن الشهادة ومفتاحها نصّ PEM، وأن المفتاح يخص الشهادة، وعبارة السر إن كان المفتاح مشفّرًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_save_ca_certificates"
+msgstr "شهادات سلطات الشهادات ليست شهادات PEM صالحة."
 
 #. js-lingui-explicit-id
 msgid "monitor_section_basics"
@@ -1807,6 +1827,14 @@ msgid "monitor_section_request_hint"
 msgstr "ما ترسله كل محاولة."
 
 #. js-lingui-explicit-id
+msgid "monitor_section_tls"
+msgstr "الشهادات"
+
+#. js-lingui-explicit-id
+msgid "monitor_section_tls_hint"
+msgstr "لخادوم يشترط أن يقدّم العميل شهادة، أو وقّعت شهادته سلطة خاصة."
+
+#. js-lingui-explicit-id
 msgid "monitor_field_body"
 msgstr "محتوى الطلب"
 
@@ -1825,6 +1853,38 @@ msgstr "تجاهل أخطاء TLS"
 #. js-lingui-explicit-id
 msgid "monitor_field_ignore_tls_hint"
 msgstr "يقبل الشهادات المنتهية والموقّعة ذاتيًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_certificate"
+msgstr "شهادة العميل"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_certificate_hint"
+msgstr "نص PEM للشهادة وشهاداتها الوسيطة إن وجدت، لخادوم يشترط أن يقدّم العميل شهادة (TLS المتبادل). تحتاج عنوان https."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_key"
+msgstr "المفتاح الخاص"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_key_hint"
+msgstr "نص PEM. يُحفظ مشفّرًا ولا يُعرض مجددًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_passphrase"
+msgstr "عبارة السر (اختيارية)"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_client_passphrase_hint"
+msgstr "لمفتاح مشفّر فقط."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_ca_certificates"
+msgstr "شهادات سلطات الشهادات الموثوقة"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_ca_certificates_hint"
+msgstr "نص PEM لسلطة شهادات أو أكثر يثق بها الفحص بدلًا من السلطات المعروفة، لخادوم وقّعت شهادته سلطة خاصة."
 
 #. js-lingui-explicit-id
 msgid "monitor_field_auth"
@@ -5167,6 +5227,22 @@ msgstr "كلمة مرور الوكيل"
 #. js-lingui-explicit-id
 msgid "monitor_error_proxy"
 msgstr "أدخل عنوانًا كاملًا يبدأ بـ http أو https."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_pem_certificate"
+msgstr "ليس شهادة PEM؛ يجب أن يبدأ النص بـ⁦-----BEGIN CERTIFICATE-----⁩"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_pem_key"
+msgstr "ليس مفتاحًا خاصًا بصيغة PEM؛ يجب أن يبدأ النص بـ⁦-----BEGIN PRIVATE KEY-----⁩ أو ما يشبهه"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_tls_proxy"
+msgstr "لا تعمل سلطة الشهادات المخصصة ولا شهادة العميل عبر وكيل https؛ استخدم وكيل http أو لا وكيل"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_client_certificate_https"
+msgstr "تحتاج شهادة العميل إلى عنوان https"
 
 #. js-lingui-explicit-id
 msgid "monitor_error_proxy_credentials"
