@@ -40,6 +40,7 @@ export const reasons = {
   heartbeat_failed: 25,
   client_certificate_expired: 26,
   client_certificate_refused: 27,
+  oauth2_token_failed: 28,
   tls_proxy_unsupported: 29,
 } as const;
 
@@ -147,6 +148,12 @@ export const reasonParamsSchema = z.discriminatedUnion("reason", [
   z.object({
     code: z.string(),
     reason: z.literal("client_certificate_refused"),
+  }),
+  /** The OAuth 2.0 token endpoint did not give a token: `status` is its HTTP status when it answered, `code` the `error` it named (`invalid_client`, `invalid_scope`) when it named one. Neither when it did not answer. */
+  z.object({
+    code: z.string().max(64).optional(),
+    reason: z.literal("oauth2_token_failed"),
+    status: z.int().min(100).max(599).optional(),
   }),
   /** The monitor has a custom CA or a client certificate and its proxy is an https one: Bun would verify the proxy with that CA and hand it the certificate, so no request is sent. */
   z.object({ reason: z.literal("tls_proxy_unsupported") }),

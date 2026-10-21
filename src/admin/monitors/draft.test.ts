@@ -1792,6 +1792,116 @@ describe("an HTTP monitor's client certificate in the draft", () => {
   });
 });
 
+describe("an HTTP monitor's OAuth 2.0 client credentials in the draft", () => {
+  const filled = {
+    auth: "oauth2" as const,
+    oauthAudience: " https://api.example.test ",
+    oauthClientId: " raaqeb ",
+    oauthClientSecret: "s3cret",
+    oauthMethod: "body" as const,
+    oauthScope: " read write ",
+    oauthTokenUrl: " https://idp.example.test/token ",
+  };
+
+  test("a new monitor has none, and posts no OAuth credentials", () => {
+    const draft = draftOf(undefined, noCredentials);
+    expect([
+      draft.oauthTokenUrl,
+      draft.oauthClientId,
+      draft.oauthClientSecret,
+      draft.oauthScope,
+      draft.oauthAudience,
+      draft.oauthMethod,
+    ]).toEqual(["", "", "", "", "", "basic"]);
+    const parsed = inputOf(typed({}));
+    expect(parsed.ok && parsed.input.credentials).toBe(undefined);
+  });
+
+  test("typed fields are posted trimmed, empty scope and audience left out", () => {
+    const parsed = inputOf(typed(filled));
+    expect(parsed.ok && parsed.input.credentials?.auth).toEqual({
+      audience: "https://api.example.test",
+      clientId: "raaqeb",
+      clientSecret: "s3cret",
+      kind: "oauth2",
+      method: "body",
+      scope: "read write",
+      tokenUrl: "https://idp.example.test/token",
+    });
+    const bare = inputOf(
+      typed({ ...filled, oauthAudience: " ", oauthScope: "" })
+    );
+    expect(bare.ok).toBe(true);
+    expect(bare.ok && bare.input.credentials?.auth).not.toHaveProperty("scope");
+    expect(bare.ok && bare.input.credentials?.auth).not.toHaveProperty(
+      "audience"
+    );
+  });
+
+  test("a stored grant comes back as its fields, the secret left out so the server keeps it", () => {
+    const view: CredentialsView = {
+      auth: {
+        audience: "api",
+        clientId: "raaqeb",
+        kind: "oauth2",
+        method: "body",
+        scope: "read",
+        tokenUrl: "https://idp.example.test/token",
+      },
+      headers: [],
+      url: false,
+    };
+    const draft = draftOf(monitorOf(httpFields), view);
+    expect(draft.auth).toBe("oauth2");
+    expect(draft.storedAuth).toBe("oauth2");
+    expect(draft.oauthClientSecret).toBe("");
+    expect(draft.oauthMethod).toBe("body");
+    const parsed = inputOf(draft);
+    expect(parsed.ok && parsed.input.credentials?.auth).toEqual({
+      audience: "api",
+      clientId: "raaqeb",
+      kind: "oauth2",
+      method: "body",
+      scope: "read",
+      tokenUrl: "https://idp.example.test/token",
+    });
+  });
+
+  test("a secret left empty with none stored is refused on the secret, and an empty client ID and token URL on their fields", () => {
+    const errors = errorsOf(
+      typed({
+        ...filled,
+        oauthClientSecret: "",
+        oauthClientId: "",
+        oauthTokenUrl: "",
+      })
+    );
+    expect(Object.keys(errors)).toEqual(
+      expect.arrayContaining([
+        "credentials.auth.clientSecret",
+        "credentials.auth.clientId",
+        "credentials.auth.tokenUrl",
+      ])
+    );
+  });
+
+  test("a token URL that is not an http or https address is refused on its field with the address wording", () => {
+    const errors = errorsOf(
+      typed({ ...filled, oauthTokenUrl: "ftp://x.test" })
+    );
+    expect(errors["credentials.auth.tokenUrl"]?.id).toBe("monitor_error_url");
+  });
+
+  test("the method is one of the two the choice offers", () => {
+    expect(withField(typed({}), "oauthMethod", "body").oauthMethod).toBe(
+      "body"
+    );
+    expect(withField(typed({}), "oauthMethod", "header").oauthMethod).toBe(
+      "basic"
+    );
+  });
+});
+
 describe("a custom CA or client certificate beside an https proxy in the draft", () => {
   const cert = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----";
   const key = "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----";

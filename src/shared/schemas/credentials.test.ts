@@ -156,6 +156,65 @@ describe("a basic user name", () => {
   });
 });
 
+describe("OAuth 2.0 client credentials", () => {
+  const grant = {
+    clientId: "raaqeb",
+    clientSecret: "s3cret",
+    kind: "oauth2",
+    tokenUrl: "https://idp.example.test/oauth/token",
+  } as const;
+
+  test("are a token URL, a client ID and a secret, with a scope, an audience and a client authentication method that is HTTP basic by default", () => {
+    expect(credentialsSchema.parse({ auth: grant }).auth).toEqual({
+      ...grant,
+      method: "basic",
+    });
+    expect(
+      credentialsSchema.parse({
+        auth: {
+          ...grant,
+          audience: "https://api.example.test",
+          method: "body",
+          scope: "read write",
+        },
+      }).auth
+    ).toMatchObject({
+      audience: "https://api.example.test",
+      method: "body",
+      scope: "read write",
+    });
+  });
+
+  test("refuse a token URL that is not http or https or carries a user name or a password, an empty client ID or secret, and a method it does not know", () => {
+    for (const bad of [
+      { tokenUrl: "ftp://idp.example.test/token" },
+      { tokenUrl: "not a url" },
+      { tokenUrl: "https://user:pw@idp.example.test/token" },
+      { clientId: "  " },
+      { clientSecret: "" },
+      { method: "header" },
+      { scope: "  " },
+    ]) {
+      expect(
+        credentialsSchema.safeParse({ auth: { ...grant, ...bad } }).success,
+        JSON.stringify(bad)
+      ).toBe(false);
+    }
+  });
+
+  test("the form may leave the secret out, which keeps the stored one", () => {
+    const { clientSecret: _, ...withoutSecret } = grant;
+    expect(
+      credentialsInputSchema.safeParse({ auth: withoutSecret }).success
+    ).toBe(true);
+    expect(
+      credentialsInputSchema.safeParse({
+        auth: { ...withoutSecret, clientSecret: "" },
+      }).success
+    ).toBe(false);
+  });
+});
+
 describe("a client key that must start with its armour", () => {
   test("is refused when anything comes before it", () => {
     const key =

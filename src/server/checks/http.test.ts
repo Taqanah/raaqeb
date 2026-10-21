@@ -3,13 +3,9 @@ import { retryDelayMs } from "@/shared/domain/checks.ts";
 import { captureBodyBytes, errorMaxLength } from "@/shared/schemas/check.ts";
 import type { HttpConfig } from "@/shared/schemas/monitor.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
+import { bodyReadBytes } from "./body.ts";
 import { credentialMask } from "./capture.ts";
-import {
-  bodyReadBytes,
-  type CheckIo,
-  type HttpMonitor,
-  runHttpCheck,
-} from "./http.ts";
+import { type CheckIo, type HttpMonitor, runHttpCheck } from "./http.ts";
 
 const config: HttpConfig = {
   assertions: [{ codes: ["2xx"], kind: "status" }],

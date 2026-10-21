@@ -42,13 +42,30 @@ Raaqeb reads at most 1 MB of the body and cancels the rest; the assertions run o
 | **Request body** | Sent with the request. `GET` and `HEAD` send no body. | Empty. Up to 65536 characters. |
 | **Follow redirects** | Follows `301`, `302`, `303`, `307` and `308` responses to their `Location`. Off, the redirect response itself is judged. | On. At most 10 redirects. |
 | **Ignore TLS errors** | Accepts expired and self-signed certificates. | Off. |
-| **Authentication** | **None**, **User name and password** (basic auth) or **Bearer token**. | None. A user name cannot contain a colon. |
+| **Authentication** | **None**, **User name and password** (basic auth), **Bearer token** or **OAuth 2.0 client credentials**. | None. A user name cannot contain a colon. |
 | **Request headers** | Custom headers sent with every attempt. Select **Add header** for another. | Up to 20, each name once. A value is one line of Latin characters. |
 | **Proxy** | An `http` or `https` address this monitor's requests go through, in place of the install's [outbound proxy](/en/docs/operate/outbound-proxy), and whatever `NO_PROXY` lists. A proxy that asks for one takes a **Proxy user name** and **Proxy password** under it. | Empty: the install's proxy, if it has one. No user name in the address, and no SOCKS. |
 
-Authentication, request headers and the proxy's user name and password are credentials: Raaqeb stores them encrypted with the install key and never shows their values again. On edit, a saved secret shows "Saved; leave it empty to keep it". A renamed header needs its value typed again. If you set both **Authentication** and a custom `Authorization` header, **Authentication** wins.
+Authentication (a user name's password, a token, an OAuth client secret), request headers and the proxy's user name and password are credentials: Raaqeb stores them encrypted with the install key and never shows their values again. On edit, a saved secret shows "Saved; leave it empty to keep it". A renamed header needs its value typed again. If you set both **Authentication** and a custom `Authorization` header, **Authentication** wins.
 
 When following redirects, a redirect to another origin drops the `Authorization`, `Cookie` and `Proxy-Authorization` headers; other headers go on. A `303`, or a `301` or `302` answering a `POST`, turns the next request into a `GET` with no body. A redirect to anything but `http` or `https` fails the attempt.
+
+### OAuth 2.0 client credentials
+
+For an API that wants a bearer token from an authorization server. Choose **OAuth 2.0 client credentials** under **Authentication**:
+
+| Field | What it means | Default and limits |
+|---|---|---|
+| **Token URL** | The authorization server's token endpoint, an `http` or `https` address. | Required. No user name or password in the address. |
+| **Client ID** | The ID the server gave this client. | Required. |
+| **Client secret** | The client's secret. A credential: stored encrypted with the install key and never shown again; leave it empty on edit to keep it. | Required. |
+| **Scope** | The scopes to ask for, separated by spaces. | Empty: none sent. |
+| **Audience** | The API the token is for, for a server that asks for one, such as Auth0. | Empty: none sent. |
+| **Client authentication** | **HTTP Basic**, which sends the ID and secret in the `Authorization` header, or **In the request body**, which sends them as form fields. | HTTP Basic. |
+
+Each check sends the token to the monitor's address as `Authorization: Bearer <token>`, in place of any custom `Authorization` header. Raaqeb asks the token endpoint when the monitor has no token, and keeps the token in memory, one per monitor, until a tenth of its lifetime (at most a minute) before it expires; it asks again after that. A server that names no lifetime gets 5 minutes, and none is kept longer than a day. If the target answers `401` to a token Raaqeb had kept, the token is dropped and the next check asks for another. Nothing is stored: a restart asks again, and the token is never written to the checks, the log or a capture.
+
+The token request goes through the monitor's own proxy, or the install's [outbound proxy](/en/docs/operate/outbound-proxy), and does not follow redirects. **Ignore TLS errors** applies to it; the monitor's CA certificates and client certificate do not, since they are for the target. It shares the check's timeout, so a token endpoint that is too slow reads as "Timed out".
 
 ### Certificates
 
@@ -101,6 +118,7 @@ The reasons a failed check reports:
 | Connection refused | Nothing accepted the connection at the host and port. |
 | Connection failed | The connection was reset, closed or unreachable, or the TLS handshake ended before any certificate. The code is kept. |
 | Certificate expired | The certificate's validity has ended. |
+| Token request failed | The token endpoint did not give a token: it answered with an error status, or an answer with no usable access token, or did not answer. Shows its HTTP status and the `error` it named, such as `invalid_client`. The target is not called. |
 | Custom CA or client certificate through an https proxy | The monitor has a custom CA or a client certificate and its requests go through an `https` proxy, which the runtime cannot do safely. No request is sent. |
 | Client certificate expired | The client certificate is past its end date, or before its start date. No request is sent. |
 | Client certificate refused | The server closed the connection while a request that carried a client certificate was setting it up, which is how a server that requires one and does not accept this one answers. The runtime reports a plain reset, so a network reset gives the same reason; the code is kept. |

@@ -171,3 +171,50 @@ describe("the TLS section", () => {
     );
   });
 });
+
+const secretInput =
+  /name="oauthClientSecret"[^>]*type="password"|type="password"[^>]*name="oauthClientSecret"/;
+
+describe("the request section's OAuth 2.0 client credentials", () => {
+  test("is one of the authentication choices, and asks for none of its fields until chosen", () => {
+    const html = requestSection({});
+    expect(html).toContain(i18n._("monitor_auth_oauth2"));
+    expect(html).not.toContain('name="oauthTokenUrl"');
+  });
+
+  test("asks for the token URL, the client ID, a hidden secret, the scope and the audience once chosen, and says which way the client authenticates", () => {
+    const html = requestSection({ auth: "oauth2" });
+    for (const name of [
+      "oauthTokenUrl",
+      "oauthClientId",
+      "oauthClientSecret",
+      "oauthScope",
+      "oauthAudience",
+    ]) {
+      expect(html).toContain(`name="${name}"`);
+    }
+    expect(html).toMatch(secretInput);
+    expect(html).toContain(i18n._("monitor_oauth_method_basic"));
+    expect(html).toContain(i18n._("monitor_oauth_method_body"));
+  });
+
+  test("each way the client authenticates carries its own line, true whichever is selected", () => {
+    for (const oauthMethod of ["basic", "body"] as const) {
+      const html = requestSection({ auth: "oauth2", oauthMethod });
+      expect(html).toContain(i18n._("monitor_oauth_method_basic_hint"));
+      expect(html).toContain(i18n._("monitor_oauth_method_body_hint"));
+    }
+  });
+
+  test("says a stored secret is kept, and nothing of one when none is stored", () => {
+    const kept = `placeholder="${i18n._("monitor_secret_kept")}"`;
+    expect(requestSection({ auth: "oauth2", storedAuth: "oauth2" })).toContain(
+      kept
+    );
+    expect(requestSection({ auth: "oauth2" })).not.toContain(kept);
+    // A stored bearer token's secret is not an OAuth secret to keep.
+    expect(
+      requestSection({ auth: "oauth2", storedAuth: "bearer" })
+    ).not.toContain(kept);
+  });
+});

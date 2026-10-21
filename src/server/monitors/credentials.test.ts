@@ -349,3 +349,75 @@ describe("the credentials of an HTTP monitor's client certificate", () => {
     expect(credentialsView(stored).clientKey).toBeUndefined();
   });
 });
+
+describe("the credentials of an HTTP monitor's OAuth 2.0 grant", () => {
+  const oauth = {
+    audience: "https://api.example.test",
+    clientId: "raaqeb",
+    clientSecret: "pässword-secret",
+    kind: "oauth2" as const,
+    method: "basic" as const,
+    scope: "read",
+    tokenUrl: "https://idp.example.test/token",
+  };
+  const withGrant: Credentials = { auth: oauth, headers: [] };
+  const { clientSecret: _, ...postable } = oauth;
+
+  test("a left-out secret keeps the stored one, under a new client ID, scope and method", () => {
+    expect(
+      mergeCredentials(
+        {
+          auth: {
+            ...postable,
+            clientId: "other",
+            method: "body",
+            scope: "write",
+          },
+          headers: [],
+        },
+        withGrant
+      )
+    ).toEqual({
+      auth: { ...oauth, clientId: "other", method: "body", scope: "write" },
+      headers: [],
+    });
+  });
+
+  test("a typed secret replaces the stored one", () => {
+    expect(
+      mergeCredentials(
+        { auth: { ...postable, clientSecret: "new" }, headers: [] },
+        withGrant
+      )?.auth
+    ).toEqual({ ...oauth, clientSecret: "new" });
+  });
+
+  test("a left-out secret has nothing to keep when none, or another kind of auth, is stored", () => {
+    expect(
+      mergeCredentials({ auth: postable, headers: [] }, undefined)
+    ).toBeUndefined();
+    expect(mergeCredentials({ auth: postable, headers: [] }, stored)).toBe(
+      undefined
+    );
+  });
+
+  test("is sealed with the rest and opens again", async () => {
+    const key = await scratchInstallKey();
+    const sealed = await sealCredentials(key, withGrant);
+    expect(sealed).not.toContain("pässword-secret");
+    expect(await openCredentials(key, sealed ?? "")).toEqual(withGrant);
+  });
+
+  test("shows the form the endpoint, the client ID, the scope, the audience and the method, never the secret", () => {
+    const view = credentialsView(withGrant);
+    expect(view.auth).toEqual({
+      audience: "https://api.example.test",
+      clientId: "raaqeb",
+      kind: "oauth2",
+      method: "basic",
+      scope: "read",
+      tokenUrl: "https://idp.example.test/token",
+    });
+    expect(JSON.stringify(view)).not.toContain("pässword-secret");
+  });
+});

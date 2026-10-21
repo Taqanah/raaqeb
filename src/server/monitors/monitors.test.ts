@@ -18,6 +18,11 @@ import {
   serveMutualTls,
 } from "@/server/checks/mtls-fixture.ts";
 import {
+  startApi,
+  startTokenServer,
+  tokenJson,
+} from "@/server/checks/oauth-fixture.ts";
+import {
   setProxyEnvironment,
   startProxy,
 } from "@/server/checks/proxy-fixture.ts";
@@ -2904,6 +2909,139 @@ describe("an HTTP monitor's client certificate", () => {
       id
     );
     expect(kept.ok && kept.test.result).toBe("up");
+  });
+});
+
+describe("an HTTP monitor's OAuth 2.0 client credentials", () => {
+  const grant = (endpoint: string) => ({
+    clientId: "raaqeb",
+    clientSecret: "client-secret-9",
+    kind: "oauth2" as const,
+    method: "basic" as const,
+    tokenUrl: endpoint,
+  });
+  const oauthMonitor = (endpoint: string, api: string): MonitorInput => ({
+    ...site,
+    config: { ...probeConfig, url: api },
+    credentials: { auth: grant(endpoint), headers: [] },
+  });
+
+  test("is sealed with the other credentials, and the form reads the endpoint and the client ID but never the secret", async () => {
+    const store = await storage();
+    const id = await createdId(
+      store,
+      oauthMonitor(
+        "https://idp.example.test/token",
+        "https://api.example.test/"
+      )
+    );
+    expect(await store.monitors.credentialsOf(id)).not.toContain(
+      "client-secret-9"
+    );
+    expect((await storedCredentials(store, id))?.auth).toMatchObject({
+      clientSecret: "client-secret-9",
+      kind: "oauth2",
+    });
+    const form = await readMonitorForm(store, key, id, undefined);
+    if (!form.ok) {
+      throw new Error(form.reason);
+    }
+    expect(form.credentials.auth).toMatchObject({
+      clientId: "raaqeb",
+      kind: "oauth2",
+      tokenUrl: "https://idp.example.test/token",
+    });
+    expect(JSON.stringify(form)).not.toContain("client-secret-9");
+  });
+
+  test("keeps its secret through an edit that leaves it out", async () => {
+    const store = await storage();
+    const id = await createdId(
+      store,
+      oauthMonitor(
+        "https://idp.example.test/token",
+        "https://api.example.test/"
+      )
+    );
+    const { clientSecret: _, ...postable } = grant(
+      "https://idp.example.test/token2"
+    );
+    const edited = await editMonitor(store, key, id, {
+      ...oauthMonitor(
+        "https://idp.example.test/token",
+        "https://api.example.test/"
+      ),
+      credentials: { auth: postable, headers: [] },
+    });
+    expect(edited.ok).toBe(true);
+    expect((await storedCredentials(store, id))?.auth).toMatchObject({
+      clientSecret: "client-secret-9",
+      tokenUrl: "https://idp.example.test/token2",
+    });
+  });
+
+  test("is refused a secret that was left out when none is stored", async () => {
+    const store = await storage();
+    const { clientSecret: _, ...postable } = grant(
+      "https://idp.example.test/token"
+    );
+    expect(
+      await createMonitor(store, key, {
+        ...oauthMonitor(
+          "https://idp.example.test/token",
+          "https://api.example.test/"
+        ),
+        credentials: { auth: postable, headers: [] },
+      })
+    ).toEqual({ ok: false, reason: "invalid" });
+  });
+
+  test("is what test now uses: the token endpoint is asked, and the api gets the token", async () => {
+    const store = await storage();
+    const endpoint = startTokenServer([{ body: tokenJson("tok-test") }]);
+    const api = startApi();
+    try {
+      const result = await testMonitor(
+        store,
+        key,
+        liveIo(),
+        oauthMonitor(endpoint.url, api.url),
+        undefined
+      );
+      expect(result.ok && result.test.result).toBe("up");
+      expect(api.authorizations).toEqual(["Bearer tok-test"]);
+      expect(endpoint.calls).toHaveLength(1);
+    } finally {
+      endpoint.stop();
+      api.stop();
+    }
+  });
+
+  test("test now reads a refusal of the token endpoint as its reason, with the status", async () => {
+    const store = await storage();
+    const endpoint = startTokenServer([
+      { body: JSON.stringify({ error: "invalid_client" }), status: 401 },
+    ]);
+    const api = startApi();
+    try {
+      const result = await testMonitor(
+        store,
+        key,
+        liveIo(),
+        oauthMonitor(endpoint.url, api.url),
+        undefined
+      );
+      expect(result.ok && result.test.reason).toBe("oauth2_token_failed");
+      expect(result.ok && result.test.failure?.params).toEqual({
+        code: "invalid_client",
+        reason: "oauth2_token_failed",
+        status: 401,
+      });
+      expect(JSON.stringify(result)).not.toContain("client-secret-9");
+    } finally {
+      endpoint.stop();
+      api.stop();
+    }
   });
 });
 

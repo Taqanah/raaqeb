@@ -145,6 +145,15 @@ function detailOf(
       return params.exitCode === undefined
         ? {}
         : { observed: <Token>{`exit ${params.exitCode}`}</Token> };
+    // The token endpoint's HTTP status and the error it named, as it wrote them: `401 invalid_client`.
+    case "oauth2_token_failed": {
+      const said = [params.status, params.code].filter(
+        (part) => part !== undefined
+      );
+      return said.length === 0
+        ? {}
+        : { observed: <Token>{said.join(" ")}</Token> };
+    }
     case "container_restarting":
       return { observed: <Token>{`restarting (${params.exitCode})`}</Token> };
     case "slow":

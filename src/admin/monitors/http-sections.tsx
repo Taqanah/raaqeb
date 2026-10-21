@@ -9,6 +9,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { formatUnit } from "@/shared/i18n/format.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
+import { oauthMethods } from "@/shared/schemas/credentials.ts";
 import { captureModes } from "@/shared/schemas/monitor.ts";
 import { Button } from "@/shared/ui/button.tsx";
 import { Field, FieldDescription, FieldLabel } from "@/shared/ui/field.tsx";
@@ -273,6 +274,7 @@ const authLabels = {
   basic: "monitor_auth_basic",
   bearer: "monitor_auth_bearer",
   none: "monitor_auth_none",
+  oauth2: "monitor_auth_oauth2",
 } as const;
 
 export function RequestSection({
@@ -373,6 +375,15 @@ export function RequestSection({
           value={draft.token}
         />
       ) : null}
+      {draft.auth === "oauth2" ? (
+        <OAuthFields
+          draft={draft}
+          errors={errors}
+          kept={kept}
+          onChoice={onChoice}
+          onField={onField}
+        />
+      ) : null}
       <Headers
         draft={draft}
         errors={errors}
@@ -422,6 +433,107 @@ export function RequestSection({
     </Section>
   );
 }
+
+/** The OAuth 2.0 client credentials grant's fields: the token endpoint, the client ID and secret, the optional scope and audience, and how the client authenticates. The secret is stored sealed, never shown again, and kept when the field stays empty. */
+function OAuthFields({
+  draft,
+  errors,
+  kept,
+  onChoice,
+  onField,
+}: Pick<SectionProps, "draft" | "errors" | "onChoice" | "onField"> & {
+  readonly kept: string;
+}): ReactNode {
+  const { t } = useMessages();
+  return (
+    <>
+      <TextField
+        autoComplete="off"
+        dir="ltr"
+        errors={errors}
+        hint={t("monitor_field_oauth_token_url_hint")}
+        label={t("monitor_field_oauth_token_url")}
+        name="oauthTokenUrl"
+        onField={onField}
+        path="credentials.auth.tokenUrl"
+        value={draft.oauthTokenUrl}
+        variant="token"
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          autoComplete="off"
+          dir="ltr"
+          errors={errors}
+          label={t("monitor_field_oauth_client_id")}
+          name="oauthClientId"
+          onField={onField}
+          path="credentials.auth.clientId"
+          value={draft.oauthClientId}
+          variant="token"
+        />
+        <TextField
+          autoComplete="new-password"
+          dir="ltr"
+          errors={errors}
+          label={t("monitor_field_oauth_client_secret")}
+          name="oauthClientSecret"
+          onField={onField}
+          path="credentials.auth.clientSecret"
+          placeholder={draft.storedAuth === "oauth2" ? kept : undefined}
+          type="password"
+          value={draft.oauthClientSecret}
+        />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          autoComplete="off"
+          dir="ltr"
+          errors={errors}
+          hint={t("monitor_field_oauth_scope_hint")}
+          label={t("monitor_field_oauth_scope")}
+          name="oauthScope"
+          onField={onField}
+          path="credentials.auth.scope"
+          value={draft.oauthScope}
+          variant="token"
+        />
+        <TextField
+          autoComplete="off"
+          dir="ltr"
+          errors={errors}
+          hint={t("monitor_field_oauth_audience_hint")}
+          label={t("monitor_field_oauth_audience")}
+          name="oauthAudience"
+          onField={onField}
+          path="credentials.auth.audience"
+          value={draft.oauthAudience}
+          variant="token"
+        />
+      </div>
+      <ChoiceField
+        choices={oauthMethods.map((method) => ({
+          hint: t(oauthMethodHints[method]),
+          label: t(oauthMethodLabels[method]),
+          value: method,
+        }))}
+        label={t("monitor_field_oauth_method")}
+        name="oauthMethod"
+        onChoice={onChoice}
+        value={draft.oauthMethod}
+      />
+    </>
+  );
+}
+
+const oauthMethodLabels = {
+  basic: "monitor_oauth_method_basic",
+  body: "monitor_oauth_method_body",
+} as const;
+
+const oauthMethodHints = {
+  basic: "monitor_oauth_method_basic_hint",
+  body: "monitor_oauth_method_body_hint",
+} as const;
 
 /** A PEM text field: a monospace, left-to-right box for a certificate or a key, its hint and its refusal under it; a stored secret says so in its placeholder. */
 function PemField({

@@ -38,6 +38,7 @@ describe("the reason dictionary", () => {
       heartbeat_failed: 25,
       client_certificate_expired: 26,
       client_certificate_refused: 27,
+      oauth2_token_failed: 28,
       tls_proxy_unsupported: 29,
     });
   });

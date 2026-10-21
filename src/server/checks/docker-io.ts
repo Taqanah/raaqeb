@@ -6,9 +6,9 @@
  * `EACCES`) and the socket's path, which fetch's own text leaves out.
  */
 import { isSocketPath } from "@/shared/schemas/monitor.ts";
+import { readBody } from "./body.ts";
 import type { DockerAnswer, DockerRequest } from "./docker.ts";
 import { codeOf } from "./errors.ts";
-import { readBody } from "./http.ts";
 
 /** The most of an answer the adapter reads: a list of a few thousand containers fits. */
 export const dockerAnswerMaxBytes = 4 * 1_048_576;

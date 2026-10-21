@@ -95,7 +95,7 @@ _Avoid_: ping, run, probe, attempt (that is one try inside a check), heartbeat (
 
 **Reason**:
 Arabic: علة for why a check failed (the notification line); سبب for why any check ended as it did (the checks table, passes included)
-Why a check ended as it did: one code from a fixed list (timeout, DNS failed, connection refused, certificate expired, unexpected status, assertion failed, slow, heartbeat late, heartbeat failed, client certificate refused, and so on) with the values it saw. Rendered in the reader's locale; never free text.
+Why a check ended as it did: one code from a fixed list (timeout, DNS failed, connection refused, certificate expired, unexpected status, assertion failed, slow, heartbeat late, heartbeat failed, client certificate refused, token request failed, and so on) with the values it saw. Rendered in the reader's locale; never free text.
 _Avoid_: error message (that is the raw text kept beside a failed check), status message, cause
 
 **Capture**:
@@ -458,6 +458,11 @@ _Avoid_: trusted proxies (the reverse proxy in front of Raaqeb, the other direct
 Arabic: شهادة العميل
 The certificate an HTTP monitor presents to a server that requires the client to prove itself over TLS (mutual TLS), with the private key that belongs to it. The certificate, and the CA certificates the monitor trusts in place of the well-known ones, are public PEM text kept in the monitor's config; the key and its passphrase, when the key is encrypted, are sealed credentials, written and never read back. A certificate outside its validity dates fails the check before any request is sent, with its own reason; a server that closes the handshake of a request that carried one reads as the certificate refused. It needs an https address and works through the outbound proxy.
 _Avoid_: mTLS certificate, TLS credentials, PKI
+
+**Client credentials**:
+Arabic: بيانات اعتماد العميل
+How an HTTP monitor authenticates with the OAuth 2.0 client credentials grant: its token URL, client ID and sealed client secret, an optional scope and audience, and how the client authenticates to the token endpoint (HTTP basic or its ID and secret in the request body). Each attempt sends the token as a bearer. The token is asked of the endpoint inside the attempt's own time, kept in memory per monitor until a tenth of its lifetime (at most a minute) before it ends, and asked for again after; it is never stored, logged or captured, and the client secret never leaves the sealed credentials. A token request that fails is the reason "token request failed" with the endpoint's status. The monitor's own proxy carries the token request too.
+_Avoid_: OAuth login, API key, token auth (that is the bearer token field)
 
 **Setup check**:
 Arabic: تهيئة راقب

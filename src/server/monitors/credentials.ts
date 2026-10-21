@@ -99,6 +99,12 @@ function mergeAuth(
       input.token ?? (stored?.kind === "bearer" ? stored.token : undefined);
     return token === undefined ? false : { kind: "bearer", token };
   }
+  if (input?.kind === "oauth2") {
+    const { clientSecret: typed, ...fields } = input;
+    const clientSecret =
+      typed ?? (stored?.kind === "oauth2" ? stored.clientSecret : undefined);
+    return clientSecret === undefined ? false : { ...fields, clientSecret };
+  }
 }
 
 /** The ciphertext of the credentials, or nothing when there are none to store. */
@@ -136,16 +142,28 @@ export async function openCredentials(
   return parsed.success ? parsed.data : undefined;
 }
 
+/** What of an auth the edit form may show: never a secret. */
+function authView(auth: Credentials["auth"]): CredentialsView["auth"] {
+  switch (auth?.kind) {
+    case "basic":
+      return { kind: "basic", user: auth.user };
+    case "bearer":
+      return { kind: "bearer" };
+    case "oauth2": {
+      const { clientSecret: _, ...shown } = auth;
+      return shown;
+    }
+    default:
+      return;
+  }
+}
+
 /** What the edit form may show of the credentials: never a secret. */
 export function credentialsView(
   credentials: Credentials | undefined
 ): CredentialsView {
-  const auth = credentials?.auth;
   return {
-    auth:
-      auth?.kind === "basic"
-        ? { kind: "basic", user: auth.user }
-        : auth && { kind: "bearer" },
+    auth: authView(credentials?.auth),
     ...(credentials?.clientKey && { clientKey: true as const }),
     headers: (credentials?.headers ?? []).map(({ name }) => ({ name })),
     proxyUser: credentials?.proxyAuth?.user,

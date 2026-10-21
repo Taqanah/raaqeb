@@ -21,6 +21,7 @@ import {
 import type { RequestDocker } from "./docker.ts";
 import { requestDocker } from "./docker-io.ts";
 import type { CheckIo } from "./http.ts";
+import { createTokenCache } from "./oauth2.ts";
 import {
   type RegistrationIo,
   registrationReadTimeoutMs,
@@ -278,6 +279,8 @@ function nodeResolver(timeoutMs: number): RecordResolver {
 /** The bundle over the real platform. */
 export function liveIo(): LiveIo {
   return {
+    // The OAuth 2.0 tokens of the monitors this process checks, kept between their checks.
+    tokens: createTokenCache(),
     connect: (target) => openConnection(target, Bun.connect),
     fetch,
     now: Date.now,

@@ -211,6 +211,35 @@ describe("the failure detail of a container that is not running", () => {
     );
     expect(without).not.toContain("exit ");
   });
+
+  test("shows the status and the error code a token endpoint answered, and nothing when it did not answer", () => {
+    const answered = render(
+      "en",
+      <FailureDetail
+        failure={{
+          error: undefined,
+          params: {
+            code: "invalid_client",
+            reason: "oauth2_token_failed",
+            status: 401,
+          },
+        }}
+      />
+    );
+    expect(answered).toContain(
+      'data-slot="token" dir="ltr">401 invalid_client</bdi>'
+    );
+    const silent = render(
+      "en",
+      <FailureDetail
+        failure={{
+          error: undefined,
+          params: { reason: "oauth2_token_failed" },
+        }}
+      />
+    );
+    expect(silent).not.toContain('data-slot="token"');
+  });
 });
 
 describe("a check's response time", () => {

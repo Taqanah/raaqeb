@@ -1427,6 +1427,10 @@ msgid "reason_client_certificate_refused"
 msgstr "أغلق الخادوم الاتصال، وربما رفض شهادة العميل"
 
 #. js-lingui-explicit-id
+msgid "reason_oauth2_token_failed"
+msgstr "لم يعطِ خادوم OAuth 2.0 رمز الوصول"
+
+#. js-lingui-explicit-id
 msgid "reason_tls_proxy_unsupported"
 msgstr "لا يمكن استخدام سلطة شهادات مخصصة أو شهادة عميل عبر وكيل https"
 
@@ -1903,6 +1907,10 @@ msgid "monitor_auth_bearer"
 msgstr "رمز Bearer"
 
 #. js-lingui-explicit-id
+msgid "monitor_auth_oauth2"
+msgstr "بيانات اعتماد عميل OAuth 2.0"
+
+#. js-lingui-explicit-id
 msgid "monitor_field_user"
 msgstr "اسم المستخدم"
 
@@ -1913,6 +1921,58 @@ msgstr "كلمة المرور"
 #. js-lingui-explicit-id
 msgid "monitor_field_token"
 msgstr "الرمز"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_token_url"
+msgstr "عنوان رمز الوصول"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_token_url_hint"
+msgstr "عنوان نقطة رمز الوصول في خادوم التفويض. يطلب منها راقب رمزًا ويعيد استخدامه حتى قرب انتهائه."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_client_id"
+msgstr "معرّف العميل"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_client_secret"
+msgstr "سر العميل"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_scope"
+msgstr "النطاق (اختياري)"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_scope_hint"
+msgstr "افصل بين عدة نطاقات بمسافة."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_audience"
+msgstr "الجمهور (اختياري)"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_audience_hint"
+msgstr "لخادوم تفويض يطلبه، مثل Auth0."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_method"
+msgstr "استيثاق العميل"
+
+#. js-lingui-explicit-id
+msgid "monitor_oauth_method_basic"
+msgstr "الاستيثاق الأساسي"
+
+#. js-lingui-explicit-id
+msgid "monitor_oauth_method_body"
+msgstr "في محتوى الطلب"
+
+#. js-lingui-explicit-id
+msgid "monitor_oauth_method_basic_hint"
+msgstr "يُرسل معرّف العميل وسره في ترويسة Authorization."
+
+#. js-lingui-explicit-id
+msgid "monitor_oauth_method_body_hint"
+msgstr "يُرسل معرّف العميل وسره في محتوى الطلب."
 
 #. js-lingui-explicit-id
 msgid "monitor_secret_kept"

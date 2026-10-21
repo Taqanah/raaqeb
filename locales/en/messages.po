@@ -1427,6 +1427,10 @@ msgid "reason_client_certificate_refused"
 msgstr "The server closed the connection; it may have refused the client certificate"
 
 #. js-lingui-explicit-id
+msgid "reason_oauth2_token_failed"
+msgstr "The OAuth 2.0 token endpoint did not give a token"
+
+#. js-lingui-explicit-id
 msgid "reason_tls_proxy_unsupported"
 msgstr "A custom CA or client certificate cannot be used through an https proxy"
 
@@ -1903,6 +1907,10 @@ msgid "monitor_auth_bearer"
 msgstr "Bearer token"
 
 #. js-lingui-explicit-id
+msgid "monitor_auth_oauth2"
+msgstr "OAuth 2.0 client credentials"
+
+#. js-lingui-explicit-id
 msgid "monitor_field_user"
 msgstr "User name"
 
@@ -1913,6 +1921,58 @@ msgstr "Password"
 #. js-lingui-explicit-id
 msgid "monitor_field_token"
 msgstr "Token"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_token_url"
+msgstr "Token URL"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_token_url_hint"
+msgstr "The address of the authorization server's token endpoint. Raaqeb asks it for a token and reuses it until shortly before it expires."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_client_id"
+msgstr "Client ID"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_client_secret"
+msgstr "Client secret"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_scope"
+msgstr "Scope (optional)"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_scope_hint"
+msgstr "Separate several scopes with spaces."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_audience"
+msgstr "Audience (optional)"
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_audience_hint"
+msgstr "For an authorization server that asks for one, such as Auth0."
+
+#. js-lingui-explicit-id
+msgid "monitor_field_oauth_method"
+msgstr "Client authentication"
+
+#. js-lingui-explicit-id
+msgid "monitor_oauth_method_basic"
+msgstr "HTTP Basic"
+
+#. js-lingui-explicit-id
+msgid "monitor_oauth_method_body"
+msgstr "In the request body"
+
+#. js-lingui-explicit-id
+msgid "monitor_oauth_method_basic_hint"
+msgstr "The client ID and secret go in the Authorization header."
+
+#. js-lingui-explicit-id
+msgid "monitor_oauth_method_body_hint"
+msgstr "The client ID and secret go in the request body."
 
 #. js-lingui-explicit-id
 msgid "monitor_secret_kept"

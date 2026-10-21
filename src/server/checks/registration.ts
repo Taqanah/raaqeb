@@ -15,7 +15,7 @@
 import { z } from "zod";
 import { registrationCandidates } from "@/shared/domain/registrations.ts";
 import type { DomainRegistration } from "@/shared/schemas/registration.ts";
-import { readBody } from "./http.ts";
+import { readBody } from "./body.ts";
 import { whoisAnswerOf, whoisServerOf } from "./whois.ts";
 
 const dayMs = 86_400_000;

@@ -15,6 +15,8 @@ import type { ChannelChoice } from "@/shared/schemas/channel.ts";
 import {
   type CredentialsView,
   noCredentials,
+  type OAuthMethod,
+  oauthMethods,
 } from "@/shared/schemas/credentials.ts";
 import {
   type Assertion,
@@ -109,7 +111,7 @@ export type DurationUnit = (typeof durationUnits)[number];
 export const scheduleKinds = ["every", "cron"] as const;
 export type ScheduleKind = (typeof scheduleKinds)[number];
 
-export const authKinds = ["none", "basic", "bearer"] as const;
+export const authKinds = ["none", "basic", "bearer", "oauth2"] as const;
 export type AuthKind = (typeof authKinds)[number];
 
 export const assertionKinds = assertionSchema.options.map(
@@ -164,6 +166,18 @@ export interface MonitorDraft {
   readonly intervalMs: number;
   readonly method: HttpMethod;
   readonly name: string;
+  /** The OAuth 2.0 audience as typed; empty sends none. */
+  readonly oauthAudience: string;
+  /** The OAuth 2.0 client ID as typed. */
+  readonly oauthClientId: string;
+  /** The OAuth 2.0 client secret as typed; empty keeps the stored one while OAuth 2.0 is stored. */
+  readonly oauthClientSecret: string;
+  /** How the client authenticates to the token endpoint. */
+  readonly oauthMethod: OAuthMethod;
+  /** The OAuth 2.0 scope as typed; empty sends none. */
+  readonly oauthScope: string;
+  /** The OAuth 2.0 token endpoint's address as typed. */
+  readonly oauthTokenUrl: string;
   /** Whether the monitor has its own retention; off follows the install default. */
   readonly ownRetention: boolean;
   readonly password: string;
@@ -189,7 +203,7 @@ export interface MonitorDraft {
   readonly retries: string;
   readonly scheduleKind: ScheduleKind;
   /** The stored auth kind, whose secret an empty field keeps. */
-  readonly storedAuth: "basic" | "bearer" | undefined;
+  readonly storedAuth: "basic" | "bearer" | "oauth2" | undefined;
   /** Whether a client key is stored, which an empty field keeps. */
   readonly storedClientKey: boolean;
   /** Whether the proxy has a user name and password stored, whose password an empty field keeps. */
@@ -448,8 +462,15 @@ function credentialsDraft({
   proxyUser,
 }: CredentialsView) {
   const kind: AuthKind = auth?.kind ?? "none";
+  const oauth = auth?.kind === "oauth2" ? auth : undefined;
   return {
     auth: kind,
+    oauthAudience: oauth?.audience ?? "",
+    oauthClientId: oauth?.clientId ?? "",
+    oauthClientSecret: "",
+    oauthMethod: oauth?.method ?? "basic",
+    oauthScope: oauth?.scope ?? "",
+    oauthTokenUrl: oauth?.tokenUrl ?? "",
     clientKey: "",
     clientPassphrase: "",
     storedClientKey: clientKey === true,
@@ -825,6 +846,8 @@ function credentialsOf(draft: MonitorDraft, refusals: Refusals): unknown {
     };
   } else if (draft.auth === "bearer") {
     auth = { kind: "bearer", token: keep("bearer", draft.token) };
+  } else if (draft.auth === "oauth2") {
+    auth = oauthOf(draft, refusals);
   }
   const proxyAuth = proxyAuthOf(draft, refusals);
   const clientKey = clientKeyOf(draft, refusals);
@@ -858,6 +881,33 @@ function clientKeyOf(
     ...(draft.clientPassphrase !== "" && {
       passphrase: draft.clientPassphrase,
     }),
+  };
+}
+
+/** The OAuth 2.0 grant: the endpoint, the client ID, the optional scope and audience, the method, and the secret, which a stored one left empty is left out of so the server keeps it. */
+function oauthOf(draft: MonitorDraft, refusals: Refusals): unknown {
+  const tokenUrl = refusals.required(
+    "credentials.auth.tokenUrl",
+    draft.oauthTokenUrl
+  );
+  const clientId = refusals.required(
+    "credentials.auth.clientId",
+    draft.oauthClientId
+  );
+  const kept = draft.storedAuth === "oauth2" && draft.oauthClientSecret === "";
+  if (!kept) {
+    refusals.required("credentials.auth.clientSecret", draft.oauthClientSecret);
+  }
+  const scope = draft.oauthScope.trim();
+  const audience = draft.oauthAudience.trim();
+  return {
+    ...(audience !== "" && { audience }),
+    clientId,
+    ...(!kept && { clientSecret: draft.oauthClientSecret }),
+    kind: "oauth2",
+    method: draft.oauthMethod,
+    ...(scope !== "" && { scope }),
+    tokenUrl,
   };
 }
 
@@ -951,6 +1001,10 @@ const addressRefusals: Readonly<
   "config.proxy": {
     credentials: "monitor_error_proxy_credentials",
     url: "monitor_error_proxy",
+  },
+  "credentials.auth.tokenUrl": {
+    credentials: "monitor_error_url_credentials",
+    url: "monitor_error_url",
   },
   "config.url": {
     credentials: "monitor_error_url_credentials",
@@ -1098,6 +1152,11 @@ const textFields = [
   "group",
   "host",
   "name",
+  "oauthAudience",
+  "oauthClientId",
+  "oauthClientSecret",
+  "oauthScope",
+  "oauthTokenUrl",
   "password",
   "port",
   "proxy",
@@ -1187,6 +1246,8 @@ function withChoice(
   switch (name) {
     case "auth":
       return set("auth", oneOf(authKinds, value));
+    case "oauthMethod":
+      return set("oauthMethod", oneOf(oauthMethods, value));
     case "captureMode":
       return set("captureMode", oneOf(captureModes, value));
     case "everyUnit":

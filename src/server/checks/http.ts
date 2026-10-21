@@ -13,13 +13,27 @@ import type { Credentials } from "@/shared/schemas/credentials.ts";
 import type { HttpConfig, Monitor } from "@/shared/schemas/monitor.ts";
 import { evaluateAssertions } from "./assertions.ts";
 import { type Attempt, type AttemptIo, runAttempts } from "./attempts.ts";
-import { type CredentialPatterns, credentialPatterns } from "./capture.ts";
+import { readBody } from "./body.ts";
+import {
+  type CredentialPatterns,
+  credentialPatterns,
+  maskCredentialText,
+} from "./capture.ts";
 import { certificateDates, datesProblem } from "./client-certificate.ts";
 import { reasonForError, urlTarget } from "./errors.ts";
+import {
+  dropToken,
+  type TokenCache,
+  type TokenFailure,
+  type TokenResult,
+  tokenFor,
+} from "./oauth2.ts";
 
 /** The I/O a check borrows; tests hand in fakes. */
 export interface CheckIo extends AttemptIo {
   readonly fetch: typeof fetch;
+  /** The OAuth 2.0 tokens kept in memory between checks; with none, each attempt asks its token endpoint. */
+  readonly tokens?: TokenCache;
 }
 
 /** What the HTTP check needs of a monitor; the credentials are sent on every attempt and never kept. */
@@ -27,9 +41,6 @@ export type HttpMonitor = Pick<
   Monitor,
   "id" | "timeoutMs" | "retries" | "degradedMs"
 > & { readonly config: HttpConfig; readonly credentials?: Credentials };
-
-/** At most this much body is read; the rest of the stream is cancelled. */
-export const bodyReadBytes = 1_048_576;
 
 /** With redirects on, the check follows at most this many; the next fails the attempt as too many redirects. */
 export const redirectCap = 10;
@@ -65,26 +76,50 @@ export function runHttpCheck(
   monitor: HttpMonitor,
   io: CheckIo
 ): Promise<CheckOutcome> {
-  const credentials = credentialPatterns(sentValues(monitor.credentials));
+  const values = sentValues(monitor.credentials);
   return runAttempts(
     monitor,
     io,
-    () => attemptOnce(monitor, io, credentials),
+    () => attemptOnce(monitor, io, values),
     monitor.config.captureMode
   );
+}
+
+/** The attempt a token endpoint's refusal ends in, before the target is called. */
+function tokenFailureAttempt(
+  failed: TokenFailure,
+  credentials: CredentialPatterns,
+  responseMs: number
+): Attempt {
+  return {
+    assertion: undefined,
+    bytes: 0,
+    error: maskCredentialText(failed.error, credentials),
+    params: {
+      ...(failed.code !== undefined && { code: failed.code }),
+      reason: "oauth2_token_failed",
+      ...(failed.status !== undefined && { status: failed.status }),
+    },
+    reason: "oauth2_token_failed",
+    response: undefined,
+    responseMs,
+    statusCode: undefined,
+    succeeded: false,
+  };
 }
 
 /** One request judged by the success rules, or the error it met. */
 async function attemptOnce(
   monitor: HttpMonitor,
   io: CheckIo,
-  credentials: CredentialPatterns
+  values: readonly string[]
 ): Promise<Attempt> {
   const { config, timeoutMs } = monitor;
   const start = io.now();
   const elapsed = () => Math.min(io.now() - start, timeoutMs);
   let statusCode: number | undefined;
   const progress = { read: 0 };
+  let credentials = credentialPatterns(values);
   const expired = clientCertificateExpiry(config, start);
   if (expired) {
     return expired;
@@ -97,15 +132,44 @@ async function attemptOnce(
     return tlsProxyAttempt();
   }
   const hop = { carriedCertificate: false };
+  // One signal for the attempt: the token request and the target's answer share its time.
+  const signal = AbortSignal.timeout(timeoutMs);
+  const grant =
+    monitor.credentials?.auth?.kind === "oauth2"
+      ? monitor.credentials.auth
+      : undefined;
+  let granted: Extract<TokenResult, { ok: true }> | undefined;
   try {
+    if (grant) {
+      const asked = await tokenFor({
+        cache: io.tokens,
+        fetch: io.fetch,
+        grant,
+        ignoreTlsErrors: config.ignoreTlsErrors,
+        monitorId: monitor.id,
+        now: io.now,
+        proxy: proxyOf(config, monitor.credentials),
+        signal,
+      });
+      if (!asked.ok) {
+        return tokenFailureAttempt(asked, credentials, elapsed());
+      }
+      granted = asked;
+      // The token is a credential from here on: masked wherever the response or an error would repeat it.
+      credentials = credentialPatterns([...values, asked.token]);
+    }
     const response = await send(
       new URL(config.url),
-      requestInit(config, timeoutMs, monitor.credentials),
+      requestInit(config, signal, monitor.credentials, granted?.token),
       config.followRedirects,
       io.fetch,
       hop
     );
     statusCode = response.status;
+    if (granted?.cached && statusCode === 401) {
+      // The target refused a token that may have been revoked: the next attempt asks for another.
+      dropToken(io.tokens, monitor.id);
+    }
     const body = await readBody(response, progress);
     const responseMs = elapsed();
     const observed = {
@@ -261,19 +325,20 @@ function tlsOf(
 
 function requestInit(
   config: HttpConfig,
-  timeoutMs: number,
-  credentials: Credentials | undefined
+  signal: AbortSignal,
+  credentials: Credentials | undefined,
+  token: string | undefined
 ): BunFetchRequestInit {
   const bodyless = config.method === "GET" || config.method === "HEAD";
   return {
     body: bodyless ? undefined : config.body,
-    headers: requestHeaders(credentials),
+    headers: requestHeaders(credentials, token),
     method: config.method,
     // The monitor's own proxy; without one the option is left out, so Bun reads the proxy environment at each request.
     proxy: proxyOf(config, credentials),
     // The check follows redirects itself (send), so the cap and the one timeout hold.
     redirect: "manual",
-    signal: AbortSignal.timeout(timeoutMs),
+    signal,
     tls: tlsOf(config, credentials),
   };
 }
@@ -374,16 +439,23 @@ function nextHop(
 }
 
 /** The custom headers, then the auth field's Authorization, which wins over a custom one. A value the platform refuses fails the attempt with an error that never repeats it: the platform's own message quotes the value. */
-function requestHeaders(credentials: Credentials | undefined): Headers {
+function requestHeaders(
+  credentials: Credentials | undefined,
+  token?: string
+): Headers {
   try {
-    return buildHeaders(credentials);
+    return buildHeaders(credentials, token);
   } catch {
     // biome-ignore lint/style/useErrorCause: the platform's error quotes the header's value, a credential that must not reach the failure detail
     throw new Error("the platform refused a request header's value");
   }
 }
 
-function buildHeaders(credentials: Credentials | undefined): Headers {
+/** The headers a request carries: the custom ones, then the auth's Authorization, which wins. An OAuth 2.0 grant's is the token it was given, or none while the token is not yet known. */
+function buildHeaders(
+  credentials: Credentials | undefined,
+  token?: string
+): Headers {
   const headers = new Headers();
   for (const { name, value } of credentials?.headers ?? []) {
     headers.append(name, value);
@@ -395,12 +467,17 @@ function buildHeaders(credentials: Credentials | undefined): Headers {
     headers.set("authorization", `Basic ${pair.toBase64()}`);
   } else if (auth?.kind === "bearer") {
     headers.set("authorization", `Bearer ${auth.token}`);
+  } else if (auth?.kind === "oauth2" && token !== undefined) {
+    headers.set("authorization", `Bearer ${token}`);
   }
   return headers;
 }
 
 /** The token or the base64 pair after its scheme, as the platform sent it. */
 const schemeValue = /^(?:Basic|Bearer)[\t ]+(.+)$/;
+
+/** An OAuth 2.0 client ID shorter than this is not masked: it would redact ordinary words. */
+const minMaskedIdLength = 8;
 
 /** Request headers that carry formats and preferences, never credentials, so their values are not masked. */
 const standardHeaders = [
@@ -433,38 +510,14 @@ function sentValues(credentials: Credentials | undefined): string[] {
     ...sent.values(),
     ...(credential ? [credential] : []),
     ...(auth.kind === "basic" ? [auth.password] : []),
+    // What an OAuth 2.0 grant sends to its token endpoint, masked wherever a check would write text: the client secret, as typed and form-encoded, and the client ID.
+    ...(auth.kind === "oauth2"
+      ? [
+          auth.clientSecret,
+          encodeURIComponent(auth.clientSecret),
+          // A short ID would redact ordinary words.
+          ...(auth.clientId.length >= minMaskedIdLength ? [auth.clientId] : []),
+        ]
+      : []),
   ];
-}
-
-/** Reads the body up to the cap and cancels the rest; the timeout signal covers this read too. `progress` keeps the count when the read fails. */
-export async function readBody(
-  response: Response,
-  progress: { read: number },
-  cap = bodyReadBytes
-): Promise<Uint8Array> {
-  if (!response.body) {
-    return new Uint8Array(0);
-  }
-  const chunks: Uint8Array[] = [];
-  let read = 0;
-  // Leaving the loop early cancels the stream.
-  for await (const chunk of response.body) {
-    chunks.push(chunk);
-    read += chunk.byteLength;
-    progress.read = Math.min(read, cap);
-    if (read >= cap) {
-      break;
-    }
-  }
-  const body = new Uint8Array(Math.min(read, cap));
-  let offset = 0;
-  for (const chunk of chunks) {
-    const room = body.byteLength - offset;
-    body.set(room < chunk.byteLength ? chunk.subarray(0, room) : chunk, offset);
-    offset += chunk.byteLength;
-    if (offset >= body.byteLength) {
-      break;
-    }
-  }
-  return body;
 }
