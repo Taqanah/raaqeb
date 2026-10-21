@@ -6015,6 +6015,146 @@ msgid "monitor_heartbeat_withheld"
 msgstr "لا يرى الرابط إلا من يعدّل المراقبات، لأن من يملكه يرسل النبضات."
 
 #. js-lingui-explicit-id
+msgid "setting_api_keys"
+msgstr "مفاتيح الواجهة البرمجية"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_new_title"
+msgstr "مفتاح واجهة برمجية جديد"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_new_intro"
+msgstr "يتيح المفتاح لبرنامج أن يستدعي الواجهة البرمجية للإدارة باسم حسابك، بالدور الذي تمنحه إياه. يعرضه راقب مرة واحدة."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_name_hint"
+msgstr "ما الذي سيستعمله، مثل مهمة النشر."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_name_required"
+msgstr "سمِّ المفتاح."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_role"
+msgstr "الدور"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_role_hint"
+msgstr "ولا يصل المفتاح أبدًا إلى حسابك ولا الفريق ولا الإعدادات ولا التصدير والاستيراد."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry"
+msgstr "تنتهي صلاحيته"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_hint"
+msgstr "يتوقف المفتاح عن العمل حينها، ويعمل المفتاح الذي لا تنتهي صلاحيته حتى يُبطَل."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_7"
+msgstr "بعد 7 أيام"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_30"
+msgstr "بعد 30 يومًا"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_90"
+msgstr "بعد 90 يومًا"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_365"
+msgstr "بعد سنة"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_never"
+msgstr "لا تنتهي"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_create"
+msgstr "أنشئ المفتاح"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_refused_role"
+msgstr "هذا الدور أعلى من دورك."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_secret_title"
+msgstr "انسخ المفتاح الآن"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_secret_intro"
+msgstr "لا يحفظ راقب منه إلا بصمته SHA-256، فلا يستطيع عرضه مرة أخرى. يرسله البرنامج رمز Bearer."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_example"
+msgstr "جرّبه"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_own_title"
+msgstr "مفاتيح حسابك"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_own_intro"
+msgstr "يعمل كل مفتاح باسم حسابك حتى تنتهي صلاحيته أو يُبطَل، وخفض دورك يخفض أدوارها معه."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_none"
+msgstr "لا مفاتيح بعد."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_all_title"
+msgstr "كل مفاتيح الواجهة البرمجية"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_all_intro"
+msgstr "مفاتيح كل الحسابات. تستطيع إبطال مفاتيح الحسابات التي تديرها، وتعطيل الحساب أو إزالته يُبطل مفاتيحه."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_account"
+msgstr "الحساب"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_created"
+msgstr "أُنشئ"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expires"
+msgstr "تنتهي صلاحيته"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expired"
+msgstr "منتهي الصلاحية"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_last_used"
+msgstr "آخر استعمال"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_never_used"
+msgstr "لم يُستعمل بعد"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_revoke"
+msgstr "أبطِل"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_revoke_title"
+msgstr "إبطال هذا المفتاح؟"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_revoke_description"
+msgstr "يُرفض كل برنامج يستعمله من استدعائه التالي."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_copied"
+msgstr "نسخت المفتاح"
+
+#. js-lingui-explicit-id
 msgid "setting_sso"
 msgstr "الدخول الموحد"
 
@@ -6257,6 +6397,10 @@ msgstr "{verb}: {target}"
 #. js-lingui-explicit-id
 msgid "audit_target_account"
 msgstr "الحساب"
+
+#. js-lingui-explicit-id
+msgid "audit_target_api_key"
+msgstr "مفتاح الواجهة البرمجية"
 
 #. js-lingui-explicit-id
 msgid "audit_target_appearance"

@@ -9,6 +9,7 @@ import type { AuditDetail } from "@/shared/schemas/audit.ts";
 /** What an entry was done to. */
 export const auditTargets = [
   "account",
+  "api_key",
   "appearance",
   "auth_mail",
   "channel",
@@ -105,6 +106,7 @@ export const auditedFunctions: Readonly<Record<string, AuditAction>> = {
   "-monitors.ts editMonitorFn": "monitor.change",
   "-monitors.ts pauseMonitorsFn": "monitor.pause",
   "-monitors.ts resumeMonitorsFn": "monitor.resume",
+  "-monitors.ts ungroupFn": "monitor.change",
   "-pages.ts createComponentFn": "component.create",
   "-pages.ts createPageFn": "page.create",
   "-pages.ts deleteComponentFn": "component.delete",
@@ -127,6 +129,8 @@ export const auditedFunctions: Readonly<Record<string, AuditAction>> = {
   "admin/settings/account.tsx changePassword": "password.change",
   "admin/settings/account.tsx endSessions": "session.end",
   "admin/settings/account.tsx saveAccount": "account.change",
+  "admin/settings/api-keys.tsx create": "api_key.create",
+  "admin/settings/api-keys.tsx revoke": "api_key.revoke",
   "admin/settings/appearance.tsx save": "appearance.change",
   "admin/settings/index.tsx saveGeneral": "settings.change",
   "admin/settings/locations.tsx make": "probe.create",

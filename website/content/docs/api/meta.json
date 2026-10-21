@@ -1,6 +1,7 @@
 {
   "title": "الواجهة البرمجية",
   "pages": [
+    "management",
     "heartbeats",
     "status-pages",
     "subscriptions",

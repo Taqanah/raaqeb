@@ -711,6 +711,23 @@ export function changeMonitors(
   );
 }
 
+/** Takes every monitor out of the group, which ends it; a group no monitor is in changes nothing. */
+export function ungroupMonitors(
+  storage: MonitorStorage,
+  group: string
+): Promise<MonitorBulkResult> {
+  return bulk(
+    storage,
+    async (monitors) => {
+      const ids = (await monitors.list())
+        .filter((monitor) => monitor.group === group)
+        .map((monitor) => monitor.id);
+      return ids.length === 0 ? 0 : await monitors.setGroup(ids, undefined);
+    },
+    true
+  );
+}
+
 export function deleteMonitors(
   storage: MonitorStorage,
   ids: readonly string[]

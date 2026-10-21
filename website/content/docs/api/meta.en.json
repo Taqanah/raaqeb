@@ -1,6 +1,7 @@
 {
   "title": "API",
   "pages": [
+    "management",
     "heartbeats",
     "status-pages",
     "subscriptions",

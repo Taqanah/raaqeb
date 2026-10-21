@@ -3,7 +3,7 @@ title: API
 description: What Raaqeb answers without a sign-in, what it sends, and where each install serves the OpenAPI document these pages are drawn from.
 ---
 
-Raaqeb's public API is the set of addresses that a job, a reverse proxy, a status page's visitors and a subscriber's systems reach without signing in, and the webhooks Raaqeb sends. There is no management API: monitors, status pages, incidents and settings are managed in the admin area alone.
+Raaqeb's public API is the set of addresses that a job, a reverse proxy, a status page's visitors and a subscriber's systems reach without signing in, and the webhooks Raaqeb sends. Beside it, the [management API](/en/docs/api/management) changes monitors, status pages, incidents and the rest over HTTP with an API key; the settings stay in the admin area.
 
 ## Addresses
 
@@ -11,9 +11,9 @@ Every path is relative to the install's [public address](/en/docs/get-started#on
 
 ## Authentication
 
-None, but for the metrics. What stands in for a credential is a token in the path, where the reference says so: a heartbeat monitor's token in `/api/heartbeat/{token}`, and a subscription's token in its confirm and unsubscribe links. Anyone holding the token can use it, so keep it as you would a password. A status page that is not published answers `404` to everyone but the signed-in operator.
+None for the public addresses, but for the metrics. What stands in for a credential is a token in the path, where the reference says so: a heartbeat monitor's token in `/api/heartbeat/{token}`, and a subscription's token in its confirm and unsubscribe links. Anyone holding the token can use it, so keep it as you would a password. A status page that is not published answers `404` to everyone but the signed-in operator.
 
-`/metrics` is the one address behind a credential: a bearer token the operator makes in the settings, sent as `Authorization: Bearer <token>`, which the [metrics page](/en/docs/api/metrics) describes. It answers `404` until the operator turns it on.
+Every path under `/api/v1/` is the [management API](/en/docs/api/management), behind an API key an operator makes in the settings, sent as `Authorization: Bearer <key>`. Of the public addresses, `/metrics` is the one behind a credential: a bearer token the operator makes in the settings, sent as `Authorization: Bearer <token>`, which the [metrics page](/en/docs/api/metrics) describes. It answers `404` until the operator turns it on.
 
 A [webhook channel](/en/docs/notifications/webhook) signs each POST with the Standard Webhooks scheme, so your receiver can tell it came from your install. A subscriber's webhook is not signed.
 
@@ -33,6 +33,7 @@ Each entry starts with its methods and paths. Methods and paths that answer alik
 
 ## Sections
 
+- [Management API](/en/docs/api/management): monitors, groups, status pages, components, incidents, maintenance and channels, behind an API key.
 - [Heartbeats](/en/docs/api/heartbeats): the address a job calls to record a heartbeat.
 - [Status pages](/en/docs/api/status-pages): each view's JSON document, a page's images, its Statuspage-compatible summary, badge and feed, and the reverse proxy's question about a custom domain.
 - [Subscriptions](/en/docs/api/subscriptions): confirming and leaving a subscription.

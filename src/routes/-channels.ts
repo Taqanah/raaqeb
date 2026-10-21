@@ -53,7 +53,7 @@ export const readChannelFormFn = createServerFn({ method: "GET" })
         data.id,
         Date.now()
       ),
-      mayChangeChannel(context.storage, role, { id: data.id }),
+      mayChangeChannel(context.storage, context.operator, { id: data.id }),
     ]);
     return channelFormFor(result, {
       locked: can(role, "channels") && !changeable,
@@ -66,7 +66,7 @@ export const createChannelFn = createServerFn({ method: "POST" })
   .validator(channelInputSchema)
   .handler(async ({ context, data }): Promise<ChannelSaveResult> => {
     if (
-      !(await mayChangeChannel(context.storage, context.operator.role, {
+      !(await mayChangeChannel(context.storage, context.operator, {
         type: data.type,
       }))
     ) {
@@ -80,7 +80,7 @@ export const editChannelFn = createServerFn({ method: "POST" })
   .validator(channelEditSchema)
   .handler(async ({ context, data }): Promise<ChannelSaveResult> => {
     if (
-      !(await mayChangeChannel(context.storage, context.operator.role, {
+      !(await mayChangeChannel(context.storage, context.operator, {
         id: data.id,
       }))
     ) {
@@ -100,7 +100,7 @@ export const deleteChannelFn = createServerFn({ method: "POST" })
   .validator(channelIdSchema)
   .handler(async ({ context, data }): Promise<ChannelDeleteResult> => {
     if (
-      !(await mayChangeChannel(context.storage, context.operator.role, {
+      !(await mayChangeChannel(context.storage, context.operator, {
         id: data.id,
       }))
     ) {

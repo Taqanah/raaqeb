@@ -67,6 +67,7 @@ import {
   readMonitorForm,
   resumeMonitors,
   testMonitor,
+  ungroupMonitors,
 } from "./monitors.ts";
 
 const key = await scratchInstallKey();
@@ -2072,6 +2073,35 @@ describe("the selection bar's changes", () => {
       undefined,
       undefined,
     ]);
+  });
+
+  test("ungrouping a group takes each of its monitors out, leaves the others' groups, and a group no monitor is in changes nothing", async () => {
+    const store = await storage();
+    const { ids } = await mixed(store);
+    await changeMonitors(store, ids.slice(0, 2), {
+      group: "الإنتاج",
+      kind: "set_group",
+    });
+    await changeMonitors(store, ids.slice(2), {
+      group: "الاختبار",
+      kind: "set_group",
+    });
+    const before = await store.changeCounter();
+    expect(await ungroupMonitors(store, "الإنتاج")).toEqual({
+      count: 2,
+      ok: true,
+    });
+    expect(await store.changeCounter()).toBe(before + 1);
+    expect((await listed(store)).map((monitor) => monitor.group)).toEqual([
+      undefined,
+      undefined,
+      "الاختبار",
+    ]);
+    expect(await ungroupMonitors(store, "الإنتاج")).toEqual({
+      count: 0,
+      ok: true,
+    });
+    expect(await store.changeCounter()).toBe(before + 1);
   });
 
   test("adding a tag reaches the monitors that lack it, and removing it those that carry it, each moving the change counter once", async () => {

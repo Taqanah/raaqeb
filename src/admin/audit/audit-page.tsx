@@ -46,6 +46,7 @@ export interface AuditPageProps {
 
 const targetWords: Readonly<Record<AuditTarget, MessageId>> = {
   account: "audit_target_account",
+  api_key: "audit_target_api_key",
   appearance: "audit_target_appearance",
   auth_mail: "audit_target_auth_mail",
   channel: "audit_target_channel",

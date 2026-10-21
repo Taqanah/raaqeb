@@ -25,7 +25,7 @@ Checks run as often as every 20 seconds. A check that fails is retried before th
 ## What it is not
 
 - **Not multi-tenant.** One install serves one organization, and it has one operator account. There are no teams or roles.
-- **No management API.** Monitors, components, status pages and incidents are managed in the admin area only. The [API](/en/docs/api) is the public, read-only side: the status page documents, the summary, badges, feeds, heartbeat ingest and the health check.
+- **A management API.** Monitors, groups, status pages, components, incidents, maintenance and channels are managed in the admin area, or over HTTP with an API key through the [management API](/en/docs/api/management), which checks the same roles and inputs. The rest of the [API](/en/docs/api) is the public, read-only side: the status page documents, the summary, badges, feeds, heartbeat ingest and the health check.
 - **Not a hosted service.** You run it, and your data stays on your server or in your Postgres.
 - **Not a cluster.** One install is one process. Never run two processes against the same database: each would check every monitor and send every notification.
 - **No automatic incidents.** Raaqeb records outages by itself. An incident is something you write for your visitors.

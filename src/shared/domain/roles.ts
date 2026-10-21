@@ -67,6 +67,40 @@ export function assignableRoles(actor: Role): readonly Role[] {
   return roles.filter((role) => manages(actor, role));
 }
 
+/** The lesser of two roles: what a key does when its account's role is below the key's. */
+export function lesserRole(a: Role, b: Role): Role {
+  return roles.indexOf(a) > roles.indexOf(b) ? a : b;
+}
+
+/** The roles an API key of an account of `role` may carry: that role and every one below it. */
+export function keyRoles(role: Role): readonly Role[] {
+  return roles.slice(roles.indexOf(role));
+}
+
+/** What no API key reaches, whatever its role. */
+const keyless: ReadonlySet<Permission> = new Set([
+  "audit",
+  "profile",
+  "settings",
+  "team",
+  "owners",
+  "transfer",
+  "security",
+]);
+
+/** Whether an API key of the role may do what the permission names: what the role allows, but never the account itself, the settings, the team, ownership, export and import, the audit log, nor how operators sign in. */
+export function keyCan(role: Role, permission: Permission): boolean {
+  return !keyless.has(permission) && can(role, permission);
+}
+
+/** Whether a caller may do what the permission names: an operator what their role allows, an API key's call what a key of its role does. */
+export function allows(
+  caller: { readonly apiKey?: unknown; readonly role: Role },
+  permission: Permission
+): boolean {
+  return (caller.apiKey === undefined ? can : keyCan)(caller.role, permission);
+}
+
 /** Whether an operator of `actor` may change, deactivate or remove an operator of `target`: an owner anyone, an admin anyone but an owner. */
 export function manages(actor: Role, target: Role): boolean {
   return can(actor, "team") && (target !== "owner" || can(actor, "owners"));

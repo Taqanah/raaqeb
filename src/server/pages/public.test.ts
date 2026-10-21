@@ -862,6 +862,8 @@ describe("who answers an address no page resolves", () => {
       "/api/heartbeat/token",
       "/api/heartbeat/token/fail",
       "/API/Heartbeat/token/FAIL/",
+      "/api/v1/monitors",
+      "/api/v1/monitors/id/pause",
       "/api/pages/id/overview",
       "/api/pages/id/logo",
       "/api/v2/summary.json",

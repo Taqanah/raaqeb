@@ -53,6 +53,7 @@ import { Route as AdminReportsIndexRouteImport } from "./routes/admin/reports/in
 import { Route as AdminReportsReportDotcsvRouteImport } from "./routes/admin/reports/report[.]csv.ts";
 import { Route as AdminSettingsIndexRouteImport } from "./routes/admin/settings/index.tsx";
 import { Route as AdminSettingsAccountRouteImport } from "./routes/admin/settings/account.tsx";
+import { Route as AdminSettingsApiKeysRouteImport } from "./routes/admin/settings/api-keys.tsx";
 import { Route as AdminSettingsAppearanceRouteImport } from "./routes/admin/settings/appearance.tsx";
 import { Route as AdminSettingsExportRouteImport } from "./routes/admin/settings/export.tsx";
 import { Route as AdminSettingsLocationsRouteImport } from "./routes/admin/settings/locations.tsx";
@@ -62,6 +63,7 @@ import { Route as AdminSettingsSignInRouteImport } from "./routes/admin/settings
 import { Route as AdminSettingsSingleSignOnRouteImport } from "./routes/admin/settings/single-sign-on.tsx";
 import { Route as AdminSettingsStorageRouteImport } from "./routes/admin/settings/storage.tsx";
 import { Route as ApiAuthSplatRouteImport } from "./routes/api/auth/$.ts";
+import { Route as ApiV1SplatRouteImport } from "./routes/api/v1/$.ts";
 import { Route as ApiV2SummaryDotjsonRouteImport } from "./routes/api/v2/summary[.]json.ts";
 import { Route as SubscriptionsTokenIndexRouteImport } from "./routes/subscriptions/$token/index.tsx";
 import { Route as SubscriptionsTokenConfirmRouteImport } from "./routes/subscriptions/$token/confirm.ts";
@@ -319,6 +321,11 @@ const AdminSettingsAccountRoute = AdminSettingsAccountRouteImport.update({
   path: "/account",
   getParentRoute: () => AdminSettingsRoute,
 } as any);
+const AdminSettingsApiKeysRoute = AdminSettingsApiKeysRouteImport.update({
+  id: "/api-keys",
+  path: "/api-keys",
+  getParentRoute: () => AdminSettingsRoute,
+} as any);
 const AdminSettingsAppearanceRoute = AdminSettingsAppearanceRouteImport.update({
   id: "/appearance",
   path: "/appearance",
@@ -363,6 +370,11 @@ const AdminSettingsStorageRoute = AdminSettingsStorageRouteImport.update({
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: "/api/auth/$",
   path: "/api/auth/$",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
+  id: "/api/v1/$",
+  path: "/api/v1/$",
   getParentRoute: () => rootRouteImport,
 } as any);
 const ApiV2SummaryDotjsonRoute = ApiV2SummaryDotjsonRouteImport.update({
@@ -581,6 +593,7 @@ export interface FileRoutesByFullPath {
   "/admin/pages/new": typeof AdminPagesNewRoute;
   "/admin/reports/report.csv": typeof AdminReportsReportDotcsvRoute;
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
+  "/admin/settings/api-keys": typeof AdminSettingsApiKeysRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
   "/admin/settings/locations": typeof AdminSettingsLocationsRoute;
@@ -590,6 +603,7 @@ export interface FileRoutesByFullPath {
   "/admin/settings/single-sign-on": typeof AdminSettingsSingleSignOnRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
   "/api/auth/$": typeof ApiAuthSplatRoute;
+  "/api/v1/$": typeof ApiV1SplatRoute;
   "/api/v2/summary.json": typeof ApiV2SummaryDotjsonRoute;
   "/subscriptions/$token/confirm": typeof SubscriptionsTokenConfirmRoute;
   "/subscriptions/$token/unsubscribe": typeof SubscriptionsTokenUnsubscribeRoute;
@@ -665,6 +679,7 @@ export interface FileRoutesByTo {
   "/admin/pages/new": typeof AdminPagesNewRoute;
   "/admin/reports/report.csv": typeof AdminReportsReportDotcsvRoute;
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
+  "/admin/settings/api-keys": typeof AdminSettingsApiKeysRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
   "/admin/settings/locations": typeof AdminSettingsLocationsRoute;
@@ -674,6 +689,7 @@ export interface FileRoutesByTo {
   "/admin/settings/single-sign-on": typeof AdminSettingsSingleSignOnRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
   "/api/auth/$": typeof ApiAuthSplatRoute;
+  "/api/v1/$": typeof ApiV1SplatRoute;
   "/api/v2/summary.json": typeof ApiV2SummaryDotjsonRoute;
   "/subscriptions/$token/confirm": typeof SubscriptionsTokenConfirmRoute;
   "/subscriptions/$token/unsubscribe": typeof SubscriptionsTokenUnsubscribeRoute;
@@ -753,6 +769,7 @@ export interface FileRoutesById {
   "/admin/pages/new": typeof AdminPagesNewRoute;
   "/admin/reports/report.csv": typeof AdminReportsReportDotcsvRoute;
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
+  "/admin/settings/api-keys": typeof AdminSettingsApiKeysRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
   "/admin/settings/locations": typeof AdminSettingsLocationsRoute;
@@ -762,6 +779,7 @@ export interface FileRoutesById {
   "/admin/settings/single-sign-on": typeof AdminSettingsSingleSignOnRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
   "/api/auth/$": typeof ApiAuthSplatRoute;
+  "/api/v1/$": typeof ApiV1SplatRoute;
   "/api/v2/summary.json": typeof ApiV2SummaryDotjsonRoute;
   "/subscriptions/$token/confirm": typeof SubscriptionsTokenConfirmRoute;
   "/subscriptions/$token/unsubscribe": typeof SubscriptionsTokenUnsubscribeRoute;
@@ -842,6 +860,7 @@ export interface FileRouteTypes {
     | "/admin/pages/new"
     | "/admin/reports/report.csv"
     | "/admin/settings/account"
+    | "/admin/settings/api-keys"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
     | "/admin/settings/locations"
@@ -851,6 +870,7 @@ export interface FileRouteTypes {
     | "/admin/settings/single-sign-on"
     | "/admin/settings/storage"
     | "/api/auth/$"
+    | "/api/v1/$"
     | "/api/v2/summary.json"
     | "/subscriptions/$token/confirm"
     | "/subscriptions/$token/unsubscribe"
@@ -926,6 +946,7 @@ export interface FileRouteTypes {
     | "/admin/pages/new"
     | "/admin/reports/report.csv"
     | "/admin/settings/account"
+    | "/admin/settings/api-keys"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
     | "/admin/settings/locations"
@@ -935,6 +956,7 @@ export interface FileRouteTypes {
     | "/admin/settings/single-sign-on"
     | "/admin/settings/storage"
     | "/api/auth/$"
+    | "/api/v1/$"
     | "/api/v2/summary.json"
     | "/subscriptions/$token/confirm"
     | "/subscriptions/$token/unsubscribe"
@@ -1013,6 +1035,7 @@ export interface FileRouteTypes {
     | "/admin/pages/new"
     | "/admin/reports/report.csv"
     | "/admin/settings/account"
+    | "/admin/settings/api-keys"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
     | "/admin/settings/locations"
@@ -1022,6 +1045,7 @@ export interface FileRouteTypes {
     | "/admin/settings/single-sign-on"
     | "/admin/settings/storage"
     | "/api/auth/$"
+    | "/api/v1/$"
     | "/api/v2/summary.json"
     | "/subscriptions/$token/confirm"
     | "/subscriptions/$token/unsubscribe"
@@ -1081,6 +1105,7 @@ export interface RootRouteChildren {
   Char123LocaleChar125FeedDotatomRoute: typeof Char123LocaleChar125FeedDotatomRoute;
   Char123LocaleChar125IndexRoute: typeof Char123LocaleChar125IndexRoute;
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute;
+  ApiV1SplatRoute: typeof ApiV1SplatRoute;
   ApiV2SummaryDotjsonRoute: typeof ApiV2SummaryDotjsonRoute;
   SubscriptionsTokenConfirmRoute: typeof SubscriptionsTokenConfirmRoute;
   SubscriptionsTokenUnsubscribeRoute: typeof SubscriptionsTokenUnsubscribeRoute;
@@ -1419,6 +1444,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AdminSettingsAccountRouteImport;
       parentRoute: typeof AdminSettingsRoute;
     };
+    "/admin/settings/api-keys": {
+      id: "/admin/settings/api-keys";
+      path: "/api-keys";
+      fullPath: "/admin/settings/api-keys";
+      preLoaderRoute: typeof AdminSettingsApiKeysRouteImport;
+      parentRoute: typeof AdminSettingsRoute;
+    };
     "/admin/settings/appearance": {
       id: "/admin/settings/appearance";
       path: "/appearance";
@@ -1480,6 +1512,13 @@ declare module "@tanstack/react-router" {
       path: "/api/auth/$";
       fullPath: "/api/auth/$";
       preLoaderRoute: typeof ApiAuthSplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/v1/$": {
+      id: "/api/v1/$";
+      path: "/api/v1/$";
+      fullPath: "/api/v1/$";
+      preLoaderRoute: typeof ApiV1SplatRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/api/v2/summary.json": {
@@ -1711,6 +1750,7 @@ declare module "@tanstack/react-router" {
 
 interface AdminSettingsRouteChildren {
   AdminSettingsAccountRoute: typeof AdminSettingsAccountRoute;
+  AdminSettingsApiKeysRoute: typeof AdminSettingsApiKeysRoute;
   AdminSettingsAppearanceRoute: typeof AdminSettingsAppearanceRoute;
   AdminSettingsExportRoute: typeof AdminSettingsExportRoute;
   AdminSettingsLocationsRoute: typeof AdminSettingsLocationsRoute;
@@ -1724,6 +1764,7 @@ interface AdminSettingsRouteChildren {
 
 const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
   AdminSettingsAccountRoute: AdminSettingsAccountRoute,
+  AdminSettingsApiKeysRoute: AdminSettingsApiKeysRoute,
   AdminSettingsAppearanceRoute: AdminSettingsAppearanceRoute,
   AdminSettingsExportRoute: AdminSettingsExportRoute,
   AdminSettingsLocationsRoute: AdminSettingsLocationsRoute,
@@ -1841,6 +1882,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char123LocaleChar125FeedDotatomRoute: Char123LocaleChar125FeedDotatomRoute,
   Char123LocaleChar125IndexRoute: Char123LocaleChar125IndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiV1SplatRoute: ApiV1SplatRoute,
   ApiV2SummaryDotjsonRoute: ApiV2SummaryDotjsonRoute,
   SubscriptionsTokenConfirmRoute: SubscriptionsTokenConfirmRoute,
   SubscriptionsTokenUnsubscribeRoute: SubscriptionsTokenUnsubscribeRoute,

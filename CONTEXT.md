@@ -91,6 +91,16 @@ Arabic: رابط إعادة التعيين
 A one-time link, valid for a limited time, that opens the set-new-password page. Emailed by "forgot password", or printed by the reset command when there is no email.
 _Avoid_: magic link (that is a sign-in mechanism Raaqeb does not offer), reset token in UI copy
 
+**API key**:
+Arabic: مفتاح الواجهة البرمجية
+A secret an operator makes for their own account so a program can call the management API in their name. It has a name, a role no wider than the account's, and an optional expiry; it is shown once and only its SHA-256 is kept. It stops working when it expires, when it is revoked, and when its account is deactivated or removed; lowering the account's role lowers the key's with it. It never reaches the account itself (password, second step, sessions, other keys), the team, the settings, export and import. An owner or admin sees every key and revokes those of the accounts they manage. It does not travel in an export.
+_Avoid_: token (the metrics token and the path tokens are others), API token, access token, secret (the install key's word), password
+
+**Management API**:
+Arabic: الواجهة البرمجية للإدارة
+The JSON API under `/api/v1/` that changes monitors, groups, status pages, components, incidents, maintenance and channels, called with an API key. Each operation checks the same permission and the same input as the admin page that does the same thing, and answers a refusal with a reason.
+_Avoid_: admin API, private API, REST API (say the management API), the API (alone: the public read endpoints are an API too)
+
 **Visitor**:
 Arabic: زائر
 Anyone viewing a status page without signing in.
@@ -527,12 +537,12 @@ _Avoid_: health check (that is `GET /health`), diagnostics, doctor, onboarding (
 **Metrics endpoint**:
 Arabic: المقاييس
 `GET /metrics`, the install's monitors in the Prometheus text format for a Prometheus or Grafana Agent to read: per monitor whether it is up, degraded or paused, its latest response time and check time, its uptime over the last seven UTC days and its certificate's expiry, labelled by monitor (name and id), group and check type. Off until the operator turns it on in settings; it answers only a request that carries the metrics token. It reads what the install already holds and renders no page.
-_Avoid_: exporter, stats, API (the install has no management API), status endpoint
+_Avoid_: exporter, stats, API (the management API is another), status endpoint
 
 **Metrics token**:
 Arabic: رمز المقاييس
 The bearer token a request to the metrics endpoint carries. Turning the endpoint on makes it and shows it once; only its SHA-256 is stored, so a lost token is replaced, never read back. Making a new one stops the old one at once; turning the endpoint off forgets it. It does not travel in an export.
-_Avoid_: API key (a management API with keys may replace it later), password, secret (the install key's word)
+_Avoid_: API key (that is an operator's, for the management API), password, secret (the install key's word)
 
 **Export**:
 Arabic: تصدير

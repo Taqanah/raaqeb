@@ -1,0 +1,131 @@
+---
+title: الواجهة البرمجية للإدارة
+description: أنشئ المراقبات والمجموعات وصفحات الحالة والمكوّنات والحوادث والصيانة والقنوات وغيّرها عبر HTTP، بمفتاح الواجهة البرمجية.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+تفعل الواجهة البرمجية للإدارة عبر HTTP ما تفعله لوحة الإدارة: المراقبات، والمجموعات، وصفحات الحالة، والمكوّنات، والحوادث وتحديثاتها، ونوافذ الصيانة وسلاسلها، وقنوات الإشعارات. يبدأ كل مسار بـ `/api/v1/`، وكل متن JSON، وكل استدعاء يحمل مفتاح الواجهة البرمجية. تتحقق كل عملية من الدور نفسه وتقرأ المُدخل نفسه الذي تقرؤه صفحة الإدارة التي تفعل الشيء ذاته، فما ترفضه لوحة الإدارة يُرفض هنا بالسبب نفسه.
+
+## مفاتيح الواجهة البرمجية
+
+افتح **الإعدادات** ثم **مفاتيح الواجهة البرمجية**، وأنشئ مفتاحًا: سمِّه، واختر دوره ومدة صلاحيته (7 أيام أو 30 أو 90 أو 365، أو بلا نهاية). يعرض راقب المفتاح مرة واحدة، فانسخه حينها، إذ لا يحفظ منه إلا بصمته SHA-256. ويبدأ كل مفتاح بـ `rqk_` لتتعرّفه أدوات كشف الأسرار.
+
+يعمل المفتاح باسم حسابك:
+
+- دوره دورك أو دور أدنى منه، ولا يصل المفتاح أبدًا، مهما كان دوره، إلى حسابك نفسه (كلمة المرور، والاستيثاق الثنائي، والجلسات، والمفاتيح الأخرى)، ولا إلى الفريق ولا الإعدادات ولا التصدير والاستيراد.
+- خفض دورك يخفض كل مفتاح أعلى منه إلى دورك الجديد، ورفعه ثانيةً يُبقيها حيث انخفضت.
+- تعطيل حسابك أو إزالته يُبطل مفاتيحه، وإعادة تنشيطه لا تعيد منها شيئًا.
+- إن اشترط مالكٌ الاستيثاق الثنائي على الجميع، يُرفض مفتاح الحساب الذي لم يفعّله بالسبب `second_step` حتى يفعّله.
+- تعرض صفحته متى استُعمل آخر مرة، بدقة دقيقة، ومن أي عنوان.
+
+يرى المالك والمدير كل المفاتيح في الصفحة نفسها مع حساباتها، ويُبطلان مفاتيح الحسابات التي يديرانها. ولا ينتقل المفتاح في [التصدير](/docs/operate/export-import).
+
+## الاستدعاء
+
+أرسل المفتاح رمز Bearer:
+
+```sh
+curl -H "Authorization: Bearer $RAAQEB_KEY" https://status.example.com/api/v1/monitors
+```
+
+وأنشئ مراقبة بالمتن الذي يحفظه نموذج المراقبة:
+
+```sh
+curl -X POST https://status.example.com/api/v1/monitors \
+  -H "Authorization: Bearer $RAAQEB_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Website","config":{"type":"http","url":"https://example.com/health"},"intervalMs":60000,"timeoutMs":10000,"retries":1}'
+```
+
+ثم علّقها، وانشر حادثة على مكوّن:
+
+```sh
+curl -X POST https://status.example.com/api/v1/monitors/$MONITOR_ID/pause \
+  -H "Authorization: Bearer $RAAQEB_KEY"
+
+curl -X POST https://status.example.com/api/v1/incidents \
+  -H "Authorization: Bearer $RAAQEB_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"title":{"ar":"بطء في تحميل الصفحات"},"impact":"minor","stage":"investigating","message":{"ar":"نتحقق من الأمر."},"statuses":[{"componentId":"'$COMPONENT_ID'","status":"degraded_performance"}]}'
+```
+
+## الإجابات
+
+- **السجل** يأتي JSON ولا يُخزَّن مؤقتًا. يجيب الإنشاء بالرمز `201`، و"افحص الآن" بالرمز `202`، والحذف والتعليق والاستئناف ونقل المراقبات إلى مجموعة بالرمز `204` بلا متن.
+- **القائمة** تأتي صفحةً واحدة: `{ "items": [...], "total": 200, "limit": 50, "offset": 0 }`. اطلب غيرها بـ `?limit=` (من 1 إلى 100، و50 إن لم تحدد) و`?offset=`.
+- **التغيير يستبدل السجل.** يرسل `PUT` كل الحقول كما يحفظها نموذج الإدارة: اقرأ السجل، وغيّر ما تحتاج، وأرسله كاملًا. وبيانات الدخول أو الحقل السري الذي يُترك يحتفظ بقيمته المحفوظة.
+- **الأسرار للكتابة فقط.** قراءة المراقبة تسمّي بيانات الدخول المحفوظة ولا تعرض قيمها، وقراءة القناة تسمّي حقولها السرية التي لها قيمة. ولا يقرأ عنوان مراقبة النبضات إلا مفتاح يعدّل دوره المراقبات، ويبقى مفتاح توقيع قناة Webhook في لوحة الإدارة.
+- **الحذف لا يتكرر أثره.** حذف سجل محذوف يجيب بالرمز `204` أيضًا، وتعليق مراقبة معلّقة لا يغيّر شيئًا.
+
+ويجيب الرفض برمز حالته وسبب لا يتغير:
+
+```json
+{ "reason": "invalid", "issues": [{ "path": ["intervalMs"], "message": "Too small: expected number to be >=20000" }] }
+```
+
+| الرمز | السبب |
+|---|---|
+| `400` | `malformed`: المتن ليس JSON. |
+| `401` | `unauthenticated`: لا مفتاح، أو مفتاح انتهت صلاحيته أو أُبطل أو عُطّل حسابه. |
+| `403` | `forbidden`: دور المفتاح لا يسمح بذلك؛ و`second_step`؛ و`not_allowed`: قناة البريد التي يمر بها بريد الدخول، وهي للمالك وحده من لوحة الإدارة. |
+| `404` | `not_found`: لا سجل بهذا المعرّف، أو لا مسار كهذا. |
+| `405` | `method_not_allowed`: المسار يقبل طرقًا أخرى يسمّيها `Allow`. |
+| `409` | حالة السجل ترفضه، مثل `slug_taken` و`resolved` و`changed`. |
+| `422` | `invalid`: رُفض المُدخل، وتسمّي `issues` كل جزء منه. |
+| `429` | `rate_limited`: انتظر الثواني التي يسمّيها `Retry-After`. |
+| `500` | `corrupt`: سجل محفوظ لا يقرؤه هذا الإصدار، ويسمّيه `id`. |
+| `503` | `unavailable`: قاعدة البيانات غير مفتوحة أو لم تجب. |
+
+## الحدود والكلفة
+
+لكل مفتاح 120 استدعاءً دفعة واحدة، ثم استدعاء في الثانية، وما زاد يُرفض بالرمز `429` حتى يعود له استدعاء. والاستدعاء بلا مفتاح، أو بمفتاح لا يحفظه راقب، يكلّف قراءة واحدة مفهرسة لبصمة المفتاح ولا يُنتج صفحة. وبقياس تحت حد 240 ميغابايت، استغرق 20,000 استدعاء كهذا، 100 في كل مرة، نحو 0.06 ملّي ثانية لكل منها وبقيت العملية دون 160 ميغابايت، واستغرق سرد 200 مراقبة نحو 7 ملّي ثوانٍ للاستدعاء.
+
+## المرجع
+
+### المراقبات
+
+<ApiOperation path="/api/v1/monitors" />
+<ApiOperation path="/api/v1/monitors/test" />
+<ApiOperation path="/api/v1/monitors/{monitorId}" />
+<ApiOperation path="/api/v1/monitors/{monitorId}/test" />
+<ApiOperation path="/api/v1/monitors/{monitorId}/pause" />
+<ApiOperation path="/api/v1/monitors/{monitorId}/resume" />
+<ApiOperation path="/api/v1/monitors/{monitorId}/check" />
+
+### المجموعات
+
+<ApiOperation path="/api/v1/groups" />
+<ApiOperation path="/api/v1/groups/{groupName}/monitors" />
+<ApiOperation path="/api/v1/groups/{groupName}" />
+
+### صفحات الحالة
+
+<ApiOperation path="/api/v1/status-pages" />
+<ApiOperation path="/api/v1/status-pages/{pageId}" />
+
+### المكوّنات
+
+<ApiOperation path="/api/v1/components" />
+<ApiOperation path="/api/v1/components/{componentId}" />
+
+### الحوادث
+
+<ApiOperation path="/api/v1/incidents" />
+<ApiOperation path="/api/v1/incidents/{incidentId}" />
+<ApiOperation path="/api/v1/incidents/{incidentId}/updates" />
+<ApiOperation path="/api/v1/incidents/{incidentId}/updates/{updateId}" />
+
+### الصيانة
+
+<ApiOperation path="/api/v1/maintenance-windows" />
+<ApiOperation path="/api/v1/maintenance-windows/{windowId}" />
+<ApiOperation path="/api/v1/maintenance-windows/{windowId}/end" />
+<ApiOperation path="/api/v1/maintenance-series" />
+<ApiOperation path="/api/v1/maintenance-series/{seriesId}" />
+
+### القنوات
+
+<ApiOperation path="/api/v1/channels" />
+<ApiOperation path="/api/v1/channels/{channelId}" />
+<ApiOperation path="/api/v1/channels/{channelId}/test" />

@@ -6015,6 +6015,146 @@ msgid "monitor_heartbeat_withheld"
 msgstr "The URL is shown only to those who edit monitors: whoever holds it can send heartbeats."
 
 #. js-lingui-explicit-id
+msgid "setting_api_keys"
+msgstr "API keys"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_new_title"
+msgstr "New API key"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_new_intro"
+msgstr "A key lets a program call the management API for your account, with the role you give it. Raaqeb shows it once."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_name_hint"
+msgstr "What will use it, such as a deploy job."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_name_required"
+msgstr "Give the key a name."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_role"
+msgstr "Role"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_role_hint"
+msgstr "A key never reaches your account, the team, the settings, or export and import."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry"
+msgstr "Expires"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_hint"
+msgstr "The key stops working then; one that never expires works until it is revoked."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_7"
+msgstr "In 7 days"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_30"
+msgstr "In 30 days"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_90"
+msgstr "In 90 days"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_365"
+msgstr "In a year"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expiry_never"
+msgstr "Never"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_create"
+msgstr "Create key"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_refused_role"
+msgstr "That role is above your own."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_secret_title"
+msgstr "Copy the key now"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_secret_intro"
+msgstr "Raaqeb keeps only its SHA-256, so it cannot show the key again. A program sends it as a bearer token."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_example"
+msgstr "Try it"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_own_title"
+msgstr "Your API keys"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_own_intro"
+msgstr "Each acts for your account until it expires or is revoked. Lowering your role lowers them with it."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_none"
+msgstr "No API keys yet."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_all_title"
+msgstr "Every API key"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_all_intro"
+msgstr "The keys of every account. You can revoke those of the accounts you manage; deactivating or removing an account revokes its keys."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_account"
+msgstr "Account"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_created"
+msgstr "Created"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expires"
+msgstr "Expires"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_expired"
+msgstr "Expired"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_last_used"
+msgstr "Last used"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_never_used"
+msgstr "Not used yet"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_revoke"
+msgstr "Revoke"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_revoke_title"
+msgstr "Revoke this key?"
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_revoke_description"
+msgstr "Every program that uses it is refused from its next call."
+
+#. js-lingui-explicit-id
+msgid "setting_api_key_copied"
+msgstr "I have copied the key"
+
+#. js-lingui-explicit-id
 msgid "setting_sso"
 msgstr "Single sign-on"
 
@@ -6257,6 +6397,10 @@ msgstr "{target}: {verb}"
 #. js-lingui-explicit-id
 msgid "audit_target_account"
 msgstr "Account"
+
+#. js-lingui-explicit-id
+msgid "audit_target_api_key"
+msgstr "API key"
 
 #. js-lingui-explicit-id
 msgid "audit_target_appearance"

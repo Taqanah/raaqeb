@@ -94,44 +94,62 @@ function htmlOf(message: string): string {
 describe("who changes the channel auth mail goes through", () => {
   test("is an owner alone: the channel in force, and a first email channel made while none is", async () => {
     const s = await scratch();
-    expect(await mayChangeChannel(s.storage, "admin", { type: "email" })).toBe(
-      false
-    );
-    expect(await mayChangeChannel(s.storage, "owner", { type: "email" })).toBe(
-      true
-    );
     expect(
-      await mayChangeChannel(s.storage, "admin", { type: "webhook" })
+      await mayChangeChannel(s.storage, { role: "admin" }, { type: "email" })
+    ).toBe(false);
+    expect(
+      await mayChangeChannel(s.storage, { role: "owner" }, { type: "email" })
+    ).toBe(true);
+    expect(
+      await mayChangeChannel(s.storage, { role: "admin" }, { type: "webhook" })
     ).toBe(true);
     const first = await emailChannel(s, "First", 2525);
-    expect(await mayChangeChannel(s.storage, "admin", { id: first })).toBe(
-      false
-    );
-    expect(await mayChangeChannel(s.storage, "owner", { id: first })).toBe(
-      true
-    );
+    expect(
+      await mayChangeChannel(s.storage, { role: "admin" }, { id: first })
+    ).toBe(false);
+    expect(
+      await mayChangeChannel(s.storage, { role: "owner" }, { id: first })
+    ).toBe(true);
     // Another email channel made now is not the one in force.
-    expect(await mayChangeChannel(s.storage, "admin", { type: "email" })).toBe(
-      true
-    );
+    expect(
+      await mayChangeChannel(s.storage, { role: "admin" }, { type: "email" })
+    ).toBe(true);
     const second = await emailChannel(s, "Second", 2526);
-    expect(await mayChangeChannel(s.storage, "admin", { id: second })).toBe(
-      true
-    );
+    expect(
+      await mayChangeChannel(s.storage, { role: "admin" }, { id: second })
+    ).toBe(true);
     await s.storage.settings.set(authEmailChannel, second);
-    expect(await mayChangeChannel(s.storage, "admin", { id: second })).toBe(
+    expect(
+      await mayChangeChannel(s.storage, { role: "admin" }, { id: second })
+    ).toBe(false);
+    expect(
+      await mayChangeChannel(s.storage, { role: "admin" }, { id: first })
+    ).toBe(true);
+  });
+
+  test("is never an owner's API key: the channel in force, nor a first email channel", async () => {
+    const s = await scratch();
+    const ownerKey = {
+      apiKey: { id: "k", name: "ci" },
+      role: "owner",
+    } as const;
+    expect(await mayChangeChannel(s.storage, ownerKey, { type: "email" })).toBe(
       false
     );
-    expect(await mayChangeChannel(s.storage, "admin", { id: first })).toBe(
-      true
+    const first = await emailChannel(s, "First", 2525);
+    expect(await mayChangeChannel(s.storage, ownerKey, { id: first })).toBe(
+      false
     );
+    expect(
+      await mayChangeChannel(s.storage, ownerKey, { type: "webhook" })
+    ).toBe(true);
   });
 
   test("allows nothing when the database cannot answer, never a thrown error", async () => {
     const s = await scratch();
     await s.storage.close();
     expect(
-      await mayChangeChannel(s.storage, "admin", { type: "webhook" })
+      await mayChangeChannel(s.storage, { role: "admin" }, { type: "webhook" })
     ).toBe(false);
   });
 });

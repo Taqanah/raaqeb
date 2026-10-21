@@ -7,7 +7,7 @@
  */
 import { answerLimitMs, withinLimit } from "@/server/storage/deadline.ts";
 import type { Storage } from "@/server/storage/storage.ts";
-import { can, type Permission, type Role } from "@/shared/domain/roles.ts";
+import { allows, type Permission, type Role } from "@/shared/domain/roles.ts";
 import { localeSchema } from "@/shared/i18n/locale.ts";
 import {
   calendarSchema,
@@ -27,8 +27,10 @@ export function carriesSession(headers: Headers): boolean {
 /** Better Auth's session cookie under Raaqeb's prefix (auth.ts), plain or under the secure prefix it takes over https. */
 const sessionCookie = /(^|;\s*)(__Secure-)?raaqeb\.session_token=/;
 
-/** The signed-in operator: their account as the session read it, with the session's own id. */
+/** The signed-in operator: their account as the session read it, with the session's own id; or as an API key's call names it, with the key. */
 export interface Operator {
+  /** The API key the call came with; nothing for a session's. */
+  readonly apiKey?: { readonly id: string; readonly name: string };
   readonly email: string;
   readonly id: string;
   /** Empty when the operator gave none. */
@@ -37,8 +39,9 @@ export interface Operator {
   readonly role: Role;
   /** The second step is on for the account. */
   readonly secondStep: boolean;
-  readonly sessionId: string;
-  /** How the session signed in: with the password, or through the identity provider, whose own checks stand for a second step. */
+  /** Nothing for an API key's call, which has no session. */
+  readonly sessionId: string | undefined;
+  /** How the session signed in: with the password, or through the identity provider, whose own checks stand for a second step; an API key's call is the password's. */
   readonly signedInWith: "password" | "oidc";
 }
 
@@ -55,7 +58,8 @@ export async function refusalOf(
   operator: Operator,
   permission: Permission
 ): Promise<Refusal | undefined> {
-  if (!can(operator.role, permission)) {
+  // An API key's call reaches less than its role: never the account, the settings, the team, nor ownership.
+  if (!allows(operator, permission)) {
     return "role";
   }
   // The setting is read only for an operator it could stop: their own account is always theirs, and the identity provider holds the second step of a sign-in through it.

@@ -60,6 +60,14 @@ test("every path in the OpenAPI document answers with a status and a type the do
     // No heartbeat monitor and no subscription has it: the documented 404, or a subscription's 303 to its page.
     token: "0".repeat(32),
     windowId,
+    // The management API's records, which no call here holds the key to reach.
+    channelId: "made-up",
+    componentId: "made-up",
+    groupName: "made-up",
+    monitorId: "made-up",
+    pageId: "made-up",
+    seriesId: "made-up",
+    updateId: "made-up",
   };
   const paths = Object.entries(openApiDocument().paths) as [
     string,

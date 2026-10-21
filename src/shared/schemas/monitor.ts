@@ -747,6 +747,9 @@ export const monitorChangeSchema = z.discriminatedUnion("kind", [
 ]);
 export type MonitorChange = z.infer<typeof monitorChangeSchema>;
 
+/** A group to end, by its name: its monitors leave it. */
+export const groupNameSchema = z.object({ group: label(groupNameMaxLength) });
+
 export const monitorChangeInputSchema = monitorIdsSchema.extend({
   change: monitorChangeSchema,
 });

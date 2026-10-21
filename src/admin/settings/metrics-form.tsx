@@ -50,7 +50,7 @@ export function prometheusConfig(
 }
 
 /** A machine text with its copy button; a block keeps its line breaks and scrolls sideways rather than wrap. */
-function Copyable({
+export function Copyable({
   block,
   copy,
   text,

@@ -3,7 +3,8 @@
  * Auth creates each account and owns its credentials; this reads them all,
  * with whether the second step and the authenticator app are on, and makes
  * the changes Better Auth has no call for: the role, deactivating, removing,
- * the name, the operator's preferences, ending sessions, and the reset
+ * the name, the operator's preferences, ending sessions, revoking and lowering
+ * its API keys with its access, and the reset
  * command's and the settings page's removal of the second step.
  */
 
@@ -112,7 +113,8 @@ function accountOf(row: AccountRow): OperatorAccount {
 export function operatorAccountsRepository(
   executor: Executor
 ): OperatorAccountsRepository {
-  const { authSession, authTwoFactor, authUser, settings } = executor.tables;
+  const { apiKeys, authSession, authTwoFactor, authUser, settings } =
+    executor.tables;
   const column = (name: string) => sql.identifier(name);
   const select = (where: SQL) =>
     executor.rows<AccountRow>(
@@ -136,6 +138,10 @@ export function operatorAccountsRepository(
           )) > 0;
         await tx.run(
           sql`DELETE FROM ${authSession} WHERE ${authSession.userId} = ${id}`
+        );
+        // Its API keys are revoked for good: reactivating it gives none back.
+        await tx.run(
+          sql`DELETE FROM ${apiKeys} WHERE ${apiKeys.accountId} = ${id}`
         );
         return changed;
       }),
@@ -217,6 +223,22 @@ export function operatorAccountsRepository(
         sql`${column(authUser.language.name)} = ${preferences.operatorLanguage ?? null}, ${column(authUser.timeZone.name)} = ${preferences.timeZone ?? null}, ${column(authUser.clock.name)} = ${preferences.clock ?? null}, ${column(authUser.calendar.name)} = ${preferences.calendar ?? null}`
       ),
     setRole: (id, role) =>
-      update(id, sql`${column(authUser.role.name)} = ${role}`),
+      executor.transaction(async (tx) => {
+        const changed =
+          (await tx.run(
+            sql`UPDATE ${authUser} SET ${column(authUser.role.name)} = ${role} WHERE ${authUser.id} = ${id}`
+          )) > 0;
+        // A key wider than the account's new role drops to it; raising the account later leaves it there.
+        const wider = roles.slice(0, roles.indexOf(role));
+        if (wider.length > 0) {
+          await tx.run(
+            sql`UPDATE ${apiKeys} SET ${column(apiKeys.role.name)} = ${role} WHERE ${apiKeys.accountId} = ${id} AND ${apiKeys.role} IN (${sql.join(
+              wider.map((one) => sql`${one}`),
+              sql`, `
+            )})`
+          );
+        }
+        return changed;
+      }),
   };
 }

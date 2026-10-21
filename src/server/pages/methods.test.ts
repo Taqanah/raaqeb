@@ -63,8 +63,11 @@ const everyMethod = [
   "OPTIONS",
 ];
 
-/** What the route allows: the methods it declares, and HEAD where it declares GET. */
+/** What the route allows: the methods it declares, every one for `ANY`, and HEAD where it declares GET. */
 function allowed(methods: readonly string[]): string[] {
+  if (methods.includes("ANY")) {
+    return everyMethod.toSorted();
+  }
   return [
     ...new Set([...methods, ...(methods.includes("GET") ? ["HEAD"] : [])]),
   ].toSorted();

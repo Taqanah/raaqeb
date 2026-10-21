@@ -58,6 +58,7 @@ async function recordMigrations(
 describe("what Raaqeb owns", () => {
   test("the expected tables are the schema's tables and the migration record", () => {
     expect(raaqebTables).toEqual([
+      "api_keys",
       "audit_entries",
       "auth_account",
       "auth_session",

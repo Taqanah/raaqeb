@@ -1,0 +1,131 @@
+---
+title: Management API
+description: Create and change monitors, groups, status pages, components, incidents, maintenance and channels over HTTP, with an API key.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+The management API does over HTTP what the admin area does: monitors, groups, status pages, components, incidents and their updates, maintenance windows and series, and notification channels. Every path starts with `/api/v1/`, every body is JSON, and every call carries an API key. Each operation checks the same role and parses the same input as the admin page that does the same thing, so a call the admin would refuse is refused here, with the same reason.
+
+## API keys
+
+Open **Settings**, then **API keys**, and make one: give it a name, a role and a lifetime (7, 30, 90 or 365 days, or never). Raaqeb shows the key once; copy it then, since only its SHA-256 is kept. A key starts with `rqk_`, so a secret scanner can name one.
+
+A key acts for your account:
+
+- Its role is yours or one below it, and a key never reaches your account itself (password, second step, sessions, other keys), the team, the settings, or export and import, whatever its role.
+- Lowering your role lowers each key above it to your new role; raising it again leaves them where they dropped to.
+- Deactivating or removing your account revokes its keys. Reactivating it gives none back.
+- If an owner requires a second step of everyone, a key of an account without one is refused with `second_step` until the account switches it on.
+- Its page shows when it was last used, to within a minute, and from which address.
+
+An owner or admin sees every key on the same page, with its account, and revokes those of the accounts they manage. A key does not travel in an [export](/en/docs/operate/export-import).
+
+## Calling it
+
+Send the key as a bearer token:
+
+```sh
+curl -H "Authorization: Bearer $RAAQEB_KEY" https://status.example.com/api/v1/monitors
+```
+
+Create a monitor with the body the monitor form saves:
+
+```sh
+curl -X POST https://status.example.com/api/v1/monitors \
+  -H "Authorization: Bearer $RAAQEB_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Website","config":{"type":"http","url":"https://example.com/health"},"intervalMs":60000,"timeoutMs":10000,"retries":1}'
+```
+
+Pause it, then post an incident on a component:
+
+```sh
+curl -X POST https://status.example.com/api/v1/monitors/$MONITOR_ID/pause \
+  -H "Authorization: Bearer $RAAQEB_KEY"
+
+curl -X POST https://status.example.com/api/v1/incidents \
+  -H "Authorization: Bearer $RAAQEB_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"title":{"en":"Slow page loads"},"impact":"minor","stage":"investigating","message":{"en":"We are looking into it."},"statuses":[{"componentId":"'$COMPONENT_ID'","status":"degraded_performance"}]}'
+```
+
+## Answers
+
+- **A record** answers as JSON, never cached. A create answers `201`, "check now" `202`, and a delete, a pause, a resume or a group move `204` with no body.
+- **A list** answers one page: `{ "items": [...], "total": 200, "limit": 50, "offset": 0 }`. Ask for another with `?limit=` (1 to 100, 50 by default) and `?offset=`.
+- **A change replaces the record.** `PUT` sends every field, as the admin form saves it: read the record, change what you need, and send it back. A credential or a secret field left out keeps the stored one.
+- **Secrets are write-only.** A monitor's read names its stored credentials, never their values, and a channel's read names its secret fields that hold a value. A heartbeat monitor's address is read only by a key whose role edits monitors, and a webhook channel's signing secret stays in the admin area.
+- **Deleting is idempotent.** Deleting a record that is gone answers `204` too, and pausing a paused monitor changes nothing.
+
+A refusal answers its status with a reason that never changes:
+
+```json
+{ "reason": "invalid", "issues": [{ "path": ["intervalMs"], "message": "Too small: expected number to be >=20000" }] }
+```
+
+| Status | Reason |
+|---|---|
+| `400` | `malformed`: the body is not JSON. |
+| `401` | `unauthenticated`: no key, or one that expired, was revoked, or whose account is deactivated. |
+| `403` | `forbidden`: the key's role does not allow it; `second_step`; `not_allowed`: the email channel auth mail goes through, an owner's alone in the admin area. |
+| `404` | `not_found`: no such record, or no such path. |
+| `405` | `method_not_allowed`: the path takes other methods, named in `Allow`. |
+| `409` | The record's state refuses it, such as `slug_taken`, `resolved` or `changed`. |
+| `422` | `invalid`: the input was refused; `issues` names each part. |
+| `429` | `rate_limited`: wait the seconds `Retry-After` names. |
+| `500` | `corrupt`: a stored record this version cannot read; `id` names it. |
+| `503` | `unavailable`: the database is not open or did not answer. |
+
+## Limits and cost
+
+Each key may make 120 calls at once, then one a second; past that it is refused with `429` until a call comes back. A call with no key, or with one Raaqeb does not hold, costs one indexed read of the key's hash and renders nothing. Measured on a 240 MB limit, 20,000 such calls, 100 at a time, took about 0.06 ms each and the process stayed under 160 MB; listing 200 monitors took about 7 ms a call.
+
+## Reference
+
+### Monitors
+
+<ApiOperation path="/api/v1/monitors" />
+<ApiOperation path="/api/v1/monitors/test" />
+<ApiOperation path="/api/v1/monitors/{monitorId}" />
+<ApiOperation path="/api/v1/monitors/{monitorId}/test" />
+<ApiOperation path="/api/v1/monitors/{monitorId}/pause" />
+<ApiOperation path="/api/v1/monitors/{monitorId}/resume" />
+<ApiOperation path="/api/v1/monitors/{monitorId}/check" />
+
+### Groups
+
+<ApiOperation path="/api/v1/groups" />
+<ApiOperation path="/api/v1/groups/{groupName}/monitors" />
+<ApiOperation path="/api/v1/groups/{groupName}" />
+
+### Status pages
+
+<ApiOperation path="/api/v1/status-pages" />
+<ApiOperation path="/api/v1/status-pages/{pageId}" />
+
+### Components
+
+<ApiOperation path="/api/v1/components" />
+<ApiOperation path="/api/v1/components/{componentId}" />
+
+### Incidents
+
+<ApiOperation path="/api/v1/incidents" />
+<ApiOperation path="/api/v1/incidents/{incidentId}" />
+<ApiOperation path="/api/v1/incidents/{incidentId}/updates" />
+<ApiOperation path="/api/v1/incidents/{incidentId}/updates/{updateId}" />
+
+### Maintenance
+
+<ApiOperation path="/api/v1/maintenance-windows" />
+<ApiOperation path="/api/v1/maintenance-windows/{windowId}" />
+<ApiOperation path="/api/v1/maintenance-windows/{windowId}/end" />
+<ApiOperation path="/api/v1/maintenance-series" />
+<ApiOperation path="/api/v1/maintenance-series/{seriesId}" />
+
+### Channels
+
+<ApiOperation path="/api/v1/channels" />
+<ApiOperation path="/api/v1/channels/{channelId}" />
+<ApiOperation path="/api/v1/channels/{channelId}/test" />

@@ -178,6 +178,25 @@ export const invitations = pgTable("invitations", {
   expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
 });
 
+/** An API key (CONTEXT.md): its secret kept as its SHA-256 only, gone with its account. */
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: text().primaryKey(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    role: text().notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+    expiresAt: bigint("expires_at", { mode: "number" }),
+    lastUsedAt: bigint("last_used_at", { mode: "number" }),
+    lastUsedAddress: text("last_used_address"),
+  },
+  (table) => [index("api_keys_account_id").on(table.accountId)]
+);
+
 /** One audit entry (CONTEXT.md "Audit entry"): who did what to what, from where, when. Written once, deleted only past retention. The actor's email is kept beside the id, so a removed account's entries still name it. */
 export const auditEntries = pgTable(
   "audit_entries",

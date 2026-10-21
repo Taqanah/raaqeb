@@ -2,6 +2,9 @@ import { describe, expect, test } from "bun:test";
 import {
   assignableRoles,
   can,
+  keyCan,
+  keyRoles,
+  lesserRole,
   manages,
   type Permission,
   permissions,
@@ -91,5 +94,70 @@ describe("who manages whose account", () => {
     expect(assignableRoles("editor")).toEqual([]);
     expect(assignableRoles("responder")).toEqual([]);
     expect(assignableRoles("viewer")).toEqual([]);
+  });
+});
+
+describe("what an API key's role allows", () => {
+  /** What a key of each role may do, written out by hand: its role's permissions, never the account, the settings, the team, ownership, export and import, or how operators sign in. */
+  const everyKeyed: readonly Permission[] = [
+    "read",
+    "check_now",
+    "acknowledge",
+    "incidents",
+    "maintenance",
+    "monitors",
+    "pages",
+    "incidents_delete",
+    "channels",
+  ];
+  const keyed: Readonly<Record<Role, readonly Permission[]>> = {
+    owner: everyKeyed,
+    admin: everyKeyed,
+    editor: everyKeyed.filter((permission) => permission !== "channels"),
+    responder: ["read", "check_now", "acknowledge", "incidents", "maintenance"],
+    viewer: ["read"],
+  };
+  for (const role of roles) {
+    test(`a key of the ${role} role may do exactly what the table names`, () => {
+      expect(
+        permissions.filter((permission) => keyCan(role, permission))
+      ).toEqual(
+        permissions.filter((permission) => keyed[role].includes(permission))
+      );
+    });
+  }
+
+  test("never reaches the account, the settings, the team, ownership, export and import, the audit log, or the sign-in policy, whatever its role", () => {
+    for (const permission of [
+      "audit",
+      "profile",
+      "settings",
+      "team",
+      "owners",
+      "transfer",
+      "security",
+    ] as const) {
+      expect(roles.filter((role) => keyCan(role, permission))).toEqual([]);
+    }
+  });
+
+  test("an account's key may carry its role or any below it, never one above", () => {
+    expect(keyRoles("owner")).toEqual([...roles]);
+    expect(keyRoles("admin")).toEqual([
+      "admin",
+      "editor",
+      "responder",
+      "viewer",
+    ]);
+    expect(keyRoles("editor")).toEqual(["editor", "responder", "viewer"]);
+    expect(keyRoles("responder")).toEqual(["responder", "viewer"]);
+    expect(keyRoles("viewer")).toEqual(["viewer"]);
+  });
+
+  test("a key whose account fell below its role does what the account's role allows, and one below the account's keeps its own", () => {
+    expect(lesserRole("admin", "viewer")).toBe("viewer");
+    expect(lesserRole("viewer", "admin")).toBe("viewer");
+    expect(lesserRole("editor", "responder")).toBe("responder");
+    expect(lesserRole("owner", "owner")).toBe("owner");
   });
 });

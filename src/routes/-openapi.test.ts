@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
+import { managementOperations } from "@/shared/api/management.ts";
 import { openApiDocument } from "@/shared/api/openapi.ts";
 
 const tsExtension = /\.ts$/;
@@ -70,6 +71,13 @@ async function routeFiles(): Promise<Map<string, string>> {
       );
     const optional = segments[0] === "{-$locale}";
     const rest = `/${(optional ? segments.slice(1) : segments).join("/")}`;
+    // The management API's one route answers every path of its table.
+    if (file === "api/v1/$.ts") {
+      for (const operation of Object.values(managementOperations)) {
+        files.set(operation.path, file);
+      }
+      continue;
+    }
     files.set(rest, file);
     if (optional) {
       files.set(`/{locale}${rest}`, file);
@@ -86,7 +94,7 @@ async function answer(
 ): Promise<Response> {
   const { handlers } = routeModule.parse(await import(`./${file}`)).Route
     .options.server;
-  const handler = handlers[verb];
+  const handler = handlers[verb] ?? handlers.ANY;
   if (handler === undefined) {
     throw new Error(`${verb} ${path} has no handler`);
   }

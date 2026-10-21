@@ -22,7 +22,7 @@ import { loadCatalog } from "@/server/settings/language.ts";
 import { readOperatorLanguage } from "@/server/settings/operator.ts";
 import { defineSetting, type Setting } from "@/server/storage/settings.ts";
 import type { Storage } from "@/server/storage/storage.ts";
-import { can, type Role } from "@/shared/domain/roles.ts";
+import { allows, type Role } from "@/shared/domain/roles.ts";
 import { createMessages, type MessageId } from "@/shared/i18n/messages.ts";
 import {
   type Channel,
@@ -102,7 +102,7 @@ export async function authEmailChannelOf(
 }
 
 /**
- * Whether an operator of the role may make, edit or delete the channel.
+ * Whether the operator may make, edit or delete the channel.
  * Auth mail carries reset links, one-time codes and invitations, so whoever
  * controls the email channel it goes through could take an owner's account:
  * that channel, and a first email channel made while none carries auth
@@ -111,10 +111,11 @@ export async function authEmailChannelOf(
  */
 export async function mayChangeChannel(
   storage: Pick<Storage, "channels" | "settings">,
-  role: Role,
+  operator: { readonly apiKey?: unknown; readonly role: Role },
   change: { readonly id: string } | { readonly type: ChannelType }
 ): Promise<boolean> {
-  if (can(role, "security")) {
+  // An owner's API key never reaches it: a key never carries the sign-in policy's permission.
+  if (allows(operator, "security")) {
     return true;
   }
   try {

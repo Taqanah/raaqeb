@@ -19,6 +19,11 @@ import {
   maintenanceDocumentSchema,
   monthSchema,
 } from "@/shared/schemas/views.ts";
+import {
+  type ManagementOperation,
+  managementOperations,
+  managementPrefix,
+} from "./management.ts";
 import { inlineSchemas, openApiDocument } from "./openapi.ts";
 
 const tsExtension = /\.ts$/;
@@ -120,12 +125,15 @@ function everyOperation(): {
 }
 
 describe("the OpenAPI document", () => {
-  test("is OpenAPI 3.1 about Raaqeb's public API and names no management endpoint", () => {
+  test("is OpenAPI 3.1 about Raaqeb's API: the public endpoints and every operation of the management API", () => {
     const document = openApiDocument();
     expect(document.openapi).toBe("3.1.1");
-    expect(document.info.title).toBe("Raaqeb public API");
+    expect(document.info.title).toBe("Raaqeb API");
     expect(Object.keys(document.paths).toSorted(byName)).toEqual(
       [
+        ...new Set(
+          Object.values(managementOperations).map((spec) => spec.path)
+        ),
         "/api/custom-domain",
         "/api/heartbeat/{token}",
         "/api/heartbeat/{token}/fail",
@@ -499,6 +507,13 @@ describe("the OpenAPI document", () => {
       ) {
         continue;
       }
+      // The management API's one route answers every path of its table.
+      if (file === "api/v1/$.ts") {
+        for (const spec of Object.values(managementOperations)) {
+          routes.add(spec.path);
+        }
+        continue;
+      }
       const segments = parts
         .filter((part) => part !== "index")
         .map((part) =>
@@ -558,6 +573,7 @@ describe("the OpenAPI document", () => {
     ]);
     const document = openApiDocument();
     expect(document.components.securitySchemes).toEqual({
+      apiKey: expect.objectContaining({ scheme: "bearer", type: "http" }),
       metricsToken: expect.objectContaining({
         scheme: "bearer",
         type: "http",
@@ -578,14 +594,15 @@ describe("the OpenAPI document", () => {
     }
     expect(Object.keys(pull.responses)).toContain("304");
     expect(Object.keys(push.responses)).toContain("400");
-    expect(
-      JSON.stringify(openApiDocument().paths).match(/"security"/g)
-    ).toHaveLength(3);
+    const publicPaths = Object.entries(openApiDocument().paths).filter(
+      ([path]) => !path.startsWith(managementPrefix)
+    );
+    expect(JSON.stringify(publicPaths).match(/"security"/g)).toHaveLength(3);
   });
 
   test("says what the API is, and that every path is relative to the install's public address", () => {
     const document = described.parse(openApiDocument());
-    expect(document.info.description).toContain("no management API");
+    expect(document.info.description).toContain("management API");
     expect(document.servers).toEqual([
       { description: expect.stringContaining("public address"), url: "/" },
     ]);
@@ -661,13 +678,20 @@ describe("the OpenAPI document", () => {
     }
     expect([...said.keys()].toSorted(byName)).toEqual(
       [
+        "channelId",
+        "componentId",
+        "groupName",
         "id",
         "incidentId",
         "kind",
         "locale",
+        "monitorId",
         "month",
+        "pageId",
+        "seriesId",
         "slug",
         "token",
+        "updateId",
         "windowId",
       ].toSorted(byName)
     );
@@ -688,7 +712,7 @@ describe("the OpenAPI document", () => {
     }
   });
 
-  test("every property of every schema in the document says what it means", () => {
+  test("every property of every schema a public endpoint or a webhook carries says what it means", () => {
     const undescribed = new Set<string>();
     const visit = (value: unknown, path: string): void => {
       if (typeof value !== "object" || value === null) {
@@ -710,8 +734,19 @@ describe("the OpenAPI document", () => {
         visit(child, key === "properties" ? path : `${path}/${key}`);
       }
     };
-    // A property named by $ref says what it means in the schema it names.
-    visit(inlineSchemas(openApiDocument()), "");
+    // A property named by $ref says what it means in the schema it names. The management API's bodies are the admin forms' own schemas.
+    const inlined = inlineSchemas(openApiDocument());
+    visit(
+      {
+        paths: Object.fromEntries(
+          Object.entries(inlined.paths).filter(
+            ([path]) => !path.startsWith(managementPrefix)
+          )
+        ),
+        webhooks: inlined.webhooks,
+      },
+      ""
+    );
     expect([...undescribed]).toEqual([]);
   });
 
@@ -894,6 +929,135 @@ describe("the webhook's documented schema", () => {
         ["header", "webhook-id", true],
         ["header", "webhook-timestamp", true],
       ]);
+    }
+  });
+});
+
+/** An operation of the management API as the document writes it, before any $ref is resolved. */
+const managed = z.object({
+  description: z.string(),
+  operationId: z.string(),
+  parameters: z
+    .array(z.object({ in: z.string(), name: z.string() }))
+    .optional(),
+  requestBody: z
+    .object({
+      content: z.object({
+        "application/json": z.object({
+          example: z.unknown().optional(),
+          schema: z.object({ $ref: z.string() }),
+        }),
+      }),
+      required: z.literal(true),
+    })
+    .optional(),
+  responses: z.record(
+    z.string(),
+    z.object({
+      content: z
+        .object({ "application/json": z.object({ schema: z.unknown() }) })
+        .optional(),
+      description: z.string(),
+    })
+  ),
+  security: z.array(z.record(z.string(), z.array(z.string()))),
+  tags: z.array(z.string()),
+});
+
+describe("the management API in the OpenAPI document", () => {
+  const document = openApiDocument();
+  const table: [string, ManagementOperation][] =
+    Object.entries(managementOperations);
+  const entries = table.map(([name, spec]) => {
+    const item = z
+      .record(z.string(), z.unknown())
+      .parse(document.paths[spec.path]);
+    return { name, spec, raw: managed.parse(item[spec.method]) };
+  });
+
+  test("every spec is behind an API key, under its tag, named by its name", () => {
+    for (const { name, spec, raw } of entries) {
+      expect(raw.security, name).toEqual([{ apiKey: [] }]);
+      expect(raw.tags, name).toEqual([spec.tag]);
+      expect(raw.operationId, name).toBe(name);
+      expect(raw.description, name).toContain(spec.description);
+    }
+  });
+
+  test("every spec answers its success, a missing key, a role that may not, a spent limit, a damaged record and a database that cannot answer", () => {
+    for (const { name, spec, raw } of entries) {
+      expect(Object.keys(raw.responses), name).toEqual(
+        expect.arrayContaining([
+          String(spec.status),
+          "401",
+          "403",
+          "429",
+          "500",
+          "503",
+        ])
+      );
+    }
+  });
+
+  test("an spec with a record in its path answers 404, one with a body or a page's query 400 and 422, and one with a refusal of its own 409", () => {
+    for (const { name, spec, raw } of entries) {
+      const statuses = Object.keys(raw.responses);
+      const has = (status: string) => statuses.includes(status);
+      expect(`${name} 404: ${has("404")}`).toBe(
+        `${name} 404: ${spec.path.includes("{")}`
+      );
+      const takesInput = spec.body !== undefined || spec.list;
+      expect(`${name} 422: ${has("422")}`).toBe(
+        `${name} 422: ${Boolean(takesInput)}`
+      );
+      expect(`${name} 400: ${has("400")}`).toBe(
+        `${name} 400: ${spec.body !== undefined}`
+      );
+      expect(`${name} 409: ${has("409")}`).toBe(
+        `${name} 409: ${spec.refusals !== undefined}`
+      );
+    }
+  });
+
+  test("a body is the admin form's schema, written once under components, with the example the table gives", () => {
+    for (const { name, spec, raw } of entries) {
+      const body = raw.requestBody?.content["application/json"];
+      if (spec.body === undefined) {
+        expect(body, name).toBeUndefined();
+        continue;
+      }
+      expect(body?.schema.$ref, name).toStartWith("#/components/schemas/");
+      expect(body?.example, name).toEqual(spec.example);
+    }
+  });
+
+  test("a list takes a page's limit and offset and answers a page of its records", () => {
+    for (const { name, spec, raw } of entries) {
+      const query = (raw.parameters ?? [])
+        .filter((parameter) => parameter.in === "query")
+        .map((parameter) => parameter.name);
+      const listed = spec.list === true;
+      expect(query, name).toEqual(listed ? ["limit", "offset"] : []);
+    }
+  });
+
+  test("a success with no record answers no body, any other the record as JSON", () => {
+    for (const { name, spec, raw } of entries) {
+      const success = raw.responses[String(spec.status)];
+      expect(success?.content === undefined, name).toBe(spec.status === 204);
+    }
+  });
+
+  test("every refusal's body is the one error shape", () => {
+    for (const { name, raw } of entries) {
+      for (const [status, response] of Object.entries(raw.responses)) {
+        if (Number(status) >= 400) {
+          expect(
+            response.content?.["application/json"].schema,
+            `${name} ${status}`
+          ).toEqual(ref("ApiError"));
+        }
+      }
     }
   });
 });

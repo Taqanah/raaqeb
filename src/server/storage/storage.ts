@@ -9,6 +9,7 @@ import {
   type OperatorAccountsRepository,
   operatorAccountsRepository,
 } from "./accounts.ts";
+import { type ApiKeysRepository, apiKeysRepository } from "./api-keys.ts";
 import { type AuditRepository, auditRepository } from "./audit.ts";
 import { type AuthDatabase, authDatabase } from "./auth.ts";
 import {
@@ -102,6 +103,7 @@ export function defaultDatabaseLocation(
 }
 
 export interface Storage {
+  readonly apiKeys: ApiKeysRepository;
   /** The audit log (CONTEXT.md "Audit entry"). */
   readonly audit: AuditRepository;
   /** Better Auth's adapter over this database. */
@@ -243,6 +245,7 @@ export async function openStorage(
     notes,
     ok: true,
     storage: {
+      apiKeys: apiKeysRepository(run),
       audit: auditRepository(run),
       authDatabase: authDatabase(connection),
       backend: connection.backend,

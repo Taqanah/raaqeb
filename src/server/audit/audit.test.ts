@@ -68,6 +68,28 @@ describe("an audit entry", () => {
     expect(view?.actors).toEqual([editor, owner]);
   });
 
+  test("names the API key a change came through in its detail, and a session's carries none", async () => {
+    const s = await scratch();
+    await record(s.storage, {
+      action: "monitor.pause",
+      actor: owner,
+      address: undefined,
+      apiKey: "deploy script",
+      input: { ids: ["m1"] },
+      now,
+    });
+    await record(s.storage, {
+      action: "monitor.resume",
+      actor: owner,
+      address: undefined,
+      input: { ids: ["m1"] },
+      now: now + 1,
+    });
+    const view = await readAuditLog(s.storage, {});
+    expect(view?.entries[1]?.detail).toEqual({ via: "deploy script" });
+    expect(view?.entries[0]?.detail).toEqual({});
+  });
+
   test("is filtered by account and by kind, and paged back from a time", async () => {
     const s = await scratch();
     for (let index = 0; index < auditPageSize + 5; index += 1) {

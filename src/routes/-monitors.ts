@@ -1,6 +1,6 @@
 /**
  * The monitor server functions: create, edit, pause, resume
- * and delete, the selection bar's change of a channel, the group or a tag, the list read, the form read, "test now", a Docker daemon's containers for the form, the detail read,
+ * and delete, the selection bar's change of a channel, the group or a tag, ending a group, the list read, the form read, "test now", a Docker daemon's containers for the form, the detail read,
  * a zoomed span's next checks, one check's record, "check now", acknowledging an outage and dismissing the
  * getting-started checklist, each behind the
  * operator session check. Not a route file (the leading dash); the list
@@ -35,6 +35,7 @@ import {
   readMonitorForm,
   resumeMonitors,
   testMonitor,
+  ungroupMonitors,
 } from "@/server/monitors/monitors.ts";
 import { dismissGettingStarted } from "@/server/settings/getting-started.ts";
 import { readOperatorClock } from "@/server/settings/operator.ts";
@@ -55,6 +56,7 @@ import {
 import {
   type ContainerListResult,
   containerListSchema,
+  groupNameSchema,
   type MonitorBulkResult,
   type MonitorChoicesResult,
   type MonitorFormResult,
@@ -132,6 +134,15 @@ export const changeMonitorsFn = createServerFn({ method: "POST" })
   .handler(
     ({ context, data }): Promise<MonitorBulkResult> =>
       changeMonitors(context.storage, data.ids, data.change)
+  );
+
+/** Ends a group: its monitors leave it, as the selection bar's no group does. */
+export const ungroupFn = createServerFn({ method: "POST" })
+  .middleware([permitted("monitors")])
+  .validator(groupNameSchema)
+  .handler(
+    ({ context, data }): Promise<MonitorBulkResult> =>
+      ungroupMonitors(context.storage, data.group)
   );
 
 export const deleteMonitorsFn = createServerFn({ method: "POST" })

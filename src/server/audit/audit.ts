@@ -27,6 +27,8 @@ export interface AuditEvent {
   readonly actor: AuditActor | undefined;
   /** The client address behind the trusted proxies. */
   readonly address: string | undefined;
+  /** The name of the management API key that made the change; none for a session's. */
+  readonly apiKey?: string | undefined;
   /** What was asked, reduced to its secret-free scalar fields, and the record it names. */
   readonly input: unknown;
   readonly now: number;
@@ -44,7 +46,10 @@ export async function record(
       actorId: event.actor?.id ?? null,
       address: event.address ?? null,
       at: event.now,
-      detail: detailOf(event.input),
+      detail: {
+        ...detailOf(event.input),
+        ...(event.apiKey !== undefined && { via: event.apiKey }),
+      },
       id: Bun.randomUUIDv7(),
       targetId: targetOf(event.input),
     });

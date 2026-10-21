@@ -33,6 +33,10 @@ const expected: Readonly<Record<string, string>> = {
   "admin/settings/sign-in.tsx confirm": "OAERV",
   "admin/settings/sign-in.tsx appOff": "OAERV",
   "admin/settings/sign-in.tsx newCodes": "OAERV",
+  // Every operator's own API keys; who may revoke another's is the module's to judge.
+  "admin/settings/api-keys.tsx read": "OAERV",
+  "admin/settings/api-keys.tsx create": "OAERV",
+  "admin/settings/api-keys.tsx revoke": "OAERV",
   // Reading the admin area.
   "-monitors.ts readMonitorList": "OAERV",
   "-monitors.ts readMonitorChoicesFn": "OAERV",
@@ -81,6 +85,7 @@ const expected: Readonly<Record<string, string>> = {
   "-monitors.ts resumeMonitorsFn": "OAE..",
   "-monitors.ts changeMonitorsFn": "OAE..",
   "-monitors.ts deleteMonitorsFn": "OAE..",
+  "-monitors.ts ungroupFn": "OAE..",
   "-monitors.ts testMonitorFn": "OAE..",
   "-monitors.ts listContainersFn": "OAE..",
   "-monitors.ts dismissGettingStartedFn": "OAE..",
@@ -156,6 +161,8 @@ const expected: Readonly<Record<string, string>> = {
   "api/auth/$.ts POST": "public",
   "health.ts GET": "public",
   "metrics.ts GET": "public",
+  // The management API: its key is read first, then each operation's server function above checks its own permission.
+  "api/v1/$.ts ANY": "public",
   "api/openapi[.]json.ts GET": "public",
   "api/custom-domain.ts GET": "public",
   "api/custom-domain.ts HEAD": "public",

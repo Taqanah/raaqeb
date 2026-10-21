@@ -1,5 +1,5 @@
 /**
- * The OpenAPI document of Raaqeb's public API:
+ * The OpenAPI document of Raaqeb's API:
  * OpenAPI 3.1, whose schema dialect is JSON Schema 2020-12, so every schema
  * in it is Zod's own `z.toJSONSchema` of the shared schema the route
  * answers with. It holds heartbeat ingest, `GET /health`, `GET /metrics`
@@ -10,27 +10,47 @@
  * builds a public route adds it here, and a test holds the list to the
  * route files. Under `webhooks` it documents what Raaqeb sends: the generic
  * webhook's signed POST, one entry per notification type, and
- * what a subscriber's webhook receives. There is no management
- * API. For the tools that read it: every operation has a tag and an
+ * what a subscriber's webhook receives. The management API's operations
+ * are written from its table (management.ts), behind the API key scheme,
+ * its bodies the admin forms' own schemas. For the tools that read it: every operation has a tag and an
  * operationId, every body sits once under `components.schemas` and is named
  * by `$ref`, and every property says what it means through the shared
  * schema's own description.
  */
 import { z } from "zod";
 import { localeSchema } from "@/shared/i18n/locale.ts";
+import { channelInputSchema } from "@/shared/schemas/channel.ts";
+import { componentInputSchema } from "@/shared/schemas/component.ts";
 import { healthReportSchema } from "@/shared/schemas/health.ts";
 import {
   heartbeatExitCodeMax,
   heartbeatMessageMaxLength,
   heartbeatTokenSchema,
 } from "@/shared/schemas/heartbeat.ts";
-import { probeCheckTypes } from "@/shared/schemas/monitor.ts";
+import {
+  incidentCreateSchema,
+  incidentFieldsSchema,
+  incidentUpdateSchema,
+} from "@/shared/schemas/incident.ts";
+import {
+  maintenanceEditInputSchema,
+  maintenanceInputSchema,
+  seriesInputSchema,
+} from "@/shared/schemas/maintenance.ts";
+import {
+  monitorInputSchema,
+  probeCheckTypes,
+} from "@/shared/schemas/monitor.ts";
 import {
   type NotificationType,
   notificationPayloadSchema,
 } from "@/shared/schemas/notification.ts";
 import { overviewDocumentSchema } from "@/shared/schemas/overview.ts";
-import { pageImageKindSchema } from "@/shared/schemas/page.ts";
+import {
+  pageCreateSchema,
+  pageImageKindSchema,
+  pageInputSchema,
+} from "@/shared/schemas/page.ts";
 import {
   probeAssignmentSchema,
   probeAssignmentsSchema,
@@ -59,6 +79,40 @@ import {
   maintenanceDocumentSchema,
   monthSchema,
 } from "@/shared/schemas/views.ts";
+import {
+  groupMonitorsSchema,
+  type ManagementOperation,
+  managementOperations,
+  managementTags,
+  updateFixBodySchema,
+} from "./management.ts";
+import {
+  apiErrorSchema,
+  channelDetailSchema,
+  channelItemSchema,
+  channelRecordSchema,
+  checkAskedSchema,
+  componentItemSchema,
+  componentRecordSchema,
+  groupRecordSchema,
+  incidentItemSchema,
+  incidentRecordSchema,
+  maintenanceSeriesDetailSchema,
+  maintenanceSeriesItemSchema,
+  maintenanceSeriesRecordSchema,
+  maintenanceWindowItemSchema,
+  maintenanceWindowRecordSchema,
+  monitorDetailSchema,
+  monitorItemSchema,
+  monitorRecordSchema,
+  monitorTestRecordSchema,
+  notificationRecordSchema,
+  pageLimitDefault,
+  pageLimitMax,
+  statusPageDetailSchema,
+  statusPageItemSchema,
+  statusPageRecordSchema,
+} from "./records.ts";
 
 /** An OpenAPI 3.1 document as plain JSON. */
 export interface OpenApiDocument {
@@ -247,7 +301,7 @@ function pathItem(
 const pathParameterWords = {
   id: "The status page's id: `page.id` in any of its view documents, or the last part of its address in the admin area, `/admin/pages/<id>`.",
   incidentId:
-    "The incident's id, as the overview's open incidents, a day of a component's bar or a history entry gives it.",
+    "The incident's id: `id` in its record, as the management API's incident list answers it, or as a status page's overview's open incidents, a day of a component's bar or a history entry gives it.",
   kind: "Which of the page's images: its logo, favicon or cover.",
   locale:
     "The page's other language. Its own language is its plain address, with no prefix.",
@@ -257,7 +311,7 @@ const pathParameterWords = {
   token:
     "The secret in the URL Raaqeb gave out: a heartbeat monitor's, shown in its Heartbeat URL panel, or a subscription's, in the links its subscriber was sent.",
   windowId:
-    "The maintenance window's id, as the overview's windows, a day of a component's bar or a history entry gives it.",
+    "The maintenance window's id: `id` in its record, as the management API's window list answers it, or as a status page's overview's windows, a day of a component's bar or a history entry gives it.",
 } as const;
 
 function pathParameter(
@@ -932,6 +986,291 @@ const report = {
   content: { "application/json": { schema: refTo(healthReportSchema) } },
 };
 
+/**
+ * The management API's bodies and records, each written once under
+ * `components`. A body is the admin form's own schema, as a request
+ * carries it: a field with a default may be left out. A record is what the
+ * API answers, every field with a default always present.
+ */
+const managementBodies = z.registry<{ id: string }>();
+for (const [id, schema] of [
+  ["ChannelInput", channelInputSchema],
+  ["ComponentInput", componentInputSchema],
+  ["GroupMonitors", groupMonitorsSchema],
+  ["IncidentCreate", incidentCreateSchema],
+  ["IncidentFields", incidentFieldsSchema],
+  ["IncidentUpdateInput", incidentUpdateSchema],
+  ["MaintenanceEdit", maintenanceEditInputSchema],
+  ["MaintenanceInput", maintenanceInputSchema],
+  ["MonitorInput", monitorInputSchema],
+  ["PageCreate", pageCreateSchema],
+  ["PageInput", pageInputSchema],
+  ["SeriesInput", seriesInputSchema],
+  ["UpdateFix", updateFixBodySchema],
+] as const) {
+  managementBodies.add(schema, { id });
+}
+
+const managementRecords = z.registry<{ id: string }>();
+for (const [id, schema] of [
+  ["ApiError", apiErrorSchema],
+  ["Channel", channelRecordSchema],
+  ["ChannelDetail", channelDetailSchema],
+  ["ChannelItem", channelItemSchema],
+  ["ChannelSend", notificationRecordSchema],
+  ["CheckAsked", checkAskedSchema],
+  ["Component", componentRecordSchema],
+  ["ComponentItem", componentItemSchema],
+  ["Group", groupRecordSchema],
+  ["Incident", incidentRecordSchema],
+  ["IncidentItem", incidentItemSchema],
+  ["MaintenanceSeries", maintenanceSeriesRecordSchema],
+  ["MaintenanceSeriesDetail", maintenanceSeriesDetailSchema],
+  ["MaintenanceSeriesItem", maintenanceSeriesItemSchema],
+  ["MaintenanceWindow", maintenanceWindowRecordSchema],
+  ["MaintenanceWindowItem", maintenanceWindowItemSchema],
+  ["Monitor", monitorRecordSchema],
+  ["MonitorDetail", monitorDetailSchema],
+  ["MonitorItem", monitorItemSchema],
+  ["MonitorTest", monitorTestRecordSchema],
+  ["StatusPageDetail", statusPageDetailSchema],
+  ["StatusPageItem", statusPageItemSchema],
+  ["StatusPageRecord", statusPageRecordSchema],
+] as const) {
+  managementRecords.add(schema, { id });
+}
+
+/** A field with a default is always in an answer, so a record lists it as required. */
+function defaultsRequired({
+  jsonSchema,
+}: {
+  readonly jsonSchema: Record<string, unknown>;
+}): void {
+  const { properties } = jsonSchema;
+  if (typeof properties !== "object" || properties === null) {
+    return;
+  }
+  const required = new Set(
+    Array.isArray(jsonSchema.required) ? jsonSchema.required : []
+  );
+  for (const [name, property] of Object.entries(properties)) {
+    if (
+      typeof property === "object" &&
+      property !== null &&
+      "default" in property
+    ) {
+      required.add(name);
+    }
+  }
+  if (required.size > 0) {
+    jsonSchema.required = Object.keys(properties).filter((name) =>
+      required.has(name)
+    );
+  }
+}
+
+function registrySchemas(
+  registry: ReturnType<typeof z.registry<{ id: string }>>,
+  override?: typeof defaultsRequired
+): Record<string, Record<string, unknown>> {
+  const { schemas } = z.toJSONSchema(registry, {
+    io: "input",
+    override,
+    uri: (id) => `${componentPrefix}${id}`,
+  });
+  return Object.fromEntries(
+    Object.entries(schemas).map(([id, { $id: _, $schema: __, ...schema }]) => [
+      id,
+      schema,
+    ])
+  );
+}
+
+/** A `$ref` to one of the management API's bodies or records; one not there is a bug in this file, so it throws. */
+function managedRef(schema: z.ZodType): { readonly $ref: string } {
+  const id =
+    managementBodies.get(schema)?.id ?? managementRecords.get(schema)?.id;
+  if (id === undefined) {
+    throw new Error("the schema is not one of the management API's components");
+  }
+  return { $ref: `${componentPrefix}${id}` };
+}
+
+/** Where each of the management API's path parameters comes from. */
+const managedParameterWords: Readonly<Record<string, string>> = {
+  channelId:
+    "The channel's id: `id` in its record, as the channel list answers it.",
+  componentId:
+    "The component's id: `id` in its record, as the component list answers it.",
+  groupName: "The group's name, as the group list answers it.",
+  incidentId: pathParameterWords.incidentId,
+  monitorId:
+    "The monitor's id: `id` in its record, as the monitor list answers it.",
+  pageId:
+    "The status page's id: `id` in its record, as the status page list answers it, or the last part of its address in the admin area.",
+  seriesId:
+    "The maintenance series' id: `id` in its record, as the series list answers it.",
+  updateId: "The update's id: `id` in one of the incident's `updates`.",
+  windowId: pathParameterWords.windowId,
+};
+
+const errorContent = {
+  content: { "application/json": { schema: managedRef(apiErrorSchema) } },
+};
+
+const refusalWords = {
+  400: "`malformed`: the body is not JSON.",
+  401: "`unauthenticated`: the request carries no API key, or one that expired, was revoked, or whose account is deactivated. It answers with `WWW-Authenticate: Bearer`.",
+  403: "`forbidden`: the key's role does not allow this; or `second_step`: an owner requires a second step of every operator and the key's account has none on; or `not_allowed`: a change to the email channel auth mail goes through, which only an owner makes, in the admin area.",
+  404: "`not_found`: no record has this id.",
+  422: "`invalid`: the input was refused; `issues` names each part and why.",
+  429: "`rate_limited`: the key made 120 calls in a burst, then more than one a second; `Retry-After` says how many seconds to wait.",
+  500: "`corrupt`: a stored record this version of Raaqeb cannot read; `id` names it.",
+  503: "`unavailable`: the database is not open, or did not answer.",
+} as const;
+
+/** One operation of the management API, as the document writes it. */
+function managedOperation(name: string, operation: ManagementOperation) {
+  const params = [...operation.path.matchAll(/\{(\w+)\}/g)].map(
+    ([, param = ""]) => ({
+      description: managedParameterWords[param],
+      in: "path",
+      name: param,
+      required: true,
+      schema: { type: "string" },
+    })
+  );
+  const query = operation.list
+    ? [
+        {
+          description: `How many records the page holds, 1 to ${pageLimitMax}.`,
+          in: "query",
+          name: "limit",
+          required: false,
+          schema: {
+            default: pageLimitDefault,
+            maximum: pageLimitMax,
+            minimum: 1,
+            type: "integer",
+          },
+        },
+        {
+          description: "How many records of the list come before the page.",
+          in: "query",
+          name: "offset",
+          required: false,
+          schema: { default: 0, minimum: 0, type: "integer" },
+        },
+      ]
+    : [];
+  const answer = operation.answer && managedRef(operation.answer);
+  const success = answer
+    ? {
+        content: {
+          "application/json": {
+            schema: operation.list
+              ? {
+                  description: "One page of the list.",
+                  properties: {
+                    items: {
+                      description: "The page's records, in the list's order.",
+                      items: answer,
+                      type: "array",
+                    },
+                    limit: {
+                      description: "The page's size, as asked.",
+                      type: "integer",
+                    },
+                    offset: {
+                      description: "The place of its first record in the list.",
+                      type: "integer",
+                    },
+                    total: {
+                      description: "How many records the whole list holds.",
+                      type: "integer",
+                    },
+                  },
+                  required: ["items", "limit", "offset", "total"],
+                  type: "object",
+                }
+              : answer,
+          },
+        },
+        description:
+          operation.status === 201 ? "Created." : "Done. Never cached.",
+      }
+    : { description: "Done, with no body." };
+  const takesInput = operation.body !== undefined || operation.list === true;
+  const refused = (status: keyof typeof refusalWords) => ({
+    ...errorContent,
+    description: refusalWords[status],
+  });
+  return {
+    description: operation.description,
+    operationId: name,
+    parameters: [...params, ...query],
+    ...(operation.body
+      ? {
+          requestBody: {
+            content: {
+              "application/json": {
+                ...(operation.example === undefined
+                  ? {}
+                  : { example: operation.example }),
+                schema: managedRef(operation.body),
+              },
+            },
+            required: true,
+          },
+        }
+      : {}),
+    responses: {
+      [operation.status]: success,
+      ...(operation.body ? { 400: refused(400) } : {}),
+      401: refused(401),
+      403: refused(403),
+      ...(params.length > 0 ? { 404: refused(404) } : {}),
+      ...(operation.refusals
+        ? {
+            409: {
+              ...errorContent,
+              description: `The record's state refuses it; the reason is one of ${operation.refusals.map((reason) => `\`${reason}\``).join(", ")}.`,
+            },
+          }
+        : {}),
+      ...(takesInput ? { 422: refused(422) } : {}),
+      429: {
+        ...refused(429),
+        headers: {
+          "retry-after": {
+            description: "Whole seconds until the key may call again.",
+            schema: { type: "integer" },
+          },
+        },
+      },
+      500: refused(500),
+      503: refused(503),
+    },
+    security: [{ apiKey: [] }],
+    summary: operation.summary,
+    tags: [operation.tag],
+  };
+}
+
+/** Every path of the management API, each with its operations. */
+function managementPaths(): Record<string, Record<string, unknown>> {
+  const paths: Record<string, Record<string, unknown>> = {};
+  const table: [string, ManagementOperation][] =
+    Object.entries(managementOperations);
+  for (const [name, operation] of table) {
+    paths[operation.path] = {
+      ...paths[operation.path],
+      [operation.method]: managedOperation(name, operation),
+    };
+  }
+  return paths;
+}
+
 /** The document as a reader that resolves every `$ref` sees it: each one replaced by the schema it names; a `$ref` to no schema throws. */
 export function inlineSchemas(document: OpenApiDocument): OpenApiDocument {
   const { schemas } = document.components;
@@ -971,8 +1310,18 @@ export function inlineSchemas(document: OpenApiDocument): OpenApiDocument {
 export function openApiDocument(): OpenApiDocument {
   return {
     components: {
-      schemas: componentSchemas(),
+      schemas: {
+        ...componentSchemas(),
+        ...registrySchemas(managementBodies),
+        ...registrySchemas(managementRecords, defaultsRequired),
+      },
       securitySchemes: {
+        apiKey: {
+          description:
+            "An API key an operator makes on their API keys page in the settings, shown once, sent as `Authorization: Bearer <key>`. It acts for its operator's account, with the role it was made with, never wider than the account's.",
+          scheme: "bearer",
+          type: "http",
+        },
         metricsToken: {
           description:
             "The metrics token the operator's settings page shows once when it turns the metrics on, sent as `Authorization: Bearer <token>`.",
@@ -989,13 +1338,14 @@ export function openApiDocument(): OpenApiDocument {
     },
     info: {
       description:
-        "Raaqeb's public API: a status page's read-only status data (its view documents, images, Statuspage-compatible summary, badge and feed), heartbeat ingest, the monitors' metrics for Prometheus behind a bearer token, the protocol a probe speaks behind its own, and a subscription's confirm and unsubscribe. Its webhooks are what Raaqeb sends. There is no management API: the operator manages the install in its admin area.",
-      title: "Raaqeb public API",
+        "Raaqeb's API. The public endpoints: a status page's read-only status data (its view documents, images, Statuspage-compatible summary, badge and feed), heartbeat ingest, the monitors' metrics for Prometheus behind a bearer token, the protocol a probe speaks behind its own, and a subscription's confirm and unsubscribe. The management API under `/api/v1/`: monitors, groups, status pages, components, incidents, maintenance and notification channels, behind an API key, each operation checking the same role and input as the admin area does. Its webhooks are what Raaqeb sends.",
+      title: "Raaqeb API",
       version: "1",
     },
     openapi: "3.1.1",
     paths: {
       ...pageResources(),
+      ...managementPaths(),
       "/api/custom-domain": pathItem("CustomDomainCheck", "Meta", {
         get: customDomain,
         head: customDomain,
@@ -1095,10 +1445,12 @@ export function openApiDocument(): OpenApiDocument {
         url: "/",
       },
     ],
-    tags: Object.entries(tags).map(([name, description]) => ({
-      description,
-      name,
-    })),
+    tags: [...Object.entries(tags), ...Object.entries(managementTags)].map(
+      ([name, description]) => ({
+        description,
+        name,
+      })
+    ),
     webhooks: webhooks(),
   };
 }
