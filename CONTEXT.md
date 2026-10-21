@@ -426,7 +426,7 @@ _Avoid_: health check (that is `GET /health`), diagnostics, doctor, onboarding (
 
 **Metrics endpoint**:
 Arabic: المقاييس
-`GET /metrics`, the install's monitors in the Prometheus text format for a Prometheus or Grafana Agent to read: per monitor whether it is up, degraded or paused, its latest response time and check time, and its certificate's expiry, labelled by monitor (name and id), group and check type. Off until the operator turns it on in settings; it answers only a request that carries the metrics token. It reads what the install already holds and renders no page.
+`GET /metrics`, the install's monitors in the Prometheus text format for a Prometheus or Grafana Agent to read: per monitor whether it is up, degraded or paused, its latest response time and check time, its uptime over the last seven UTC days and its certificate's expiry, labelled by monitor (name and id), group and check type. Off until the operator turns it on in settings; it answers only a request that carries the metrics token. It reads what the install already holds and renders no page.
 _Avoid_: exporter, stats, API (the install has no management API), status endpoint
 
 **Metrics token**:

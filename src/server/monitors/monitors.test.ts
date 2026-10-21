@@ -648,6 +648,26 @@ describe("the monitors module", () => {
     });
   });
 
+  test("a check of today this version cannot read, though not the latest, is reported as corrupt too, naming its monitor", async () => {
+    const store = await storage();
+    const created = await createMonitor(store, key, site);
+    if (!created.ok) {
+      throw new Error(created.reason);
+    }
+    const { id } = created.monitor;
+    const now = Date.UTC(2027, 0, 15, 12);
+    const insert =
+      "INSERT INTO checks (monitor_id, started_at, result, response_ms, status_code, reason, attempts, bytes) VALUES (?, ?, ?, 1, 200, 0, 1, 1)";
+    const location = open?.location ?? { backend: "sqlite", file: "" };
+    await runSql(location, insert, [id, now - 120_000, 7]);
+    await runSql(location, insert, [id, now - 60_000, 0]);
+    expect(await listMonitors(store, now)).toEqual({
+      id,
+      ok: false,
+      reason: "corrupt",
+    });
+  });
+
   test("the command palette's read answers every monitor's id, name and target, and unavailable when the database fails, never throwing", async () => {
     const store = await storage();
     const id = await createdId(store, site);

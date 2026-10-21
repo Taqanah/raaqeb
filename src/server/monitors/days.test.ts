@@ -141,6 +141,37 @@ describe("the bars' reads of history", () => {
     const one = await readsFor(1);
     expect(await readsFor(10)).toBe(one);
   });
+
+  test("read no row per check: today's checks of every monitor stay in the database, summed there", async () => {
+    scratch = await scratchPages(today);
+    const { storage } = scratch;
+    const monitor = await storage.monitors.create(site);
+    await checksEveryMinute(storage, monitor, today, noon, "up");
+    const rowsRead: string[] = [];
+    const perCheck = (name: string) => () => {
+      rowsRead.push(name);
+      return Promise.reject(new Error(`${name} reads a row per check`));
+    };
+    const days = await readMonitorDays(
+      {
+        ...storage,
+        checks: {
+          ...storage.checks,
+          range: perCheck("range"),
+          ranges: perCheck("ranges"),
+          recent: perCheck("recent"),
+          series: perCheck("series"),
+        },
+      },
+      [monitor],
+      { days: 1, now: noon }
+    );
+    expect(rowsRead).toEqual([]);
+    expect(days.get(monitor.id)?.[0]).toMatchObject({
+      observedMs: 12 * hour,
+      responseMs: 120,
+    });
+  });
 });
 
 describe("a bar day as a document carries it", () => {

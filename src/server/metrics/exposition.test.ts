@@ -11,6 +11,7 @@ const idle: MonitorSample = {
   paused: false,
   responseMs: undefined,
   state: undefined,
+  uptime: undefined,
 };
 
 const labels = 'monitor="Site",monitor_id="m1",group="",check_type="http"';
@@ -64,6 +65,29 @@ describe("the text a scrape answers", () => {
     expect(text).not.toContain("raaqeb_monitor_up{");
     expect(text).not.toContain("raaqeb_monitor_degraded{");
     expect(text).not.toContain("raaqeb_monitor_response_seconds");
+  });
+
+  test("the uptime ratio is a gauge that names its window, and a paused monitor keeps the one it earned", () => {
+    const text = exposition("1", [
+      { ...idle, paused: true, uptime: 0.9166 },
+      { ...idle, monitor: "Other", monitorId: "m2", uptime: 1 },
+      { ...idle, monitor: "New", monitorId: "m3" },
+    ]);
+    const all = lines(text);
+    expect(all).toContain(
+      `raaqeb_monitor_uptime_ratio{${labels},window="7d"} 0.9166`
+    );
+    expect(all).toContain(
+      'raaqeb_monitor_uptime_ratio{monitor="Other",monitor_id="m2",group="",check_type="http",window="7d"} 1'
+    );
+    // No observed time, no sample.
+    expect(
+      all.filter((line) => line.startsWith("raaqeb_monitor_uptime_ratio{"))
+    ).toHaveLength(2);
+    expect(all).toContain("# TYPE raaqeb_monitor_uptime_ratio gauge");
+    expect(exposition("1", [idle])).not.toContain(
+      "raaqeb_monitor_uptime_ratio"
+    );
   });
 
   test("the certificate's expiry is in epoch seconds", () => {

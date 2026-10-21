@@ -247,7 +247,7 @@ const customDomain = {
 /** The Prometheus scrape: a GET behind the metrics token, off until the operator turns it on. */
 const metrics = {
   description:
-    "The install's monitors in the Prometheus text exposition format: `raaqeb_monitor_up`, `raaqeb_monitor_degraded`, `raaqeb_monitor_paused`, `raaqeb_monitor_response_seconds`, `raaqeb_monitor_last_check_timestamp_seconds` and `raaqeb_certificate_expiry_timestamp_seconds`, each labelled with `monitor`, `monitor_id`, `group` and `check_type`, and `raaqeb_build_info`. Off until the operator turns it on in the settings, which makes the bearer token.",
+    'The install\'s monitors in the Prometheus text exposition format: `raaqeb_monitor_up`, `raaqeb_monitor_degraded`, `raaqeb_monitor_paused`, `raaqeb_monitor_response_seconds`, `raaqeb_monitor_last_check_timestamp_seconds`, `raaqeb_monitor_uptime_ratio` (over the last seven UTC days, labelled `window="7d"`) and `raaqeb_certificate_expiry_timestamp_seconds`, each labelled with `monitor`, `monitor_id`, `group` and `check_type`, and `raaqeb_build_info`. Off until the operator turns it on in the settings, which makes the bearer token.',
   responses: {
     200: {
       content: {

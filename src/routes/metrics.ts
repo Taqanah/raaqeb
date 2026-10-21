@@ -8,7 +8,11 @@ export const Route = createFileRoute("/metrics")({
     handlers: {
       GET: ({ context, request }) =>
         context.storage
-          ? scrape(context.storage, request.headers.get("authorization"))
+          ? scrape(
+              context.storage,
+              request.headers.get("authorization"),
+              Date.now()
+            )
           : new Response(null, { status: 404 }),
     },
   },

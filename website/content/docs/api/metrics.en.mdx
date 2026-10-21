@@ -5,7 +5,7 @@ description: Every monitor's state at /metrics in the Prometheus format, behind 
 
 import { ApiOperation } from "../../../docs/api/view.tsx";
 
-Raaqeb can show the state of every monitor at `/metrics` in the Prometheus text format, for Prometheus, Grafana Agent or any other scraper. It is off until you turn it on. A scrape reads each monitor's latest check and certificate record and renders no page, so it is cheap: with 200 monitors it takes a few milliseconds and about 1 MB. A monitor with no check today, paused or not yet checked since midnight, costs more, since Raaqeb opens its last sealed day to find its latest check: 200 of them took about 15 ms and 20 MB per scrape.
+Raaqeb can show the state of every monitor at `/metrics` in the Prometheus text format, for Prometheus, Grafana Agent or any other scraper. It is off until you turn it on. A scrape reads each monitor's latest check, certificate record and last seven days and renders no page, so it is cheap: with 200 monitors and a day of one-minute checks it takes about 150 ms and under 50 MB more, since today's checks are summed in the database and never loaded one by one. A monitor with no check today, paused or not yet checked since midnight, costs more, since Raaqeb opens its last sealed day to find its latest check: 200 of them took about 20 ms and 30 MB per scrape.
 
 ## Turn it on
 
@@ -36,6 +36,7 @@ Every metric is a gauge, labelled `monitor` (the monitor's name, which two monit
 | `raaqeb_monitor_paused` | `1` while the monitor is paused, else `0`. |
 | `raaqeb_monitor_response_seconds` | The latest check's response time in seconds. Absent while paused, and for a check with no response time. |
 | `raaqeb_monitor_last_check_timestamp_seconds` | When the latest check started, in seconds since the Unix epoch. |
+| `raaqeb_monitor_uptime_ratio` | The share of the monitor's observed time over the last seven UTC days, today included, that it was not down, from 0 to 1, labelled `window="7d"`. Maintenance windows and gaps in the checks are left out, as on the status page. Absent while the monitor has no observed time. A paused monitor keeps the ratio it earned. |
 | `raaqeb_certificate_expiry_timestamp_seconds` | When the monitor's TLS certificate expires, in seconds since the Unix epoch. Present for an HTTPS monitor with the certificate expiry option on, once Raaqeb has read the certificate. |
 | `raaqeb_build_info` | Always `1`, labelled with the running `version`. |
 
@@ -51,7 +52,7 @@ The metrics are the latest check, not a history, so Prometheus keeps the history
   for: 2m
 ```
 
-For a certificate that expires within 14 days: `raaqeb_certificate_expiry_timestamp_seconds - time() < 14 * 86400`. For an uptime over a week, `avg_over_time(raaqeb_monitor_up[7d])`. Raaqeb's own uptime, which leaves maintenance windows and gaps out of the count, is on the status page and the monitor's page; it is not a metric, because working it out reads a day of checks for every monitor on each scrape, which would not fit the memory an install runs in.
+For a certificate that expires within 14 days: `raaqeb_certificate_expiry_timestamp_seconds - time() < 14 * 86400`. For an uptime over a week, use `raaqeb_monitor_uptime_ratio`, which is Raaqeb's own figure and leaves maintenance windows and gaps out of the count, or `avg_over_time(raaqeb_monitor_up[7d])`, which counts maintenance windows as downtime and any window you choose.
 
 Scrape no faster than the monitors check: a monitor's value changes only when its check runs, at its interval (a minute by default). `raaqeb_monitor_last_check_timestamp_seconds` tells you whether a value is current.
 

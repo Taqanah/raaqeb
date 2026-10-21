@@ -25,6 +25,8 @@ export interface MonitorSample {
   readonly responseMs: number | undefined;
   /** The latest check's result; nothing before the first check. */
   readonly state: CheckResult | undefined;
+  /** The share of its observed time over the last `uptimeDays` UTC days, today included, that the monitor was not down, 0 to 1; nothing without observed time. */
+  readonly uptime: number | undefined;
 }
 
 const backslash = /\\/g;
@@ -39,7 +41,12 @@ function labelValue(value: string): string {
     .replace(lineBreak, "\\n");
 }
 
+/** The window label of the uptime ratio: the last seven UTC days (`uptimeDays` in `scrape.ts`). */
+const uptimeWindow = "7d";
+
 interface Family {
+  /** Labels beside the monitor's own. */
+  readonly extra?: string;
   readonly help: string;
   readonly name: string;
   /** The sample's value, or nothing for a monitor without the fact. */
@@ -96,6 +103,13 @@ const families: readonly Family[] = [
         : `${monitor.checkedAt / 1000}`,
   },
   {
+    extra: `window="${uptimeWindow}"`,
+    help: "The share of the monitor's observed time over the last seven UTC days, today included, that it was not down: maintenance windows and gaps in its checks are left out. Absent without observed time.",
+    name: "raaqeb_monitor_uptime_ratio",
+    samples: (monitor) =>
+      monitor.uptime === undefined ? undefined : `${monitor.uptime}`,
+  },
+  {
     help: "When the monitor's TLS certificate expires, in seconds since the Unix epoch.",
     name: "raaqeb_certificate_expiry_timestamp_seconds",
     samples: (monitor) =>
@@ -114,9 +128,13 @@ export function exposition(
   for (const family of families) {
     const lines = monitors.flatMap((monitor, index) => {
       const value = family.samples(monitor);
-      return value === undefined
-        ? []
-        : [`${family.name}{${labels[index]}} ${value}`];
+      if (value === undefined) {
+        return [];
+      }
+      const own = family.extra
+        ? `${labels[index]},${family.extra}`
+        : labels[index];
+      return [`${family.name}{${own}} ${value}`];
     });
     if (lines.length > 0) {
       out.push(
