@@ -38,6 +38,8 @@ export interface Operator {
   /** The second step is on for the account. */
   readonly secondStep: boolean;
   readonly sessionId: string;
+  /** How the session signed in: with the password, or through the identity provider, whose own checks stand for a second step. */
+  readonly signedInWith: "password" | "oidc";
 }
 
 /**
@@ -56,10 +58,11 @@ export async function refusalOf(
   if (!can(operator.role, permission)) {
     return "role";
   }
-  // The setting is read only for an operator it could stop: their own account is always theirs.
+  // The setting is read only for an operator it could stop: their own account is always theirs, and the identity provider holds the second step of a sign-in through it.
   if (
     permission === "profile" ||
     operator.secondStep ||
+    operator.signedInWith === "oidc" ||
     !(await readSecondStepRequired(storage))
   ) {
     return;
@@ -96,7 +99,7 @@ export async function readOperator(
     return;
   }
   return {
-    operator: operatorOf(session.user, session.session.id),
+    operator: operatorOf(session.user, session.session),
     setCookie: read.headers.get("set-cookie") ?? undefined,
   };
 }
@@ -114,7 +117,7 @@ function operatorOf(
     readonly timeZone?: string | null;
     readonly twoFactorEnabled?: boolean | null;
   },
-  sessionId: string
+  session: { readonly id: string; readonly method?: string | null }
 ): Operator {
   const preferences: AccountSettingsInput = Object.fromEntries(
     Object.entries({
@@ -132,7 +135,8 @@ function operatorOf(
     // A role the code no longer names is the least one, never more.
     role: roleSchema.catch("viewer").parse(user.role),
     secondStep: user.twoFactorEnabled === true,
-    sessionId,
+    sessionId: session.id,
+    signedInWith: session.method === "oidc" ? "oidc" : "password",
   };
 }
 
@@ -208,7 +212,7 @@ export async function isOperator(
     if (permission === undefined) {
       return true;
     }
-    const operator = operatorOf(session.user, session.session.id);
+    const operator = operatorOf(session.user, session.session);
     return (await refusalOf(storage, operator, permission)) === undefined;
   } catch {
     // A database that cannot answer is no session, as for the guard.

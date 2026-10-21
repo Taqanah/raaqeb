@@ -17,6 +17,7 @@
  * - the five-minute refresh, "the five-minute refresh of the public figures".
  */
 import { afterEach, describe, expect, test } from "bun:test";
+import { saveSso } from "@/server/auth/sso.ts";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import type { InstallKey } from "@/server/boot/installkey.ts";
 import {
@@ -353,6 +354,24 @@ const writes: readonly (readonly [string, Write, Setup?])[] = [
       return deleteChannel(w.s.storage, mail?.id ?? "");
     },
     (w) => createChannel(w.s.storage, w.key, mailChannel),
+  ],
+  [
+    "single sign-on saved, whose button the sign-in page the memo keeps shows",
+    (w) =>
+      saveSso(w.s.storage, w.key, {
+        clientId: "raaqeb",
+        clientSecret: "a secret",
+        defaultRole: "viewer",
+        discoveryUrl:
+          "https://id.example.test/.well-known/openid-configuration",
+        domains: [],
+        enabled: true,
+        name: "Company login",
+        requireSso: false,
+        roleClaim: "",
+        roleRules: [],
+        signUp: "invitation",
+      }),
   ],
   [
     "the general settings saved, the public address and the clock among them",

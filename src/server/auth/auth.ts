@@ -25,6 +25,7 @@ import { error as logError, info as logInfo, reasonOf } from "@/server/log.ts";
 import { readPublicAddress } from "@/server/settings/address.ts";
 import type { AuthDatabase } from "@/server/storage/auth.ts";
 import type { Storage } from "@/server/storage/storage.ts";
+import type { Role } from "@/shared/domain/roles.ts";
 import {
   closedGate,
   type InvitationGate,
@@ -35,6 +36,17 @@ import { authMailOver } from "./mail.ts";
 import { hashPassword, verifyPassword } from "./password.ts";
 import { disabledPaths, unblockablePaths } from "./paths.ts";
 import { parseSecrets, resolveSecrets } from "./secret.ts";
+import {
+  notInvitedCode,
+  passwordRefused,
+  readSsoProvider,
+  type SsoProvider,
+  signUpRole,
+  ssoCallbackPath,
+  ssoPlugin,
+  ssoRequiredCode,
+  testDiscovery,
+} from "./sso.ts";
 
 /** The boot settings auth reads; the request context carries them beside the storage. The install key opens the auth email channel's secrets. */
 export type AuthBoot = Pick<BootSettings, "betterAuthSecrets" | "installKey">;
@@ -115,6 +127,8 @@ export interface CreateAuthInput {
   readonly mail: AuthMail;
   /** The versioned secrets text. */
   readonly secrets: string;
+  /** The identity provider operators may sign in with; none while single sign-on is off. */
+  readonly sso?: SsoProvider;
 }
 
 const day = 24 * 60 * 60;
@@ -290,13 +304,22 @@ async function countWrongPassword(ctx: HookContext): Promise<void> {
   }
 }
 
-/** The endpoints whose new session is a sign-in: the password, a code that finishes one, an accepted invitation, onboarding's sign-up. */
+/** The provider's callback as Better Auth's router names it. */
+const callbackPath = "/callback/:id";
+
+/** The endpoints whose new session is a sign-in: the password, a code that finishes one, an accepted invitation, onboarding's sign-up, the provider's callback. */
 const signingInPaths = new Set([
   "/sign-in/email",
   "/sign-up/email",
   "/invitation/accept",
+  callbackPath,
   ...finishingPaths,
 ]);
+
+/** Whether an endpoint answered with a refusal; the provider's callback answers a sign-in with a redirect, which Better Auth throws as an error too. */
+function refused(returned: unknown): returned is APIError {
+  return isAPIError(returned) && returned.statusCode >= 400;
+}
 
 /**
  * One log line per sign-in attempt over HTTP, with the client address and
@@ -319,7 +342,11 @@ function signInLog(log: (line: string) => void): BetterAuthPlugin {
               returned !== null &&
               "twoFactorRedirect" in returned;
             let event = "sign-in";
-            if (isAPIError(returned)) {
+            if (ctx.path === callbackPath) {
+              event = ctx.context.newSession
+                ? "sign-in through single sign-on"
+                : "sign-in through single sign-on refused";
+            } else if (refused(returned)) {
               event =
                 ctx.path === "/sign-in/email"
                   ? "sign-in refused"
@@ -333,6 +360,7 @@ function signInLog(log: (line: string) => void): BetterAuthPlugin {
           matcher: (ctx) =>
             ctx.request !== undefined &&
             (ctx.path === "/sign-in/email" ||
+              ctx.path === callbackPath ||
               finishingPaths.has(ctx.path ?? "")),
         },
       ],
@@ -344,7 +372,19 @@ function signInLog(log: (line: string) => void): BetterAuthPlugin {
 /** The Better Auth instance for these inputs: minimal build, Argon2id, UUIDv7 ids, 7-day sessions refreshed daily, the disabled-paths list, the in-memory rate limit keyed on the address the entry resolved. */
 export function createAuth(input: CreateAuthInput) {
   const log = input.log ?? logError;
+  const invitations = input.invitations ?? closedGate;
+  const { sso } = input;
+  // The role each address signing up through the provider was admitted with, from the admission check to the account's creation a moment later in the same callback.
+  const admitted = new Map<string, Role>();
   return betterAuth({
+    // An address that has an account is linked to the provider only when the provider says the address is verified: no provider is trusted without it.
+    account: {
+      accountLinking: {
+        enabled: true,
+        requireLocalEmailVerified: false,
+        trustedProviders: [],
+      },
+    },
     advanced: {
       // The reset link and the one-time code go after the answer, so the operator's address answers as fast as any other.
       backgroundTasks: { handler: handOff },
@@ -371,27 +411,62 @@ export function createAuth(input: CreateAuthInput) {
             const user = await ctx?.context.internalAdapter.findUserById(
               session.userId
             );
-            // The field is Raaqeb's own (user.additionalFields), which the hook's type leaves out.
+            // The fields are Raaqeb's own (user.additionalFields), which the hook's type leaves out.
             if (user && "deactivatedAt" in user && user.deactivatedAt) {
               throw new APIError("FORBIDDEN", {
                 code: "ACCOUNT_DEACTIVATED",
                 message: "the account is deactivated",
               });
             }
+            // Checked after the password, so a wrong one answers as before.
+            if (
+              ctx?.path === "/sign-in/email" &&
+              user &&
+              "role" in user &&
+              passwordRefused(sso, String(user.role))
+            ) {
+              throw new APIError("FORBIDDEN", {
+                code: ssoRequiredCode,
+                message: "the account signs in through single sign-on",
+              });
+            }
+            const method = ctx?.path === callbackPath ? "oidc" : "password";
+            return { data: { ...session, method } };
           },
         },
       },
       user: {
         create: {
-          // The install's first account is its owner (CONTEXT.md "Role"); onboarding makes it.
-          before: async (user, ctx) =>
-            ctx && (await ctx.context.internalAdapter.countTotalUsers()) === 0
+          // The install's first account is its owner (CONTEXT.md "Role"); onboarding makes it. One made through the provider takes the role it was admitted with, and none was refused.
+          after: async (user, ctx) => {
+            if (ctx?.path === callbackPath) {
+              await invitations.forget(user.email);
+            }
+          },
+          before: async (user, ctx) => {
+            if (ctx?.path === callbackPath) {
+              const role = admitted.get(user.email.toLowerCase());
+              admitted.delete(user.email.toLowerCase());
+              if (!role) {
+                throw new APIError("FORBIDDEN", {
+                  code: notInvitedCode,
+                  message: "the address may not sign up",
+                });
+              }
+              return { data: { ...user, role } };
+            }
+            return ctx &&
+              (await ctx.context.internalAdapter.countTotalUsers()) === 0
               ? { data: { ...user, role: "owner" } }
-              : { data: user },
+              : { data: user };
+          },
         },
       },
     },
-    disabledPaths: [...disabledPaths],
+    // The provider's sign-in starts at /sign-in/social only while single sign-on is on.
+    disabledPaths: sso
+      ? disabledPaths.filter((path) => path !== "/sign-in/social")
+      : [...disabledPaths],
     emailAndPassword: {
       enabled: true,
       password: { hash: hashPassword, verify: verifyPassword },
@@ -416,7 +491,7 @@ export function createAuth(input: CreateAuthInput) {
       // A reset forgets the trusted browsers; an app code that signed in is spent; an emailed code verifies the address. The sign-in log is signInLog.
       after: createAuthMiddleware(async (ctx) => {
         const returned: unknown = ctx.context.returned;
-        if (isAPIError(returned)) {
+        if (refused(returned)) {
           if (
             passwordCheckPaths.has(ctx.path) &&
             returned.body?.code === "INVALID_PASSWORD"
@@ -506,8 +581,9 @@ export function createAuth(input: CreateAuthInput) {
         },
         // A trusted browser lasts Better Auth's default of 30 days, pinned by a test.
       }),
-      invitationAccept(input.invitations ?? closedGate),
+      invitationAccept(invitations, (role) => passwordRefused(sso, role)),
       signInLog(log),
+      ...(sso ? [ssoPlugin(sso)] : []),
     ],
     rateLimit: {
       // A reset request sends an email, so it keeps Better Auth's 3 a minute; the reset itself and accepting an invitation get sign-in's 3 in 10 seconds.
@@ -520,11 +596,43 @@ export function createAuth(input: CreateAuthInput) {
       storage: "memory",
     },
     secrets: parseSecrets(input.secrets),
-    session: { expiresIn: 7 * day, updateAge: day },
+    session: {
+      // How the session signed in, which the second step an owner requires reads.
+      additionalFields: {
+        method: { input: false, required: false, type: "string" },
+      },
+      expiresIn: 7 * day,
+      updateAge: day,
+    },
     telemetry: { enabled: false },
     // The account page changes the address on the server (server/auth/account.ts) without an email: the second step's codes go to the address in force.
     // Raaqeb's own fields ride on the user row (storage/schema), so the session read carries the role and the preferences with no second query; no request sets one.
     user: {
+      // Who may make an account through the provider (sso.ts), read from the raw claims before the account is made.
+      validateUserInfo: async ({ source, user }) => {
+        if (
+          !sso ||
+          source.method !== "oauth" ||
+          source.action !== "create-user" ||
+          typeof user.email !== "string"
+        ) {
+          return;
+        }
+        const decision = await signUpRole(
+          sso,
+          invitations,
+          {
+            claims: source.oauth?.profile ?? {},
+            email: user.email,
+            emailVerified: user.emailVerified === true,
+          },
+          Date.now()
+        );
+        if (!decision.ok) {
+          return { error: decision.code };
+        }
+        admitted.set(user.email.toLowerCase(), decision.role);
+      },
       additionalFields: {
         calendar: { input: false, required: false, type: "string" },
         clock: { input: false, required: false, type: "string" },
@@ -550,10 +658,16 @@ export type Auth = ReturnType<typeof createAuth>;
 interface Built {
   readonly auth: Auth;
   readonly key: string;
+  /** When an instance built without its unreachable identity provider tries the provider again. */
+  readonly retryAt: number | undefined;
 }
 
-// One instance per storage; the key is the two settings the instance was built from.
+// One instance per storage; the key is the settings the instance was built from.
 const built = new WeakMap<Storage, Built>();
+// The instances that serve the provider's callback.
+const withSso = new WeakSet<Auth>();
+/** How long single sign-on stays off after the provider's discovery document did not answer. */
+const ssoRetryMs = 60_000;
 // A build in flight, so two first calls at once share one instance and one generated secret.
 const building = new WeakMap<Storage, Promise<Auth>>();
 
@@ -597,13 +711,38 @@ export async function buildAuth(
   });
 }
 
+/**
+ * The identity provider an instance is built with: the stored one, when its
+ * discovery document answers within the test's wait. Better Auth fetches it
+ * again with no time limit while the instance starts, and every sign-in,
+ * the owner's way back in included, waits on that start.
+ */
+async function reachable(
+  sso: SsoProvider | undefined
+): Promise<SsoProvider | undefined> {
+  if (!sso || (await testDiscovery(sso.discoveryUrl, fetch)).ok) {
+    return sso;
+  }
+  logError(
+    "single sign-on is off for now: the identity provider's discovery document did not answer"
+  );
+}
+
 async function buildFor(storage: Storage, boot: AuthBoot): Promise<Auth> {
-  const { address, resolved } = await inputsOf(storage, boot);
-  const key = `${address ?? ""}\n${resolved.secrets}`;
+  const [{ address, resolved }, stored] = await Promise.all([
+    inputsOf(storage, boot),
+    // A provider that cannot be read leaves the password, so an owner still signs in.
+    readSsoProvider(storage, boot.installKey).catch(() => undefined),
+  ]);
+  const key = `${address ?? ""}\n${resolved.secrets}\n${stored ? JSON.stringify(stored) : ""}`;
   const current = built.get(storage);
-  if (current?.key === key) {
+  if (
+    current?.key === key &&
+    (current.retryAt === undefined || Date.now() < current.retryAt)
+  ) {
     return current.auth;
   }
+  const sso = await reachable(stored);
   if (resolved.generated) {
     logInfo("Better Auth secret generated into the settings table");
   }
@@ -623,8 +762,16 @@ async function buildFor(storage: Storage, boot: AuthBoot): Promise<Auth> {
       logError
     ),
     secrets: resolved.secrets,
+    sso,
   });
-  built.set(storage, { auth, key });
+  if (sso) {
+    withSso.add(auth);
+  }
+  built.set(storage, {
+    auth,
+    key,
+    retryAt: stored && !sso ? Date.now() + ssoRetryMs : undefined,
+  });
   return auth;
 }
 
@@ -635,17 +782,23 @@ const blockedPrefixes = unblockablePaths.map(
 
 /**
  * Answers a request under /api/auth: Not Found for a route with a parameter
- * (which the disabled-paths list cannot name), 503 with no body when no
- * database is open or it cannot answer, otherwise Better Auth's handler.
+ * (which the disabled-paths list cannot name) but the identity provider's
+ * callback while single sign-on is on, 503 with no body when no database is
+ * open or it cannot answer, otherwise Better Auth's handler.
  */
 export async function handleAuth(
   storage: Storage | undefined,
   boot: AuthBoot,
   request: Request
 ): Promise<Response> {
+  const notFound = () => new Response("Not Found", { status: 404 });
   const { pathname } = new URL(request.url);
-  if (blockedPrefixes.some((prefix) => pathname.startsWith(prefix))) {
-    return new Response("Not Found", { status: 404 });
+  const callback = pathname === ssoCallbackPath;
+  if (
+    !callback &&
+    blockedPrefixes.some((prefix) => pathname.startsWith(prefix))
+  ) {
+    return notFound();
   }
   if (!storage) {
     return new Response(null, { status: 503 });
@@ -657,7 +810,7 @@ export async function handleAuth(
     // The settings the instance is built from could not be read or written.
     return new Response(null, { status: 503 });
   }
-  return auth.handler(request);
+  return callback && !withSso.has(auth) ? notFound() : auth.handler(request);
 }
 
 /** The `name` onboarding gives the first account on sign-up: none, so its email stands for it until the account page sets one. */

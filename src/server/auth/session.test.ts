@@ -69,6 +69,7 @@ describe("the signed-in operator behind a request", () => {
       role: "owner",
       secondStep: false,
       sessionId: expect.any(String),
+      signedInWith: "password",
     });
     // A fresh session is not due for refresh: no cookie to re-issue.
     expect(session?.setCookie).toBeUndefined();
@@ -374,6 +375,7 @@ describe("what an operator may do", () => {
     role,
     secondStep,
     sessionId: "s",
+    signedInWith: "password",
   });
 
   test("is what the role allows while no second step is required", async () => {
@@ -403,6 +405,14 @@ describe("what an operator may do", () => {
       expect(
         await refusalOf(opened.storage, operator("viewer", true), "monitors")
       ).toBe("role");
+      // The identity provider's own checks stand for a second step.
+      expect(
+        await refusalOf(
+          opened.storage,
+          { ...operator("editor", false), signedInWith: "oidc" },
+          "monitors"
+        )
+      ).toBeUndefined();
     } finally {
       await opened.storage.settings.remove(secondStepRequired);
     }

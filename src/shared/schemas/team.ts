@@ -174,4 +174,6 @@ export type InvitationAcceptFailure =
   | "closed"
   | "already_member"
   | "rate_limited"
+  /** Single sign-on is required of the role: the invitation is accepted through the identity provider. */
+  | "sso_required"
   | "unavailable";

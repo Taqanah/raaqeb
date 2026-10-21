@@ -39,11 +39,29 @@ The person who opens the link chooses a name and a password and is signed in. An
 - **Removing** deletes the account, its sessions and its password for good. Incidents it wrote stay.
 - **Handing ownership on** makes another account an owner and you an admin, after your password.
 
+Deactivating or removing an owner asks for your password too. An account that is deactivated, removed or given a lower role takes with it the open invitations it could no longer send.
+
 Nobody changes their own account on the team page, so the last owner cannot leave the install without one. An install may have several owners.
+
+What carries an owner's credentials is an owner's alone: the email channel sign-in mail goes through, the public address that reset links and invitations are built on, the trusted proxies, and single sign-on.
 
 ## A second step for everyone
 
 An owner whose own second step is on may require it of every operator, on the sign-in settings page. An operator without one then reaches only their own account until they switch it on.
+
+## Single sign-on
+
+An owner can let operators sign in through one OpenID Connect identity provider (Keycloak, Authentik, Okta, Entra ID, Google Workspace) on the single sign-on settings page:
+
+1. Register Raaqeb with the provider as a web client, with the callback URL the page shows (`https://your-address/api/auth/callback/oidc`), and the `openid`, `email` and `profile` scopes.
+2. Paste the provider's discovery URL (it usually ends in `/.well-known/openid-configuration`), the client ID and the client secret. **Test** fetches the discovery document from the server and says whether it names signing keys. The secret is stored encrypted with the install key.
+3. Choose who gets an account: only those invited, or also anyone at the domains you list. An invited address takes the invitation's role; one at a listed domain takes the role its claim maps to (`sre = editor`, read from a claim such as `groups`), else the default role. The provider never gives the owner role, and a role is read only when the account is made.
+
+An address that already has an account signs in as it once the provider says the address is verified (`email_verified`); the provider never makes an account for an address it has not verified. A deactivated account is refused.
+
+**Require single sign-on** keeps the password for owners alone, so an owner can still sign in when the provider is down. An invitation for another role is then accepted through the provider. A sign-in through the provider relies on the provider's own second step, so a required second step does not ask for Raaqeb's.
+
+If the provider's discovery document does not answer within five seconds, the button stays and the provider is tried again a minute later; passwords keep working meanwhile.
 
 ## When a password is lost
 

@@ -86,10 +86,13 @@ export async function signIn(input: SignInInput): Promise<SignInResult> {
   }
   // 403 is its origin check, decided before the credentials are read, so naming it leaks nothing; or a deactivated account, named only after its password was right.
   if (response.status === 403) {
-    const body = await bodyOf(response);
+    const { code } = await bodyOf(response);
+    if (code === "SSO_REQUIRED") {
+      return { failure: "sso_required", ok: false };
+    }
     return {
       failure:
-        body.code === "ACCOUNT_DEACTIVATED" ? "deactivated" : "origin_refused",
+        code === "ACCOUNT_DEACTIVATED" ? "deactivated" : "origin_refused",
       ok: false,
     };
   }
@@ -130,7 +133,35 @@ export async function acceptInvitation(
   if (code === "ALREADY_MEMBER") {
     return { failure: "already_member", ok: false };
   }
+  if (code === "SSO_REQUIRED") {
+    return { failure: "sso_required", ok: false };
+  }
   return { failure: "unavailable", ok: false };
+}
+
+export type ProviderStartResult =
+  | { readonly ok: true; readonly url: string }
+  | { readonly ok: false; readonly failure: "rate_limited" | "unavailable" };
+
+/** Starts a sign-in through the identity provider: the address to send the browser to, which comes back to the admin area, or with `?error=` to the sign-in page. */
+export async function startProviderSignIn(): Promise<ProviderStartResult> {
+  let response: Response;
+  try {
+    response = await post("/sign-in/social", {
+      callbackURL: "/admin",
+      errorCallbackURL: "/sign-in",
+      provider: "oidc",
+    });
+  } catch {
+    return { failure: "unavailable", ok: false };
+  }
+  if (response.status === 429) {
+    return { failure: "rate_limited", ok: false };
+  }
+  const { url } = response.ok ? await bodyOf(response) : { url: undefined };
+  return typeof url === "string"
+    ? { ok: true, url }
+    : { failure: "unavailable", ok: false };
 }
 
 export type SignOutResult =

@@ -7,6 +7,7 @@ import { readInvitation } from "@/server/auth/invitation.ts";
 import { localeSchema } from "@/shared/i18n/locale.ts";
 import type { InvitationView } from "@/shared/schemas/team.ts";
 import { requireOnboardingDone } from "./-onboarding.ts";
+import { readSsoOfferFn } from "./-sso.ts";
 
 // The page an invitation's link opens (CONTEXT.md "Invitation"): what it
 // offers and the form that accepts it, in the install language or the one
@@ -30,8 +31,13 @@ export const Route = createFileRoute("/invitation")({
   beforeLoad: requireOnboardingDone,
   component: InvitationPage,
   loaderDeps: ({ search }) => ({ token: search.token ?? "" }),
-  loader: ({ deps }) =>
-    readInvitationFn({ data: { token: deps.token.slice(0, 200) } }),
+  loader: async ({ deps }) => {
+    const [view, sso] = await Promise.all([
+      readInvitationFn({ data: { token: deps.token.slice(0, 200) } }),
+      readSsoOfferFn(),
+    ]);
+    return { sso, view };
+  },
 });
 
 function InvitationPage() {
@@ -41,11 +47,13 @@ function InvitationPage() {
   const accepted = useCallback(() => {
     navigate({ reloadDocument: true, to: "/admin" }).catch(() => undefined);
   }, [navigate]);
+  const { sso, view } = Route.useLoaderData();
   return (
     <InvitationForm
       onAccepted={accepted}
+      sso={sso}
       token={token ?? ""}
-      view={Route.useLoaderData()}
+      view={view}
     />
   );
 }

@@ -18,7 +18,7 @@ _Avoid_: user (ambiguous with visitors), member, staff
 
 **Operator account**:
 Arabic: حساب المشغّل
-An email-and-password identity that can sign in to the admin area, with a name, one role and the operator's own preferences. Onboarding creates the first, as an owner; each later one comes from an invitation. Several may exist; the email is unique among them.
+An email-and-password identity that can sign in to the admin area, with a name, one role and the operator's own preferences. Onboarding creates the first, as an owner; each later one comes from an invitation or, under single sign-on, from the identity provider. Several may exist; the email is unique among them.
 _Avoid_: admin user, root, superuser, user, member
 
 **Role**:
@@ -28,7 +28,7 @@ _Avoid_: permission level, access level, group, admin (alone, for the area)
 
 **Invitation**:
 Arabic: دعوة
-An owner's or admin's offer of an operator account to one email address with one role: a single-use link, emailed through the auth email channel when one exists and always shown for copying, that works for seven days. Accepting it sets the name and password and signs in. Sending it again makes a new link and the old one stops working; revoking it stops it at once. An address that already has an account cannot be invited.
+An owner's or admin's offer of an operator account to one email address with one role: a single-use link, emailed through the auth email channel when one exists and always shown for copying, that works for seven days. Accepting it sets the name and password and signs in; under single sign-on, signing in through the identity provider with that address accepts it too. Sending it again makes a new link and the old one stops working; revoking it stops it at once. It stays open only while its sender may still give its role. An address that already has an account cannot be invited.
 _Avoid_: invite code, sign-up link, magic link
 
 **Deactivated**:
@@ -48,8 +48,18 @@ _Avoid_: setup wizard, tour, onboarding (that ends when the account exists), set
 
 **Second step**:
 Arabic: استيثاق ثنائي for the setting (الاستيثاق الثنائي مفعّل); الخطوة الثانية for the sign-in screen after the password
-A code required after the password at sign-in: from the authenticator app when one is set up, a backup code, or an emailed one-time code where an email channel exists. Switched on by each operator for their own account, with emailed codes once a test message reached their address or by setting up the authenticator app. Off by default; turning it off removes the authenticator app and its backup codes. An owner may require it of every operator: one without it then reaches only their own account until they switch it on.
+A code required after the password at sign-in: from the authenticator app when one is set up, a backup code, or an emailed one-time code where an email channel exists. Switched on by each operator for their own account, with emailed codes once a test message reached their address or by setting up the authenticator app. Off by default; turning it off removes the authenticator app and its backup codes. An owner may require it of every operator: one without it then reaches only their own account until they switch it on. A sign-in through the identity provider is held to the provider's own steps instead.
 _Avoid_: 2FA, MFA (say the mechanism), verification (that word is for the address)
+
+**Single sign-on**:
+Arabic: الدخول الموحد
+Signing in to the admin area through the install's one identity provider instead of a password, which an owner sets up and may require. It makes an account for an address with an open invitation, with the invitation's role, or, if the owner allows, for an address at a listed domain, with the role its claims map to; never an owner's. An address that has an account signs in as it once the provider says the address is verified. Once required, only owners sign in with a password, so the install has a way in when the provider is down.
+_Avoid_: SSO (in copy), OAuth (say the protocol only in operator docs), social login
+
+**Identity provider**:
+Arabic: مزوّد الهوية
+The OpenID Connect service an organisation signs its people in with (Keycloak, Authentik, Okta, Entra ID, Google Workspace), which single sign-on sends the browser to and trusts for who someone is.
+_Avoid_: IdP (in copy), auth server, SSO provider
 
 **Authenticator app**:
 Arabic: تطبيق الاستيثاق

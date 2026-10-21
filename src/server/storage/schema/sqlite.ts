@@ -75,6 +75,8 @@ export const authSession = sqliteTable(
     expiresAt: millis("expires_at").notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    // How the session signed in: `password` or `oidc`, the identity provider, whose own checks stand for a second step.
+    method: text(),
     createdAt: millis("created_at").notNull(),
     updatedAt: millis("updated_at").notNull(),
   },

@@ -23,6 +23,8 @@ export type SignInFailure =
   | "invalid_credentials"
   | "origin_refused"
   | "rate_limited"
+  /** Single sign-on is required of the account: it signs in through the identity provider. */
+  | "sso_required"
   | "unavailable";
 
 /** The sign-in answered: signed in, or the second step is due before a session exists, asking for the authenticator app's code when one is set up. */

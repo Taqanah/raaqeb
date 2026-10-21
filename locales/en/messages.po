@@ -6015,6 +6015,186 @@ msgid "monitor_heartbeat_withheld"
 msgstr "The URL is shown only to those who edit monitors: whoever holds it can send heartbeats."
 
 #. js-lingui-explicit-id
+msgid "setting_sso"
+msgstr "Single sign-on"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_enabled"
+msgstr "Sign in through the identity provider"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_enabled_hint"
+msgstr "The sign-in page shows the provider's button to operators."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_name"
+msgstr "Provider name"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_name_hint"
+msgstr "The button reads \"Continue with\" and this name."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_url"
+msgstr "Discovery URL"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_url_hint"
+msgstr "The provider's OpenID Connect document, usually ending in:"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_test"
+msgstr "Test"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_ok"
+msgstr "The provider answered: {issuer}"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_unreachable"
+msgstr "The address did not answer. Check it and that the server can reach it."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_not_discovery"
+msgstr "The address answered with something other than a discovery document."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_no_keys"
+msgstr "The document names no signing keys, so identity tokens cannot be checked."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_callback_url"
+msgstr "Callback URL"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_callback_url_hint"
+msgstr "Register it with the provider as an allowed redirect URI."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_callback_none"
+msgstr "Shown here once the public address is saved in the general settings."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_client_id"
+msgstr "Client ID"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_client_secret"
+msgstr "Client secret"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_client_secret_hint"
+msgstr "Stored encrypted with the install key."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_client_secret_kept"
+msgstr "Stored. Leave it empty to keep it."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_secret_required"
+msgstr "Enter the client secret."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up"
+msgstr "Who gets an account"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up_invitation"
+msgstr "Invited only"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up_invitation_line"
+msgstr "An account is made for an address with an open invitation, with its role."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up_domains"
+msgstr "Invited and domains"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up_domains_line"
+msgstr "Also for an address at one of the domains below, with the role its claims give."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_domains"
+msgstr "Allowed domains"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_domains_hint"
+msgstr "Email domains, separated by commas. For example:"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_default_role"
+msgstr "Default role"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_default_role_hint"
+msgstr "For an account from an allowed domain whose claims match no rule. The provider never gives the owner role."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_claim"
+msgstr "Role claim"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_claim_hint"
+msgstr "The claim the rules read, such as groups or roles."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_rules"
+msgstr "Role rules"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_rules_hint"
+msgstr "One value and its role a line; the strongest match wins. Read when the account is made only. For example:"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_rules_invalid"
+msgstr "Write each line as value = role, the role one of admin, editor, responder or viewer."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_require"
+msgstr "Require single sign-on"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_require_hint"
+msgstr "Only owners sign in with a password, so there is a way in when the provider is down."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_continue"
+msgstr "Continue with {name}"
+
+#. js-lingui-explicit-id
+msgid "auth_sso_or_password"
+msgstr "Or sign in with a password"
+
+#. js-lingui-explicit-id
+msgid "auth_sso_password_owners"
+msgstr "The password is for owners only."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_required"
+msgstr "This account signs in through the identity provider."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_not_invited"
+msgstr "This address has no invitation, and its domain is not allowed."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_not_linked"
+msgstr "The provider did not confirm this address is yours."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_failed"
+msgstr "Signing in through the provider did not finish. Try again."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_or_password"
+msgstr "Or choose a name and a password"
+
+#. js-lingui-explicit-id
+msgid "team_invitation_sso_only"
+msgstr "This invitation is accepted through the identity provider."
+
+#. js-lingui-explicit-id
 msgid "channel_line_locations"
 msgstr "Seen down from: {value}"
 

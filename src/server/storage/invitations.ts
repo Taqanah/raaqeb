@@ -17,10 +17,14 @@ export interface InvitationRow extends Invitation {
 
 export interface InvitationsRepository {
   find: (id: string) => Promise<Invitation | undefined>;
+  /** Deletes the invitation of the address, if any; an account made another way for it closes it. */
+  forget: (email: string) => Promise<void>;
   /** Every invitation, the newest first, expired ones included. */
   list: () => Promise<Invitation[]>;
   /** The invitation whose token has the hash, while it has not expired. */
   open: (tokenHash: string, now: number) => Promise<Invitation | undefined>;
+  /** The address's invitation, matched without regard to case, while it has not expired. */
+  openFor: (email: string, now: number) => Promise<Invitation | undefined>;
   /** Writes the invitation, replacing one to the same address. */
   put: (invitation: InvitationRow) => Promise<void>;
   /** A new token and lifetime for the invitation, so its old link stops working; false when it is gone. */
@@ -72,11 +76,22 @@ export function invitationsRepository(
   const name = (column: { name: string }) => sql.identifier(column.name);
   return {
     find: async (id) => (await select(sql`${invitations.id} = ${id}`))[0],
+    forget: async (email) => {
+      await executor.run(
+        sql`DELETE FROM ${invitations} WHERE lower(${invitations.email}) = ${email.toLowerCase()}`
+      );
+    },
     list: () => select(sql`1 = 1`),
     open: async (tokenHash, now) =>
       (
         await select(
           sql`${invitations.tokenHash} = ${tokenHash} AND ${invitations.expiresAt} > ${now}`
+        )
+      )[0],
+    openFor: async (email, now) =>
+      (
+        await select(
+          sql`lower(${invitations.email}) = ${email.toLowerCase()} AND ${invitations.expiresAt} > ${now}`
         )
       )[0],
     put: (invitation) =>

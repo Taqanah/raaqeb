@@ -58,6 +58,7 @@ import { Route as AdminSettingsLocationsRouteImport } from "./routes/admin/setti
 import { Route as AdminSettingsMetricsRouteImport } from "./routes/admin/settings/metrics.tsx";
 import { Route as AdminSettingsSetupCheckRouteImport } from "./routes/admin/settings/setup-check.tsx";
 import { Route as AdminSettingsSignInRouteImport } from "./routes/admin/settings/sign-in.tsx";
+import { Route as AdminSettingsSingleSignOnRouteImport } from "./routes/admin/settings/single-sign-on.tsx";
 import { Route as AdminSettingsStorageRouteImport } from "./routes/admin/settings/storage.tsx";
 import { Route as ApiAuthSplatRouteImport } from "./routes/api/auth/$.ts";
 import { Route as ApiV2SummaryDotjsonRouteImport } from "./routes/api/v2/summary[.]json.ts";
@@ -342,6 +343,12 @@ const AdminSettingsSignInRoute = AdminSettingsSignInRouteImport.update({
   path: "/sign-in",
   getParentRoute: () => AdminSettingsRoute,
 } as any);
+const AdminSettingsSingleSignOnRoute =
+  AdminSettingsSingleSignOnRouteImport.update({
+    id: "/single-sign-on",
+    path: "/single-sign-on",
+    getParentRoute: () => AdminSettingsRoute,
+  } as any);
 const AdminSettingsStorageRoute = AdminSettingsStorageRouteImport.update({
   id: "/storage",
   path: "/storage",
@@ -573,6 +580,7 @@ export interface FileRoutesByFullPath {
   "/admin/settings/metrics": typeof AdminSettingsMetricsRoute;
   "/admin/settings/setup-check": typeof AdminSettingsSetupCheckRoute;
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
+  "/admin/settings/single-sign-on": typeof AdminSettingsSingleSignOnRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
   "/api/auth/$": typeof ApiAuthSplatRoute;
   "/api/v2/summary.json": typeof ApiV2SummaryDotjsonRoute;
@@ -655,6 +663,7 @@ export interface FileRoutesByTo {
   "/admin/settings/metrics": typeof AdminSettingsMetricsRoute;
   "/admin/settings/setup-check": typeof AdminSettingsSetupCheckRoute;
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
+  "/admin/settings/single-sign-on": typeof AdminSettingsSingleSignOnRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
   "/api/auth/$": typeof ApiAuthSplatRoute;
   "/api/v2/summary.json": typeof ApiV2SummaryDotjsonRoute;
@@ -741,6 +750,7 @@ export interface FileRoutesById {
   "/admin/settings/metrics": typeof AdminSettingsMetricsRoute;
   "/admin/settings/setup-check": typeof AdminSettingsSetupCheckRoute;
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
+  "/admin/settings/single-sign-on": typeof AdminSettingsSingleSignOnRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
   "/api/auth/$": typeof ApiAuthSplatRoute;
   "/api/v2/summary.json": typeof ApiV2SummaryDotjsonRoute;
@@ -828,6 +838,7 @@ export interface FileRouteTypes {
     | "/admin/settings/metrics"
     | "/admin/settings/setup-check"
     | "/admin/settings/sign-in"
+    | "/admin/settings/single-sign-on"
     | "/admin/settings/storage"
     | "/api/auth/$"
     | "/api/v2/summary.json"
@@ -910,6 +921,7 @@ export interface FileRouteTypes {
     | "/admin/settings/metrics"
     | "/admin/settings/setup-check"
     | "/admin/settings/sign-in"
+    | "/admin/settings/single-sign-on"
     | "/admin/settings/storage"
     | "/api/auth/$"
     | "/api/v2/summary.json"
@@ -995,6 +1007,7 @@ export interface FileRouteTypes {
     | "/admin/settings/metrics"
     | "/admin/settings/setup-check"
     | "/admin/settings/sign-in"
+    | "/admin/settings/single-sign-on"
     | "/admin/settings/storage"
     | "/api/auth/$"
     | "/api/v2/summary.json"
@@ -1429,6 +1442,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AdminSettingsSignInRouteImport;
       parentRoute: typeof AdminSettingsRoute;
     };
+    "/admin/settings/single-sign-on": {
+      id: "/admin/settings/single-sign-on";
+      path: "/single-sign-on";
+      fullPath: "/admin/settings/single-sign-on";
+      preLoaderRoute: typeof AdminSettingsSingleSignOnRouteImport;
+      parentRoute: typeof AdminSettingsRoute;
+    };
     "/admin/settings/storage": {
       id: "/admin/settings/storage";
       path: "/storage";
@@ -1678,6 +1698,7 @@ interface AdminSettingsRouteChildren {
   AdminSettingsMetricsRoute: typeof AdminSettingsMetricsRoute;
   AdminSettingsSetupCheckRoute: typeof AdminSettingsSetupCheckRoute;
   AdminSettingsSignInRoute: typeof AdminSettingsSignInRoute;
+  AdminSettingsSingleSignOnRoute: typeof AdminSettingsSingleSignOnRoute;
   AdminSettingsStorageRoute: typeof AdminSettingsStorageRoute;
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute;
 }
@@ -1690,6 +1711,7 @@ const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
   AdminSettingsMetricsRoute: AdminSettingsMetricsRoute,
   AdminSettingsSetupCheckRoute: AdminSettingsSetupCheckRoute,
   AdminSettingsSignInRoute: AdminSettingsSignInRoute,
+  AdminSettingsSingleSignOnRoute: AdminSettingsSingleSignOnRoute,
   AdminSettingsStorageRoute: AdminSettingsStorageRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
 };

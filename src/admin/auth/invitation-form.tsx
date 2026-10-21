@@ -17,6 +17,7 @@ import { useFocusRefused } from "@/admin/shell/use-focus-refused.ts";
 import { acceptInvitation } from "@/shared/api/auth.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import { passwordMaxLength, passwordMinLength } from "@/shared/schemas/auth.ts";
+import type { SsoOffer } from "@/shared/schemas/sso.ts";
 import {
   type InvitationAcceptFailure,
   type InvitationView,
@@ -33,22 +34,27 @@ import {
 import { Input } from "@/shared/ui/input.tsx";
 import { Token } from "@/shared/ui/token.tsx";
 import { AuthPage } from "./auth-page.tsx";
+import { ProviderButton } from "./provider-button.tsx";
 
 const failures = {
   already_member: "team_invitation_already_member",
   closed: "team_invitation_closed",
   rate_limited: "team_invitation_rate_limited",
+  sso_required: "team_invitation_sso_only",
   unavailable: "team_invitation_unavailable",
 } as const satisfies Record<InvitationAcceptFailure, string>;
 
 export interface InvitationFormProps {
   readonly onAccepted: () => void;
+  /** The identity provider's button, while single sign-on is on. */
+  readonly sso?: SsoOffer;
   readonly token: string;
   readonly view: InvitationView;
 }
 
 export function InvitationForm({
   onAccepted,
+  sso,
   token,
   view,
 }: InvitationFormProps): ReactNode {
@@ -113,6 +119,35 @@ export function InvitationForm({
       </AuthPage>
     );
   }
+  const offered = (
+    <>
+      <p className="text-muted-foreground text-sm">
+        {t("team_invitation_intro")}
+      </p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+        <dt className="text-muted-foreground">{t("auth_email")}</dt>
+        <dd>
+          <Token data-slot="invitation-email">{view.email}</Token>
+        </dd>
+        <dt className="text-muted-foreground">{t("team_invitation_as")}</dt>
+        <dd data-role={view.role} data-slot="invitation-role">
+          {t(roleWords[view.role].name)}
+        </dd>
+      </dl>
+    </>
+  );
+  // Once single sign-on is required, only an owner's invitation sets a password.
+  if (sso?.requireSso && view.role !== "owner") {
+    return (
+      <AuthPage title={t("team_invitation_title")}>
+        <FieldGroup>
+          {offered}
+          <ProviderButton name={sso.name} />
+          <FieldDescription>{t("team_invitation_sso_only")}</FieldDescription>
+        </FieldGroup>
+      </AuthPage>
+    );
+  }
   return (
     <AuthPage title={t("team_invitation_title")}>
       <form
@@ -123,19 +158,15 @@ export function InvitationForm({
         ref={formRef}
       >
         <FieldGroup>
-          <p className="text-muted-foreground text-sm">
-            {t("team_invitation_intro")}
-          </p>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-            <dt className="text-muted-foreground">{t("auth_email")}</dt>
-            <dd>
-              <Token data-slot="invitation-email">{view.email}</Token>
-            </dd>
-            <dt className="text-muted-foreground">{t("team_invitation_as")}</dt>
-            <dd data-role={view.role} data-slot="invitation-role">
-              {t(roleWords[view.role].name)}
-            </dd>
-          </dl>
+          {offered}
+          {sso ? (
+            <>
+              <ProviderButton name={sso.name} />
+              <p className="text-center text-muted-foreground text-sm">
+                {t("team_invitation_or_password")}
+              </p>
+            </>
+          ) : null}
           <Field>
             <FieldLabel htmlFor="name">{t("team_name")}</FieldLabel>
             <Input

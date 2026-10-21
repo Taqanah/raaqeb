@@ -1,7 +1,7 @@
 /**
  * The settings area's pages as a row of links under the title: general,
- * appearance, account, sign-in, storage, metrics, locations, export and
- * import, and the setup check, each shown to the roles that open it.
+ * appearance, account, sign-in, single sign-on, storage, metrics, locations,
+ * export and import, and the setup check, each shown to the roles that open it.
  */
 import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -32,6 +32,11 @@ const pages: readonly {
     label: "setting_sign_in",
     permission: "profile",
     to: "/admin/settings/sign-in",
+  },
+  {
+    label: "setting_sso",
+    permission: "security",
+    to: "/admin/settings/single-sign-on",
   },
   {
     label: "setting_storage",

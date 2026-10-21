@@ -7,6 +7,7 @@ import {
   sendCode,
   signIn,
   signOut,
+  startProviderSignIn,
   verifyCode,
 } from "./auth.ts";
 
@@ -439,5 +440,47 @@ describe("accepting an invitation from the browser", () => {
       ok: false,
     });
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("single sign-on from the browser", () => {
+  test("starts at Better Auth's social sign-in with the provider and both ways back, and answers the provider's address", async () => {
+    answer = () =>
+      Promise.resolve(json(200, { redirect: true, url: "https://idp.test/a" }));
+    expect(await startProviderSignIn()).toEqual({
+      ok: true,
+      url: "https://idp.test/a",
+    });
+    expect(calls[0]?.url).toBe(`${authBasePath}/sign-in/social`);
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
+      callbackURL: "/admin",
+      errorCallbackURL: "/sign-in",
+      provider: "oidc",
+    });
+    answer = () => Promise.resolve(new Response(null, { status: 429 }));
+    expect(await startProviderSignIn()).toEqual({
+      failure: "rate_limited",
+      ok: false,
+    });
+    answer = () => Promise.resolve(new Response(null, { status: 404 }));
+    expect(await startProviderSignIn()).toEqual({
+      failure: "unavailable",
+      ok: false,
+    });
+  });
+
+  test("a password the account may not use once single sign-on is required is worded as such, at sign-in and at an invitation", async () => {
+    answer = () =>
+      Promise.resolve(json(403, { code: "SSO_REQUIRED", message: "" }));
+    expect(
+      await signIn({ email: "operator@example.com", password: "12345678" })
+    ).toEqual({ failure: "sso_required", ok: false });
+    expect(
+      await acceptInvitation({
+        name: "Huda",
+        password: "a good long password",
+        token: "rqi_x",
+      })
+    ).toEqual({ failure: "sso_required", ok: false });
   });
 });

@@ -14,15 +14,23 @@ import {
 } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import type { Storage } from "@/server/storage/storage.ts";
-import { assignableRoles } from "@/shared/domain/roles.ts";
+import { assignableRoles, type Role } from "@/shared/domain/roles.ts";
 import {
   type Invitation,
   type InvitationView,
   invitationAcceptSchema,
 } from "@/shared/schemas/team.ts";
+import { ssoRequiredCode } from "./sso.ts";
 
 /** The invitations a Better Auth instance reads, by the link's token in clear. */
 export interface InvitationGate {
+  /** The address's invitation while it is open. */
+  readonly forEmail: (
+    email: string,
+    now: number
+  ) => Promise<Invitation | undefined>;
+  /** Forgets the address's invitation, for an account made another way for it. */
+  readonly forget: (email: string) => Promise<void>;
   /** What the link offers while it is open. */
   readonly open: (
     token: string,
@@ -37,6 +45,8 @@ export interface InvitationGate {
 
 /** No invitation is open: the gate of an instance that serves none. */
 export const closedGate: InvitationGate = {
+  forEmail: () => Promise.resolve(undefined),
+  forget: () => Promise.resolve(),
   open: () => Promise.resolve(undefined),
   take: () => Promise.resolve(undefined),
 };
@@ -81,6 +91,11 @@ export function invitationGate(
   storage: Pick<Storage, "invitations" | "operatorAccounts">
 ): InvitationGate {
   return {
+    forEmail: async (email, now) => {
+      const offered = await storage.invitations.openFor(email, now);
+      return offered && (await vouched(storage, offered)) ? offered : undefined;
+    },
+    forget: (email) => storage.invitations.forget(email),
     open: async (token, now) => {
       const offered = await storage.invitations.open(
         invitationTokenHash(token),
@@ -135,8 +150,11 @@ function alreadyMember(): APIError {
   });
 }
 
-/** The endpoint that accepts an invitation, as a Better Auth plugin. */
-export function invitationAccept(gate: InvitationGate) {
+/** The endpoint that accepts an invitation, as a Better Auth plugin; `passwordRefused` names the roles single sign-on keeps from setting a password. */
+export function invitationAccept(
+  gate: InvitationGate,
+  passwordRefused: (role: Role) => boolean = () => false
+) {
   return {
     endpoints: {
       acceptInvitation: createAuthEndpoint(
@@ -152,6 +170,13 @@ export function invitationAccept(gate: InvitationGate) {
           const offered = await gate.open(token, Date.now());
           if (!offered) {
             throw closedLink();
+          }
+          // Refused before the link is spent, so the invitation stays open for the provider.
+          if (passwordRefused(offered.role)) {
+            throw new APIError("FORBIDDEN", {
+              code: ssoRequiredCode,
+              message: "the invitation is accepted through single sign-on",
+            });
           }
           // Checked before the link is spent, so an address that has an account by now keeps its invitation for the team page to revoke.
           if (

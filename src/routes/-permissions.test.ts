@@ -132,12 +132,16 @@ const expected: Readonly<Record<string, string>> = {
   "admin/settings/sign-in.tsx requireSecondStepFn": "O....",
   // Auth mail carries reset links and codes: the channel it goes through is an owner's to choose.
   "admin/settings/sign-in.tsx choose": "O....",
+  "admin/settings/single-sign-on.tsx readSso": "O....",
+  "admin/settings/single-sign-on.tsx saveSsoFn": "O....",
+  "admin/settings/single-sign-on.tsx testDiscoveryFn": "O....",
   // A stranger's: the document, onboarding, recovery, subscriptions, an invitation.
   "__root.tsx readDocument": "public",
   "design.tsx readSampleCatalog": "public",
   "reset-password.tsx readLink": "public",
   "invitation.tsx readInvitationFn": "public",
   "-auth-mail.ts hasAuthEmail": "public",
+  "-sso.ts readSsoOfferFn": "public",
   "-onboarding.ts readOnboardingStep": "public",
   "-onboarding.ts readOnboarding": "public",
   "onboarding/account.tsx suggestAddress": "public",

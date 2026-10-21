@@ -6015,6 +6015,186 @@ msgid "monitor_heartbeat_withheld"
 msgstr "لا يرى الرابط إلا من يعدّل المراقبات، لأن من يملكه يرسل النبضات."
 
 #. js-lingui-explicit-id
+msgid "setting_sso"
+msgstr "الدخول الموحد"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_enabled"
+msgstr "الدخول عبر مزوّد الهوية"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_enabled_hint"
+msgstr "تُظهر صفحة الدخول زرّ المزوّد للمشغّلين."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_name"
+msgstr "اسم المزوّد"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_name_hint"
+msgstr "يظهر على الزر: «المتابعة عبر» ثم هذا الاسم."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_url"
+msgstr "عنوان الاكتشاف"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_url_hint"
+msgstr "عنوان مستند OpenID Connect لدى المزوّد، وينتهي عادة بـ:"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_test"
+msgstr "اختبار"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_ok"
+msgstr "أجاب المزوّد: {issuer}"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_unreachable"
+msgstr "لم يُجب العنوان. تحقق منه ومن وصول الخادم إليه."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_not_discovery"
+msgstr "أجاب العنوان بغير مستند اكتشاف."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_discovery_no_keys"
+msgstr "لا يذكر المستند مفاتيح توقيع، فلا يمكن التحقق من رموز الهوية."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_callback_url"
+msgstr "عنوان الرجوع"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_callback_url_hint"
+msgstr "سجّله لدى المزوّد عنوانًا مسموحًا لإعادة التوجيه."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_callback_none"
+msgstr "يظهر هنا بعد حفظ العنوان العام في الإعدادات العامة."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_client_id"
+msgstr "معرّف العميل"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_client_secret"
+msgstr "سر العميل"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_client_secret_hint"
+msgstr "يُحفظ مشفّرًا بمفتاح التثبيت."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_client_secret_kept"
+msgstr "محفوظ. اتركه فارغًا للإبقاء عليه."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_secret_required"
+msgstr "أدخل سر العميل."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up"
+msgstr "من يُنشئ حسابًا"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up_invitation"
+msgstr "المدعوون فقط"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up_invitation_line"
+msgstr "يُنشأ الحساب لعنوان له دعوة مفتوحة، بدورها."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up_domains"
+msgstr "المدعوون ونطاقات"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_sign_up_domains_line"
+msgstr "ويُنشأ أيضًا لعنوان في أحد النطاقات أدناه، بالدور الذي تعطيه مطالباته."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_domains"
+msgstr "النطاقات المسموحة"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_domains_hint"
+msgstr "نطاقات البريد مفصولة بفواصل. مثال:"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_default_role"
+msgstr "الدور الافتراضي"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_default_role_hint"
+msgstr "لحساب من نطاق مسموح لا تطابق مطالباته أي قاعدة. لا يُعطى دور المالك من المزوّد أبدًا."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_claim"
+msgstr "مطالبة الدور"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_claim_hint"
+msgstr "المطالبة التي تقرؤها القواعد، مثل groups أو roles."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_rules"
+msgstr "قواعد الأدوار"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_rules_hint"
+msgstr "سطر لكل قيمة ودورها، ويغلب أقوى دور مطابق. تُقرأ عند إنشاء الحساب فقط. مثال:"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_role_rules_invalid"
+msgstr "اكتب كل سطر بالشكل: القيمة = الدور، والدور admin أو editor أو responder أو viewer."
+
+#. js-lingui-explicit-id
+msgid "setting_sso_require"
+msgstr "اشتراط الدخول الموحد"
+
+#. js-lingui-explicit-id
+msgid "setting_sso_require_hint"
+msgstr "لا يدخل بكلمة المرور إلا المالكون، ليبقى طريق للدخول إن تعطل المزوّد."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_continue"
+msgstr "المتابعة عبر {name}"
+
+#. js-lingui-explicit-id
+msgid "auth_sso_or_password"
+msgstr "أو ادخل بكلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "auth_sso_password_owners"
+msgstr "كلمة المرور للمالكين فقط."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_required"
+msgstr "يدخل هذا الحساب عبر مزوّد الهوية."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_not_invited"
+msgstr "لا دعوة لهذا العنوان، ولا يُسمح بنطاقه."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_not_linked"
+msgstr "لم يؤكد المزوّد أن هذا العنوان لك."
+
+#. js-lingui-explicit-id
+msgid "auth_sso_failed"
+msgstr "لم يكتمل الدخول عبر المزوّد. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_or_password"
+msgstr "أو اختر اسمًا وكلمة مرور"
+
+#. js-lingui-explicit-id
+msgid "team_invitation_sso_only"
+msgstr "تُقبل هذه الدعوة عبر مزوّد الهوية."
+
+#. js-lingui-explicit-id
 msgid "channel_line_locations"
 msgstr "رُصدت متعطّلة من: {value}"
 

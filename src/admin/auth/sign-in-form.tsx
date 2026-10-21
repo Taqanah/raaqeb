@@ -26,6 +26,7 @@ import {
   type SignInInput,
   signInSchema,
 } from "@/shared/schemas/auth.ts";
+import type { SsoFailure, SsoOffer } from "@/shared/schemas/sso.ts";
 import { Button } from "@/shared/ui/button.tsx";
 import {
   Field,
@@ -36,6 +37,7 @@ import {
 import { Input } from "@/shared/ui/input.tsx";
 import { AuthPage } from "./auth-page.tsx";
 import { CodeForm } from "./code-form.tsx";
+import { ProviderButton } from "./provider-button.tsx";
 import { SetAddressCommand } from "./set-address-command.tsx";
 
 export interface SignInFormProps {
@@ -43,6 +45,10 @@ export interface SignInFormProps {
   readonly email: boolean;
   /** Where a successful sign-in lands. */
   readonly onSignedIn: () => void;
+  /** The identity provider's button, while single sign-on is on. */
+  readonly sso?: SsoOffer;
+  /** Why the provider's sign-in came back refused. */
+  readonly ssoFailure?: SsoFailure;
 }
 
 const failureMessage = {
@@ -50,13 +56,26 @@ const failureMessage = {
   invalid_credentials: "auth_invalid_credentials",
   origin_refused: "auth_origin_refused",
   rate_limited: "auth_rate_limited",
+  sso_required: "auth_sso_required",
   unavailable: "auth_unavailable",
+} as const;
+
+const ssoFailureMessage = {
+  account_not_linked: "auth_sso_not_linked",
+  deactivated: "auth_deactivated",
+  failed: "auth_sso_failed",
+  not_invited: "auth_sso_not_invited",
 } as const;
 
 // The link is always shown; the page decides between the form and the command.
 const forgotPasswordPath = "/forgot-password";
 
-export function SignInForm({ email, onSignedIn }: SignInFormProps): ReactNode {
+export function SignInForm({
+  email,
+  onSignedIn,
+  sso,
+  ssoFailure,
+}: SignInFormProps): ReactNode {
   const { t } = useMessages();
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<SignInFailure | undefined>();
@@ -132,6 +151,21 @@ export function SignInForm({ email, onSignedIn }: SignInFormProps): ReactNode {
   }
   return (
     <AuthPage hideTitle title={t("auth_sign_in_title")}>
+      {sso ? (
+        <div className="mb-6 flex flex-col gap-3">
+          <ProviderButton name={sso.name} />
+          {ssoFailure ? (
+            <FieldError data-failure={`sso_${ssoFailure}`}>
+              {t(ssoFailureMessage[ssoFailure])}
+            </FieldError>
+          ) : null}
+          <p className="text-center text-muted-foreground text-sm">
+            {sso.requireSso
+              ? t("auth_sso_password_owners")
+              : t("auth_sso_or_password")}
+          </p>
+        </div>
+      ) : null}
       <form method="post" noValidate onSubmit={submit} ref={formRef}>
         <FieldGroup>
           <Field>
