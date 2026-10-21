@@ -191,6 +191,12 @@ export const monitors = pgTable(
       ),
     /** How often a reminder repeats "still down"; null is off. */
     reminderMs: integer("reminder_ms"),
+    /** Whether the main location checks it (CONTEXT.md "Main location"); the probes it is checked from are monitor_probes rows. */
+    fromMain: flag("from_main").notNull().default(sql`1`),
+    /** How many of its locations must see it down (CONTEXT.md "Confirmation count"). */
+    confirmations: integer().notNull().default(1),
+    /** Whether its sealed credentials travel to its probes; never by default. */
+    shareCredentials: flag("share_credentials").notNull().default(sql`0`),
     paused: flag("paused").notNull(),
     /** When the monitor was paused; null while it runs. */
     pausedAt: bigint("paused_at", { mode: "number" }),
@@ -439,6 +445,38 @@ export const monitorChannels = pgTable(
   (table) => [
     primaryKey({ columns: [table.monitorId, table.channelId] }),
     index("monitor_channels_channel_id").on(table.channelId),
+  ]
+);
+
+/** A probe (CONTEXT.md "Probe"): its name, the SHA-256 of its probe token, and what its last contact said, written at most every 30 seconds. */
+export const probes = pgTable(
+  "probes",
+  {
+    id: text().primaryKey(),
+    name: text().notNull(),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+    lastSeenAt: bigint("last_seen_at", { mode: "number" }),
+    version: text(),
+    roundTripMs: integer("round_trip_ms"),
+  },
+  (table) => [uniqueIndex("probes_token_hash").on(table.tokenHash)]
+);
+
+/** The probes a monitor is checked from. */
+export const monitorProbes = pgTable(
+  "monitor_probes",
+  {
+    monitorId: text("monitor_id")
+      .notNull()
+      .references(() => monitors.id, { onDelete: "cascade" }),
+    probeId: text("probe_id")
+      .notNull()
+      .references(() => probes.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.monitorId, table.probeId] }),
+    index("monitor_probes_probe_id").on(table.probeId),
   ]
 );
 

@@ -4,6 +4,7 @@ import { encrypt } from "@/server/boot/installkey.ts";
 import { type LiveIo, liveIo } from "@/server/checks/io.ts";
 import { createIncident, postUpdate } from "@/server/incidents/incidents.ts";
 import { createWindow } from "@/server/maintenance/maintenance.ts";
+import { sealCredentials } from "@/server/monitors/credentials.ts";
 import { readMonitorDetail } from "@/server/monitors/detail.ts";
 import {
   createMonitor,
@@ -29,8 +30,12 @@ import { askedCheckLanded } from "@/shared/domain/checks.ts";
 import type { HeartbeatFailure } from "@/shared/schemas/heartbeat.ts";
 import type { MaintenanceWindow } from "@/shared/schemas/maintenance.ts";
 import type { HttpConfig, MonitorInput } from "@/shared/schemas/monitor.ts";
-import { monitorEventKinds } from "@/shared/schemas/monitor.ts";
+import { mainLocation, monitorEventKinds } from "@/shared/schemas/monitor.ts";
 import { defaultCustomization } from "@/shared/schemas/page.ts";
+import {
+  type ProbeResult,
+  probeSilentAfterMs,
+} from "@/shared/schemas/probe.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import { exitAfterMs } from "./health.ts";
 import {
@@ -3381,5 +3386,408 @@ describe("subscriber notifications on the scheduler", () => {
         recent?.address ?? "",
       ].toSorted(byText)
     );
+  });
+});
+
+describe("the scheduler over a monitor checked from several locations", () => {
+  /** A probe's result as it would push it, its check started `ageMs` before the push. */
+  const probeSaw = (
+    monitorId: string,
+    result: "up" | "down",
+    ageMs = 0
+  ): ProbeResult => ({
+    ageMs,
+    attempts: 1,
+    bytes: result === "up" ? 5 : 0,
+    monitorId,
+    reason: result === "up" ? "ok" : "connection_refused",
+    responseMs: result === "up" ? 42 : undefined,
+    result,
+    statusCode: result === "up" ? 200 : undefined,
+  });
+
+  /** The storage's clock moves with the checks' clock, so a monitor's change time and a probe's results share one time line. */
+  let skew = 0;
+  const clocked = () => {
+    skew = 0;
+    return harness({ now: () => Date.now() + skew });
+  };
+  const advance = (h: Harness, ms: number) => {
+    h.advance(ms);
+    skew += ms;
+  };
+
+  async function located(h: Harness, overrides: Partial<MonitorInput> = {}) {
+    const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
+    const site = await h.storage.monitors.create(
+      input("Site", http(h.port), {
+        confirmations: 2,
+        locations: [mainLocation, probe.id],
+        ...overrides,
+      })
+    );
+    // The probes' results below are of checks that ran after the monitor was saved.
+    advance(h, 60_000);
+    return { probe, site };
+  }
+
+  async function run(s: ReturnType<typeof scheduler>) {
+    await s.tick();
+    await s.idle();
+  }
+
+  test("one location seeing it down opens no outage while two must agree, and the check carries the agreeing probe's figures", async () => {
+    const h = await clocked();
+    const { probe, site } = await located(h);
+    const s = scheduler(h);
+    await run(s);
+    h.setMode("error");
+    s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
+    advance(h, 20_000);
+    await run(s);
+    const checks = await h.storage.checks.range(
+      site.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(checks.at(-1)).toMatchObject({ responseMs: 42, result: "up" });
+    expect(await h.storage.outages.ongoing()).toEqual([]);
+    expect(h.events.filter((event) => event.kind === "down")).toEqual([]);
+  });
+
+  test("a second location agreeing brings the next check forward and opens the outage, naming both locations", async () => {
+    const h = await clocked();
+    const { probe, site } = await located(h);
+    const s = scheduler(h);
+    await run(s);
+    h.setMode("error");
+    advance(h, 20_000);
+    s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
+    await run(s);
+    expect(await h.storage.outages.ongoing()).toEqual([]);
+    advance(h, 1000);
+    s.report(probe.id, [probeSaw(site.id, "down")], h.io.now());
+    await run(s);
+    const [outage] = await h.storage.outages.ongoing();
+    expect(outage?.monitorId).toBe(site.id);
+    const down = h.events.find((event) => event.kind === "down");
+    expect(down?.kind === "down" && down.locations).toEqual([
+      { id: mainLocation, name: undefined },
+      { id: probe.id, name: "Frankfurt" },
+    ]);
+  });
+
+  test("the outage closes once fewer locations than needed still see it down", async () => {
+    const h = await clocked();
+    const { probe, site } = await located(h);
+    const s = scheduler(h);
+    await run(s);
+    h.setMode("error");
+    advance(h, 20_000);
+    s.report(probe.id, [probeSaw(site.id, "down")], h.io.now());
+    await run(s);
+    expect((await h.storage.outages.ongoing()).length).toBe(1);
+    h.setMode("ok");
+    advance(h, 20_000);
+    await run(s);
+    expect(await h.storage.outages.ongoing()).toEqual([]);
+    expect(h.events.map((event) => event.kind)).toContain("recovered");
+  });
+
+  test("after a restart, the main location alone opens no outage that the confirmation count was holding back, until its probes had their time to answer", async () => {
+    const h = await clocked();
+    const { probe, site } = await located(h);
+    h.setMode("error");
+    const s = scheduler(h);
+    await run(s);
+    expect(await h.storage.outages.ongoing()).toEqual([]);
+    expect(h.events.filter((event) => event.kind === "down")).toEqual([]);
+    // The probe answers within its interval and disagrees: still no outage.
+    advance(h, 5000);
+    s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
+    advance(h, 20_000);
+    await run(s);
+    expect(await h.storage.outages.ongoing()).toEqual([]);
+  });
+
+  test("a silent probe leaves the main location to decide alone, so a real outage still opens", async () => {
+    const h = await clocked();
+    const { site } = await located(h);
+    const s = scheduler(h);
+    h.setMode("error");
+    await run(s);
+    // Past the wait after boot, in which the probe would have answered.
+    advance(h, 60_000);
+    await run(s);
+    const [outage] = await h.storage.outages.ongoing();
+    expect(outage?.monitorId).toBe(site.id);
+    const down = h.events.find((event) => event.kind === "down");
+    expect(down?.kind === "down" && down.locations).toEqual([
+      { id: mainLocation, name: undefined },
+    ]);
+  });
+
+  test("a monitor checked from probes alone is never requested by the install, and its check is the probes' verdict", async () => {
+    const h = await clocked();
+    const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
+    const site = await h.storage.monitors.create(
+      input("Site", http(h.port), { locations: [probe.id] })
+    );
+    advance(h, 60_000);
+    const s = scheduler(h);
+    await run(s);
+    expect(await h.count(site.id)).toBe(0);
+    s.report(probe.id, [probeSaw(site.id, "down", 3000)], h.io.now());
+    await run(s);
+    expect(h.seen.length).toBe(0);
+    const [check] = await h.storage.checks.range(
+      site.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(check).toMatchObject({
+      reason: reasons.connection_refused,
+      result: "down",
+    });
+    expect((await h.storage.outages.ongoing())[0]?.monitorId).toBe(site.id);
+  });
+
+  test("a result for a monitor the probe is not assigned is dropped", async () => {
+    const h = await clocked();
+    const { site } = await located(h);
+    const other = await h.storage.probes.create("Riyadh", "e".repeat(64));
+    const s = scheduler(h);
+    await run(s);
+    s.report(other.id, [probeSaw(site.id, "down")], h.io.now());
+    expect(
+      s.locationStates(site.id)?.find((state) => state.location === other.id)
+    ).toBeUndefined();
+    expect(
+      s
+        .locationStates(site.id)
+        ?.find((state) => state.location !== mainLocation)?.result
+    ).toBeUndefined();
+  });
+
+  test("a result older than the one held is dropped", async () => {
+    const h = await clocked();
+    const { probe, site } = await located(h);
+    const s = scheduler(h);
+    await run(s);
+    const now = h.io.now();
+    s.report(probe.id, [probeSaw(site.id, "up", 1000)], now);
+    s.report(probe.id, [probeSaw(site.id, "down", 5000)], now);
+    expect(
+      s.locationStates(site.id)?.find((state) => state.location === probe.id)
+    ).toMatchObject({ result: "up", startedAt: now - 1000 });
+  });
+
+  test("each location's state shows on the monitor, named, and becomes unknown once it is old", async () => {
+    const h = await clocked();
+    const { probe, site } = await located(h);
+    const s = scheduler(h);
+    await run(s);
+    s.report(probe.id, [probeSaw(site.id, "up", 2000)], h.io.now());
+    const states = s.locationStates(site.id);
+    expect(
+      states?.map((state) => [state.location, state.name, state.result])
+    ).toEqual([
+      [mainLocation, undefined, "up"],
+      [probe.id, "Frankfurt", "up"],
+    ]);
+    expect(states?.[1]?.responseMs).toBe(42);
+    advance(h, 10 * 60_000);
+    const later = s.locationStates(site.id);
+    expect(later?.map((state) => state.result)).toEqual([undefined, undefined]);
+    expect(later?.[1]?.startedAt).toBeDefined();
+  });
+
+  test("a monitor checked from the main location alone has no location states", async () => {
+    const h = await clocked();
+    const site = await h.storage.monitors.create(input("Site", http(h.port)));
+    const s = scheduler(h);
+    await run(s);
+    expect(s.locationStates(site.id)).toBeUndefined();
+  });
+
+  test("a probe's assignments are its own unpaused monitors, with credentials only where they are shared", async () => {
+    const h = await clocked();
+    const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
+    const other = await h.storage.probes.create("Riyadh", "e".repeat(64));
+    const sealed = await sealCredentials(key, {
+      auth: { kind: "bearer", token: "secret-token" },
+      headers: [],
+    });
+    const shared = await h.storage.monitors.create(
+      input("Shared", http(h.port), {
+        locations: [mainLocation, probe.id],
+        shareCredentials: true,
+      }),
+      sealed
+    );
+    const kept = await h.storage.monitors.create(
+      input("Kept", http(h.port), { locations: [mainLocation, probe.id] }),
+      sealed
+    );
+    const paused = await h.storage.monitors.create(
+      input("Paused", http(h.port), { locations: [probe.id] })
+    );
+    await h.storage.monitors.pause([paused.id]);
+    await h.storage.monitors.create(
+      input("Elsewhere", http(h.port), { locations: [other.id] })
+    );
+    const s = scheduler(h);
+    expect(s.assignmentsOf(probe.id)).toBeUndefined();
+    await run(s);
+    const assigned = s.assignmentsOf(probe.id);
+    expect(assigned?.protocol).toBe(1);
+    expect(
+      assigned?.monitors.map((monitor) => monitor.id).sort(byText)
+    ).toEqual([kept.id, shared.id].sort(byText));
+    const byId = new Map(assigned?.monitors.map((each) => [each.id, each]));
+    expect(byId.get(shared.id)?.credentials?.auth).toEqual({
+      kind: "bearer",
+      token: "secret-token",
+    });
+    expect(byId.get(kept.id)?.credentials).toBeUndefined();
+    expect(byId.get(shared.id)).toMatchObject({
+      intervalMs: 20_000,
+      retries: 1,
+      timeoutMs: 5000,
+    });
+  });
+
+  test("a shared monitor's assignment carries only the credentials its check type sends", async () => {
+    const h = await clocked();
+    const privateKey =
+      "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n";
+    const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
+    const site = await h.storage.monitors.create(
+      input("Site", http(h.port), {
+        locations: [mainLocation, probe.id],
+        shareCredentials: true,
+      }),
+      await sealCredentials(key, {
+        auth: { kind: "bearer", token: "secret-token" },
+        clientKey: { key: privateKey, passphrase: "pass" },
+        headers: [{ name: "X-Key", value: "k" }],
+        proxyAuth: { password: "pp", user: "pu" },
+        url: "postgres://u:p@db.example.test/x",
+      })
+    );
+    const grant = {
+      clientId: "raaqeb",
+      clientSecret: "client-secret-9",
+      kind: "oauth2" as const,
+      method: "basic" as const,
+      tokenUrl: "https://idp.example.test/token",
+    };
+    const api = await h.storage.monitors.create(
+      input("Api", http(h.port), {
+        locations: [probe.id],
+        shareCredentials: true,
+      }),
+      await sealCredentials(key, { auth: grant, headers: [] })
+    );
+    const database = await h.storage.monitors.create(
+      input(
+        "Database",
+        { type: "postgres" },
+        { locations: [probe.id], shareCredentials: true }
+      ),
+      await sealCredentials(key, {
+        auth: { kind: "bearer", token: "secret-token" },
+        headers: [],
+        url: "postgres://u:p@db.example.test/x",
+      })
+    );
+    const s = scheduler(h);
+    await run(s);
+    const byId = new Map(
+      s.assignmentsOf(probe.id)?.monitors.map((each) => [each.id, each])
+    );
+    expect(byId.get(site.id)?.credentials).toEqual({
+      auth: { kind: "bearer", token: "secret-token" },
+      clientKey: { key: privateKey, passphrase: "pass" },
+      headers: [{ name: "X-Key", value: "k" }],
+      proxyAuth: { password: "pp", user: "pu" },
+    });
+    expect(byId.get(api.id)?.credentials).toEqual({ auth: grant, headers: [] });
+    expect(byId.get(database.id)?.credentials).toEqual({
+      headers: [],
+      url: "postgres://u:p@db.example.test/x",
+    });
+  });
+
+  test("a probe silent for two minutes tells the channels of the monitors it checks once, and again when it reports", async () => {
+    const h = await clocked();
+    const channel = await webhookChannel(h);
+    const { probe, site } = await located(h, { channels: [channel] });
+    const s = scheduler(h);
+    await run(s);
+    s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
+    advance(h, probeSilentAfterMs + 1000);
+    await run(s);
+    advance(h, 10_000);
+    await run(s);
+    const types = async () =>
+      (await queuedFor(h, channel)).map((each) => each.payload.type);
+    expect((await types()).filter((type) => type === "probe.silent")).toEqual([
+      "probe.silent",
+    ]);
+    s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
+    await run(s);
+    expect(
+      (await types()).filter((type) => type === "probe.reporting")
+    ).toEqual(["probe.reporting"]);
+  });
+
+  test("a monitor checked from probes alone has no recent result once none is fresh, and check now says so at once", async () => {
+    const h = await clocked();
+    const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
+    const site = await h.storage.monitors.create(
+      input("Site", http(h.port), { locations: [probe.id] })
+    );
+    advance(h, 60_000);
+    const s = scheduler(h);
+    await run(s);
+    s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
+    await run(s);
+    expect(s.checkNow(site.id).answer).toBe("queued");
+    advance(h, 120_000);
+    expect(s.checkNow(site.id).answer).toBe("unknown");
+  });
+
+  test("a probe's result from before a pause opens no outage after the resume", async () => {
+    const h = await clocked();
+    const { probe, site } = await located(h, { confirmations: 1 });
+    const s = scheduler(h);
+    await run(s);
+    advance(h, 1000);
+    s.report(probe.id, [probeSaw(site.id, "down")], h.io.now());
+    await run(s);
+    expect((await h.storage.outages.ongoing()).length).toBe(1);
+    advance(h, 1000);
+    await h.storage.monitors.pause([site.id]);
+    await h.storage.bump();
+    await run(s);
+    advance(h, 1000);
+    await h.storage.monitors.resume([site.id]);
+    await h.storage.bump();
+    advance(h, 1000);
+    await run(s);
+    expect(await h.storage.outages.ongoing()).toEqual([]);
+  });
+
+  test("a deleted probe's results count for nothing once the monitors are read again", async () => {
+    const h = await clocked();
+    const { probe, site } = await located(h, { confirmations: 1 });
+    const s = scheduler(h);
+    await run(s);
+    s.report(probe.id, [probeSaw(site.id, "down")], h.io.now());
+    await h.storage.probes.remove(probe.id);
+    await h.storage.bump();
+    await run(s);
+    expect(await h.storage.outages.ongoing()).toEqual([]);
   });
 });

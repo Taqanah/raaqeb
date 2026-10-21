@@ -81,7 +81,7 @@ _Avoid_: follow, membership, feed subscription (a feed has no record)
 **Monitor**:
 Arabic: مراقبة (الجمع: مراقبات)
 One thing Raaqeb watches, with a check type, a schedule and success rules. Belongs to at most one group and any number of tags.
-_Avoid_: probe, check (for the configured thing), service, target
+_Avoid_: probe (that is a process checking from elsewhere), check (for the configured thing), service, target
 
 **Check type**:
 Arabic: نوع الفحص
@@ -90,8 +90,8 @@ _Avoid_: monitor type, probe type
 
 **Check**:
 Arabic: فحص
-One scheduled run of a monitor, including its retries, producing one result of up, degraded or down, a response time, a reason and the number of attempts it took. Retries never produce checks of their own.
-_Avoid_: ping, run, probe, attempt (that is one try inside a check), heartbeat (that word is taken)
+One scheduled run of a monitor, including its retries, producing one result of up, degraded or down, a response time, a reason and the number of attempts it took. Retries never produce checks of their own. A monitor checked from several locations keeps one check per run of the install's own schedule, whose result is what its locations agree on by the confirmation count and whose figures are one agreeing location's; each location's own latest result is its location state, not a check of the history.
+_Avoid_: ping, run, probe (that is a process), attempt (that is one try inside a check), heartbeat (that word is taken)
 
 **Reason**:
 Arabic: علة for why a check failed (the notification line); سبب for why any check ended as it did (the checks table, passes included)
@@ -152,6 +152,31 @@ _Avoid_: tolerance, slack, buffer
 Arabic: نبضة
 One incoming call from the user's job to a heartbeat monitor's unique URL. It says the job ran, or, at the URL's fail address or with a failing status or a nonzero exit code, that it failed, with an optional short message and exit code.
 _Avoid_: ping, beat, push
+
+**Location**:
+Arabic: موقع الفحص (الجمع: مواقع الفحص); موقع in a list of them
+A place a monitor is checked from: the main location or a probe. A monitor has one or more, the main location alone by default. Each location runs the monitor's checks on its interval and keeps its latest result as its location state, which is unknown once it is older than twice the interval plus the longest a check can take. A probe's state is never down for being silent; it is unknown. A result whose check started before the monitor last changed (an edit, a pause, a resume) counts for nothing. A monitor checked from probes alone that none has a recent result for has no state: it is neither up nor down, and its components keep their last status as for a paused monitor.
+_Avoid_: region, site (that is a web site), node, agent
+
+**Main location**:
+Arabic: الرئيسي (الموقع الرئيسي)
+The install itself as a location: its own scheduler's checks. Every monitor before locations existed is checked from it alone.
+_Avoid_: local, home, primary, this server
+
+**Probe**:
+Arabic: مسبار (الجمع: مسابير)
+A Raaqeb process run elsewhere with `raaqeb probe`, with no database and no admin area, that pulls the monitors assigned to it from the install, checks them and pushes their results back; every connection starts at the probe. It can check HTTP, TCP, DNS and database monitors; a database monitor's credentials, and an HTTP monitor's, reach it only when the monitor shares them. Made in the admin area, where its last contact, its version and its round trip show. One not heard from for two minutes is silent: the channels of the monitors it checks are told once, and again when it reports.
+_Avoid_: agent, worker, node, remote monitor, check (that is one run)
+
+**Probe token**:
+Arabic: رمز المسبار
+The bearer token a probe sends with every request. Shown once when the probe is made or given a new token; only its SHA-256 is stored, so a lost token is replaced, never read back. A new token stops the old one at once. Its hash travels in an export, so a moved install's probes keep working.
+_Avoid_: API key, password, secret (the install key's word)
+
+**Confirmation count**:
+Arabic: عدد المواقع المؤكِّدة
+How many of a monitor's locations must see it down for its check to be down and its outage to open, one by default. While fewer of its locations have a known state, every one that has must agree, so a silent probe never hides an outage. Degraded follows the same count.
+_Avoid_: quorum, threshold (that is the degraded one), retries (those are inside one check)
 
 **Degraded**:
 Arabic: متعثّر
@@ -436,7 +461,7 @@ _Avoid_: config, environment variable (that is where it comes from, not what it 
 
 **Install key**:
 Arabic: مفتاح راقب
-The secret that encrypts credentials at rest: HTTP monitor credentials, a database monitor's connection URL, channel credentials, SMTP passwords, the Postgres URL. Comes from the environment, or is generated on first boot into `config.json` in the data directory and reused on every later boot. Never exported. One-time codes are hashed, not encrypted; a reset link is neither, since it works once and expires within the hour.
+The secret that encrypts credentials at rest: HTTP monitor credentials, a database monitor's connection URL, channel credentials, SMTP passwords, the Postgres URL. Comes from the environment, or is generated on first boot into `config.json` in the data directory and reused on every later boot. Never exported. One-time codes, the metrics token and probe tokens are hashed, not encrypted; a reset link is neither, since it works once and expires within the hour.
 _Avoid_: encryption key, master key, secret (Better Auth's secret is a different value)
 
 **Public address**:

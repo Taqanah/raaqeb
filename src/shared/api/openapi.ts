@@ -24,12 +24,23 @@ import {
   heartbeatMessageMaxLength,
   heartbeatTokenSchema,
 } from "@/shared/schemas/heartbeat.ts";
+import { probeCheckTypes } from "@/shared/schemas/monitor.ts";
 import {
   type NotificationType,
   notificationPayloadSchema,
 } from "@/shared/schemas/notification.ts";
 import { overviewDocumentSchema } from "@/shared/schemas/overview.ts";
 import { pageImageKindSchema } from "@/shared/schemas/page.ts";
+import {
+  probeAssignmentSchema,
+  probeAssignmentsSchema,
+  probeReceiptSchema,
+  probeResultSchema,
+  probeResultsSchema,
+  probeVersionHeader,
+  roundTripHeader,
+} from "@/shared/schemas/probe.ts";
+import { reasonNameSchema } from "@/shared/schemas/reason.ts";
 import {
   confirmationWebhookSchema,
   type SubscriberEventType,
@@ -54,7 +65,7 @@ export interface OpenApiDocument {
   /** The schemas several operations share, each written once and named by a `$ref` to `#/components/schemas/<name>`. */
   readonly components: {
     readonly schemas: Readonly<Record<string, Record<string, unknown>>>;
-    /** How a request proves itself where an operation asks for it: the metrics token. */
+    /** How a request proves itself where an operation asks for it: the metrics token, a probe token. */
     readonly securitySchemes: Readonly<Record<string, Record<string, unknown>>>;
   };
   readonly info: {
@@ -91,6 +102,67 @@ const joined = (name: string) =>
 
 const componentPrefix = "#/components/schemas/";
 
+/** A part of the probe protocol the document names without its fields: a monitor's config and credentials are the install's own shapes, and a failure detail's are the reasons'. */
+const opaque = <Shape extends z.ZodRawShape>(
+  description: string,
+  shape: Shape = {} as Shape
+) =>
+  z
+    .looseObject(shape)
+    .describe(description)
+    .meta({ additionalProperties: true });
+
+const documentedAssignments = probeAssignmentsSchema.extend({
+  monitors: z
+    .array(
+      probeAssignmentSchema.extend({
+        config: opaque(
+          probeAssignmentSchema.shape.config.description ?? "The config.",
+          {
+            type: z
+              .enum(probeCheckTypes)
+              .describe(
+                "The check type; the other fields are that check type's own."
+              ),
+          }
+        ),
+        credentials: opaque(
+          probeAssignmentSchema.shape.credentials.description ??
+            "The credentials."
+        ).optional(),
+      })
+    )
+    .describe(probeAssignmentsSchema.shape.monitors.description ?? ""),
+});
+
+const documentedResults = probeResultsSchema.extend({
+  results: z
+    .array(
+      probeResultSchema.extend({
+        detail: z
+          .object({
+            assertion: opaque(
+              "The success rule that failed, as the monitor stores it."
+            ).optional(),
+            error: z
+              .string()
+              .optional()
+              .describe("The driver's raw error text, cut to 256 characters."),
+            params: opaque("What the reason saw.", {
+              reason: reasonNameSchema.describe(
+                "The reason these values are of."
+              ),
+            }),
+          })
+          .optional()
+          .describe(
+            probeResultSchema.shape.detail.description ?? "The detail."
+          ),
+      })
+    )
+    .describe(probeResultsSchema.shape.results.description ?? ""),
+});
+
 /**
  * The schemas the document writes once under `components` and names by
  * `$ref`: every body, and the parts several bodies share, the page's
@@ -105,6 +177,9 @@ for (const [id, schema] of [
   ["IncidentDocument", incidentDocumentSchema],
   ["MaintenanceDocument", maintenanceDocumentSchema],
   ["OverviewDocument", overviewDocumentSchema],
+  ["ProbeAssignments", documentedAssignments],
+  ["ProbeReceipt", probeReceiptSchema],
+  ["ProbeResults", documentedResults],
   ["StatusPage", overviewDocumentSchema.shape.page],
   ["SubscriberWebhook", subscriberWebhookSchema],
   ["SummaryComponent", summaryComponentSchema],
@@ -143,6 +218,8 @@ function componentSchemas(): Record<string, Record<string, unknown>> {
 const tags = {
   Heartbeats: "The address a job calls to tell its heartbeat monitor it ran.",
   Meta: "The install itself: its health, its metrics for Prometheus, this document, and the reverse proxy's custom domain check.",
+  Probes:
+    "What a probe, `raaqeb probe` run elsewhere, asks of the install: its assignments, and where its results go. Version 1 of the protocol, named in the path.",
   "Status pages":
     "A published status page's view documents, images, summary, badge and feed, public to anyone.",
   Subscriptions:
@@ -327,6 +404,90 @@ const metrics = {
   },
   security: [{ metricsToken: [] }],
   summary: "The monitors' state for Prometheus",
+};
+
+/** The headers every probe request carries beside its token. */
+const probeHeaders = [
+  {
+    description: "The probe's build, which the locations page shows.",
+    in: "header",
+    name: probeVersionHeader,
+    required: false,
+    schema: { type: "string" },
+  },
+  {
+    description:
+      "The probe's last request's round trip in milliseconds, as it measured it.",
+    in: "header",
+    name: roundTripHeader,
+    required: false,
+    schema: { minimum: 0, type: "integer" },
+  },
+];
+
+/** What every probe request may be answered with but its success. */
+const probeRefusals = {
+  401: {
+    description:
+      "No probe token, or one no probe holds. It answers with `WWW-Authenticate: Bearer` and no body.",
+  },
+  404: { description: "No database is open yet. It answers with no body." },
+  429: {
+    description:
+      "Too many requests from this probe, or too many wrong tokens from this address, this minute; `Retry-After` says when to ask again.",
+  },
+  503: {
+    description:
+      "The install has not read its monitors yet; `Retry-After` says when to ask again.",
+  },
+};
+
+const probeAssignments = {
+  description:
+    "The monitors this probe checks: the unpaused ones whose locations name it, of a check type a probe runs, with their credentials only when the monitor shares them. Ask again every 30 seconds with `If-None-Match`.",
+  parameters: [
+    ...probeHeaders,
+    {
+      description: "The `ETag` of the assignments the probe holds.",
+      in: "header",
+      name: "If-None-Match",
+      required: false,
+      schema: { type: "string" },
+    },
+  ],
+  responses: {
+    200: {
+      content: {
+        "application/json": { schema: refTo(documentedAssignments) },
+      },
+      description: "The assignments, with their `ETag`, never cached.",
+    },
+    304: { description: "The assignments the probe holds still stand." },
+    ...probeRefusals,
+  },
+  security: [{ probeToken: [] }],
+  summary: "A probe's assignments",
+};
+
+const probeResults = {
+  description:
+    "The latest result of each monitor this probe checked since its last push. Each carries its age, how long before the push its check started, never a time of day; a result for a monitor not assigned to the probe is dropped.",
+  parameters: probeHeaders,
+  requestBody: {
+    content: { "application/json": { schema: refTo(documentedResults) } },
+    required: true,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: refTo(probeReceiptSchema) } },
+      description:
+        "Taken. The answer is the assignments' current `ETag`: one the probe does not hold means it asks for them again.",
+    },
+    400: { description: "The body does not fit the protocol." },
+    ...probeRefusals,
+  },
+  security: [{ probeToken: [] }],
+  summary: "A probe's results",
 };
 
 /** A status page's logo, favicon or cover image: a GET or a HEAD, on any host that serves the page. */
@@ -643,6 +804,10 @@ const sentWhen: Readonly<Record<NotificationType, string>> = {
     "Sent when the outage closes: the first check that is no longer down.",
   "monitor.reminder":
     "Sent every so many minutes, as the monitor's reminder sets, while it stays down and its outage is not acknowledged.",
+  "probe.reporting":
+    "Sent to the channels of the monitors a probe checks when it is heard again after it went silent.",
+  "probe.silent":
+    "Sent to the channels of the monitors a probe checks when the install has not heard from it for two minutes; none of its results counts until it reports again.",
 };
 
 /** One webhook per notification type: what Raaqeb posts to a generic webhook channel. */
@@ -814,11 +979,17 @@ export function openApiDocument(): OpenApiDocument {
           scheme: "bearer",
           type: "http",
         },
+        probeToken: {
+          description:
+            "The probe token the locations page shows once when it makes the probe or a new token, sent as `Authorization: Bearer <token>`.",
+          scheme: "bearer",
+          type: "http",
+        },
       },
     },
     info: {
       description:
-        "Raaqeb's public API: a status page's read-only status data (its view documents, images, Statuspage-compatible summary, badge and feed), heartbeat ingest, the monitors' metrics for Prometheus behind a bearer token, and a subscription's confirm and unsubscribe. Its webhooks are what Raaqeb sends. There is no management API: the operator manages the install in its admin area.",
+        "Raaqeb's public API: a status page's read-only status data (its view documents, images, Statuspage-compatible summary, badge and feed), heartbeat ingest, the monitors' metrics for Prometheus behind a bearer token, the protocol a probe speaks behind its own, and a subscription's confirm and unsubscribe. Its webhooks are what Raaqeb sends. There is no management API: the operator manages the install in its admin area.",
       title: "Raaqeb public API",
       version: "1",
     },
@@ -846,6 +1017,12 @@ export function openApiDocument(): OpenApiDocument {
       "/subscriptions/{token}/confirm": subscriptionAction("confirm"),
       "/subscriptions/{token}/unsubscribe": subscriptionAction("unsubscribe"),
       "/metrics": pathItem("Metrics", "Meta", { get: metrics }),
+      "/api/probe/v1/assignments": pathItem("ProbeAssignments", "Probes", {
+        get: probeAssignments,
+      }),
+      "/api/probe/v1/results": pathItem("ProbeResults", "Probes", {
+        post: probeResults,
+      }),
       "/api/openapi.json": pathItem("OpenApiDocument", "Meta", {
         get: {
           responses: {

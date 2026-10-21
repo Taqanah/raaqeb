@@ -25,7 +25,10 @@ const summaryMax = 1024;
 /** What an event does to which alert: trigger or resolve the monitor's alert of one kind, at this severity. */
 const alerts: Readonly<
   Record<
-    Exclude<NotificationPayload["type"], "channel.test">,
+    Exclude<
+      NotificationPayload["type"],
+      "channel.test" | "probe.reporting" | "probe.silent"
+    >,
     {
       readonly action: "resolve" | "trigger";
       readonly kind: "certificate" | "degraded" | "domain" | "down";
@@ -66,6 +69,18 @@ function alertOf(notification: NotificationPayload) {
       key: `raaqeb:${notification.data.channel.id}:test`,
       severity: "info",
       source: "Raaqeb",
+    };
+  }
+  if (
+    notification.type === "probe.silent" ||
+    notification.type === "probe.reporting"
+  ) {
+    const { probe } = notification.data;
+    return {
+      action: notification.type === "probe.silent" ? "trigger" : "resolve",
+      key: `raaqeb:probe:${probe.id}:silent`,
+      severity: notification.type === "probe.silent" ? "warning" : "info",
+      source: probe.name,
     };
   }
   const { monitor } = notification.data;

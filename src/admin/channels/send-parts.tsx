@@ -32,6 +32,8 @@ const eventTypeLabels: Readonly<
   "monitor.down": eventLabels.down,
   "monitor.recovered": eventLabels.recovered,
   "monitor.reminder": "monitor_field_reminder",
+  "probe.reporting": "channel_event_probe_reporting",
+  "probe.silent": "channel_event_probe_silent",
 };
 
 /** What a send shows: its stored status, except a pending one no attempt has failed yet, which is queued. */

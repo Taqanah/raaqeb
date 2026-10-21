@@ -177,6 +177,34 @@ describe("the monitor detail's read", () => {
     ).toEqual({ ok: false, reason: "unavailable" });
   });
 
+  test("each location's state comes from the scheduler, asked for this monitor", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    const asked: string[] = [];
+    const states = [
+      { location: "main", result: "up" as const },
+      { location: "p1", name: "Frankfurt" },
+    ];
+    const result = await readMonitorDetail(store, monitor.id, {
+      ...options(Date.now()),
+      locations: (id) => {
+        asked.push(id);
+        return states;
+      },
+    });
+    if (!result.ok) {
+      throw new Error(result.reason);
+    }
+    expect(asked).toEqual([monitor.id]);
+    expect(result.detail.locations).toEqual(states);
+    const alone = await readMonitorDetail(
+      store,
+      monitor.id,
+      options(Date.now())
+    );
+    expect(alone.ok && alone.detail.locations).toBeUndefined();
+  });
+
   test("uptime is one minus the outage time over the observed time, in every window", async () => {
     const store = await storage();
     const monitor = await store.monitors.create(site);

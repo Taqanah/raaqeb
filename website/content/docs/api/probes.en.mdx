@@ -1,0 +1,21 @@
+---
+title: Probes
+description: The protocol a probe speaks with the install: its assignments, and where its results go.
+---
+
+import { ApiOperation } from "../../../docs/api/view.tsx";
+
+A [probe](/en/docs/monitors/locations) asks the install for the monitors it checks and sends back their results, over two operations under `/api/probe/v1/`, the protocol's version 1. Both carry the probe token the locations page showed, as `Authorization: Bearer rqp_...`; the install keeps only its SHA-256.
+
+- The probe asks for its assignments when it starts and every 30 seconds after, with the `ETag` it holds; an unchanged list is a `304`.
+- It pushes the latest result of each monitor it checked, at most once a second. The answer names the assignments' current `ETag`, so a probe learns of an edit at its next push.
+- A result carries `ageMs`, how long before the push its check started on the probe's own clock, never a time of day. The install places it at its own receipt time minus that age, so a probe whose clock is wrong reports correct times.
+- At most 120 requests a minute from one probe, and 10 wrong tokens a minute from one address, which the install refuses before it reads anything; past either it answers `429` with `Retry-After`.
+
+A change an older probe cannot read is a new version in a new path, served beside this one. The probe names its build in `raaqeb-version`, which the locations page shows.
+
+## Reference
+
+<ApiOperation path="/api/probe/v1/assignments" />
+
+<ApiOperation path="/api/probe/v1/results" />

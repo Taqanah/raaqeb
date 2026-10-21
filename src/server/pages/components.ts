@@ -1,4 +1,5 @@
 import { dayView, readMonitorHistories } from "@/server/monitors/days.ts";
+import { noRecentResult } from "@/server/scheduler/locations.ts";
 import { inInstallLanguage } from "@/server/settings/language.ts";
 import {
   coveredSpans,
@@ -106,9 +107,28 @@ async function statesOf(
   storage: Pick<Storage, "checks" | "outages">,
   monitors: readonly Monitor[]
 ): Promise<Map<string, CheckResult>> {
+  return (await locatedStatesOf(storage, monitors, Date.now())).states;
+}
+
+/** The states, and the monitors checked from probes alone that no location has a recent result for at `now`. */
+async function locatedStatesOf(
+  storage: Pick<Storage, "checks" | "outages">,
+  monitors: readonly Monitor[],
+  now: number
+): Promise<{ states: Map<string, CheckResult>; unknown: Set<string> }> {
   const latest = await storage.checks.latest();
   const states = new Map(
     latest.map((check) => [check.monitorId, check.result])
+  );
+  const latestAt = new Map(
+    latest.map((check) => [check.monitorId, check.startedAt])
+  );
+  const unknown = new Set(
+    monitors
+      .filter((monitor) =>
+        noRecentResult(monitor, latestAt.get(monitor.id), now)
+      )
+      .map((monitor) => monitor.id)
   );
   await Promise.all(
     monitors
@@ -121,7 +141,7 @@ async function statesOf(
         }
       })
   );
-  return states;
+  return { states, unknown };
 }
 
 /** Every component and its status now, or as it would be without the maintenance window with the id `withoutWindow`; throws what the storage throws. */
@@ -146,10 +166,15 @@ export async function readComponentStatuses(
     storage.incidents.open(),
     storage.maintenance.unfinished(),
   ]);
-  const states = await statesOf(storage, monitors);
+  const { states, unknown } = await locatedStatesOf(
+    storage,
+    monitors,
+    Date.now()
+  );
   return {
     components,
     statuses: componentStatuses({
+      unknown,
       components,
       incidents: incidentStatuses(incidents),
       maintenance: underMaintenance(

@@ -276,6 +276,18 @@ describe("a monitor event as a log line", () => {
     expect(
       eventLine({
         at: 1,
+        kind: "down",
+        locations: [
+          { id: "main", name: undefined },
+          { id: "p1", name: "Frankfurt" },
+        ],
+        monitorId: "m1",
+        reason: reasons.timeout,
+      })
+    ).toBe("monitor m1 is down (timeout) from main, probe p1");
+    expect(
+      eventLine({
+        at: 1,
         kind: "recovered",
         monitorId: "m1",
         reason: reasons.ok,

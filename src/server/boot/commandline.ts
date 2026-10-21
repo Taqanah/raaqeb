@@ -12,8 +12,9 @@ export const commands = [
   "health",
   "reset-password",
   "set-address",
+  "probe",
 ] as const;
-/** The four commands, and the two answers a flag gives in place of running one. */
+/** The five commands, and the two answers a flag gives in place of running one. */
 export type Command = (typeof commands)[number] | "help" | "version";
 
 export type CommandLine =
@@ -49,6 +50,8 @@ commands:
   health                exit 0 when the server answers at its address
   reset-password        print a reset link for the operator account
   set-address <url>     store the public address, as https://status.example.com
+  probe                 check an install's monitors from here, reporting to
+                        RAAQEB_PROBE_SERVER with RAAQEB_PROBE_TOKEN
 
 flags:
   --version             print the version

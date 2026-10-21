@@ -5571,6 +5571,242 @@ msgid "maintenance_occurrence_alone"
 msgstr "تغييره أو إلغاؤه هنا لا يمسّ وقت الصيانة المتكرر ولا مواعيده الأخرى."
 
 #. js-lingui-explicit-id
+msgid "channel_line_locations"
+msgstr "رُصدت متعطّلة من: {value}"
+
+#. js-lingui-explicit-id
+msgid "monitor_location_main"
+msgstr "الرئيسي"
+
+#. js-lingui-explicit-id
+msgid "setting_locations"
+msgstr "المواقع"
+
+#. js-lingui-explicit-id
+msgid "setting_locations_title"
+msgstr "مواقع الفحص"
+
+#. js-lingui-explicit-id
+msgid "setting_locations_intro"
+msgstr "الأماكن التي تُفحص منها المراقبات: الموقع الرئيسي هو هذا التثبيت، والمسبار نسخة من راقب تعمل على خادم آخر وتفحص المراقبات التي تختارها له ثم ترسل نتائجها إلى هنا."
+
+#. js-lingui-explicit-id
+msgid "setting_locations_main_note"
+msgstr "هذا التثبيت، ومنه تُفحص كل مراقبة ما لم تختر لها غيره."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_reporting"
+msgstr "يرسل نتائجه"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_silent"
+msgstr "صامت"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_never"
+msgstr "لم يتصل بعد"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_last_seen"
+msgstr "آخر اتصال {when}"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_version"
+msgstr "الإصدار {value}"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_round_trip"
+msgstr "الذهاب والإياب {value}"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_new_token"
+msgstr "رمز جديد"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_new_token_note"
+msgstr "الرمز الجديد يوقف القديم فورًا، فيتوقف المسبار حتى تشغّله بالجديد."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_delete"
+msgstr "حذف"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_delete_title"
+msgstr "حذف {name}؟"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_delete_body"
+msgstr "يتوقف رمزه عن العمل، وتُفحص المراقبات التي كان يفحصها من مواقعها الأخرى، وما كان يفحصه وحده يُفحص من الموقع الرئيسي."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_delete_confirm"
+msgstr "حذف المسبار"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_add_title"
+msgstr "إضافة مسبار"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_name_hint"
+msgstr "مكان تشغيله كما يسميه فريقك، مثل فرانكفورت أو المكتب."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_name_needed"
+msgstr "اكتب اسمًا للمسبار."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_add"
+msgstr "إضافة المسبار"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_full"
+msgstr "يتسع التثبيت لـ {count} مسبارًا على الأكثر، فاحذف واحدًا لتضيف غيره."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_token_title"
+msgstr "رمز {name}"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_token_intro"
+msgstr "يظهر مرة واحدة فقط. شغّل المسبار على خادمه بهذا الرمز وعنوان التثبيت، ويصل إليه عبر HTTPS."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_command"
+msgstr "أمر التشغيل"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_docker"
+msgstr "أو عبر Docker"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_copied"
+msgstr "نسخت الرمز"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_no_address"
+msgstr "احفظ العنوان العام في الإعدادات العامة، فعليه يصل المسبار إلى التثبيت."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_locations"
+msgstr "مواقع الفحص"
+
+#. js-lingui-explicit-id
+msgid "monitor_locations_hint"
+msgstr "تُفحص المراقبة من كل موقع تختاره، والموقع الرئيسي هو هذا التثبيت."
+
+#. js-lingui-explicit-id
+msgid "monitor_locations_unsupported"
+msgstr "يفحص المسبار مراقبات HTTP وTCP وDNS وقواعد البيانات، فهذه تُفحص من الموقع الرئيسي."
+
+#. js-lingui-explicit-id
+msgid "monitor_confirmations"
+msgstr "يُفتح الانقطاع حين يرصد تعطّلها"
+
+#. js-lingui-explicit-id
+msgid "monitor_confirmations_option"
+msgstr "{count} من {total}"
+
+#. js-lingui-explicit-id
+msgid "monitor_confirmations_hint"
+msgstr "عدد مواقعها التي يجب أن ترصد تعطّلها معًا، وإذا صمت مسبار حكمت المواقع التي ما زالت تجيب."
+
+#. js-lingui-explicit-id
+msgid "monitor_share_credentials"
+msgstr "مشاركة بيانات الاستيثاق مع المسابير"
+
+#. js-lingui-explicit-id
+msgid "monitor_share_credentials_hint"
+msgstr "تُرسل إلى مسابيرها عبر HTTPS ما يلزم فحصها فقط: لطلب HTTP الاستيثاق (ومنه سر عميل OAuth 2.0) والترويسات والمفتاح الخاص لشهادة العميل وعبارة سره واسم مستخدم الوكيل وكلمة مروره، ولقاعدة البيانات رابط الاتصال. ودونها يرسل المسبار الطلب بلا شيء منها."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_share_credentials"
+msgstr "لا يفحص المسبار مراقبة قاعدة بيانات إلا برابط الاتصال: شارك بيانات الاستيثاق أو ألغِ اختيار المسابير."
+
+#. js-lingui-explicit-id
+msgid "monitor_detail_locations"
+msgstr "مواقع الفحص"
+
+#. js-lingui-explicit-id
+msgid "monitor_detail_locations_rule"
+msgstr "يُفتح الانقطاع حين يرصد تعطّلها {count} من {total}."
+
+#. js-lingui-explicit-id
+msgid "monitor_location_unknown"
+msgstr "غير معروفة"
+
+#. js-lingui-explicit-id
+msgid "monitor_location_checked"
+msgstr "فُحصت {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_location_never"
+msgstr "لا نتيجة بعد"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_locations_none"
+msgstr "اختر موقعًا واحدًا على الأقل."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_refused"
+msgstr "نتائجه مرفوضة"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_refused_note"
+msgstr "رفض التثبيت آخر ما أرسله المسبار كله، فشغّله بإصدار التثبيت نفسه."
+
+#. js-lingui-explicit-id
+msgid "monitor_share_credentials_warning"
+msgstr "لهذه المراقبة بيانات استيثاق لن تصل إلى مسابيرها، فقد يرفض الهدف طلباتها."
+
+#. js-lingui-explicit-id
+msgid "channel_text_probe_silent"
+msgstr "توقّف المسبار عن إرسال نتائجه، فحالة موقعه غير معروفة حتى يعود."
+
+#. js-lingui-explicit-id
+msgid "channel_subject_probe_silent"
+msgstr "{probe}: صامت"
+
+#. js-lingui-explicit-id
+msgid "channel_text_probe_reporting"
+msgstr "عاد المسبار يرسل نتائجه."
+
+#. js-lingui-explicit-id
+msgid "channel_subject_probe_reporting"
+msgstr "{probe}: يرسل نتائجه"
+
+#. js-lingui-explicit-id
+msgid "channel_line_probe"
+msgstr "المسبار: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_last_heard"
+msgstr "آخر اتصال: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_event_probe_silent"
+msgstr "صمت المسبار"
+
+#. js-lingui-explicit-id
+msgid "channel_event_probe_reporting"
+msgstr "عودة المسبار"
+
+#. js-lingui-explicit-id
+msgid "channel_preview_probe"
+msgstr "فرانكفورت"
+
+#. js-lingui-explicit-id
+msgid "monitor_state_unknown"
+msgstr "لا نتيجة حديثة"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_now_unknown"
+msgstr "لا نتيجة حديثة من أي موقع لهذه المراقبة، فلا فحص يُكتب حتى يجيب موقع."
+
+#. js-lingui-explicit-id
 msgid "page_section_access"
 msgstr "الوصول"
 

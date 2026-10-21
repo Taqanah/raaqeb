@@ -68,6 +68,7 @@ import {
   withChannel,
   withEvent,
   withField,
+  withLocation,
 } from "./draft.ts";
 import {
   ChoiceField,
@@ -89,6 +90,7 @@ import {
   SuccessRuleSection,
   TlsSection,
 } from "./http-sections.tsx";
+import { LocationsSection } from "./location-section.tsx";
 import { NotificationsSection } from "./notification-section.tsx";
 import { TestPanel, type TestState } from "./test-panel.tsx";
 
@@ -186,6 +188,9 @@ export function MonitorForm({
     },
     [options.channels]
   );
+  const onLocation = useCallback((id: string, on: boolean) => {
+    setDraft((current) => withLocation(current, id, on));
+  }, []);
   const onEvent = useCallback((kind: MonitorEventKind, on: boolean) => {
     setDraft((current) => withEvent(current, kind, on));
   }, []);
@@ -325,6 +330,11 @@ export function MonitorForm({
               <CaptureSection {...sections} />
             </>
           ) : null}
+          <LocationsSection
+            {...sections}
+            onLocation={onLocation}
+            probes={options.probes}
+          />
           <OrganizationSection {...sections} options={options} />
           <NotificationsSection
             channels={options.channels}

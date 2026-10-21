@@ -585,6 +585,39 @@ describe("the monitors module", () => {
     }
   );
 
+  test("the list marks a monitor checked from probes alone as having no recent result once its latest check is past its bound, and has no state for it", async () => {
+    const store = await storage();
+    const frankfurt = await store.probes.create("Frankfurt", "f".repeat(64));
+    const created = await createMonitor(store, key, {
+      ...site,
+      locations: [frankfurt.id],
+    });
+    if (!created.ok) {
+      throw new Error(created.reason);
+    }
+    const startedAt = created.monitor.updatedAt + 1000;
+    await store.checks.record({
+      capture: undefined,
+      check: {
+        attempts: 1,
+        bytes: 10,
+        monitorId: created.monitor.id,
+        reason: reasons.ok,
+        responseMs: 5,
+        result: "up",
+        startedAt,
+        statusCode: 200,
+      },
+      detail: undefined,
+    });
+    const fresh = await listMonitors(store, startedAt + 1000);
+    expect(fresh.ok && fresh.unknown).toEqual([]);
+    expect(fresh.ok && fresh.states[created.monitor.id]).toBe("up");
+    const later = await listMonitors(store, startedAt + 10 * 60_000);
+    expect(later.ok && later.unknown).toEqual([created.monitor.id]);
+    expect(later.ok && later.states[created.monitor.id]).toBeUndefined();
+  });
+
   test("the list carries each monitor's current state from its latest check; a monitor with no check yet has none", async () => {
     const store = await storage();
     const a = await createMonitor(store, key, site);
@@ -898,12 +931,25 @@ describe("the form's read", () => {
       options: {
         // Code point order, as the repository answers tags: the same on both backends whatever the collation.
         groups: ["الإنتاج", "التجربة"],
+        probes: [],
         retentionDefaultDays: 180,
         channels: [],
         tags: ["عام", "ويب"],
       },
       original: undefined,
     });
+  });
+
+  test("the form offers every probe by its name, never its token", async () => {
+    const store = await storage();
+    const frankfurt = await store.probes.create("Frankfurt", "f".repeat(64));
+    const form = await readMonitorForm(store, key, undefined, undefined);
+    if (!form.ok) {
+      throw new Error(form.reason);
+    }
+    expect(form.options.probes).toEqual([
+      { id: frankfurt.id, name: "Frankfurt" },
+    ]);
   });
 
   test("an edit reads the monitor and its credentials' names, never a secret", async () => {

@@ -36,6 +36,7 @@ import {
 import type { CheckResult } from "@/shared/schemas/check.ts";
 import {
   type MonitorFields,
+  mainLocation,
   monitorEventKinds,
 } from "@/shared/schemas/monitor.ts";
 import { pageCustomizationSchema } from "@/shared/schemas/page.ts";
@@ -206,9 +207,12 @@ export async function sourceInstall(): Promise<Install & { ids: SourceIds }> {
   });
   source.at(today - 250 * day);
   await storage.monitors.pause([backup.id]);
+  const frankfurt = await storage.probes.create("Frankfurt", "f".repeat(64));
   const dns = await storage.monitors.create({
     channels: [],
     config: { name: "example.test", recordType: "A", type: "dns" },
+    confirmations: 2,
+    locations: [mainLocation, frankfurt.id],
     events: [...monitorEventKinds],
     intervalMs: 5 * minute,
     name: "DNS",

@@ -9,6 +9,7 @@
     "heartbeat",
     "certificates",
     "domains",
+    "locations",
     "reports"
   ]
 }

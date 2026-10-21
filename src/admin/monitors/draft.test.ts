@@ -27,6 +27,7 @@ import {
   withChannel,
   withEvent,
   withField,
+  withLocation,
 } from "./draft.ts";
 
 const stored = {
@@ -1652,6 +1653,106 @@ describe("an HTTP monitor's own proxy in the draft", () => {
       "ops",
       "pw",
     ]);
+  });
+});
+
+describe("a monitor's locations in the form", () => {
+  const probe = "0199f0aa-0000-7000-8000-000000000001";
+  const posted = (draft: MonitorDraft) => {
+    const parsed = inputOf(draft);
+    if (!parsed.ok) {
+      throw new Error(JSON.stringify(parsed.errors));
+    }
+    return parsed.input;
+  };
+
+  test("a new monitor is checked from the main location alone, needing one confirmation and sharing nothing", () => {
+    const draft = draftOf(undefined, noCredentials);
+    expect(draft.locations).toEqual(["main"]);
+    expect(draft.confirmations).toBe(1);
+    expect(draft.shareCredentials).toBe(false);
+    const input = posted(typed({}));
+    expect(input.locations).toBeUndefined();
+    expect(input.confirmations).toBeUndefined();
+    expect(input.shareCredentials).toBeUndefined();
+  });
+
+  test("an edit starts from the monitor's own locations", () => {
+    const draft = draftOf(
+      monitorOf({
+        ...httpFields,
+        confirmations: 2,
+        locations: ["main", probe],
+        shareCredentials: true,
+      }),
+      noCredentials
+    );
+    expect(draft.locations).toEqual(["main", probe]);
+    expect(draft.confirmations).toBe(2);
+    expect(draft.shareCredentials).toBe(true);
+  });
+
+  test("a probe ticked posts the locations, the confirmation count and the sharing", () => {
+    const input = posted(
+      typed({
+        confirmations: 2,
+        locations: ["main", probe],
+        shareCredentials: true,
+      })
+    );
+    expect(input.locations).toEqual(["main", probe]);
+    expect(input.confirmations).toBe(2);
+    expect(input.shareCredentials).toBe(true);
+  });
+
+  test("a confirmation count above the locations ticked posts as every one of them", () => {
+    expect(
+      posted(typed({ confirmations: 3, locations: [probe] })).confirmations
+    ).toBeUndefined();
+    expect(
+      posted(typed({ confirmations: 3, locations: ["main", probe] }))
+        .confirmations
+    ).toBe(2);
+  });
+
+  test("a check type no probe runs posts the main location alone, and the draft keeps the probes for a type that can", () => {
+    const draft = typed({
+      container: "web",
+      locations: ["main", probe],
+      type: "docker",
+    });
+    expect(posted(draft).locations).toBeUndefined();
+    expect(draft.locations).toEqual(["main", probe]);
+  });
+
+  test("a location ticked joins the monitor's, untick leaves it, and the count is a choice", () => {
+    const ticked = withLocation(typed({}), probe, true);
+    expect(ticked.locations).toEqual(["main", probe]);
+    expect(withLocation(ticked, probe, true).locations).toEqual([
+      "main",
+      probe,
+    ]);
+    expect(withLocation(ticked, "main", false).locations).toEqual([probe]);
+    expect(withField(ticked, "confirmations", "2").confirmations).toBe(2);
+    expect(withField(ticked, "confirmations", "x").confirmations).toBe(1);
+  });
+
+  test("a monitor with no location ticked is refused on the locations", () => {
+    expect(errorsOf(typed({ locations: [] })).locations).toEqual({
+      id: "monitor_error_locations_none",
+    });
+  });
+
+  test("a database monitor checked from a probe without sharing is refused on the switch", () => {
+    expect(
+      errorsOf(
+        typed({
+          connectionUrl: "postgres://raaqeb:secret@db.example.test/raaqeb",
+          locations: ["main", probe],
+          type: "postgres",
+        })
+      ).shareCredentials
+    ).toEqual({ id: "monitor_error_share_credentials" });
   });
 });
 

@@ -143,6 +143,18 @@ export const configurationSchema = z.object({
       updatedAt: timeCodec,
     })
   ),
+  probes: z.array(
+    z.object({
+      id,
+      name: plain,
+      /** The probe token's SHA-256, never the token, so a moved install's probes keep working. */
+      tokenHash: z.string().regex(/^[0-9a-f]{64}$/),
+      createdAt: timeCodec,
+      lastSeenAt: timeCodec.nullable(),
+      version: plain.nullable(),
+      roundTripMs: count.nullable(),
+    })
+  ),
   monitors: z.array(
     z.object({
       id,
@@ -160,6 +172,9 @@ export const configurationSchema = z.object({
       heartbeatToken: plain.nullable(),
       events: jsonTextCodec(z.array(z.enum(monitorEventKinds))),
       reminderMs: monitorFields.reminderMs.unwrap().nullable(),
+      fromMain: flagCodec,
+      confirmations: monitorFields.confirmations.unwrap(),
+      shareCredentials: flagCodec,
       paused: flagCodec,
       pausedAt: timeCodec.nullable(),
       groupId: id.nullable(),
@@ -169,6 +184,7 @@ export const configurationSchema = z.object({
   ),
   monitorTags: z.array(z.object({ monitorId: id, tagId: id })),
   monitorChannels: z.array(z.object({ monitorId: id, channelId: id })),
+  monitorProbes: z.array(z.object({ monitorId: id, probeId: id })),
   components: z.array(
     z.object({
       id,
@@ -313,10 +329,10 @@ export const headerSchema = z.object({
 });
 export type Header = z.output<typeof headerSchema>;
 
-/** The versions an import reads: this one, and version 1, written before maintenance series, an HTTP monitor's own proxy and domain expiry (whose option is on when absent). */
+/** The versions an import reads: this one, and version 1, written before maintenance series, an HTTP monitor's own proxy, domain expiry (whose option is on when absent) and probes. */
 export const readableExportVersions: readonly number[] = [1, exportVersion];
 
-/** A first line of version 1 as this version reads it: no maintenance series, and every window of none; its monitors carry no proxy, which reads as none. Anything that is not such a line comes back as it came, for the header's schema to refuse. */
+/** A first line of version 1 as this version reads it: no maintenance series, and every window of none; no probes, and every monitor checked from the main location alone with one confirmation; its monitors carry no proxy, which reads as none. Anything that is not such a line comes back as it came, for the header's schema to refuse. */
 export function fromVersion1(first: unknown): unknown {
   const parsed = version1Schema.safeParse(first);
   if (!parsed.success) {
@@ -329,6 +345,14 @@ export function fromVersion1(first: unknown): unknown {
       ...configuration,
       maintenanceSeries: [],
       maintenanceSeriesComponents: [],
+      monitorProbes: [],
+      monitors: configuration.monitors.map((monitor) => ({
+        ...monitor,
+        confirmations: 1,
+        fromMain: true,
+        shareCredentials: false,
+      })),
+      probes: [],
       maintenanceWindows: configuration.maintenanceWindows.map((window) => ({
         ...window,
         seriesId: null,
@@ -343,6 +367,7 @@ export function fromVersion1(first: unknown): unknown {
 const version1Schema = z.looseObject({
   configuration: z.looseObject({
     maintenanceWindows: z.array(z.looseObject({})),
+    monitors: z.array(z.looseObject({})),
   }),
   version: z.literal(1),
 });

@@ -34,30 +34,39 @@ export function sealingCutoff(now: number): number {
   return Math.floor((now - sealingDelayMs) / day) * day;
 }
 
+/** What the schedule reads of a monitor; a probe schedules its assignments by the same rules. */
+export type Scheduled = Pick<
+  Monitor,
+  "config" | "id" | "intervalMs" | "paused" | "updatedAt"
+>;
+
 /** A monitor on the schedule and when its next check is due. */
-export interface ScheduleEntry {
+export interface ScheduleEntry<M extends Scheduled = Monitor> {
   /** A heartbeat monitor's grace period for the window, kept in a late heartbeat's reason. */
   readonly graceMs: number;
-  readonly monitor: Monitor;
+  readonly monitor: M;
   readonly nextDueAt: number;
   /** When a heartbeat monitor's window opened: a heartbeat after it counts. */
   readonly since: number;
 }
 
 /** The monitors the scheduler runs, by id. */
-export type Schedule = ReadonlyMap<string, ScheduleEntry>;
+export type Schedule<M extends Scheduled = Monitor> = ReadonlyMap<
+  string,
+  ScheduleEntry<M>
+>;
 
 /** Whether the scheduler runs this monitor: every active monitor; a heartbeat monitor's run is the evaluation of its window. */
-export function schedulable(monitor: Monitor): boolean {
+export function schedulable(monitor: Scheduled): boolean {
   return !monitor.paused;
 }
 
 /** A heartbeat monitor's entry for a window opened at `since`: evaluated at the next expected time plus grace, never when the schedule never fires. */
-function windowEntry(
-  monitor: Monitor,
+function windowEntry<M extends Scheduled>(
+  monitor: M,
   since: number,
   timeZone: string
-): ScheduleEntry {
+): ScheduleEntry<M> {
   const evaluation =
     monitor.config.type === "heartbeat"
       ? evaluationAt(monitor.config, since, timeZone)
@@ -76,11 +85,11 @@ function windowEntry(
  * interval; a heartbeat monitor's first window opens at boot, since nothing
  * could arrive while Raaqeb was stopped, and takes no slot of the spread.
  */
-export function spreadFirstRuns(
-  monitors: readonly Monitor[],
+export function spreadFirstRuns<M extends Scheduled>(
+  monitors: readonly M[],
   bootAt: number,
   timeZone: string
-): Schedule {
+): Schedule<M> {
   const runnable = monitors.filter(schedulable);
   const checked = runnable.filter(
     (monitor) => monitor.config.type !== "heartbeat"
@@ -109,12 +118,12 @@ export function spreadFirstRuns(
  * leaves; the rest keep their entry, and a heartbeat window's end is read
  * again in the time zone given.
  */
-export function reconcileSchedule(
-  schedule: Schedule,
-  monitors: readonly Monitor[],
+export function reconcileSchedule<M extends Scheduled>(
+  schedule: Schedule<M>,
+  monitors: readonly M[],
   now: number,
   timeZone: string
-): Schedule {
+): Schedule<M> {
   return new Map(
     monitors.filter(schedulable).map((monitor) => {
       const known = schedule.get(monitor.id);
@@ -138,11 +147,11 @@ export function reconcileSchedule(
 }
 
 /** The monitors whose next run is due and that have no check in flight. */
-export function dueMonitors(
-  schedule: Schedule,
+export function dueMonitors<M extends Scheduled>(
+  schedule: Schedule<M>,
   inFlight: ReadonlySet<string>,
   now: number
-): Monitor[] {
+): M[] {
   return [...schedule.values()]
     .filter(
       ({ monitor, nextDueAt }) => nextDueAt <= now && !inFlight.has(monitor.id)
@@ -158,13 +167,13 @@ export function dueMonitors(
  * window opens at the evaluation, or at `opensAt` when a failing heartbeat
  * brought the evaluation forward.
  */
-export function afterCheck(
-  schedule: Schedule,
+export function afterCheck<M extends Scheduled>(
+  schedule: Schedule<M>,
   monitorId: string,
   startedAt: number,
   timeZone: string,
   opensAt?: number
-): Schedule {
+): Schedule<M> {
   const entry = schedule.get(monitorId);
   if (!entry) {
     return schedule;
@@ -241,11 +250,19 @@ export function failedWhileUp(
     .map(({ monitor }) => monitor);
 }
 
+/** A location that saw a monitor down, as a notification names it: the main location has no name. */
+export interface SeenFrom {
+  readonly id: string;
+  readonly name: string | undefined;
+}
+
 /** A monitor event (CONTEXT.md "Monitor event"): the four a settled check raises, certificate expiring, which the certificate pass raises, and domain expiring, which the registration pass raises. */
 export type MonitorEvent =
   | {
       readonly at: number;
       readonly kind: "down" | "recovered";
+      /** The locations whose checks saw it down, for a monitor checked from more than one. */
+      readonly locations?: readonly SeenFrom[];
       readonly monitorId: string;
       /** The outage this down event opened or this recovered event closed; the notification of each follows it. */
       readonly outage?: Outage;
@@ -282,6 +299,8 @@ export interface Settlement {
   readonly closed: Outage | undefined;
   /** What the failing heartbeat behind a down check carried. */
   readonly failure?: HeartbeatFailure | undefined;
+  /** The locations that saw it down, for a monitor checked from more than one. */
+  readonly locations?: readonly SeenFrom[];
   readonly opened: boolean;
   readonly previous: CheckResult | undefined;
 }
@@ -321,6 +340,7 @@ export function eventsOf(settlement: Settlement): MonitorEvent[] {
       ...base,
       kind: "down",
       outage,
+      ...(settlement.locations && { locations: settlement.locations }),
       ...(failure && { failure }),
     });
   }

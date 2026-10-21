@@ -44,12 +44,34 @@ import type { Credentials } from "@/shared/schemas/credentials.ts";
 import type { CheckAsked } from "@/shared/schemas/detail.ts";
 import type { Heartbeat } from "@/shared/schemas/heartbeat.ts";
 import type { MaintenanceWindow } from "@/shared/schemas/maintenance.ts";
-import type { Monitor } from "@/shared/schemas/monitor.ts";
+import {
+  checkableByProbe,
+  isDatabaseCheckType,
+  locationsOf,
+  type Monitor,
+  mainLocation,
+} from "@/shared/schemas/monitor.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
+import {
+  type LocationState,
+  type ProbeAssignments,
+  type ProbeResult,
+  probeProtocol,
+  probeSilentAfterMs,
+} from "@/shared/schemas/probe.ts";
 import { confirmationLifetimeMs } from "@/shared/schemas/subscription.ts";
 import { createSizeGuard } from "./budget.ts";
 import { createCertificatePass } from "./certificates.ts";
 import { type Liveness, tickVerdict } from "./health.ts";
+import {
+  freshForMs,
+  isKnown,
+  type LocationResult,
+  locationResultFromProbe,
+  locationResultOf,
+  verdictOf,
+  verdictOutcome,
+} from "./locations.ts";
 import { createMaintenancePass } from "./maintenance.ts";
 import { createNightlyJob } from "./nightly.ts";
 import { createRegistrationPass } from "./registrations.ts";
@@ -66,9 +88,31 @@ import {
   refreshPeriodMs,
   type Schedule,
   type ScheduleEntry,
+  type SeenFrom,
   spreadFirstRuns,
   tickPeriodMs,
 } from "./schedule.ts";
+
+/** The credentials a probe needs for the monitor's check type, and no other: an HTTP request's auth (an OAuth 2.0 client secret included), client certificate key, headers and proxy sign-in, a database monitor's connection URL. */
+function sentWith(
+  monitor: Monitor,
+  held: Credentials | undefined
+): Credentials | undefined {
+  if (!held) {
+    return;
+  }
+  if (monitor.config.type === "http") {
+    return {
+      ...(held.auth && { auth: held.auth }),
+      ...(held.clientKey && { clientKey: held.clientKey }),
+      headers: held.headers,
+      ...(held.proxyAuth && { proxyAuth: held.proxyAuth }),
+    };
+  }
+  return isDatabaseCheckType(monitor.config.type) && held.url !== undefined
+    ? { headers: [], url: held.url }
+    : undefined;
+}
 
 /** What the scheduler needs of storage; the storage module satisfies it. */
 export type SchedulerStorage = Pick<
@@ -86,11 +130,18 @@ export type SchedulerStorage = Pick<
   | "notifications"
   | "outages"
   | "pages"
+  | "probes"
   | "registrations"
   | "settings"
   | "size"
   | "subscriptions"
 >;
+
+/** A run's check, and for a monitor checked from several locations the ones that saw it down. */
+interface Settled {
+  readonly locations?: readonly SeenFrom[];
+  readonly outcome: CheckOutcome;
+}
 
 /** A check the reserve refuses is logged at most this often. */
 const refusedLogPeriodMs = 60_000;
@@ -134,9 +185,24 @@ export interface SubscriberRequests {
   readonly subscribers: Pick<SubscriberNotifications, "announce" | "confirm">;
 }
 
+/** What the probe API and a monitor's page ask of the locations (ADR-0012). */
+export interface LocationRequests {
+  /** A probe's assignments: its unpaused monitors of a check type it runs, with their opened credentials only when they share them; nothing until the monitors were read. */
+  readonly assignmentsOf: (probeId: string) => ProbeAssignments | undefined;
+  /** Each location's state for a monitor checked from more than one, in its order; nothing for one checked from the main location alone. */
+  readonly locationStates: (monitorId: string) => LocationState[] | undefined;
+  /** Takes a probe's results as received at `receivedAt`: one for a monitor not assigned to it, or older than the state held, is dropped; one that would change the monitor's verdict brings its next run to the next tick. */
+  readonly report: (
+    probeId: string,
+    results: readonly ProbeResult[],
+    receivedAt: number
+  ) => void;
+}
+
 export interface Scheduler
   extends Liveness,
     CheckRequests,
+    LocationRequests,
     OutageRequests,
     SubscriberRequests {
   /** Resolves once no check is in flight; tests wait on it. */
@@ -174,11 +240,23 @@ export function createScheduler(
   /** The change counter as the scheduler last saw it; a value it did not expect means the operator changed something. */
   let known: number | undefined;
   let lastTickAt: number | undefined;
+  /** The first tick's time: the held states start empty there. */
+  let bootAt: number | undefined;
   /** When the tick last moved the counter for the figures that follow the clock alone. */
   let refreshedAt: number | undefined;
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let watchdog: ReturnType<typeof setInterval> | undefined;
+  /** Each probe's name as last read with the monitors, by id. */
+  let probeNames: ReadonlyMap<string, string> = new Map();
+  /** When the install last heard from each probe: a pull or a push; a probe first known at boot or when made counts from then. */
+  const heard = new Map<string, number>();
+  /** The probes whose silence the channels were told of. */
+  const silent = new Set<string>();
+  /** The probe notifications being queued, one after another; idle and stop wait for them. */
+  let telling: Promise<void> = Promise.resolve();
+  /** Each location's latest result, by monitor and location, for the monitors checked from more than one (ADR-0012). */
+  const held = new Map<string, Map<string, LocationResult>>();
   /** The state before the next check of each monitor, seeded once from the latest checks. */
   const states = new Map<string, CheckResult>();
   let statesSeeded = false;
@@ -209,6 +287,15 @@ export function createScheduler(
       const seen = new Set(monitors.map((monitor) => monitor.id));
       monitors = await storage.monitors.list();
       credentials = await openAll(await storage.monitors.allCredentials());
+      probeNames = new Map(
+        (await storage.probes.list()).map((probe) => [probe.id, probe.name])
+      );
+      for (const id of probeNames.keys()) {
+        if (!heard.has(id)) {
+          heard.set(id, now);
+        }
+      }
+      forgetLocations();
       if (monitorsRead && monitors.some((monitor) => !seen.has(monitor.id))) {
         // A monitor may arrive with its history, as an import writes it: its latest check and its open outage are read as at boot.
         statesSeeded = false;
@@ -231,6 +318,65 @@ export function createScheduler(
       }
       return settled;
     }
+  }
+
+  /** Drops the results of locations a monitor is no longer checked from, and of monitors gone or checked from the main location alone. */
+  function forgetLocations(): void {
+    const located = new Map(
+      monitors
+        .filter((monitor) => monitor.locations !== undefined)
+        .map((monitor) => [monitor.id, new Set(locationsOf(monitor))])
+    );
+    for (const [monitorId, results] of held) {
+      const wanted = located.get(monitorId);
+      if (!wanted) {
+        held.delete(monitorId);
+        continue;
+      }
+      for (const location of results.keys()) {
+        if (!wanted.has(location)) {
+          results.delete(location);
+        }
+      }
+    }
+  }
+
+  function heldOf(monitorId: string): Map<string, LocationResult> {
+    let results = held.get(monitorId);
+    if (!results) {
+      results = new Map();
+      held.set(monitorId, results);
+    }
+    return results;
+  }
+
+  /** The check a run writes for a monitor checked from several locations: their verdict at `startedAt`, or nothing when no location's state is known. */
+  function confirmed(
+    monitor: Monitor,
+    startedAt: number,
+    own: CheckOutcome | undefined
+  ): Settled | undefined {
+    const results = heldOf(monitor.id);
+    const now = io.now();
+    const verdict = verdictOf(monitor, results, now);
+    if (!verdict) {
+      return;
+    }
+    // After a restart the held states are empty: a down that fewer locations than the count decide waits until each had its time to answer.
+    if (
+      verdict.result === "down" &&
+      verdict.known < (monitor.confirmations ?? 1) &&
+      now < (bootAt ?? now) + freshForMs(monitor)
+    ) {
+      return;
+    }
+    return {
+      locations: verdict.down.map((id) => ({
+        id,
+        name: id === mainLocation ? undefined : probeNames.get(id),
+      })),
+      outcome: verdictOutcome(monitor.id, verdict, results, startedAt, own),
+    };
   }
 
   /** Opens every monitor's sealed credentials; ones the key cannot open are logged by monitor and not sent, so the check still runs and shows what the target answers without them. */
@@ -382,13 +528,11 @@ export function createScheduler(
     isStopped,
   });
 
-  async function settle(
-    monitor: Monitor,
-    outcome: CheckOutcome
-  ): Promise<void> {
+  async function settle(monitor: Monitor, settled: Settled): Promise<void> {
     if (stopped) {
       return;
     }
+    const { outcome } = settled;
     const { check } = outcome;
     const now = io.now();
     if (await guard.admit(now)) {
@@ -417,7 +561,14 @@ export function createScheduler(
       detail?.params.reason === "heartbeat_failed"
         ? { exitCode: detail.params.exitCode, message: detail.error }
         : undefined;
-    const settlement = { check, closed, failure, opened, previous };
+    const settlement = {
+      check,
+      closed,
+      failure,
+      locations: settled.locations,
+      opened,
+      previous,
+    };
     for (const event of eventsOf(settlement)) {
       options.onEvent?.(event);
       // biome-ignore lint/performance/noAwaitInLoops: a settlement raises at most two events, queued in order
@@ -460,15 +611,188 @@ export function createScheduler(
     monitor: Monitor,
     now: number,
     failed?: Heartbeat
-  ): Promise<CheckOutcome> | undefined {
+  ): Promise<Settled | undefined> | undefined {
     if (monitor.config.type === "heartbeat") {
       const entry = schedule?.get(monitor.id);
-      return entry && evaluateWindow(entry, now, failed);
+      return (
+        entry &&
+        evaluateWindow(entry, now, failed).then((outcome) => ({ outcome }))
+      );
     }
-    return runCheck(
+    if (
+      monitor.locations !== undefined &&
+      !monitor.locations.includes(mainLocation)
+    ) {
+      // Checked from probes alone: the run is their verdict as it stands.
+      return Promise.resolve(confirmed(monitor, now, undefined));
+    }
+    const run = runCheck(
       { ...monitor, credentials: credentials.get(monitor.id) },
       io
     );
+    if (monitor.locations === undefined) {
+      return run?.then((outcome) => ({ outcome }));
+    }
+    return run?.then((own) => {
+      heldOf(monitor.id).set(mainLocation, locationResultOf(own));
+      return confirmed(monitor, own.check.startedAt, own);
+    });
+  }
+
+  /** The channels of the unpaused monitors a probe checks: where its silence is told. */
+  function probeChannels(probeId: string): string[] {
+    const ids = new Set<string>();
+    for (const monitor of monitors) {
+      if (!monitor.paused && monitor.locations?.includes(probeId)) {
+        for (const channel of monitor.channels) {
+          ids.add(channel);
+        }
+      }
+    }
+    return [...ids];
+  }
+
+  /** Queues a probe's silence or its return for the channels of the monitors it checks; a refusal is logged. */
+  function tellProbe(
+    type: "probe.reporting" | "probe.silent",
+    probeId: string,
+    lastHeardAt: number,
+    now: number
+  ): void {
+    const channels = probeChannels(probeId);
+    if (channels.length === 0) {
+      return;
+    }
+    const payload = {
+      data: {
+        lastHeardAt: new Date(lastHeardAt).toISOString(),
+        probe: { id: probeId, name: probeNames.get(probeId) ?? probeId },
+      },
+      timestamp: new Date(now).toISOString(),
+      type,
+    };
+    const tell = async () => {
+      try {
+        await queue.enqueue(channels, payload, now);
+      } catch (error) {
+        logError(
+          `the ${type} notification of the probe ${probeId} was not queued: ${reasonOf(error)}`
+        );
+      }
+    };
+    telling = telling.then(tell);
+  }
+
+  /** A request from the probe: it is heard, and a silence told is ended. */
+  function hear(probeId: string, now: number): void {
+    const before = heard.get(probeId);
+    heard.set(probeId, now);
+    if (silent.delete(probeId)) {
+      tellProbe("probe.reporting", probeId, before ?? now, now);
+    }
+  }
+
+  /** On the tick: each probe not heard from for two minutes is told of once. */
+  function watchProbes(now: number): void {
+    for (const [id, at] of heard) {
+      if (!probeNames.has(id)) {
+        heard.delete(id);
+        silent.delete(id);
+        continue;
+      }
+      if (!silent.has(id) && now - at >= probeSilentAfterMs) {
+        silent.add(id);
+        tellProbe("probe.silent", id, at, now);
+      }
+    }
+  }
+
+  function report(
+    probeId: string,
+    results: readonly ProbeResult[],
+    receivedAt: number
+  ): void {
+    hear(probeId, receivedAt);
+    for (const result of results) {
+      const monitor = monitors.find((each) => each.id === result.monitorId);
+      if (
+        !monitor ||
+        monitor.paused ||
+        !monitor.locations?.includes(probeId) ||
+        !checkableByProbe(monitor.config.type)
+      ) {
+        continue;
+      }
+      const state = locationResultFromProbe(result, receivedAt);
+      const located = heldOf(monitor.id);
+      const before = located.get(probeId);
+      // A check from before the monitor last changed checked what it no longer is.
+      if (
+        state.startedAt < monitor.updatedAt ||
+        (before && before.startedAt >= state.startedAt)
+      ) {
+        continue;
+      }
+      located.set(probeId, state);
+      const verdict = verdictOf(monitor, located, receivedAt);
+      if (verdict && verdict.result !== states.get(monitor.id)) {
+        // The install checks again at once, so an agreeing location opens the outage within a tick.
+        requested.add(monitor.id);
+      }
+    }
+  }
+
+  function assignmentsOf(probeId: string): ProbeAssignments | undefined {
+    if (!monitorsRead) {
+      return;
+    }
+    if (probeNames.has(probeId)) {
+      hear(probeId, io.now());
+    }
+    return {
+      monitors: monitors
+        .filter(
+          (monitor) =>
+            !monitor.paused &&
+            monitor.locations?.includes(probeId) &&
+            checkableByProbe(monitor.config.type)
+        )
+        .map((monitor) => ({
+          config: monitor.config,
+          credentials: monitor.shareCredentials
+            ? sentWith(monitor, credentials.get(monitor.id))
+            : undefined,
+          degradedMs: monitor.degradedMs,
+          id: monitor.id,
+          intervalMs: monitor.intervalMs,
+          retries: monitor.retries,
+          timeoutMs: monitor.timeoutMs,
+          updatedAt: monitor.updatedAt,
+        })),
+      protocol: probeProtocol,
+    };
+  }
+
+  function locationStates(monitorId: string): LocationState[] | undefined {
+    const monitor = monitors.find((each) => each.id === monitorId);
+    if (!monitor?.locations) {
+      return;
+    }
+    const results = held.get(monitorId);
+    const freshFor = freshForMs(monitor);
+    const now = io.now();
+    return monitor.locations.map((location) => {
+      const state = results?.get(location);
+      const fresh =
+        state !== undefined && isKnown(monitor, state, now, freshFor);
+      return {
+        location,
+        name: location === mainLocation ? undefined : probeNames.get(location),
+        responseMs: fresh ? state.responseMs : undefined,
+        result: fresh ? state.result : undefined,
+        startedAt: state?.startedAt,
+      };
+    });
   }
 
   function start(monitor: Monitor, now: number, failed?: Heartbeat): void {
@@ -485,8 +809,11 @@ export function createScheduler(
       failed && failed.arrivedAt + 1
     );
     const flight = run
-      .then((outcome) => {
-        const settlement = settle(monitor, outcome);
+      .then((settled) => {
+        if (!settled) {
+          return;
+        }
+        const settlement = settle(monitor, settled);
         settling.add(settlement);
         return settlement.finally(() => settling.delete(settlement));
       })
@@ -586,6 +913,7 @@ export function createScheduler(
     }
     const now = io.now();
     lastTickAt = now;
+    bootAt ??= now;
     // Notifications go out whether or not the monitors could be read.
     queue.run(now);
     if (!((await ready(now)) && schedule)) {
@@ -611,6 +939,7 @@ export function createScheduler(
     if (monitorsRead) {
       operator.remind(now, monitors, (id) => states.get(id) === "down");
     }
+    watchProbes(now);
     certificates.run(now, monitors);
     registrations.run(now, monitors);
     nightly.run(now, monitors, timeZone);
@@ -646,7 +975,19 @@ export function createScheduler(
 
   return {
     acknowledge: (outage) => operator.acknowledge(outage),
+    assignmentsOf,
+    locationStates,
+    report,
     checkNow: (monitorId) => {
+      const monitor = monitors.find((each) => each.id === monitorId);
+      if (
+        monitor?.locations &&
+        !monitor.locations.includes(mainLocation) &&
+        !verdictOf(monitor, heldOf(monitorId), io.now())
+      ) {
+        // Checked from probes alone and none answering: a run would write nothing.
+        return { answer: "unknown", from: io.now() };
+      }
       const startedAt = flightStarts.get(monitorId);
       if (startedAt !== undefined) {
         return { answer: "running", from: startedAt };
@@ -666,6 +1007,7 @@ export function createScheduler(
         operator.idle(),
         subscribers.idle(),
         queue.idle(),
+        telling,
       ]);
       await bumps;
     },
@@ -690,6 +1032,7 @@ export function createScheduler(
         certificates.flush(),
         registrations.flush(),
         queue.flush(),
+        telling,
       ]);
       await bumps;
     },

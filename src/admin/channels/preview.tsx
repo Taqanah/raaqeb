@@ -37,6 +37,8 @@ const labels: Readonly<Record<NotificationPreview["type"], MessageId>> = {
   "monitor.down": "monitor_event_down",
   "monitor.recovered": "monitor_event_recovered",
   "monitor.reminder": "channel_preview_reminder",
+  "probe.reporting": "channel_event_probe_reporting",
+  "probe.silent": "channel_event_probe_silent",
 };
 
 export function NotificationPreviewCard({

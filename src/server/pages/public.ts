@@ -327,6 +327,7 @@ const apiRoutes: readonly RegExp[] = [
   /^\/api\/auth\/./,
   /^\/api\/(custom-domain|openapi\.json|v2\/summary\.json)$/,
   /^\/api\/heartbeat\/[^/]+(\/fail)?$/,
+  /^\/api\/probe\/v1\/(assignments|results)$/,
   /^\/api\/pages\/[^/]+\/[^/]+$/,
   /^\/api\/pages\/[^/]+\/(history|incidents|maintenance)\/[^/]+$/,
 ];

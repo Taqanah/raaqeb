@@ -24,6 +24,25 @@ function paused(state: CheckResult | undefined, at: number): LinkedMonitor {
   return { paused: true, pausedAt: at, state };
 }
 
+describe("a monitor with no recent result in a component's status", () => {
+  test("is left out while another linked monitor has one", () => {
+    expect(
+      derivedStatus([
+        { paused: false, pausedAt: undefined, state: "down", unknown: true },
+        { paused: false, pausedAt: undefined, state: "up" },
+      ])
+    ).toBe("operational");
+  });
+
+  test("keeps its last state when every linked monitor has none, never inventing up", () => {
+    expect(
+      derivedStatus([
+        { paused: false, pausedAt: undefined, state: "down", unknown: true },
+      ])
+    ).toBe("major_outage");
+  });
+});
+
 describe("the derived status of a component's linked monitors", () => {
   test("a component with no linked monitor has no derived status", () => {
     expect(derivedStatus([])).toBeUndefined();

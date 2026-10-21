@@ -37,6 +37,8 @@ const colours: Readonly<
   "monitor.down": "Attention",
   "monitor.recovered": "Good",
   "monitor.reminder": "Attention",
+  "probe.reporting": "Good",
+  "probe.silent": "Warning",
 };
 
 export const teamsChannel: NotificationChannel = {

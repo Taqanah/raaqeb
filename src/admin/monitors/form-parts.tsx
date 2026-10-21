@@ -41,6 +41,7 @@ export type FlagChange = (
     | "ownRetention"
     | "reminder"
     | "renewHeartbeatUrl"
+    | "shareCredentials"
     | "tlsExpiry",
   on: boolean
 ) => void;

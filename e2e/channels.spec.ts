@@ -114,7 +114,10 @@ test.describe("one webhook channel, from its creation to its deletion", () => {
     await openChannel(page);
     const preview = page.locator("[data-slot=notification-preview]");
     await expect(preview.locator("[data-slot=preview-sample]")).toBeVisible();
-    await expect(preview.locator("[data-preview]")).toHaveCount(7);
+    await expect(preview.locator("[data-preview]")).toHaveCount(9);
+    await expect(
+      preview.locator("[data-preview='probe.silent'] [data-slot=preview-body]")
+    ).toContainText('"type": "probe.silent"');
     await expect(
       preview.locator("[data-preview='monitor.down'] [data-slot=preview-body]")
     ).toContainText('"type": "monitor.down"');

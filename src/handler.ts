@@ -15,6 +15,7 @@ import type { PublicTarget } from "./server/pages/public.ts";
 import type { Liveness } from "./server/scheduler/health.ts";
 import type {
   CheckRequests,
+  LocationRequests,
   OutageRequests,
   SubscriberRequests,
 } from "./server/scheduler/scheduler.ts";
@@ -33,7 +34,8 @@ import type { PublicView } from "./shared/schemas/overview.ts";
  * operator middleware (src/routes/-admin.ts) a handler sees the storage as
  * open, with the Better Auth instance the session was read through. The
  * scheduler rides beside the storage: its liveness for `/health`, its
- * check requests for "check now", an acknowledged outage, its subscriber notifications for the
+ * check requests for "check now", its locations for the probe API and a
+ * monitor's page, an acknowledged outage, its subscriber notifications for the
  * events and confirmations a route hands on. The public target is the page, locale
  * and view the entry resolved before the memo looked, so the route renders
  * what the memo keys. `holdOpen`
@@ -52,7 +54,11 @@ export interface RequestContext {
   /** The status page view, document, summary, badge or feed the request shows, as the entry resolved it for the memo; nothing for any other request. */
   readonly publicTarget: PublicTarget | undefined;
   readonly scheduler:
-    | (Liveness & CheckRequests & OutageRequests & SubscriberRequests)
+    | (Liveness &
+        CheckRequests &
+        LocationRequests &
+        OutageRequests &
+        SubscriberRequests)
     | undefined;
   readonly storage: Storage | undefined;
   /** Whether the address is an unpublished page's, from the memo's pages index; nothing under `vite dev`. */

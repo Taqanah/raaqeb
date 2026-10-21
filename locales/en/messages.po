@@ -5571,6 +5571,242 @@ msgid "maintenance_occurrence_alone"
 msgstr "Changing or cancelling it here leaves the series and its other occurrences as they are."
 
 #. js-lingui-explicit-id
+msgid "channel_line_locations"
+msgstr "Seen down from: {value}"
+
+#. js-lingui-explicit-id
+msgid "monitor_location_main"
+msgstr "Main"
+
+#. js-lingui-explicit-id
+msgid "setting_locations"
+msgstr "Locations"
+
+#. js-lingui-explicit-id
+msgid "setting_locations_title"
+msgstr "Locations"
+
+#. js-lingui-explicit-id
+msgid "setting_locations_intro"
+msgstr "Where monitors are checked from: the main location is this install, and a probe is Raaqeb running on another server, checking the monitors you choose for it and sending its results here."
+
+#. js-lingui-explicit-id
+msgid "setting_locations_main_note"
+msgstr "This install. Every monitor is checked here unless you choose otherwise."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_reporting"
+msgstr "Reporting"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_silent"
+msgstr "Silent"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_never"
+msgstr "Not connected yet"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_last_seen"
+msgstr "Last heard {when}"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_version"
+msgstr "Version {value}"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_round_trip"
+msgstr "Round trip {value}"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_new_token"
+msgstr "New token"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_new_token_note"
+msgstr "A new token stops the old one at once, so the probe stops until you run it with the new one."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_delete"
+msgstr "Delete"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_delete_title"
+msgstr "Delete {name}?"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_delete_body"
+msgstr "Its token stops working, and the monitors it checked are checked from their other locations; one it alone checked is checked from the main location."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_delete_confirm"
+msgstr "Delete probe"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_add_title"
+msgstr "Add a probe"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_name_hint"
+msgstr "Where it runs, as your team calls it: Frankfurt, the office."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_name_needed"
+msgstr "Give the probe a name."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_add"
+msgstr "Add probe"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_full"
+msgstr "An install holds at most {count} probes: delete one to add another."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_token_title"
+msgstr "{name}'s token"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_token_intro"
+msgstr "Shown this once. Run the probe on its server with this token and the install's address; it reaches the install over HTTPS."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_command"
+msgstr "Run it"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_docker"
+msgstr "Or with Docker"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_copied"
+msgstr "I copied the token"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_no_address"
+msgstr "Save the public address in the general settings: the probe reaches the install there."
+
+#. js-lingui-explicit-id
+msgid "monitor_section_locations"
+msgstr "Locations"
+
+#. js-lingui-explicit-id
+msgid "monitor_locations_hint"
+msgstr "Checked from every location ticked; the main location is this install."
+
+#. js-lingui-explicit-id
+msgid "monitor_locations_unsupported"
+msgstr "A probe checks HTTP, TCP, DNS and database monitors, so this one is checked from the main location."
+
+#. js-lingui-explicit-id
+msgid "monitor_confirmations"
+msgstr "An outage opens when"
+
+#. js-lingui-explicit-id
+msgid "monitor_confirmations_option"
+msgstr "{count} of {total} see it down"
+
+#. js-lingui-explicit-id
+msgid "monitor_confirmations_hint"
+msgstr "How many of its locations must see it down together; while a probe is silent, the ones still answering decide."
+
+#. js-lingui-explicit-id
+msgid "monitor_share_credentials"
+msgstr "Share credentials with probes"
+
+#. js-lingui-explicit-id
+msgid "monitor_share_credentials_hint"
+msgstr "Sends its probes over HTTPS only what its check needs: for an HTTP request the auth (an OAuth 2.0 client secret included), the headers, the private key and passphrase of its client certificate, and the proxy's user name and password; for a database its connection URL. Without it, a probe sends the request with none of them."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_share_credentials"
+msgstr "A probe checks a database monitor only with its connection URL: share its credentials or untick the probes."
+
+#. js-lingui-explicit-id
+msgid "monitor_detail_locations"
+msgstr "Locations"
+
+#. js-lingui-explicit-id
+msgid "monitor_detail_locations_rule"
+msgstr "An outage opens when {count} of {total} see it down."
+
+#. js-lingui-explicit-id
+msgid "monitor_location_unknown"
+msgstr "Unknown"
+
+#. js-lingui-explicit-id
+msgid "monitor_location_checked"
+msgstr "Checked {when}"
+
+#. js-lingui-explicit-id
+msgid "monitor_location_never"
+msgstr "No result yet"
+
+#. js-lingui-explicit-id
+msgid "monitor_error_locations_none"
+msgstr "Choose at least one location."
+
+#. js-lingui-explicit-id
+msgid "setting_probe_refused"
+msgstr "Results refused"
+
+#. js-lingui-explicit-id
+msgid "setting_probe_refused_note"
+msgstr "The install refused the probe's latest push whole: run the probe at the install's version."
+
+#. js-lingui-explicit-id
+msgid "monitor_share_credentials_warning"
+msgstr "This monitor has credentials its probes will not have, so the target may refuse their requests."
+
+#. js-lingui-explicit-id
+msgid "channel_text_probe_silent"
+msgstr "The probe stopped reporting: its location reads as unknown until it reports again."
+
+#. js-lingui-explicit-id
+msgid "channel_subject_probe_silent"
+msgstr "{probe}: silent"
+
+#. js-lingui-explicit-id
+msgid "channel_text_probe_reporting"
+msgstr "The probe is reporting again."
+
+#. js-lingui-explicit-id
+msgid "channel_subject_probe_reporting"
+msgstr "{probe}: reporting"
+
+#. js-lingui-explicit-id
+msgid "channel_line_probe"
+msgstr "Probe: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_last_heard"
+msgstr "Last heard: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_event_probe_silent"
+msgstr "Probe silent"
+
+#. js-lingui-explicit-id
+msgid "channel_event_probe_reporting"
+msgstr "Probe reporting again"
+
+#. js-lingui-explicit-id
+msgid "channel_preview_probe"
+msgstr "Frankfurt"
+
+#. js-lingui-explicit-id
+msgid "monitor_state_unknown"
+msgstr "No recent result"
+
+#. js-lingui-explicit-id
+msgid "monitor_check_now_unknown"
+msgstr "No location has a recent result for this monitor, so no check is written until one answers."
+
+#. js-lingui-explicit-id
 msgid "page_section_access"
 msgstr "Access"
 

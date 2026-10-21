@@ -22,9 +22,9 @@ const bytes = (text: string): number => new TextEncoder().encode(text).length;
 
 /** The monitor's page in the admin area, which a tap on the notification opens; a test has none. */
 function clickOf(notification: NotificationPayload): string | undefined {
-  return notification.type === "channel.test"
-    ? undefined
-    : notification.data.monitor.adminUrl;
+  return "monitor" in notification.data
+    ? notification.data.monitor.adminUrl
+    : undefined;
 }
 
 export const ntfyChannel: NotificationChannel = {

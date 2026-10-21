@@ -52,6 +52,7 @@ import { Route as AdminSettingsIndexRouteImport } from "./routes/admin/settings/
 import { Route as AdminSettingsAccountRouteImport } from "./routes/admin/settings/account.tsx";
 import { Route as AdminSettingsAppearanceRouteImport } from "./routes/admin/settings/appearance.tsx";
 import { Route as AdminSettingsExportRouteImport } from "./routes/admin/settings/export.tsx";
+import { Route as AdminSettingsLocationsRouteImport } from "./routes/admin/settings/locations.tsx";
 import { Route as AdminSettingsMetricsRouteImport } from "./routes/admin/settings/metrics.tsx";
 import { Route as AdminSettingsSetupCheckRouteImport } from "./routes/admin/settings/setup-check.tsx";
 import { Route as AdminSettingsSignInRouteImport } from "./routes/admin/settings/sign-in.tsx";
@@ -75,6 +76,8 @@ import { Route as ApiHeartbeatTokenIndexRouteImport } from "./routes/api/heartbe
 import { Route as ApiHeartbeatTokenFailRouteImport } from "./routes/api/heartbeat/$token/fail.ts";
 import { Route as ApiPagesIdKindRouteImport } from "./routes/api/pages/$id/$kind.ts";
 import { Route as ApiPagesIdOverviewRouteImport } from "./routes/api/pages/$id/overview.ts";
+import { Route as ApiProbeV1AssignmentsRouteImport } from "./routes/api/probe/v1/assignments.ts";
+import { Route as ApiProbeV1ResultsRouteImport } from "./routes/api/probe/v1/results.ts";
 import { Route as Char123LocaleChar125StatusSlugIndexRouteImport } from "./routes/{-$locale}/status/$slug/index.tsx";
 import { Route as Char123LocaleChar125StatusSlugBadgeDotsvgRouteImport } from "./routes/{-$locale}/status/$slug/badge[.]svg.ts";
 import { Route as Char123LocaleChar125StatusSlugFeedDotatomRouteImport } from "./routes/{-$locale}/status/$slug/feed[.]atom.ts";
@@ -307,6 +310,11 @@ const AdminSettingsExportRoute = AdminSettingsExportRouteImport.update({
   path: "/export",
   getParentRoute: () => AdminSettingsRoute,
 } as any);
+const AdminSettingsLocationsRoute = AdminSettingsLocationsRouteImport.update({
+  id: "/locations",
+  path: "/locations",
+  getParentRoute: () => AdminSettingsRoute,
+} as any);
 const AdminSettingsMetricsRoute = AdminSettingsMetricsRouteImport.update({
   id: "/metrics",
   path: "/metrics",
@@ -430,6 +438,16 @@ const ApiPagesIdOverviewRoute = ApiPagesIdOverviewRouteImport.update({
   path: "/api/pages/$id/overview",
   getParentRoute: () => rootRouteImport,
 } as any);
+const ApiProbeV1AssignmentsRoute = ApiProbeV1AssignmentsRouteImport.update({
+  id: "/api/probe/v1/assignments",
+  path: "/api/probe/v1/assignments",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiProbeV1ResultsRoute = ApiProbeV1ResultsRouteImport.update({
+  id: "/api/probe/v1/results",
+  path: "/api/probe/v1/results",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const Char123LocaleChar125StatusSlugIndexRoute =
   Char123LocaleChar125StatusSlugIndexRouteImport.update({
     id: "/{-$locale}/status/$slug/",
@@ -537,6 +555,7 @@ export interface FileRoutesByFullPath {
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
+  "/admin/settings/locations": typeof AdminSettingsLocationsRoute;
   "/admin/settings/metrics": typeof AdminSettingsMetricsRoute;
   "/admin/settings/setup-check": typeof AdminSettingsSetupCheckRoute;
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
@@ -565,6 +584,8 @@ export interface FileRoutesByFullPath {
   "/api/heartbeat/$token/fail": typeof ApiHeartbeatTokenFailRoute;
   "/api/pages/$id/$kind": typeof ApiPagesIdKindRoute;
   "/api/pages/$id/overview": typeof ApiPagesIdOverviewRoute;
+  "/api/probe/v1/assignments": typeof ApiProbeV1AssignmentsRoute;
+  "/api/probe/v1/results": typeof ApiProbeV1ResultsRoute;
   "/{-$locale}/status/$slug/badge.svg": typeof Char123LocaleChar125StatusSlugBadgeDotsvgRoute;
   "/{-$locale}/status/$slug/feed.atom": typeof Char123LocaleChar125StatusSlugFeedDotatomRoute;
   "/admin/monitors/$id/": typeof AdminMonitorsIdIndexRoute;
@@ -614,6 +635,7 @@ export interface FileRoutesByTo {
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
+  "/admin/settings/locations": typeof AdminSettingsLocationsRoute;
   "/admin/settings/metrics": typeof AdminSettingsMetricsRoute;
   "/admin/settings/setup-check": typeof AdminSettingsSetupCheckRoute;
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
@@ -642,6 +664,8 @@ export interface FileRoutesByTo {
   "/api/heartbeat/$token/fail": typeof ApiHeartbeatTokenFailRoute;
   "/api/pages/$id/$kind": typeof ApiPagesIdKindRoute;
   "/api/pages/$id/overview": typeof ApiPagesIdOverviewRoute;
+  "/api/probe/v1/assignments": typeof ApiProbeV1AssignmentsRoute;
+  "/api/probe/v1/results": typeof ApiProbeV1ResultsRoute;
   "/{-$locale}/status/$slug/badge.svg": typeof Char123LocaleChar125StatusSlugBadgeDotsvgRoute;
   "/{-$locale}/status/$slug/feed.atom": typeof Char123LocaleChar125StatusSlugFeedDotatomRoute;
   "/admin/monitors/$id": typeof AdminMonitorsIdIndexRoute;
@@ -695,6 +719,7 @@ export interface FileRoutesById {
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
+  "/admin/settings/locations": typeof AdminSettingsLocationsRoute;
   "/admin/settings/metrics": typeof AdminSettingsMetricsRoute;
   "/admin/settings/setup-check": typeof AdminSettingsSetupCheckRoute;
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
@@ -723,6 +748,8 @@ export interface FileRoutesById {
   "/api/heartbeat/$token/fail": typeof ApiHeartbeatTokenFailRoute;
   "/api/pages/$id/$kind": typeof ApiPagesIdKindRoute;
   "/api/pages/$id/overview": typeof ApiPagesIdOverviewRoute;
+  "/api/probe/v1/assignments": typeof ApiProbeV1AssignmentsRoute;
+  "/api/probe/v1/results": typeof ApiProbeV1ResultsRoute;
   "/{-$locale}/status/$slug/badge.svg": typeof Char123LocaleChar125StatusSlugBadgeDotsvgRoute;
   "/{-$locale}/status/$slug/feed.atom": typeof Char123LocaleChar125StatusSlugFeedDotatomRoute;
   "/admin/monitors/$id/": typeof AdminMonitorsIdIndexRoute;
@@ -777,6 +804,7 @@ export interface FileRouteTypes {
     | "/admin/settings/account"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
+    | "/admin/settings/locations"
     | "/admin/settings/metrics"
     | "/admin/settings/setup-check"
     | "/admin/settings/sign-in"
@@ -805,6 +833,8 @@ export interface FileRouteTypes {
     | "/api/heartbeat/$token/fail"
     | "/api/pages/$id/$kind"
     | "/api/pages/$id/overview"
+    | "/api/probe/v1/assignments"
+    | "/api/probe/v1/results"
     | "/{-$locale}/status/$slug/badge.svg"
     | "/{-$locale}/status/$slug/feed.atom"
     | "/admin/monitors/$id/"
@@ -854,6 +884,7 @@ export interface FileRouteTypes {
     | "/admin/settings/account"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
+    | "/admin/settings/locations"
     | "/admin/settings/metrics"
     | "/admin/settings/setup-check"
     | "/admin/settings/sign-in"
@@ -882,6 +913,8 @@ export interface FileRouteTypes {
     | "/api/heartbeat/$token/fail"
     | "/api/pages/$id/$kind"
     | "/api/pages/$id/overview"
+    | "/api/probe/v1/assignments"
+    | "/api/probe/v1/results"
     | "/{-$locale}/status/$slug/badge.svg"
     | "/{-$locale}/status/$slug/feed.atom"
     | "/admin/monitors/$id"
@@ -934,6 +967,7 @@ export interface FileRouteTypes {
     | "/admin/settings/account"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
+    | "/admin/settings/locations"
     | "/admin/settings/metrics"
     | "/admin/settings/setup-check"
     | "/admin/settings/sign-in"
@@ -962,6 +996,8 @@ export interface FileRouteTypes {
     | "/api/heartbeat/$token/fail"
     | "/api/pages/$id/$kind"
     | "/api/pages/$id/overview"
+    | "/api/probe/v1/assignments"
+    | "/api/probe/v1/results"
     | "/{-$locale}/status/$slug/badge.svg"
     | "/{-$locale}/status/$slug/feed.atom"
     | "/admin/monitors/$id/"
@@ -1006,6 +1042,8 @@ export interface RootRouteChildren {
   ApiHeartbeatTokenFailRoute: typeof ApiHeartbeatTokenFailRoute;
   ApiPagesIdKindRoute: typeof ApiPagesIdKindRoute;
   ApiPagesIdOverviewRoute: typeof ApiPagesIdOverviewRoute;
+  ApiProbeV1AssignmentsRoute: typeof ApiProbeV1AssignmentsRoute;
+  ApiProbeV1ResultsRoute: typeof ApiProbeV1ResultsRoute;
   Char123LocaleChar125StatusSlugBadgeDotsvgRoute: typeof Char123LocaleChar125StatusSlugBadgeDotsvgRoute;
   Char123LocaleChar125StatusSlugFeedDotatomRoute: typeof Char123LocaleChar125StatusSlugFeedDotatomRoute;
   ApiHeartbeatTokenIndexRoute: typeof ApiHeartbeatTokenIndexRoute;
@@ -1324,6 +1362,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AdminSettingsExportRouteImport;
       parentRoute: typeof AdminSettingsRoute;
     };
+    "/admin/settings/locations": {
+      id: "/admin/settings/locations";
+      path: "/locations";
+      fullPath: "/admin/settings/locations";
+      preLoaderRoute: typeof AdminSettingsLocationsRouteImport;
+      parentRoute: typeof AdminSettingsRoute;
+    };
     "/admin/settings/metrics": {
       id: "/admin/settings/metrics";
       path: "/metrics";
@@ -1485,6 +1530,20 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ApiPagesIdOverviewRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/api/probe/v1/assignments": {
+      id: "/api/probe/v1/assignments";
+      path: "/api/probe/v1/assignments";
+      fullPath: "/api/probe/v1/assignments";
+      preLoaderRoute: typeof ApiProbeV1AssignmentsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/probe/v1/results": {
+      id: "/api/probe/v1/results";
+      path: "/api/probe/v1/results";
+      fullPath: "/api/probe/v1/results";
+      preLoaderRoute: typeof ApiProbeV1ResultsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/{-$locale}/status/$slug/": {
       id: "/{-$locale}/status/$slug/";
       path: "/{-$locale}/status/$slug";
@@ -1576,6 +1635,7 @@ interface AdminSettingsRouteChildren {
   AdminSettingsAccountRoute: typeof AdminSettingsAccountRoute;
   AdminSettingsAppearanceRoute: typeof AdminSettingsAppearanceRoute;
   AdminSettingsExportRoute: typeof AdminSettingsExportRoute;
+  AdminSettingsLocationsRoute: typeof AdminSettingsLocationsRoute;
   AdminSettingsMetricsRoute: typeof AdminSettingsMetricsRoute;
   AdminSettingsSetupCheckRoute: typeof AdminSettingsSetupCheckRoute;
   AdminSettingsSignInRoute: typeof AdminSettingsSignInRoute;
@@ -1587,6 +1647,7 @@ const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
   AdminSettingsAccountRoute: AdminSettingsAccountRoute,
   AdminSettingsAppearanceRoute: AdminSettingsAppearanceRoute,
   AdminSettingsExportRoute: AdminSettingsExportRoute,
+  AdminSettingsLocationsRoute: AdminSettingsLocationsRoute,
   AdminSettingsMetricsRoute: AdminSettingsMetricsRoute,
   AdminSettingsSetupCheckRoute: AdminSettingsSetupCheckRoute,
   AdminSettingsSignInRoute: AdminSettingsSignInRoute,
@@ -1707,6 +1768,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHeartbeatTokenFailRoute: ApiHeartbeatTokenFailRoute,
   ApiPagesIdKindRoute: ApiPagesIdKindRoute,
   ApiPagesIdOverviewRoute: ApiPagesIdOverviewRoute,
+  ApiProbeV1AssignmentsRoute: ApiProbeV1AssignmentsRoute,
+  ApiProbeV1ResultsRoute: ApiProbeV1ResultsRoute,
   Char123LocaleChar125StatusSlugBadgeDotsvgRoute:
     Char123LocaleChar125StatusSlugBadgeDotsvgRoute,
   Char123LocaleChar125StatusSlugFeedDotatomRoute:

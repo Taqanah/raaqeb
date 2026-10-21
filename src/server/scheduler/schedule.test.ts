@@ -426,6 +426,25 @@ describe("the monitor events a settled check raises", () => {
     ]);
   });
 
+  test("the down event of a monitor checked from several locations names the ones that saw it down; recovered names none", () => {
+    const locations = [
+      { id: "main", name: undefined },
+      { id: "p", name: "Frankfurt" },
+    ];
+    const [down] = eventsOf({
+      ...settled("up", "down", { opened: true }),
+      locations,
+    });
+    expect(down?.kind === "down" && down.locations).toEqual(locations);
+    const [recovered] = eventsOf({
+      ...settled("down", "up", { closed: true }),
+      locations,
+    });
+    expect(recovered?.kind === "recovered" && recovered.locations).toBe(
+      undefined
+    );
+  });
+
   test("a closed outage is the recovered event, carrying the outage it closed", () => {
     expect(eventsOf(settled("down", "up", { closed: true }))).toEqual([
       {

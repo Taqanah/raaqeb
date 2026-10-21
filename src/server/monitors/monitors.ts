@@ -20,6 +20,7 @@ import { answerText, secretsOf } from "@/server/checks/database.ts";
 import { scheduleFires } from "@/server/checks/heartbeat.ts";
 import type { LiveIo } from "@/server/checks/io.ts";
 import { runCheck } from "@/server/checks/run.ts";
+import { noRecentResult } from "@/server/scheduler/locations.ts";
 import { readPublicAddress } from "@/server/settings/address.ts";
 import { readClock, readSetting } from "@/server/settings/clock.ts";
 import { gettingStartedClosed } from "@/server/settings/getting-started.ts";
@@ -89,6 +90,7 @@ type MonitorStorage = Pick<
   | "monitors"
   | "outages"
   | "pages"
+  | "probes"
   | "registrations"
   | "settings"
 >;
@@ -157,10 +159,17 @@ export async function listMonitors(
         readSetting(storage, gettingStartedClosed, false),
       ]);
     const covered = coveredMonitors(reach.windows, reach.components);
-    // The state is the latest check's result; a monitor with no check yet has none.
+    // The state is the latest check's result; a monitor with no check yet has none, nor one no location has a recent result for.
     const states: Record<string, CheckResult> = {};
+    const unknown: string[] = [];
+    const byId = new Map(monitors.map((monitor) => [monitor.id, monitor]));
     for (const check of latest) {
-      states[check.monitorId] = check.result;
+      const monitor = byId.get(check.monitorId);
+      if (monitor && noRecentResult(monitor, check.startedAt, now)) {
+        unknown.push(check.monitorId);
+      } else {
+        states[check.monitorId] = check.result;
+      }
     }
     // A heartbeat monitor's first check comes when its window closes, up to a day and its grace after a heartbeat: one read, only for those still waiting.
     const waiting = monitors
@@ -208,6 +217,7 @@ export async function listMonitors(
       heard: [...heard.keys()],
       monitors,
       ok: true,
+      unknown,
       states,
     };
   } catch (error) {
@@ -419,7 +429,7 @@ export async function heartbeatView(
   };
 }
 
-/** The form's read: the monitor to edit (none for a new one), the names of its credentials, a heartbeat monitor's URL and last heartbeat, the group and tag names to suggest, the channels to select, and the install's retention. The URL is at the public address, or at the request's origin when none is stored. A new monitor may duplicate `copy`: its fields and whether it has credentials, never them. */
+/** The form's read: the monitor to edit (none for a new one), the names of its credentials, a heartbeat monitor's URL and last heartbeat, the group and tag names to suggest, the channels and probes to select, and the install's retention. The URL is at the public address, or at the request's origin when none is stored. A new monitor may duplicate `copy`: its fields and whether it has credentials, never them. */
 export async function readMonitorForm(
   storage: MonitorStorage,
   key: InstallKey,
@@ -428,17 +438,22 @@ export async function readMonitorForm(
   copy?: string
 ): Promise<MonitorFormResult> {
   try {
-    const [names, retentionDefaultDays, channels, original] = await Promise.all(
-      [
+    const [names, retentionDefaultDays, channels, probes, original] =
+      await Promise.all([
         storage.monitors.organization(),
         readRetentionDays(storage),
         channelChoices(storage),
+        storage.probes.list(),
         id === undefined && copy !== undefined
           ? readOriginal(storage, copy)
           : undefined,
-      ]
-    );
-    const options = { ...names, channels, retentionDefaultDays };
+      ]);
+    const options = {
+      ...names,
+      channels,
+      probes: probes.map((probe) => ({ id: probe.id, name: probe.name })),
+      retentionDefaultDays,
+    };
     if (id === undefined) {
       return {
         credentials: noCredentials,

@@ -196,6 +196,7 @@ export const readMonitorDetailFn = createServerFn({ method: "GET" })
   .handler(
     ({ context, data }): Promise<MonitorDetailResult> =>
       readMonitorDetail(context.storage, data.id, {
+        locations: context.scheduler?.locationStates,
         now: Date.now(),
         range: data.range,
         span: data.span,

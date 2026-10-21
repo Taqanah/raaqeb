@@ -41,6 +41,16 @@ Each notification type is one body, told apart by its `type` field. The channel'
 
 <ApiWebhook name="monitor.domain_expiring" />
 
+### Probe silent
+
+Sent once when a [probe](/en/docs/monitors/locations) has not been heard from for two minutes, to the channels of the monitors it checks.
+
+<ApiWebhook name="probe.silent" />
+
+### Probe reporting again
+
+<ApiWebhook name="probe.reporting" />
+
 ### Test
 
 <ApiWebhook name="channel.test" />

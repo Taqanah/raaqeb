@@ -24,6 +24,7 @@ import {
   type CaptureMode,
   type CheckType,
   captureModes,
+  checkableByProbe,
   checkTypes,
   type DatabaseCheckType,
   type DnsConfig,
@@ -44,6 +45,7 @@ import {
   type MonitorEventKind,
   type MonitorInput,
   type MonitorTest,
+  mainLocation,
   monitorDefaults,
   monitorEventKinds,
   monitorInputSchema,
@@ -135,6 +137,8 @@ export interface MonitorDraft {
   readonly clientKey: string;
   /** The client key's passphrase as typed; empty keeps the stored one beside a kept key, and means none beside a typed key. */
   readonly clientPassphrase: string;
+  /** How many of its locations must see it down; kept as chosen, posted no higher than the locations ticked. */
+  readonly confirmations: number;
   /** A database monitor's connection URL as typed; empty keeps the stored one while the check type is the one it was stored for. */
   readonly connectionUrl: string;
   /** A Docker monitor's container name, as typed or chosen from the daemon's list. */
@@ -164,6 +168,8 @@ export interface MonitorDraft {
   readonly host: string;
   readonly ignoreTlsErrors: boolean;
   readonly intervalMs: number;
+  /** Where it is checked from, `main` and probe ids; kept while a check type no probe runs is chosen. */
+  readonly locations: readonly string[];
   readonly method: HttpMethod;
   readonly name: string;
   /** The OAuth 2.0 audience as typed; empty sends none. */
@@ -202,6 +208,8 @@ export interface MonitorDraft {
   readonly retentionDays: string;
   readonly retries: string;
   readonly scheduleKind: ScheduleKind;
+  /** Whether its credentials travel to its probes. */
+  readonly shareCredentials: boolean;
   /** The stored auth kind, whose secret an empty field keeps. */
   readonly storedAuth: "basic" | "bearer" | "oauth2" | undefined;
   /** Whether a client key is stored, which an empty field keeps. */
@@ -374,8 +382,11 @@ export function curlLine(url: string): string {
 
 function fieldsDraft(monitor: Monitor | undefined) {
   return {
+    confirmations: monitor?.confirmations ?? 1,
     degradedMs: text(monitor?.degradedMs),
     description: monitor?.description ?? "",
+    locations: monitor?.locations ?? [mainLocation],
+    shareCredentials: monitor?.shareCredentials ?? false,
     events: monitor?.events ?? [...monitorEventKinds],
     reminder: monitor?.reminderMs !== undefined,
     reminderMs: monitor?.reminderMs ?? reminderDefaultMs,
@@ -621,6 +632,7 @@ export function inputOf(draft: MonitorDraft): DraftParse {
       : undefined,
     tags: tagsOf(draft.tags),
     ...scheduleOf(draft, refusals),
+    ...locationsInputOf(draft),
   };
   const parsed = monitorInputSchema.safeParse(raw);
   if (!parsed.success) {
@@ -633,6 +645,33 @@ export function inputOf(draft: MonitorDraft): DraftParse {
     return { errors: refusals.errors, ok: false };
   }
   return { input: parsed.data, ok: true };
+}
+
+/** Where the monitor is checked from: nothing beyond the main location for a check type no probe runs, a confirmation count no higher than the locations ticked, and sharing only with a probe to share with. */
+function locationsInputOf(draft: MonitorDraft) {
+  const locations = checkableByProbe(draft.type)
+    ? draft.locations
+    : [mainLocation];
+  const probes = locations.some((id) => id !== mainLocation);
+  const confirmations = Math.min(draft.confirmations, locations.length);
+  return {
+    confirmations: confirmations > 1 ? confirmations : undefined,
+    locations:
+      locations.length === 1 && locations[0] === mainLocation
+        ? undefined
+        : locations,
+    shareCredentials: probes && draft.shareCredentials ? true : undefined,
+  };
+}
+
+/** The draft with a location ticked or left. */
+export function withLocation(
+  draft: MonitorDraft,
+  id: string,
+  on: boolean
+): MonitorDraft {
+  const rest = draft.locations.filter((each) => each !== id);
+  return { ...draft, locations: on ? [...rest, id] : rest };
 }
 
 /** The check schedule; a heartbeat monitor has none, so it posts the defaults and no threshold, whatever the hidden fields hold. */
@@ -953,6 +992,12 @@ function refusalOf(
   ) {
     return [path, { id: connectionUrlRefusals[type] }];
   }
+  if (segments[0] === "locations") {
+    return ["locations", { id: "monitor_error_locations_none" }];
+  }
+  if (path === "shareCredentials") {
+    return [path, { id: "monitor_error_share_credentials" }];
+  }
   const docker = dockerRefusals[path];
   if (docker?.code === issue.code) {
     return [path, { id: docker.id }];
@@ -1260,6 +1305,8 @@ function withChoice(
       return set("intervalMs", wholeNumber(value) || undefined);
     case "reminderMs":
       return set("reminderMs", wholeNumber(value) || undefined);
+    case "confirmations":
+      return set("confirmations", wholeNumber(value) || 1);
     case "method":
       return set("method", oneOf(httpMethods, value));
     case "recordType":

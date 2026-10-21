@@ -106,6 +106,27 @@ describe("what a monitor event sends", () => {
     });
   });
 
+  test("down of a monitor checked from several locations names the ones that saw it, the main location with no name", () => {
+    const sent = notificationOf(
+      {
+        ...down,
+        locations: [
+          { id: "main", name: undefined },
+          { id: "p1", name: "Frankfurt" },
+        ],
+      },
+      monitor(),
+      address
+    );
+    expect(sent?.type === "monitor.down" && sent.data.locations).toEqual([
+      { id: "main", name: null },
+      { id: "p1", name: "Frankfurt" },
+    ]);
+    expect(notificationOf(down, monitor(), address)?.data).not.toHaveProperty(
+      "locations"
+    );
+  });
+
   test("down for a job that reported failure sends its exit code and message with the reason", () => {
     const failed: MonitorEvent = {
       ...down,

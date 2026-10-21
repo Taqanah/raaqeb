@@ -84,6 +84,7 @@ import {
 } from "./check-parts.tsx";
 import { ResponseChart } from "./detail-chart.tsx";
 import { HeartbeatPanel } from "./heartbeat-parts.tsx";
+import { LocationsCard } from "./location-card.tsx";
 import { MaintenanceBadge, StateBadge, windowNotice } from "./monitor-item.tsx";
 
 /** Each window's length in words, from Intl: `24 ساعة`, `7 days`. */
@@ -139,6 +140,14 @@ export function MonitorDetailView({
     <div className="flex flex-col gap-6" data-monitor={monitor.id}>
       <Summary clock={clock} detail={detail} />
       <UptimeTiles readings={detail.uptime} />
+      {detail.locations ? (
+        <LocationsCard
+          clock={clock}
+          locations={detail.locations}
+          monitor={monitor}
+          now={detail.now}
+        />
+      ) : null}
       <MonitorDays
         clock={clock}
         detail={detail}
@@ -365,6 +374,7 @@ function Summary({
           heard={detail.heartbeat?.last !== undefined}
           monitor={monitor}
           state={detail.state}
+          unknown={detail.unknown}
         />
         {detail.covered && !monitor.paused ? <MaintenanceBadge /> : null}
       </span>

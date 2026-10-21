@@ -107,7 +107,7 @@ describe("the command", () => {
     });
   });
 
-  test.each(["serve", "health", "reset-password"] as const)(
+  test.each(["serve", "health", "reset-password", "probe"] as const)(
     "%s is a command",
     (command) => {
       expect(accepted([command]).command).toBe(command);

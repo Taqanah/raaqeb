@@ -465,11 +465,34 @@ export function isDatabaseConfig(
   return isDatabaseCheckType(config.type);
 }
 
+/** The id of the main location among a monitor's locations (CONTEXT.md "Main location"); a probe's id is a UUIDv7 and never this. */
+export const mainLocation = "main";
+/** More probes than any install runs; the bound keeps a monitor's location list finite. */
+export const probesMax = 20;
+/** A monitor's locations: the main one and every probe. */
+export const locationsMax = probesMax + 1;
+
+/** The check types a probe runs: not Docker, whose daemon is the install's host, and not heartbeat, which the install receives. */
+export const probeCheckTypes = [
+  "http",
+  "tcp",
+  "dns",
+  "postgres",
+  "mysql",
+  "redis",
+] as const satisfies readonly CheckType[];
+
+export function checkableByProbe(type: CheckType): boolean {
+  return probeCheckTypes.some((each) => each === type);
+}
+
 /** A monitor's stored fields: everything the form posts but its credentials. */
 export const monitorFieldsSchema = z.object({
   /** The ids of the notification channels the monitor selects; a channel deleted since is skipped on save. */
   channels: z.array(z.string().min(1)).max(channelsMax).default([]),
   config: monitorConfigSchema,
+  /** How many of its locations must see it down (CONTEXT.md "Confirmation count"); absent is one. */
+  confirmations: z.int().min(1).max(locationsMax).optional(),
   /** A response time; never above the longest timeout, so it fits a 32-bit column on Postgres. */
   degradedMs: z.int().positive().max(timeoutMaxMs).optional(),
   description: z.string().trim().max(descriptionMaxLength).optional(),
@@ -485,9 +508,18 @@ export const monitorFieldsSchema = z.object({
   name: label(nameMaxLength),
   /** Absent follows the install default. */
   retentionDays: z.int().min(retentionDaysMin).max(retentionDaysMax).optional(),
+  /** Where it is checked from (CONTEXT.md "Location"), the main location first; absent is the main location alone. */
+  locations: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(locationsMax)
+    .refine((ids) => new Set(ids).size === ids.length)
+    .optional(),
   /** How often a reminder repeats "still down" while the monitor stays down; absent means off. */
   reminderMs: z.int().min(reminderMinMs).max(reminderMaxMs).optional(),
   retries: z.int().min(0).max(retriesMax),
+  /** Whether its sealed credentials travel to its probes; absent never. */
+  shareCredentials: z.boolean().optional(),
   tags: z.array(label(tagMaxLength)).max(tagsMax).default([]),
   timeoutMs: z.int().min(timeoutMinMs).max(timeoutMaxMs),
 });
@@ -582,6 +614,7 @@ export const monitorInputSchema = monitorFieldsSchema
         path: ["credentials", "proxyAuth"],
       });
     }
+    refuseLocations(input, context);
     if (config.type !== "http") {
       return;
     }
@@ -604,6 +637,50 @@ export const monitorInputSchema = monitorFieldsSchema
     }
   }, refuseBesideOtherFields);
 export type MonitorInput = z.infer<typeof monitorInputSchema>;
+
+/** A monitor's locations as they are checked: the stored list, or the main location alone. */
+export function locationsOf(
+  monitor: Pick<MonitorFields, "locations">
+): readonly string[] {
+  return monitor.locations ?? [mainLocation];
+}
+
+/** The locations' rules: a probe checks only the check types it can, a database monitor only with its credentials shared, and a monitor needs no more confirmations than it has locations. */
+function refuseLocations(
+  input: Pick<
+    MonitorFields,
+    "config" | "confirmations" | "locations" | "shareCredentials"
+  >,
+  context: z.core.$RefinementCtx
+): void {
+  const locations = input.locations ?? [mainLocation];
+  const probes = locations.some((id) => id !== mainLocation);
+  if (probes && !checkableByProbe(input.config.type)) {
+    context.addIssue({
+      code: "custom",
+      message: "a probe cannot check this check type",
+      path: ["locations"],
+    });
+  }
+  if (
+    probes &&
+    isDatabaseCheckType(input.config.type) &&
+    !input.shareCredentials
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "a probe checks a database monitor only with its credentials",
+      path: ["shareCredentials"],
+    });
+  }
+  if ((input.confirmations ?? 1) > locations.length) {
+    context.addIssue({
+      code: "custom",
+      message: "more confirmations than locations",
+      path: ["confirmations"],
+    });
+  }
+}
 
 /** A monitor as the list and the detail read it. */
 export interface Monitor extends MonitorFields {
@@ -704,6 +781,8 @@ export interface MonitorFormOptions {
   /** Every channel, in creation order; a new monitor starts with those that apply to new monitors. */
   readonly channels: readonly ChannelChoice[];
   readonly groups: readonly string[];
+  /** Every probe a monitor may be checked from, in the order they were made. */
+  readonly probes: readonly { readonly id: string; readonly name: string }[];
   /** The install-wide retention a monitor without an override follows. */
   readonly retentionDefaultDays: number;
   readonly tags: readonly string[];
@@ -844,6 +923,8 @@ export type MonitorListResult =
       readonly days: Readonly<Record<string, readonly OverviewDay[]>>;
       readonly monitors: readonly Monitor[];
       readonly states: MonitorStates;
+      /** The monitors checked from probes alone whose latest check is past its bound: no location has a recent result, so they have no state. */
+      readonly unknown: readonly string[];
     }
   | { readonly ok: false; readonly reason: "unavailable" }
   /** A stored monitor's config no longer fits this version's schema; `id` names it. */

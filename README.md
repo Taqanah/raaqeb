@@ -30,6 +30,8 @@ docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data
 
 مواقع HTTP ومنافذ TCP وسجلات DNS وقواعد بيانات Postgres وMySQL وRedis وحاويات Docker ونبضات المهام المجدولة وانتهاء صلاحية شهادات TLS.
 
+ويمكن فحص المراقبة من أكثر من مكان بتشغيل راقب نفسه مسبارًا على خادم آخر، فلا يُفتح الانقطاع إلا حين يتفق عليه العدد الذي تختاره من المواقع.
+
 ## الحجم
 
 يعمل على نواة واحدة و240 ميغابايت من الذاكرة، في ملف تنفيذي واحد، ولا يحتاج إلى خدمة خارجية. في آخر قياس تحمّل 800 مراقبة تُفحص كل 20 ثانية وبلغت ذروة الذاكرة 107 ميغابايت، وحجم الملف التنفيذي لنظام Linux نحو 96 ميغابايت.
@@ -74,6 +76,8 @@ docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data
 ## What it watches
 
 HTTP sites, TCP ports, DNS records, Postgres, MySQL and Redis databases, Docker containers, the heartbeats of scheduled jobs, TLS certificate expiry and domain registration expiry. Prometheus and Grafana can read the state of every monitor from an opt-in `/metrics` endpoint. Uptime reports over a month, a quarter or any range of days, against an uptime target, print or download as CSV.
+
+A monitor can be checked from more than one place by running Raaqeb itself as a probe on another server, so an outage opens only when as many locations as you choose agree.
 
 ## Size
 

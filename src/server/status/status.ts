@@ -30,6 +30,8 @@ export interface LinkedMonitor {
   readonly pausedAt: number | undefined;
   /** Its latest check's result; nothing before its first check. */
   readonly state: CheckResult | undefined;
+  /** No location has a recent result: left out like a paused monitor, its last state standing when every linked monitor is so. */
+  readonly unknown?: boolean;
 }
 
 /** A paused monitor's state once retention has taken its checks: down when its newest outage ended the moment it was paused, which is what pausing does to an open one; nothing otherwise, so a monitor paused while degraded reads as up. */
@@ -50,7 +52,12 @@ export function derivedStatus(
     return;
   }
   const running = monitors.filter((monitor) => !monitor.paused);
-  const judged = running.length > 0 ? running : pausedLast(monitors);
+  const answering = running.filter((monitor) => !monitor.unknown);
+  // A monitor with no recent result is left out; when every running one is so, their last states stand, as a pause's does.
+  let judged = answering.length > 0 ? answering : running;
+  if (judged.length === 0) {
+    judged = pausedLast(monitors);
+  }
   const down = judged.filter((monitor) => monitor.state === "down").length;
   if (down === judged.length) {
     return "major_outage";
@@ -122,6 +129,8 @@ export function componentStatuses(input: {
   readonly monitors: readonly Monitor[];
   /** Each monitor's latest check's result, by monitor id. */
   readonly states: ReadonlyMap<string, CheckResult>;
+  /** The monitors no location has a recent result for. */
+  readonly unknown?: ReadonlySet<string>;
 }): Map<string, StatusLevel> {
   const monitors = new Map(input.monitors.map((each) => [each.id, each]));
   const statuses = new Map<string, StatusLevel>();
@@ -134,6 +143,7 @@ export function componentStatuses(input: {
               paused: monitor.paused,
               pausedAt: monitor.pausedAt,
               state: input.states.get(id),
+              unknown: input.unknown?.has(id) ?? false,
             },
           ]
         : [];

@@ -1,0 +1,71 @@
+---
+title: Locations and probes
+description: Check a monitor from more than one place, and open an outage only when they agree.
+---
+
+A check from one server can fail because of that server's own network: a broken route, a DNS resolver that went away, a firewall rule. A **probe** is Raaqeb run on another server with `raaqeb probe`. It checks the monitors you give it and sends their results to your install, and a monitor checked from several **locations** opens an outage only when as many of them as you ask see it down.
+
+The install itself is the **main location**. Every monitor is checked from it alone until you choose otherwise, so nothing changes until you add a probe.
+
+## Add a probe
+
+1. Open **Settings**, then **Locations**, and give the probe a name under **Add a probe**: where it runs, as your team calls it.
+2. Raaqeb shows the probe's token once, with the lines that run it. Copy them; the token is never shown again, and **New token** makes another one that stops the old one at once.
+3. Run the probe on its server, with the install's public address and the token:
+
+```sh
+RAAQEB_PROBE_SERVER=https://status.example.com RAAQEB_PROBE_TOKEN=rqp_... raaqeb probe
+```
+
+Or with Docker. The image's health check asks for a server, which a probe is not, so the line turns it off:
+
+```sh
+docker run -d --name raaqeb-probe --restart unless-stopped --no-healthcheck \
+  -e RAAQEB_PROBE_SERVER=https://status.example.com \
+  -e RAAQEB_PROBE_TOKEN=rqp_... \
+  ghcr.io/taqanah/raaqeb probe
+```
+
+The probe is the same binary as the install, with no database, no data directory and no admin area. It opens every connection itself, so it works behind NAT and needs no open port. It refuses an `http` address other than a loopback one, since the token and any credentials you share would cross the network in clear.
+
+The locations page shows each probe as **Reporting**, **Silent** once the install has not heard from it for two minutes, or **Not connected yet**, with when it last called, its version and its last round trip to the install.
+
+## Check a monitor from a probe
+
+The monitor form has a **Locations** section once the install has a probe:
+
+| Field | What it means | Default |
+|---|---|---|
+| **Locations** | Where the monitor is checked from: the main location and any probe. | The main location alone. |
+| **An outage opens when** | How many of its locations must see it down together. | One. |
+| **Share credentials with probes** | Sends the monitor's auth (an OAuth 2.0 client secret included), headers, client certificate key and connection URL to its probes. | Off. |
+
+A probe checks HTTP, TCP, DNS, Postgres, MySQL and Redis monitors. A Docker monitor asks the install's own daemon and a heartbeat monitor listens on the install, so both are checked from the main location.
+
+A monitor's credentials stay on the install unless you switch on sharing. Without it, a probe sends an HTTP monitor's request with no auth, no custom headers and no client certificate key; a database monitor cannot be checked from a probe without it, since its connection URL is its credential.
+
+## How an outage opens
+
+Each location checks the monitor on its interval and keeps its latest result. A result counts while it is younger than twice the interval plus the longest the check can take; older, that location's state is unknown.
+
+- The monitor is **down** when at least the chosen number of its locations with a known state see it down, **degraded** when that many see it degraded or down, and **up** otherwise.
+- When a probe's result would change that, the install checks the monitor again at once, so a second location agreeing opens the outage within seconds.
+- The outage closes as soon as fewer than the chosen number still see it down.
+- A silent probe is never down. Its location's state is unknown, and while fewer locations are known than the number chosen, every one that is must agree: a dead probe never hides a real outage. Two minutes after its last call the channels of the monitors it checks are told it went silent, once, and again when it reports.
+- A result from a check that started before the monitor was last edited, paused or resumed counts for nothing.
+- After the install restarts, a down that fewer locations than the number chosen decide waits one freshness window, so the probes can answer before the install alone pages.
+- A monitor checked from probes alone that none has a recent result for gets no check: it shows **No recent result**, never up or down, and its components keep their last status, as for a paused monitor. **Check now** on it says so at once.
+
+The down notification names the locations that saw the monitor down, and the webhook's `monitor.down` body carries them in `locations`.
+
+## What the monitor's page shows
+
+The **Locations** card lists each location with its state, its last response time and when its check started, and says how many must agree. The response time chart, the recent checks and the uptime are the monitor's own: one check per run of the install's schedule, whose result is what the locations agreed on and whose response time is one agreeing location's, the main one when it agrees.
+
+## What the install keeps
+
+Each location's latest result lives in the install's memory, never in its database, so 200 monitors checked from five probes add no check history and no disk. After a restart each probe's state is unknown until its next result. The install writes a probe's last contact at most every 30 seconds.
+
+An export carries the probes with their tokens' SHA-256, never a token, so the probes of an install moved to another host keep working.
+
+The probes speak a small protocol of their own, version 1, under `/api/probe/v1/`, described in the [API reference](/en/docs/api).

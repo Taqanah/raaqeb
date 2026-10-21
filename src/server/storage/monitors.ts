@@ -13,6 +13,7 @@ import {
   type Monitor,
   type MonitorChoice,
   type MonitorFields,
+  mainLocation,
   monitorConfigSchema,
   monitorFieldsSchema,
   tagsMax,
@@ -83,10 +84,12 @@ export class MonitorShapeError extends Error {
 interface MonitorRow {
   check_type: string;
   config: string;
+  confirmations: number;
   created_at: number;
   degraded_ms: number | null;
   description: string | null;
   events: string;
+  from_main: number;
   group_name: string | null;
   id: string;
   interval_ms: number;
@@ -96,6 +99,7 @@ interface MonitorRow {
   reminder_ms: number | null;
   retention_days: number | null;
   retries: number;
+  share_credentials: number;
   target: string | null;
   timeout_ms: number;
   updated_at: number;
@@ -117,16 +121,18 @@ export function monitorsRepository(
     channels,
     groups,
     monitorChannels,
+    monitorProbes,
     monitorTags,
     monitors,
     outages,
+    probes,
     tags,
   } = executor.tables;
   const column = (name: string) => sql.identifier(name);
 
   const selectMonitors = (run: Executor, where: ReturnType<typeof sql>) =>
     run.rows<MonitorRow>(
-      sql`SELECT ${monitors.id} AS id, ${monitors.name} AS name, ${monitors.description} AS description, ${monitors.checkType} AS check_type, ${monitors.target} AS target, ${monitors.config} AS config, ${monitors.intervalMs} AS interval_ms, ${monitors.timeoutMs} AS timeout_ms, ${monitors.retries} AS retries, ${monitors.degradedMs} AS degraded_ms, ${monitors.retentionDays} AS retention_days, ${monitors.events} AS events, ${monitors.reminderMs} AS reminder_ms, ${monitors.paused} AS paused, ${monitors.pausedAt} AS paused_at, ${monitors.createdAt} AS created_at, ${monitors.updatedAt} AS updated_at, ${groups.name} AS group_name FROM ${monitors} LEFT JOIN ${groups} ON ${groups.id} = ${monitors.groupId} ${where} ORDER BY ${monitors.createdAt}, ${monitors.id}`
+      sql`SELECT ${monitors.id} AS id, ${monitors.name} AS name, ${monitors.description} AS description, ${monitors.checkType} AS check_type, ${monitors.target} AS target, ${monitors.config} AS config, ${monitors.intervalMs} AS interval_ms, ${monitors.timeoutMs} AS timeout_ms, ${monitors.retries} AS retries, ${monitors.degradedMs} AS degraded_ms, ${monitors.retentionDays} AS retention_days, ${monitors.events} AS events, ${monitors.reminderMs} AS reminder_ms, ${monitors.paused} AS paused, ${monitors.pausedAt} AS paused_at, ${monitors.fromMain} AS from_main, ${monitors.confirmations} AS confirmations, ${monitors.shareCredentials} AS share_credentials, ${monitors.createdAt} AS created_at, ${monitors.updatedAt} AS updated_at, ${groups.name} AS group_name FROM ${monitors} LEFT JOIN ${groups} ON ${groups.id} = ${monitors.groupId} ${where} ORDER BY ${monitors.createdAt}, ${monitors.id}`
     );
 
   /** The tags of these monitors, by monitor id, in code point order. */
@@ -175,18 +181,44 @@ export function monitorsRepository(
     return byMonitor;
   };
 
+  /** The probes these monitors are checked from, by monitor id, in the order the probes were made. */
+  const probesOf = async (
+    run: Executor,
+    ids: readonly string[]
+  ): Promise<Map<string, string[]>> => {
+    const byMonitor = new Map<string, string[]>();
+    if (ids.length === 0) {
+      return byMonitor;
+    }
+    const rows = await run.rows<{ monitor_id: string; probe_id: string }>(
+      sql`SELECT ${monitorProbes.monitorId} AS monitor_id, ${monitorProbes.probeId} AS probe_id FROM ${monitorProbes} JOIN ${probes} ON ${probes.id} = ${monitorProbes.probeId} WHERE ${inArray(monitorProbes.monitorId, [...ids])} ORDER BY ${probes.createdAt}, ${probes.id}`
+    );
+    for (const row of rows) {
+      const selected = byMonitor.get(row.monitor_id) ?? [];
+      selected.push(row.probe_id);
+      byMonitor.set(row.monitor_id, selected);
+    }
+    return byMonitor;
+  };
+
   const read = async (
     run: Executor,
     where: ReturnType<typeof sql>
   ): Promise<Monitor[]> => {
     const rows = await selectMonitors(run, where);
     const ids = rows.map((row) => row.id);
-    const [tagNames, selected] = await Promise.all([
+    const [tagNames, selected, checkedFrom] = await Promise.all([
       tagsOf(run, ids),
       channelsOf(run, ids),
+      probesOf(run, ids),
     ]);
     return rows.map((row) =>
-      toMonitor(row, tagNames.get(row.id) ?? [], selected.get(row.id) ?? [])
+      toMonitor(
+        row,
+        tagNames.get(row.id) ?? [],
+        selected.get(row.id) ?? [],
+        checkedFrom.get(row.id) ?? []
+      )
     );
   };
 
@@ -261,6 +293,26 @@ export function monitorsRepository(
     }
     await run.run(
       sql`INSERT INTO ${monitorChannels} (${column("monitor_id")}, ${column("channel_id")}) SELECT ${monitorId}, ${channels.id} FROM ${channels} WHERE ${inArray(channels.id, wanted)}`
+    );
+  };
+
+  /** Replaces the probes the monitor is checked from; a probe that no longer exists is skipped. */
+  const linkProbes = async (
+    run: Executor,
+    monitorId: string,
+    locations: readonly string[] | undefined
+  ) => {
+    await run.run(
+      sql`DELETE FROM ${monitorProbes} WHERE ${monitorProbes.monitorId} = ${monitorId}`
+    );
+    const wanted = [
+      ...new Set((locations ?? []).filter((id) => id !== mainLocation)),
+    ];
+    if (wanted.length === 0) {
+      return;
+    }
+    await run.run(
+      sql`INSERT INTO ${monitorProbes} (${column("monitor_id")}, ${column("probe_id")}) SELECT ${monitorId}, ${probes.id} FROM ${probes} WHERE ${inArray(probes.id, wanted)}`
     );
   };
 
@@ -379,11 +431,13 @@ export function monitorsRepository(
         const id = newId();
         const time = now();
         const groupId = await groupIdFor(tx, input.group);
+        const placed = placementOf(input);
         await tx.run(
-          sql`INSERT INTO ${monitors} (${column("id")}, ${column("name")}, ${column("description")}, ${column("check_type")}, ${column("target")}, ${column("config")}, ${column("interval_ms")}, ${column("timeout_ms")}, ${column("retries")}, ${column("degraded_ms")}, ${column("retention_days")}, ${column("events")}, ${column("reminder_ms")}, ${column("credentials")}, ${column("heartbeat_token")}, ${column("paused")}, ${column("group_id")}, ${column("created_at")}, ${column("updated_at")}) VALUES (${id}, ${input.name}, ${input.description ?? null}, ${input.config.type}, ${targetOf(input.config) ?? null}, ${JSON.stringify(input.config)}, ${input.intervalMs}, ${input.timeoutMs}, ${input.retries}, ${input.degradedMs ?? null}, ${input.retentionDays ?? null}, ${JSON.stringify(input.events)}, ${input.reminderMs ?? null}, ${credentials ?? null}, ${input.config.type === "heartbeat" ? newToken() : null}, ${0}, ${groupId}, ${time}, ${time})`
+          sql`INSERT INTO ${monitors} (${column("id")}, ${column("name")}, ${column("description")}, ${column("check_type")}, ${column("target")}, ${column("config")}, ${column("interval_ms")}, ${column("timeout_ms")}, ${column("retries")}, ${column("degraded_ms")}, ${column("retention_days")}, ${column("events")}, ${column("reminder_ms")}, ${column("from_main")}, ${column("confirmations")}, ${column("share_credentials")}, ${column("credentials")}, ${column("heartbeat_token")}, ${column("paused")}, ${column("group_id")}, ${column("created_at")}, ${column("updated_at")}) VALUES (${id}, ${input.name}, ${input.description ?? null}, ${input.config.type}, ${targetOf(input.config) ?? null}, ${JSON.stringify(input.config)}, ${input.intervalMs}, ${input.timeoutMs}, ${input.retries}, ${input.degradedMs ?? null}, ${input.retentionDays ?? null}, ${JSON.stringify(input.events)}, ${input.reminderMs ?? null}, ${placed.fromMain}, ${placed.confirmations}, ${placed.share}, ${credentials ?? null}, ${input.config.type === "heartbeat" ? newToken() : null}, ${0}, ${groupId}, ${time}, ${time})`
         );
         await linkTags(tx, id, input.tags);
         await linkChannels(tx, id, input.channels);
+        await linkProbes(tx, id, input.locations);
         const created = await findOne(tx, id);
         if (!created) {
           throw new Error(`the monitor ${id} was not stored`);
@@ -490,11 +544,13 @@ export function monitorsRepository(
               : existing.token;
         }
         const groupId = await groupIdFor(tx, input.group);
+        const placed = placementOf(input);
         await tx.run(
-          sql`UPDATE ${monitors} SET ${column("name")} = ${input.name}, ${column("description")} = ${input.description ?? null}, ${column("check_type")} = ${input.config.type}, ${column("target")} = ${targetOf(input.config) ?? null}, ${column("config")} = ${JSON.stringify(input.config)}, ${column("interval_ms")} = ${input.intervalMs}, ${column("timeout_ms")} = ${input.timeoutMs}, ${column("retries")} = ${input.retries}, ${column("degraded_ms")} = ${input.degradedMs ?? null}, ${column("retention_days")} = ${input.retentionDays ?? null}, ${column("events")} = ${JSON.stringify(input.events)}, ${column("reminder_ms")} = ${input.reminderMs ?? null}, ${column("credentials")} = ${credentials ?? null}, ${column("heartbeat_token")} = ${token}, ${column("group_id")} = ${groupId}, ${column("updated_at")} = ${now()} WHERE ${monitors.id} = ${id}`
+          sql`UPDATE ${monitors} SET ${column("name")} = ${input.name}, ${column("description")} = ${input.description ?? null}, ${column("check_type")} = ${input.config.type}, ${column("target")} = ${targetOf(input.config) ?? null}, ${column("config")} = ${JSON.stringify(input.config)}, ${column("interval_ms")} = ${input.intervalMs}, ${column("timeout_ms")} = ${input.timeoutMs}, ${column("retries")} = ${input.retries}, ${column("degraded_ms")} = ${input.degradedMs ?? null}, ${column("retention_days")} = ${input.retentionDays ?? null}, ${column("events")} = ${JSON.stringify(input.events)}, ${column("reminder_ms")} = ${input.reminderMs ?? null}, ${column("from_main")} = ${placed.fromMain}, ${column("confirmations")} = ${placed.confirmations}, ${column("share_credentials")} = ${placed.share}, ${column("credentials")} = ${credentials ?? null}, ${column("heartbeat_token")} = ${token}, ${column("group_id")} = ${groupId}, ${column("updated_at")} = ${now()} WHERE ${monitors.id} = ${id}`
         );
         await linkTags(tx, id, input.tags);
         await linkChannels(tx, id, input.channels);
+        await linkProbes(tx, id, input.locations);
         await pruneEmpty(tx);
         return findOne(tx, id);
       }),
@@ -508,10 +564,36 @@ export function newHeartbeatToken(): string {
   );
 }
 
+/** The location columns of a monitor saved with these fields: the main location checks it unless its locations leave it out, one confirmation and no sharing by default. */
+function placementOf(
+  input: Pick<MonitorFields, "confirmations" | "locations" | "shareCredentials">
+) {
+  return {
+    confirmations: input.confirmations ?? 1,
+    fromMain:
+      input.locations === undefined || input.locations.includes(mainLocation)
+        ? 1
+        : 0,
+    share: input.shareCredentials ? 1 : 0,
+  };
+}
+
+/** A monitor's locations as stored: absent when it is the main location alone, which a monitor whose last probe was deleted falls back to. */
+function locationsFrom(
+  fromMain: boolean,
+  probeIds: readonly string[]
+): string[] | undefined {
+  if (probeIds.length === 0) {
+    return;
+  }
+  return fromMain ? [mainLocation, ...probeIds] : [...probeIds];
+}
+
 function toMonitor(
   row: MonitorRow,
   tagNames: string[],
-  channelIds: string[]
+  channelIds: string[],
+  probeIds: string[]
 ): Monitor {
   const config = monitorConfigSchema.safeParse(parseJson(row.config));
   const events = monitorFieldsSchema.shape.events.safeParse(
@@ -522,6 +604,7 @@ function toMonitor(
   }
   return {
     config: config.data,
+    confirmations: row.confirmations === 1 ? undefined : row.confirmations,
     createdAt: row.created_at,
     degradedMs: row.degraded_ms ?? undefined,
     description: row.description ?? undefined,
@@ -529,6 +612,7 @@ function toMonitor(
     group: row.group_name ?? undefined,
     id: row.id,
     intervalMs: row.interval_ms,
+    locations: locationsFrom(row.from_main !== 0, probeIds),
     name: row.name,
     paused: row.paused !== 0,
     pausedAt: row.paused_at ?? undefined,
@@ -536,6 +620,7 @@ function toMonitor(
     retentionDays: row.retention_days ?? undefined,
     retries: row.retries,
     channels: channelIds,
+    shareCredentials: row.share_credentials === 0 ? undefined : true,
     tags: tagNames,
     target: row.target ?? undefined,
     timeoutMs: row.timeout_ms,

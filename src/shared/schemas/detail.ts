@@ -11,6 +11,7 @@ import type { HeartbeatView } from "./heartbeat.ts";
 import type { Assertion, Monitor } from "./monitor.ts";
 import type { Outage } from "./outage.ts";
 import type { OverviewDay } from "./overview.ts";
+import type { LocationState } from "./probe.ts";
 import type { ReasonParams } from "./reason.ts";
 import type { DomainRegistration } from "./registration.ts";
 
@@ -91,6 +92,8 @@ export interface MonitorDetail {
   readonly days: readonly MonitorDay[];
   /** A heartbeat monitor's URL and last heartbeat. */
   readonly heartbeat: HeartbeatView | undefined;
+  /** Each location's state, for a monitor checked from more than one. */
+  readonly locations?: readonly LocationState[] | undefined;
   readonly monitor: Monitor;
   /** The time the read was made; the page's relative times count from it. */
   readonly now: number;
@@ -104,8 +107,10 @@ export interface MonitorDetail {
   readonly registration: DomainRegistration | undefined;
   /** The checks list's first page: the span the chart is zoomed into or, unzoomed, the raw checks' window. */
   readonly spanChecks: SpanChecks;
-  /** The latest check's result; none before the first check. */
+  /** The latest check's result; none before the first check, or while no location has a recent result. */
   readonly state: CheckResult | undefined;
+  /** Checked from probes alone and its latest check past its bound: no location has a recent result. */
+  readonly unknown?: boolean;
   readonly uptime: readonly UptimeReading[];
 }
 
@@ -197,8 +202,8 @@ export type CheckNowRefusal =
 
 /** What the scheduler said to "check now", and from when the page waits for the asked check. */
 export interface CheckAsked {
-  /** `running` when a check of the monitor was already in flight; the page waits for it all the same. */
-  readonly answer: "queued" | "running";
+  /** `running` when a check of the monitor was already in flight; the page waits for it all the same. `unknown` when the monitor is checked from probes alone and none has a recent result, so no check would be written: the page says so at once. */
+  readonly answer: "queued" | "running" | "unknown";
   /** The asked check starts at this time or later: when the check in flight started, or when the ask arrived. */
   readonly from: number;
 }

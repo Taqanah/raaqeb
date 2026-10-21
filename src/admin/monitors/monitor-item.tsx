@@ -56,6 +56,8 @@ export interface MonitorItemProps {
   readonly selected: boolean;
   /** The latest check's result, or nothing before the first check. */
   readonly state: CheckResult | undefined;
+  /** No location has a recent result for it. */
+  readonly unknown?: boolean;
 }
 
 /** The item's own handlers over the list's stable ones. */
@@ -98,7 +100,7 @@ export const phoneState =
   "@max-4xl:[&_[data-slot^=monitor-]]:h-auto @max-4xl:[&_[data-slot^=monitor-]]:min-h-5 @max-4xl:[&_[data-slot^=monitor-]]:shrink @max-4xl:[&_[data-slot^=monitor-]]:whitespace-normal @max-4xl:[&_[data-slot^=monitor-]]:text-center";
 
 export function MonitorTableRow(props: MonitorItemProps): ReactNode {
-  const { covered, days, heard, monitor, selected, state } = props;
+  const { covered, days, heard, monitor, selected, state, unknown } = props;
   const { t } = useMessages();
   const { acknowledge, remove, select, togglePaused } = useItem(props);
   return (
@@ -124,6 +126,7 @@ export function MonitorTableRow(props: MonitorItemProps): ReactNode {
           heard={heard}
           monitor={monitor}
           state={state}
+          unknown={unknown}
         />
       </TableCell>
       {/* The last 14 days, right after the state badge. */}
@@ -210,15 +213,22 @@ function Status({
   heard,
   monitor,
   state,
+  unknown,
 }: {
   readonly covered: boolean;
   readonly heard: boolean;
   readonly monitor: Monitor;
   readonly state: CheckResult | undefined;
+  readonly unknown: boolean | undefined;
 }): ReactNode {
   return (
     <span className="flex flex-wrap items-center gap-1">
-      <StateBadge heard={heard} monitor={monitor} state={state} />
+      <StateBadge
+        heard={heard}
+        monitor={monitor}
+        state={state}
+        unknown={unknown}
+      />
       {covered && !monitor.paused ? <MaintenanceBadge /> : null}
     </span>
   );
@@ -267,17 +277,27 @@ export function StateBadge({
   heard,
   monitor,
   state,
+  unknown,
 }: {
   /** A heartbeat arrived before the first check: its window is open, so the badge must not say none came. */
   readonly heard: boolean;
   readonly monitor: Monitor;
   readonly state: CheckResult | undefined;
+  /** No location has a recent result for it: neither up nor down. */
+  readonly unknown?: boolean | undefined;
 }): ReactNode {
   const { t } = useMessages();
   if (monitor.paused) {
     return (
       <Badge data-slot="monitor-paused" variant="paused">
         {t("monitor_paused")}
+      </Badge>
+    );
+  }
+  if (unknown) {
+    return (
+      <Badge data-slot="monitor-unknown" variant="secondary">
+        {t("monitor_state_unknown")}
       </Badge>
     );
   }

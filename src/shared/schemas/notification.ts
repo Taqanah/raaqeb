@@ -56,6 +56,27 @@ const event = <Type extends string, Data extends z.ZodRawShape>(
     type: z.literal(type).describe("The notification's type."),
   });
 
+/** A probe going silent or reporting again (CONTEXT.md "Probe"): sent to the channels of the monitors it checks. */
+function probeEvent<Type extends string>(type: Type, when: string) {
+  return z.object({
+    data: z
+      .object({
+        lastHeardAt: instant.describe(
+          "When the install last heard from the probe, in UTC."
+        ),
+        probe: z
+          .object({
+            id: z.string().describe("The probe's id."),
+            name: z.string().describe("The probe's name."),
+          })
+          .describe("The probe."),
+      })
+      .describe("What the event is about."),
+    timestamp: instant.describe(when),
+    type: z.literal(type).describe("The notification's type."),
+  });
+}
+
 /** Every notification a channel can receive, by its type. */
 export const notificationPayloadSchema = z.discriminatedUnion("type", [
   event("monitor.down", {
@@ -64,6 +85,22 @@ export const notificationPayloadSchema = z.discriminatedUnion("type", [
       .optional()
       .describe(
         "The admin area's new-incident page for this monitor; absent when the install stores no public address."
+      ),
+    locations: z
+      .array(
+        z.object({
+          id: z
+            .string()
+            .describe("`main` for the install itself, else the probe's id."),
+          name: z
+            .string()
+            .nullable()
+            .describe("The probe's name; null for the install itself."),
+        })
+      )
+      .optional()
+      .describe(
+        "The locations whose checks saw the monitor down, for a monitor checked from more than one; absent otherwise."
       ),
     reason: reasonNameSchema.describe("Why the check failed."),
     failure: z
@@ -125,6 +162,14 @@ export const notificationPayloadSchema = z.discriminatedUnion("type", [
       })
       .describe("The registration of the domain the monitor's host is in."),
   }),
+  probeEvent(
+    "probe.silent",
+    "When the install stopped hearing from the probe: two minutes after its last contact, in UTC."
+  ),
+  probeEvent(
+    "probe.reporting",
+    "When the probe was heard again after it went silent, in UTC."
+  ),
   z.object({
     data: z
       .object({

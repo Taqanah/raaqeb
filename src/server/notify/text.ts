@@ -67,6 +67,14 @@ const wording: Readonly<
     sentence: "channel_text_reminder",
     subject: "channel_subject_reminder",
   },
+  "probe.reporting": {
+    sentence: "channel_text_probe_reporting",
+    subject: "channel_subject_probe_reporting",
+  },
+  "probe.silent": {
+    sentence: "channel_text_probe_silent",
+    subject: "channel_subject_probe_silent",
+  },
 };
 
 /** The text of one notification in the payload's language. */
@@ -90,6 +98,23 @@ export async function notificationText(
       subject: messages._("channel_subject_test"),
     };
   }
+  if (
+    notification.type === "probe.silent" ||
+    notification.type === "probe.reporting"
+  ) {
+    const { lastHeardAt, probe } = notification.data;
+    const { sentence, subject } = wording[notification.type];
+    return {
+      lines: [
+        line("channel_line_probe", probe.name),
+        line("channel_line_last_heard", when(lastHeardAt)),
+        line("channel_line_time", when(notification.timestamp)),
+      ],
+      links: [],
+      sentence: messages._(sentence),
+      subject: messages._(subject, { probe: probe.name }),
+    };
+  }
   const { monitor } = notification.data;
   const lines = [line("channel_line_monitor", monitor.name)];
   if (monitor.target !== null) {
@@ -100,6 +125,17 @@ export async function notificationText(
       line(
         "channel_line_reason",
         messages._(reasonMessageId(notification.data.reason))
+      )
+    );
+  }
+  if ("locations" in notification.data && notification.data.locations) {
+    const names = notification.data.locations.map(
+      (location) => location.name ?? messages._("monitor_location_main")
+    );
+    lines.push(
+      line(
+        "channel_line_locations",
+        new Intl.ListFormat(locale, { type: "conjunction" }).format(names)
       )
     );
   }

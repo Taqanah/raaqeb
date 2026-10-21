@@ -23,6 +23,7 @@ import {
   monitorFieldsSchema,
   reminderDefaultMs,
 } from "@/shared/schemas/monitor.ts";
+import type { NotificationPayload } from "@/shared/schemas/notification.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import { domainExpiryWarningDays } from "@/shared/schemas/registration.ts";
@@ -145,6 +146,17 @@ function outage(startedAt: number, endedAt?: number): Outage {
   return { endedAt, monitorId: sampleId, reason: reasons.timeout, startedAt };
 }
 
+/** A sample probe going silent two minutes after its last contact, and heard again. */
+function probePreviews(name: string, now: number): NotificationPayload[] {
+  const probe = { id: sampleId, name };
+  const lastHeardAt = new Date(now - 2 * 60_000).toISOString();
+  const timestamp = new Date(now).toISOString();
+  return [
+    { data: { lastHeardAt, probe }, timestamp, type: "probe.silent" },
+    { data: { lastHeardAt, probe }, timestamp, type: "probe.reporting" },
+  ];
+}
+
 /** Every operator notification a channel of the type can receive, as that type carries it, the sample monitor's events happening at `now`. */
 export async function previewNotifications(
   type: ChannelType,
@@ -186,6 +198,7 @@ export async function previewNotifications(
     down,
     reminderOf(monitor, outage(now - reminderDefaultMs), context, now),
     ...others,
+    ...probePreviews(messages._("channel_preview_probe"), now),
   ].filter((each) => each !== undefined && each.type !== "channel.test");
   return Promise.all(
     notifications.map(async (notification) => ({

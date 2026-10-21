@@ -51,6 +51,7 @@ import {
 import { type OutagesRepository, outagesRepository } from "./outages.ts";
 import { type PagesRepository, pagesRepository } from "./pages.ts";
 import { type ConnectFailure, openPostgres } from "./postgres.ts";
+import { type ProbesRepository, probesRepository } from "./probes.ts";
 import {
   type RegistrationsRepository,
   registrationsRepository,
@@ -117,6 +118,7 @@ export interface Storage {
   readonly operatorAccount: OperatorAccountRepository;
   readonly outages: OutagesRepository;
   readonly pages: PagesRepository;
+  readonly probes: ProbesRepository;
   readonly registrations: RegistrationsRepository;
   readonly settings: SettingsRepository;
   /** The used size, the free disk under a SQLite file, and giving freed space back. */
@@ -250,6 +252,7 @@ export async function openStorage(
       operatorAccount: operatorAccountRepository(run),
       outages: outagesRepository(run),
       pages: pagesRepository(run, now),
+      probes: probesRepository(run, now),
       registrations: registrationsRepository(run),
       settings: settingsRepository(run, now),
       size: databaseSize(connection, run, options.freeBytes),

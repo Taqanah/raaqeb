@@ -61,6 +61,7 @@ import {
   type PaceLimits,
 } from "./server/pace.ts";
 import { type PublicTarget, rendersDocument } from "./server/pages/public.ts";
+import { probeCommand } from "./server/probes/command.ts";
 import { currentVersion } from "./server/release/release.ts";
 import { closed, type MemoAnswer, requestLine } from "./server/request-log.ts";
 import { healthCommand, healthUrl } from "./server/scheduler/health.ts";
@@ -172,6 +173,10 @@ export async function main(
       options.terminal ?? processTerminal(),
       options
     );
+  }
+  if (line.command === "probe") {
+    logError("the probe runs through `runCommand`, not `main`");
+    return 2;
   }
   // The command line refuses set-address without an origin.
   if (line.command === "set-address" && line.address !== undefined) {
@@ -353,7 +358,7 @@ const eventWords: Readonly<Record<MonitorEvent["kind"], string>> = {
   recovered: "recovered",
 };
 
-/** One log line per monitor event: the monitor's id, the event, a down event's reason, and when an expiring certificate or domain registration ends. */
+/** One log line per monitor event: the monitor's id, the event, a down event's reason and the locations that saw it, and when an expiring certificate or domain registration ends. */
 export function eventLine(event: MonitorEvent): string {
   const line = `monitor ${event.monitorId} ${eventWords[event.kind]}`;
   if (event.kind === "certificate_expiring") {
@@ -362,9 +367,15 @@ export function eventLine(event: MonitorEvent): string {
   if (event.kind === "domain_expiring") {
     return `${line}: ${event.domain} at ${new Date(event.expiresAt).toISOString()}`;
   }
-  return event.kind === "down"
-    ? `${line} (${reasonName(event.reason) ?? event.reason})`
-    : line;
+  if (event.kind !== "down") {
+    return line;
+  }
+  const down = `${line} (${reasonName(event.reason) ?? event.reason})`;
+  // A probe by its id: its name is the operator's text, which a log line never carries.
+  const from = event.locations?.map((location) =>
+    location.name === undefined ? location.id : `probe ${location.id}`
+  );
+  return from ? `${down} from ${from.join(", ")}` : down;
 }
 
 const stageWords: Readonly<Record<MaintenanceStage, string>> = {
@@ -1041,8 +1052,33 @@ export function stopSignals(
     : ["SIGTERM", "SIGINT"];
 }
 
+/** What a long-running command hands back: `serve`'s server or a probe, either stopped by a signal. */
+export interface Stoppable {
+  readonly stop: () => Promise<void>;
+}
+
+/**
+ * The binary's way in: `raaqeb probe` runs the probe, which opens no
+ * database and loads no build; every other command is `main`.
+ */
+export async function runCommand(
+  args: readonly string[],
+  env: Readonly<Record<string, string | undefined>>,
+  dir: string
+): Promise<Stoppable | number> {
+  const line = parseCommandLine(args);
+  if (line.ok && line.command === "probe") {
+    return probeCommand(env);
+  }
+  return await main(args, env, dir);
+}
+
 if (import.meta.main) {
-  const result = await main(Bun.argv.slice(2), process.env, ownBuildDir());
+  const result = await runCommand(
+    Bun.argv.slice(2),
+    process.env,
+    ownBuildDir()
+  );
   if (typeof result === "number") {
     process.exit(result);
   }

@@ -136,6 +136,8 @@ describe("the OpenAPI document", () => {
         "/api/pages/{id}/maintenance/{windowId}",
         "/api/pages/{id}/overview",
         "/api/pages/{id}/{kind}",
+        "/api/probe/v1/assignments",
+        "/api/probe/v1/results",
         "/api/v2/summary.json",
         "/badge.svg",
         "/feed.atom",
@@ -543,7 +545,7 @@ describe("the OpenAPI document", () => {
     }
   });
 
-  test("GET /metrics is the one operation behind a bearer token, answering the Prometheus text on 200 and nothing on 401, 404 and 503", () => {
+  test("GET /metrics is behind the metrics token, answering the Prometheus text on 200 and nothing on 401, 404 and 503", () => {
     const metrics = operation("/metrics", "get");
     expect(metrics.responses).toMatchObject({
       200: { content: { "text/plain": expect.anything() } },
@@ -560,8 +562,25 @@ describe("the OpenAPI document", () => {
         scheme: "bearer",
         type: "http",
       }),
+      probeToken: expect.objectContaining({ scheme: "bearer", type: "http" }),
     });
-    expect(JSON.stringify(document.paths).match(/"security"/g)).toHaveLength(1);
+    expect(metrics).toMatchObject({ security: [{ metricsToken: [] }] });
+  });
+
+  test("the probe protocol's two operations are behind the probe token alone, and only they and the metrics are behind any token", () => {
+    const pull = operation("/api/probe/v1/assignments", "get");
+    const push = operation("/api/probe/v1/results", "post");
+    for (const each of [pull, push]) {
+      expect(each).toMatchObject({ security: [{ probeToken: [] }] });
+      expect(Object.keys(each.responses)).toEqual(
+        expect.arrayContaining(["200", "401", "404", "429", "503"])
+      );
+    }
+    expect(Object.keys(pull.responses)).toContain("304");
+    expect(Object.keys(push.responses)).toContain("400");
+    expect(
+      JSON.stringify(openApiDocument().paths).match(/"security"/g)
+    ).toHaveLength(3);
   });
 
   test("says what the API is, and that every path is relative to the install's public address", () => {

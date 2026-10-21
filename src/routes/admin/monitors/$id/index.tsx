@@ -99,6 +99,8 @@ function MonitorDetailPage(): ReactNode {
     { readonly from: number; readonly until: number } | undefined
   >();
   const [refused, setRefused] = useState(false);
+  /** "Check now" found no location with a recent result, so no check would come. */
+  const [noResult, setNoResult] = useState(false);
   const detail = result.ok ? result.detail : undefined;
   const latestAt = detail?.recent[0]?.startedAt;
 
@@ -167,8 +169,11 @@ function MonitorDetailPage(): ReactNode {
       return;
     }
     setRefused(false);
+    setNoResult(false);
     const answer = await checkNow({ data: { id } });
-    if (answer?.ok) {
+    if (answer?.ok && answer.answer === "unknown") {
+      setNoResult(true);
+    } else if (answer?.ok) {
       setWaiting({
         from: answer.from,
         until: Date.now() + longestCheckMs(detail.monitor) + waitMarginMs,
@@ -295,6 +300,15 @@ function MonitorDetailPage(): ReactNode {
       title={monitor.name}
     >
       {refused ? <DetailRefused refusal={{ reason: "action" }} /> : null}
+      {noResult ? (
+        <p
+          className="text-muted-foreground text-sm"
+          data-slot="check-now-unknown"
+          role="status"
+        >
+          {t("monitor_check_now_unknown")}
+        </p>
+      ) : null}
       <MonitorDetailView
         clock={clock}
         detail={detail}

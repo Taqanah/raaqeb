@@ -1,6 +1,6 @@
 /**
  * The settings area's pages as a row of links under the title: general,
- * appearance, account, sign-in, storage, metrics, export and import, and the setup
+ * appearance, account, sign-in, storage, metrics, locations, export and import, and the setup
  * check.
  */
 import { Link, useLocation } from "@tanstack/react-router";
@@ -17,6 +17,7 @@ const pages: readonly { readonly label: MessageId; readonly to: string }[] = [
   { label: "setting_sign_in", to: "/admin/settings/sign-in" },
   { label: "setting_storage", to: "/admin/settings/storage" },
   { label: "setting_metrics", to: "/admin/settings/metrics" },
+  { label: "setting_locations", to: "/admin/settings/locations" },
   { label: "setting_export_import", to: "/admin/settings/export" },
   { label: "setting_setup_check", to: "/admin/settings/setup-check" },
 ];

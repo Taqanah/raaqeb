@@ -99,6 +99,12 @@ export function notificationOf(
           ...(publicAddress !== undefined && {
             incidentUrl: `${publicAddress}/admin/incidents/new?monitor=${encodeURIComponent(monitor.id)}`,
           }),
+          ...(event.locations && {
+            locations: event.locations.map((location) => ({
+              id: location.id,
+              name: location.name ?? null,
+            })),
+          }),
           monitor: named,
           reason: nameOf(event.reason),
         },

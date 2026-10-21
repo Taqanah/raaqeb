@@ -32,6 +32,7 @@ export interface Restored {
   readonly maintenanceSeries: readonly string[];
   readonly maintenanceWindows: readonly string[];
   readonly monitors: readonly string[];
+  readonly probes: readonly string[];
   readonly statusPages: readonly string[];
   readonly tags: readonly string[];
 }
@@ -57,8 +58,8 @@ export interface TransferRepository {
   remove: (restored: Restored) => Promise<void>;
   /**
    * Writes the configuration but its settings as one transaction, with its
-   * ids and times as they are. A channel whose id the install already has
-   * stays as the install has it. Answers what it wrote, or nothing, having
+   * ids and times as they are. A channel or a probe whose id the install
+   * already has stays as the install has it. Answers what it wrote, or nothing, having
    * written nothing, when the install holds content by then.
    */
   restore: (configuration: Configuration) => Promise<Restored | undefined>;
@@ -77,9 +78,11 @@ const writeOrder: readonly Exclude<ConfigurationTable, "settings">[] = [
   "groups",
   "tags",
   "channels",
+  "probes",
   "monitors",
   "monitorTags",
   "monitorChannels",
+  "monitorProbes",
   "components",
   "componentMonitors",
   "statusPages",
@@ -140,6 +143,7 @@ export function transferRepository(executor: Executor): TransferRepository {
     maintenanceWindows,
     monitors,
     outages,
+    probes,
     sealedDays,
     settings,
     statusPages,
@@ -219,6 +223,7 @@ export function transferRepository(executor: Executor): TransferRepository {
       | typeof maintenanceWindows
       | typeof maintenanceSeries
       | typeof channels
+      | typeof probes
       | typeof groups
       | typeof tags,
     ids: readonly string[]
@@ -234,6 +239,28 @@ export function transferRepository(executor: Executor): TransferRepository {
     }
   };
 
+  /** Which of these ids the table already holds. */
+  const held = async (
+    run: Executor,
+    table: typeof channels | typeof probes,
+    ids: readonly string[]
+  ): Promise<Set<string>> => {
+    const existing = new Set<string>();
+    for (const batch of batches(ids, 1)) {
+      // biome-ignore lint/performance/noAwaitInLoops: one read after another on the transaction's connection
+      const rows = await run.rows<{ id: string }>(
+        sql`SELECT ${table.id} AS id FROM ${table} WHERE ${table.id} IN (${sql.join(
+          batch.map((id) => sql`${id}`),
+          sql`, `
+        )})`
+      );
+      for (const row of rows) {
+        existing.add(row.id);
+      }
+    }
+    return existing;
+  };
+
   return {
     configuration: () =>
       executor.transaction(async (tx) => {
@@ -246,9 +273,11 @@ export function transferRepository(executor: Executor): TransferRepository {
           groups: await read(tx, "groups"),
           tags: await read(tx, "tags"),
           channels: await read(tx, "channels"),
+          probes: await read(tx, "probes"),
           monitors: await read(tx, "monitors"),
           monitorTags: await read(tx, "monitorTags"),
           monitorChannels: await read(tx, "monitorChannels"),
+          monitorProbes: await read(tx, "monitorProbes"),
           components: await read(tx, "components"),
           componentMonitors: await read(tx, "componentMonitors"),
           statusPages: await read(tx, "statusPages"),
@@ -308,6 +337,7 @@ export function transferRepository(executor: Executor): TransferRepository {
         await removeIds(tx, maintenanceSeries, restored.maintenanceSeries);
         await removeIds(tx, components, restored.components);
         await removeIds(tx, channels, restored.channels);
+        await removeIds(tx, probes, restored.probes);
         await removeIds(tx, groups, restored.groups);
         await removeIds(tx, tags, restored.tags);
       }),
@@ -317,25 +347,22 @@ export function transferRepository(executor: Executor): TransferRepository {
         if (await holds(tx)) {
           return;
         }
-        const ids = configuration.channels.map((row) => row.id);
-        const existing = new Set<string>();
-        for (const batch of batches(ids, 1)) {
-          // biome-ignore lint/performance/noAwaitInLoops: one read after another on the transaction's connection
-          const rows = await tx.rows<{ id: string }>(
-            sql`SELECT ${channels.id} AS id FROM ${channels} WHERE ${channels.id} IN (${sql.join(
-              batch.map((id) => sql`${id}`),
-              sql`, `
-            )})`
-          );
-          for (const row of rows) {
-            existing.add(row.id);
-          }
-        }
+        const heldChannels = await held(
+          tx,
+          channels,
+          configuration.channels.map((row) => row.id)
+        );
+        const heldProbes = await held(
+          tx,
+          probes,
+          configuration.probes.map((row) => row.id)
+        );
         const written = {
           ...configuration,
           channels: configuration.channels.filter(
-            (row) => !existing.has(row.id)
+            (row) => !heldChannels.has(row.id)
           ),
+          probes: configuration.probes.filter((row) => !heldProbes.has(row.id)),
         };
         for (const name of writeOrder) {
           // biome-ignore lint/performance/noAwaitInLoops: parents before the rows that reference them
@@ -351,6 +378,7 @@ export function transferRepository(executor: Executor): TransferRepository {
           maintenanceSeries: idsOf(written.maintenanceSeries),
           maintenanceWindows: idsOf(written.maintenanceWindows),
           monitors: idsOf(written.monitors),
+          probes: idsOf(written.probes),
           statusPages: idsOf(written.statusPages),
           tags: idsOf(written.tags),
         };

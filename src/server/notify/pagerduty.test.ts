@@ -153,6 +153,24 @@ describe("the PagerDuty channel", () => {
     expect(body.payload.summary).toBe("API is up again");
   });
 
+  test("a probe gone silent is a warning under the probe's own dedup key, and reporting again resolves it", async () => {
+    const silent: NotificationPayload = {
+      data: {
+        lastHeardAt: "2026-09-25T18:47:00.000Z",
+        probe: { id: "p1", name: "Frankfurt" },
+      },
+      timestamp,
+      type: "probe.silent",
+    };
+    const opened = (await posted(silent)).body;
+    expect(opened.event_action).toBe("trigger");
+    expect(opened.payload.severity).toBe("warning");
+    expect(opened.dedup_key).toBe("raaqeb:probe:p1:silent");
+    const closed = (await posted({ ...silent, type: "probe.reporting" })).body;
+    expect(closed.event_action).toBe("resolve");
+    expect(closed.dedup_key).toBe(opened.dedup_key);
+  });
+
   test("a reminder triggers again under the outage's dedup key, so it joins the open alert instead of opening a second", async () => {
     const { body } = await posted(reminder);
     expect(body.event_action).toBe("trigger");

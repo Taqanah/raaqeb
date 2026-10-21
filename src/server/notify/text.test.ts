@@ -56,6 +56,55 @@ describe("a notification as text", () => {
     });
   });
 
+  test("a down notification of a monitor checked from several locations names the ones that saw it, the main location in the channel's words", async () => {
+    const located: NotificationPayload = {
+      data: {
+        locations: [
+          { id: "main", name: null },
+          { id: "p1", name: "Frankfurt" },
+        ],
+        monitor,
+        reason: "timeout",
+      },
+      timestamp,
+      type: "monitor.down",
+    };
+    expect((await notificationText(sent(located, "en", utc))).lines).toContain(
+      "Seen down from: Main and Frankfurt"
+    );
+    expect((await notificationText(sent(located))).lines).toContain(
+      "رُصدت متعطّلة من: الرئيسي وFrankfurt"
+    );
+    expect(
+      (await notificationText(sent(down, "en", utc))).lines.some((each) =>
+        each.startsWith("Seen down from")
+      )
+    ).toBe(false);
+  });
+
+  test("a probe gone silent names the probe and when it was last heard; reporting again says so", async () => {
+    const silent: NotificationPayload = {
+      data: {
+        lastHeardAt: "2026-09-25T18:47:00.000Z",
+        probe: { id: "p1", name: "Frankfurt" },
+      },
+      timestamp,
+      type: "probe.silent",
+    };
+    const text = await notificationText(sent(silent, "en", utc));
+    expect(text.subject).toBe("Frankfurt: silent");
+    expect(text.lines).toEqual([
+      "Probe: Frankfurt",
+      "Last heard: Sep 25, 2026, 18:47 (UTC)",
+      "Time: Sep 25, 2026, 18:49 (UTC)",
+    ]);
+    expect(text.links).toEqual([]);
+    const back = await notificationText(
+      sent({ ...silent, type: "probe.reporting" }, "en", utc)
+    );
+    expect(back.subject).toBe("Frankfurt: reporting");
+  });
+
   test("a failure's exit code and message are lines after the reason, in each language", async () => {
     const failed: NotificationPayload = {
       data: {

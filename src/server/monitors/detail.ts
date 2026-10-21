@@ -13,6 +13,7 @@
  */
 
 import { gapLimitMs } from "@/server/checks/heartbeat.ts";
+import { noRecentResult } from "@/server/scheduler/locations.ts";
 import type {
   CheckRequests,
   OutageRequests,
@@ -53,6 +54,7 @@ import {
 } from "@/shared/schemas/detail.ts";
 import type { Monitor } from "@/shared/schemas/monitor.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
+import type { LocationState } from "@/shared/schemas/probe.ts";
 import { dayView, readMonitorDays } from "./days.ts";
 import { heartbeatView, readReach } from "./monitors.ts";
 
@@ -75,6 +77,10 @@ const unavailable = { ok: false, reason: "unavailable" } as const;
 const longestWindow = uptimeWindowMs["90d"];
 
 export interface DetailOptions {
+  /** Each location's state of a monitor checked from more than one, as the scheduler holds it. */
+  readonly locations?: (
+    monitorId: string
+  ) => readonly LocationState[] | undefined;
   readonly now: number;
   readonly range: ChartRange;
   /** The request's origin, for a heartbeat monitor's URL when no public address is stored. */
@@ -112,7 +118,7 @@ function shapeError(error: unknown): string | undefined {
 export async function readMonitorDetail(
   storage: DetailStorage,
   id: string,
-  { now, range, requestOrigin, span }: DetailOptions
+  { locations, now, range, requestOrigin, span }: DetailOptions
 ): Promise<MonitorDetailResult> {
   try {
     const monitor = await storage.monitors.find(id);
@@ -173,6 +179,7 @@ export async function readMonitorDetail(
         : firstSpanPage(storage, id, span, rawFrom),
     ]);
     const recent = newest.slice(0, recentChecksShown);
+    const stale = noRecentResult(monitor, newest[0]?.startedAt, now);
     // A check before the raw window waits only for the nightly purge; the list never shows it.
     const kept = newest.filter((each) => each.startedAt >= rawStartsAt);
     const { components, windows } = reach;
@@ -194,6 +201,7 @@ export async function readMonitorDetail(
           to: chartTo,
         },
         heartbeat: beats,
+        locations: locations?.(id),
         monitor,
         now,
         outages: outages.slice(0, outagesShown),
@@ -206,7 +214,8 @@ export async function readMonitorDetail(
           kept: true,
           more: kept.length > recentChecksShown,
         },
-        state: recent[0]?.result,
+        state: stale ? undefined : recent[0]?.result,
+        ...(stale && { unknown: true }),
         uptime: uptimeReadings({
           coverage,
           excluded: coveredSpans(windows, components, now).get(id) ?? [],

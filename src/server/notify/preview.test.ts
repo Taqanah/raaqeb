@@ -253,7 +253,7 @@ async function carried(
 }
 
 describe("the notification preview", () => {
-  test("a channel previews down, its reminder, recovered, degraded started, degraded ended, certificate expiring and domain expiring", async () => {
+  test("a channel previews down, its reminder, recovered, degraded started, degraded ended, certificate expiring, domain expiring, and a probe gone silent and reporting again", async () => {
     for (const type of channelTypes) {
       // biome-ignore lint/performance/noAwaitInLoops: nine types, one after the other
       const previews = await previewNotifications(type, english, now);
@@ -265,6 +265,8 @@ describe("the notification preview", () => {
         "monitor.degraded_ended",
         "monitor.certificate_expiring",
         "monitor.domain_expiring",
+        "probe.silent",
+        "probe.reporting",
       ]);
     }
   });
@@ -287,8 +289,8 @@ describe("the notification preview", () => {
         const sent = await Promise.all(
           notifications.map((each) => carried(type, each, context))
         );
-        expect(previews).toHaveLength(7);
-        expect(sent).toHaveLength(7);
+        expect(previews).toHaveLength(9);
+        expect(sent).toHaveLength(9);
         for (const [index, preview] of previews.entries()) {
           const carriedText = sent[index];
           if (type === "webhook") {

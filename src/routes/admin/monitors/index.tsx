@@ -165,6 +165,7 @@ function MonitorsPage() {
         onSearch={setSearch}
         search={search}
         states={data.states}
+        unknown={data.unknown}
       />
     );
   }

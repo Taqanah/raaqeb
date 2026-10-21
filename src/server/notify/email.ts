@@ -56,9 +56,7 @@ export function notificationHtml(
 ): string {
   const { locale, notification } = payload;
   const monitor =
-    notification.type === "channel.test"
-      ? undefined
-      : notification.data.monitor;
+    "monitor" in notification.data ? notification.data.monitor : undefined;
   const target = monitor?.target ?? undefined;
   return mailHtml({
     buttons: text.links.map(({ url, words }) => ({ url, words })),

@@ -6,6 +6,7 @@
     "subscriptions",
     "webhooks",
     "metrics",
+    "probes",
     "health"
   ]
 }

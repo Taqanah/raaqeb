@@ -81,6 +81,8 @@ export interface MonitorListProps {
   readonly onSearch: (next: MonitorListSearch) => void;
   readonly search: MonitorListSearch;
   readonly states: MonitorStates;
+  /** The monitors no location has a recent result for. */
+  readonly unknown: readonly string[];
 }
 
 const noSearch: MonitorListSearch = {};
@@ -103,6 +105,7 @@ export function MonitorList({
   onSearch,
   search,
   states,
+  unknown,
 }: MonitorListProps): ReactNode {
   const { locale, t } = useMessages();
   const [selected, setSelected] = useState(noSelection);
@@ -235,6 +238,7 @@ export function MonitorList({
     onTogglePaused: togglePaused,
     selected: selected.has(monitor.id),
     state: states[monitor.id],
+    unknown: unknown.includes(monitor.id),
   });
 
   let body: ReactNode;

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  checkableByProbe,
   connectionUrlFits,
   containerListSchema,
   databaseCheckTypes,
@@ -8,6 +9,8 @@ import {
   isDatabaseCheckType,
   isDockerEndpoint,
   isSocketPath,
+  locationsOf,
+  mainLocation,
   monitorChangeInputSchema,
   monitorConfigSchema,
   monitorEditSchema,
@@ -915,6 +918,100 @@ describe("a Docker monitor", () => {
     ).toBe(true);
     expect(
       containerListSchema.safeParse({ endpoint: "http://u:p@proxy" }).success
+    ).toBe(false);
+  });
+});
+
+describe("a monitor's locations", () => {
+  const probe = "0199f0aa-0000-7000-8000-000000000001";
+  const docker = {
+    container: "web",
+    endpoint: "/var/run/docker.sock",
+    type: "docker",
+  } as const;
+  const paths = (result: {
+    readonly error?: { readonly issues: readonly { path: PropertyKey[] }[] };
+  }) => result.error?.issues.map((issue) => issue.path.join("."));
+
+  test("a monitor with no locations is checked from the main location alone", () => {
+    expect(locationsOf(monitorInputSchema.parse(base))).toEqual([mainLocation]);
+  });
+
+  test("a probe checks HTTP, TCP, DNS and database monitors, not Docker or heartbeat ones", () => {
+    expect(checkableByProbe("http")).toBe(true);
+    expect(checkableByProbe("tcp")).toBe(true);
+    expect(checkableByProbe("dns")).toBe(true);
+    expect(checkableByProbe("postgres")).toBe(true);
+    expect(checkableByProbe("docker")).toBe(false);
+    expect(checkableByProbe("heartbeat")).toBe(false);
+    expect(
+      paths(
+        monitorInputSchema.safeParse({
+          ...base,
+          config: docker,
+          locations: [mainLocation, probe],
+        })
+      )
+    ).toContain("locations");
+  });
+
+  test("a Docker monitor checked from the main location alone is accepted", () => {
+    expect(
+      monitorInputSchema.safeParse({
+        ...base,
+        config: docker,
+        locations: [mainLocation],
+      }).success
+    ).toBe(true);
+  });
+
+  test("a probe checks a database monitor only when it shares its credentials", () => {
+    const database = {
+      ...base,
+      config: { type: "postgres" },
+      locations: [mainLocation, probe],
+    };
+    expect(paths(monitorInputSchema.safeParse(database))).toContain(
+      "shareCredentials"
+    );
+    expect(
+      monitorInputSchema.safeParse({ ...database, shareCredentials: true })
+        .success
+    ).toBe(true);
+  });
+
+  test("an HTTP monitor may be checked from a probe without sharing its credentials", () => {
+    expect(
+      monitorInputSchema.safeParse({ ...base, locations: [probe] }).success
+    ).toBe(true);
+  });
+
+  test("a monitor needs no more confirmations than it has locations", () => {
+    expect(
+      paths(
+        monitorInputSchema.safeParse({
+          ...base,
+          confirmations: 3,
+          locations: [mainLocation, probe],
+        })
+      )
+    ).toEqual(["confirmations"]);
+    expect(
+      monitorInputSchema.safeParse({
+        ...base,
+        confirmations: 2,
+        locations: [mainLocation, probe],
+      }).success
+    ).toBe(true);
+    expect(
+      monitorInputSchema.safeParse({ ...base, confirmations: 2 }).success
+    ).toBe(false);
+  });
+
+  test("a location is named once", () => {
+    expect(
+      monitorInputSchema.safeParse({ ...base, locations: [probe, probe] })
+        .success
     ).toBe(false);
   });
 });
