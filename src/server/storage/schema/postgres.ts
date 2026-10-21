@@ -512,7 +512,7 @@ export const componentMonitors = pgTable(
   ]
 );
 
-/** A public page: its slug, page language, custom domain, whether it is the default, whether it is published, and its customization as JSON text. */
+/** A public page: its slug, page language, custom domain, whether it is the default, whether it is published, its access, and its customization as JSON text. */
 export const statusPages = pgTable(
   "status_pages",
   {
@@ -524,6 +524,10 @@ export const statusPages = pgTable(
     isDefault: flag("is_default").notNull(),
     // Public only once published; a new page starts unpublished, and the migration published the pages that existed.
     published: flag("published").notNull().default(sql`0`),
+    // Who may see it once published (CONTEXT.md "Page access"); the page password as its Argon2id hash, kept in password mode alone; the allowed addresses as JSON text.
+    access: text().notNull().default("public"),
+    accessPassword: text("access_password"),
+    accessAddresses: text("access_addresses").notNull().default("[]"),
     customization: text().notNull(),
     createdAt: bigint("created_at", { mode: "number" }).notNull(),
     updatedAt: bigint("updated_at", { mode: "number" }).notNull(),

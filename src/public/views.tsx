@@ -13,6 +13,7 @@ import { useMessages } from "@/shared/i18n/react.tsx";
 import type { ImpactLevel, IncidentStage } from "@/shared/schemas/incident.ts";
 import type { MaintenanceStage } from "@/shared/schemas/maintenance.ts";
 import type { PublicView } from "@/shared/schemas/overview.ts";
+import type { PageAccessMode } from "@/shared/schemas/page.ts";
 import type {
   HistoryDocument,
   HistoryEntry,
@@ -22,10 +23,13 @@ import type {
   ViewFrame,
 } from "@/shared/schemas/views.ts";
 import { Badge, type BadgeProps } from "@/shared/ui/badge.tsx";
+import { buttonVariants } from "@/shared/ui/button.tsx";
 import { Card } from "@/shared/ui/card.tsx";
 import { cn } from "@/shared/ui/cn.ts";
 import { Empty, EmptyDescription } from "@/shared/ui/empty.tsx";
-import { ChevronEndIcon } from "@/shared/ui/icons.tsx";
+import { Field, FieldLabel } from "@/shared/ui/field.tsx";
+import { ChevronEndIcon, LockIcon } from "@/shared/ui/icons.tsx";
+import { Input } from "@/shared/ui/input.tsx";
 import { Paragraphs } from "./cards.tsx";
 import { quietLink, ViewLink } from "./link.tsx";
 import { PageFrame, useViewTime } from "./overview.tsx";
@@ -506,6 +510,103 @@ export function PageMissing({
           {t("public_current_status")}
         </ViewLink>
       </Empty>
+    </PageFrame>
+  );
+}
+
+/**
+ * A private page's access page: the page's frame and its way in. In
+ * password mode a form that posts the page password to the address it is
+ * shown at, with no script, since the page never hydrates; the lines that
+ * say why a try failed are hidden until the entry shows one. In signed-in
+ * mode the way to sign in; in addresses mode only that the visitor's network
+ * is not one the page opens from.
+ */
+export function AccessPage({
+  frame,
+  mode,
+  signIn,
+  view,
+}: {
+  readonly frame: ViewFrame;
+  readonly mode: Exclude<PageAccessMode, "public">;
+  /** The sign-in page's address, on the public address when it is known. */
+  readonly signIn: string;
+  readonly view: PublicView;
+}): ReactNode {
+  const { t } = useMessages();
+  const prompts: Readonly<Record<typeof mode, MessageId>> = {
+    addresses: "public_access_addresses_prompt",
+    password: "public_access_password_prompt",
+    signed_in: "public_access_signed_in_prompt",
+  };
+  return (
+    <PageFrame page={frame.page} still suffix="" view={view}>
+      <Card
+        as="section"
+        className="mx-auto w-full max-w-sm gap-5 px-6 py-8"
+        data-mode={mode}
+        data-slot="access-page"
+      >
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="flex size-10 items-center justify-center rounded-full bg-subtle text-muted-foreground [&_svg]:size-5">
+            <LockIcon />
+          </span>
+          <h2 className="font-semibold text-base">
+            {t("public_access_title")}
+          </h2>
+          <p className="text-muted-foreground">{t(prompts[mode])}</p>
+        </div>
+        {mode === "password" ? (
+          <form className="flex flex-col gap-4" method="post">
+            <Field>
+              <FieldLabel htmlFor="page-password">
+                {t("public_access_password_field")}
+              </FieldLabel>
+              <Input
+                autoComplete="current-password"
+                dir="auto"
+                id="page-password"
+                name="password"
+                required
+                type="password"
+              />
+              <p
+                className="text-status-down text-xs"
+                data-slot="access-wrong"
+                hidden
+                role="alert"
+              >
+                {t("public_access_wrong")}
+              </p>
+              <p
+                className="text-status-down text-xs"
+                data-slot="access-limited"
+                hidden
+                role="alert"
+              >
+                {t("public_access_limited")}
+              </p>
+            </Field>
+            <button
+              className={buttonVariants({ className: "w-full" })}
+              data-slot="access-open"
+              type="submit"
+            >
+              {t("public_access_open")}
+            </button>
+          </form>
+        ) : null}
+        {mode === "signed_in" ? (
+          <a
+            className={buttonVariants({ className: "w-full" })}
+            data-slot="access-sign-in"
+            href={signIn}
+          >
+            {t("public_access_sign_in")}
+          </a>
+        ) : null}
+      </Card>
     </PageFrame>
   );
 }

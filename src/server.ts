@@ -18,8 +18,9 @@
  * is answered through the memo,
  * which resolves the page and locale before anything renders
  * and hands them to the route as the request context's public target; an
- * unpublished page's, to the signed-in operator alone and outside the memo
- *.
+ * unpublished page's, to the signed-in operator alone and outside the memo;
+ * a private page's, only to a request its page access lets in, and a try at
+ * its password, a form POST at one of its views, through the memo too.
  * Every HTML response leaves with the security headers.
  */
 import type { ServerEntry } from "@tanstack/react-start/server-entry";
@@ -483,9 +484,12 @@ export function serve(
   const checks = createPace(paceLimits.checks);
   // An unpublished page shows its views to the signed-in operator alone.
   const memo = createPublicMemo({
+    key: settings.installKey,
     now: Date.now,
-    operator: (request) =>
-      isOperator(holder.current, settings, request.headers),
+    // A request that names no session cookie costs no session read.
+    operator: async (request) =>
+      carriesSession(request.headers) &&
+      (await isOperator(holder.current, settings, request.headers)),
   });
   // Held in memory, read again only when the change counter moves.
   const proxies = heldTrustedProxies(settings.trustedProxies);
@@ -549,20 +553,23 @@ export function serve(
             })
         );
       try {
-        memoised = await memo.answer(
-          resolved,
-          storage,
-          (target, refresh) =>
-            paced(visitorLane(refresh), async () => {
-              rendered = true;
-              return await handler.fetch(viewRequest(resolved, refresh), {
-                context: context(target),
-              });
-            }),
-          counter,
-          renderMissing,
-          checked
-        );
+        // A try at a private page's password, posted to one of its views, is the memo's to judge.
+        memoised =
+          (await memo.attempt(resolved, storage, renderMissing, checked)) ??
+          (await memo.answer(
+            resolved,
+            storage,
+            (target, refresh) =>
+              paced(visitorLane(refresh), async () => {
+                rendered = true;
+                return await handler.fetch(viewRequest(resolved, refresh), {
+                  context: context(target),
+                });
+              }),
+            counter,
+            renderMissing,
+            checked
+          ));
         response =
           memoised ??
           (await memo.notFound(
@@ -607,8 +614,12 @@ export function serve(
           memoAnswer(memoised, rendered)
         );
       }
-      // The address the memo read with the change counter on this GET: no read of its own.
-      return secured(response, memoised !== undefined, memo.publicAddress());
+      // The address the memo read with the change counter on this GET: no read of its own. A private page's answer is never framed, so no other site wraps its password form.
+      return secured(
+        response,
+        memoised !== undefined && !privateAnswer(memoised),
+        memo.publicAddress()
+      );
     },
     hostname: settings.host,
     idleTimeout: idleTimeoutSeconds,
@@ -903,6 +914,11 @@ function withSecurityHeaders(
     status: response.status,
     statusText: response.statusText,
   });
+}
+
+/** Whether an answer is a private page's, which only the visitor's own browser may keep. */
+function privateAnswer(response: Response): boolean {
+  return response.headers.get("cache-control")?.startsWith("private") ?? false;
 }
 
 /** Only an HTML response is a page a site could frame or sniff; the rest keep their own headers, a page image its sandbox policy. */

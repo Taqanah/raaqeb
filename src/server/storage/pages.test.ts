@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import {
   defaultCustomization,
   type PageLayout,
+  publicAccess,
   type StatusPageFields,
 } from "@/shared/schemas/page.ts";
 import {
@@ -112,6 +113,7 @@ describe("the status pages repository", () => {
       })
     );
     expect(created).toEqual({
+      access: publicAccess,
       createdAt: t0,
       customDomain: "status.example.test",
       customization,

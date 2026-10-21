@@ -517,3 +517,47 @@ export function MessageCircleIcon(props: IconProps): ReactNode {
     </Icon>
   );
 }
+
+/** A public page, open to the world. */
+export function GlobeIcon(props: IconProps): ReactNode {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+      <path d="M2 12h20" />
+    </Icon>
+  );
+}
+
+/** A private page, closed to whoever has no access. */
+export function LockIcon(props: IconProps): ReactNode {
+  return (
+    <Icon {...props}>
+      <rect height="11" rx="2" ry="2" width="18" x="3" y="11" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </Icon>
+  );
+}
+
+/** A page password. */
+export function KeyRoundIcon(props: IconProps): ReactNode {
+  return (
+    <Icon {...props}>
+      <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+      <circle cx="16.5" cy="7.5" fill="currentColor" r=".5" />
+    </Icon>
+  );
+}
+
+/** Allowed addresses: the networks a page opens from. */
+export function NetworkIcon(props: IconProps): ReactNode {
+  return (
+    <Icon {...props}>
+      <rect height="6" rx="1" width="6" x="16" y="16" />
+      <rect height="6" rx="1" width="6" x="2" y="16" />
+      <rect height="6" rx="1" width="6" x="9" y="2" />
+      <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" />
+      <path d="M12 12V8" />
+    </Icon>
+  );
+}

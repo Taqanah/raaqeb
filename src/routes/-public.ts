@@ -23,6 +23,7 @@ import {
   readViewFrame,
   type ViewResult,
 } from "@/server/pages/views.ts";
+import { readPublicAddress } from "@/server/settings/address.ts";
 import { formatMonth } from "@/shared/i18n/format.ts";
 import { localeSchema, locales } from "@/shared/i18n/locale.ts";
 import { catalogFromJson, createMessages } from "@/shared/i18n/messages.ts";
@@ -37,6 +38,7 @@ import {
   publicViewSchema,
   viewPath,
 } from "@/shared/schemas/overview.ts";
+import type { PageAccessMode } from "@/shared/schemas/page.ts";
 import {
   type HistoryDocument,
   historyDocumentSchema,
@@ -207,11 +209,43 @@ export interface ViewLoaderOptions {
   }>;
 }
 
-/** What a view's not-found carries, so the page's frame can say so: the frame, when the page exists, and the page's view where the entry resolved none. */
+/** What a view's not-found carries, so the page's frame can say so: the frame, when the page exists, and the page's view where the entry resolved none. A private page's access page is one too, carrying the page's access mode and where to sign in. */
 export interface MissingData {
+  readonly access?: Exclude<PageAccessMode, "public">;
   readonly frame: ViewFrame;
+  readonly signIn?: string;
   readonly view?: PublicView;
 }
+
+/** The access page's data when this render is a private page's access page, from the target the entry resolved: its frame, its mode and the sign-in page on the public address; nothing for any other render, and in the browser, where the access page never hydrates. */
+const readAccessData = createIsomorphicFn()
+  .server(async (): Promise<MissingData | undefined> => {
+    const context = getGlobalStartContext();
+    const target = context?.publicTarget;
+    if (
+      !(
+        target?.kind === "view" &&
+        target.locked &&
+        target.access.mode !== "public" &&
+        context?.storage
+      )
+    ) {
+      return;
+    }
+    const [frame, address] = await Promise.all([
+      readViewFrame(context.storage, target.pageId),
+      readPublicAddress(context.storage),
+    ]);
+    if (!frame.ok) {
+      throw new Error("the page's frame could not be read");
+    }
+    return {
+      access: target.access.mode,
+      frame: frame.document,
+      signIn: `${address ?? ""}/sign-in`,
+    };
+  })
+  .client(() => Promise.resolve(undefined));
 
 /** A not-found's data where the entry resolved no page: the frame of the page the address or the host names, read on the server; the memo's pages index names the page, so an address no page frames costs no read. Nothing in the browser, where the root's page stands. */
 const readMissingData = createIsomorphicFn()
@@ -239,6 +273,10 @@ async function load(
 ): Promise<ViewDocument> {
   if (!view) {
     throw notFound({ data: await readMissingData() });
+  }
+  const locked = await readAccessData();
+  if (locked) {
+    throw notFound({ data: locked });
   }
   const answer = await readView(view.pageId, request);
   if (!answer.found) {
@@ -315,7 +353,9 @@ export function publicHeaders(): Record<string, string> {
 }
 
 const missingDataSchema = z.object({
+  access: z.enum(["password", "signed_in", "addresses"]).optional(),
   frame: viewFrameSchema,
+  signIn: z.string().optional(),
   view: publicViewSchema.optional(),
 });
 
@@ -399,6 +439,11 @@ export function missingHead(error: unknown, root?: unknown) {
     return {};
   }
   const words = rootWordsSchema.safeParse(root);
+  const notFoundWords = words.success
+    ? createMessages(words.data.locale, catalogFromJson(words.data.catalog))._(
+        "public_not_found_title"
+      )
+    : undefined;
   // The page's title in the view's language, else the document's, else the page's own.
   const pageTitle = contentIn(
     frame.page.title,
@@ -410,9 +455,11 @@ export function missingHead(error: unknown, root?: unknown) {
     links: faviconLinks(frame.page.images.favicon),
     meta: [
       {
-        title: words.success
-          ? `${createMessages(words.data.locale, catalogFromJson(words.data.catalog))._("public_not_found_title")} · ${pageTitle}`
-          : pageTitle,
+        // An access page is the page's own, under its title alone.
+        title:
+          missing?.access || notFoundWords === undefined
+            ? pageTitle
+            : `${notFoundWords} · ${pageTitle}`,
       },
       { content: "noindex", name: "robots" },
     ],

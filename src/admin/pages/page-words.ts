@@ -6,6 +6,8 @@ import type { MessageId } from "@/shared/i18n/messages.ts";
 import type { PageImageRefusal, PageRefusal } from "@/shared/schemas/page.ts";
 
 export const pageRefusalWords: Readonly<Record<PageRefusal, MessageId>> = {
+  access_address_invalid: "page_refused_access_address",
+  access_password_missing: "page_refused_access_password",
   domain_public_address: "page_refused_domain_public",
   domain_taken: "page_refused_domain_taken",
   invalid: "app_form_invalid",

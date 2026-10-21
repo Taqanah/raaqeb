@@ -21,6 +21,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/shared/ui/empty.tsx";
+import { LockIcon } from "@/shared/ui/icons.tsx";
 import { localeNames } from "@/shared/ui/locale-switcher.tsx";
 import { StatusLevelBadge } from "@/shared/ui/status-level.tsx";
 import {
@@ -122,6 +123,12 @@ function ListBody({
                 {page.published ? null : (
                   <Badge data-slot="page-unpublished" variant="outline">
                     {t("page_unpublished_badge")}
+                  </Badge>
+                )}
+                {page.access.mode === "public" ? null : (
+                  <Badge data-slot="page-private" variant="outline">
+                    <LockIcon />
+                    {t("page_private")}
                   </Badge>
                 )}
               </div>

@@ -214,7 +214,9 @@ export const overviewPageSchema = z.object({
   ),
   noindex: z
     .boolean()
-    .describe("Whether the page asks search engines not to index it."),
+    .describe(
+      "Whether the page asks search engines not to index it: always for a private page."
+    ),
   poweredBy: z
     .boolean()
     .describe("Whether the page shows its Powered by Raaqeb link."),

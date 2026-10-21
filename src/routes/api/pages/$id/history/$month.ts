@@ -4,7 +4,8 @@ import { readHistory, viewResponse } from "@/server/pages/views.ts";
 import { monthSchema } from "@/shared/schemas/views.ts";
 
 // A status page's history for one month, yyyy-mm:
-// public on any host; a month that is not one is not found.
+// on any host, to whoever the page's access lets in (everyone, for a public
+// page); a month that is not one is not found.
 async function answer(
   storage: Parameters<typeof readHistory>[0] | undefined,
   pageId: string,

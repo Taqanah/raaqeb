@@ -94,6 +94,9 @@ describe("the export file's format", () => {
 
   test("a status page carries whether it is published, and a page in an export written before the switch reads as published", () => {
     const page: Configuration["statusPages"][number] = {
+      access: "public",
+      accessAddresses: "[]",
+      accessPassword: null,
       createdAt: Date.UTC(2026, 8, 1),
       customDomain: null,
       customization: "{}",

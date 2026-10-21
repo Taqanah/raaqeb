@@ -26,6 +26,7 @@ import {
   monitorFieldsSchema,
 } from "./monitor.ts";
 import {
+  pageAccessModeSchema,
   pageCustomizationSchema,
   pageImageKindSchema,
   subscriptionChannels,
@@ -189,6 +190,10 @@ export const configurationSchema = z.object({
       isDefault: flagCodec,
       // An export written before the switch has none, and its pages were public: they read as published.
       published: flagCodec.default(1),
+      // A file written before page access has none: its pages were public. The page password travels as its hash, never in clear.
+      access: pageAccessModeSchema.default("public"),
+      accessPassword: plain.nullable().default(null),
+      accessAddresses: jsonTextCodec(z.array(z.string())).default("[]"),
       customization: jsonTextCodec(pageCustomizationSchema),
       createdAt: timeCodec,
       updatedAt: timeCodec,

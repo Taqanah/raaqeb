@@ -4,8 +4,8 @@ import { documentAnswer } from "@/routes/-resources.ts";
 import { readHistory, viewResponse } from "@/server/pages/views.ts";
 
 // A status page's history for the current month:
-// public on any host; the entry's memo keeps it and answers 304 while
-// nothing changed.
+// on any host, to whoever the page's access lets in (everyone, for a public
+// page); the entry's memo keeps it and answers 304 while nothing changed.
 function answer(context: RequestContext, pageId: string): Promise<Response> {
   return documentAnswer(context, async () =>
     viewResponse(

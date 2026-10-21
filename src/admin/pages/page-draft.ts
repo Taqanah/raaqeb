@@ -14,8 +14,10 @@ import type { MessageId } from "@/shared/i18n/messages.ts";
 import type { Theme } from "@/shared/schemas/appearance.ts";
 import { type ContentDraft, contentDraftOf } from "@/shared/schemas/content.ts";
 import {
+  addressEntries,
   type BarLength,
   componentsOf,
+  type PageAccessMode,
   type PageCreateInput,
   type PageEditor,
   type PageInput,
@@ -43,6 +45,11 @@ export interface FooterLinkDraft {
 }
 
 export interface PageDraft {
+  /** The allowed addresses as typed, apart by commas, spaces or lines. */
+  readonly accessAddresses: string;
+  readonly accessMode: PageAccessMode;
+  /** A new page password as typed; empty keeps the one stored. */
+  readonly accessPassword: string;
   readonly barDays: BarLength;
   readonly bars: boolean;
   /** Empty is the default colour. */
@@ -58,6 +65,8 @@ export interface PageDraft {
   readonly layout: readonly DraftItem[];
   readonly locale: Locale;
   readonly noindex: boolean;
+  /** Whether the page has a page password stored. */
+  readonly passwordSet: boolean;
   readonly percentages: boolean;
   readonly poweredBy: boolean;
   readonly published: boolean;
@@ -95,6 +104,9 @@ export function pageDraftOf(editor: PageEditor): PageDraft {
   const custom = page.customization;
   let groups = 0;
   return {
+    accessAddresses: page.access.addresses.join("\n"),
+    accessMode: page.access.mode,
+    accessPassword: "",
     barDays: custom.barDays,
     bars: custom.bars,
     brandColour: custom.brandColour ?? "",
@@ -124,6 +136,7 @@ export function pageDraftOf(editor: PageEditor): PageDraft {
     noindex: custom.noindex,
     percentages: custom.percentages,
     poweredBy: custom.poweredBy,
+    passwordSet: page.access.passwordDigest !== undefined,
     published: page.published,
     slug: page.slug,
     statusColours: perLevel((level) => custom.statusColours[level] ?? ""),
@@ -165,6 +178,8 @@ function fieldPath(path: readonly PropertyKey[]): string[] {
 
 /** The message of each field refused by its exact path. */
 const refusals: Readonly<Record<string, MessageId>> = {
+  "access.addresses": "page_refused_access_addresses_missing",
+  "access.password": "page_refused_access_password",
   "customization.contactUrl": "page_refused_link",
   "customization.customCss": "page_refused_css",
   "customization.description": "page_refused_description",
@@ -190,6 +205,9 @@ function refusalOf(path: string, code: string): MessageId {
       ? "page_refused_footer_label"
       : "page_refused_footer_label_missing";
   }
+  if (path.startsWith("access.addresses.")) {
+    return "page_refused_access_address";
+  }
   return path.startsWith("layout.") ? "page_refused_group" : "app_form_invalid";
 }
 
@@ -205,7 +223,17 @@ export function pageInputOf(draft: PageDraft): PageDraftParse {
   const rows = draft.footerLinks
     .map((link, row) => ({ link, row }))
     .filter(({ link }) => written(link.label) || link.url.trim() !== "");
+  const reads =
+    draft.accessMode === "password" || draft.accessMode === "addresses";
   const parsed = pageInputSchema.safeParse({
+    access: {
+      addresses: reads ? addressEntries(draft.accessAddresses) : [],
+      mode: draft.accessMode,
+      password:
+        draft.accessMode === "password"
+          ? typed(draft.accessPassword)
+          : undefined,
+    },
     customDomain: typed(draft.customDomain),
     customization: {
       barDays: draft.barDays,

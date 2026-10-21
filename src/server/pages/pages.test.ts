@@ -3,7 +3,11 @@ import { publicAddress } from "@/server/settings/address.ts";
 import { loadCatalog } from "@/server/settings/language.ts";
 import { runSql } from "@/server/storage/fixture.ts";
 import { createMessages } from "@/shared/i18n/messages.ts";
-import { defaultCustomization, type PageInput } from "@/shared/schemas/page.ts";
+import {
+  defaultCustomization,
+  type PageInput,
+  publicAccess,
+} from "@/shared/schemas/page.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import { createComponent } from "./components.ts";
 import {
@@ -311,6 +315,169 @@ describe("saving a status page", () => {
       ok: false,
       reason: "unavailable",
     });
+  });
+});
+
+describe("a page's access", () => {
+  test("a new page is public, with no password and no addresses", async () => {
+    const s = await opened();
+    const page = await created(s);
+    expect((await s.storage.pages.find(page.id))?.access).toEqual(publicAccess);
+  });
+
+  test("password mode stores the page password as an Argon2id hash that verifies, never the password, and moves the change counter", async () => {
+    const s = await opened();
+    const page = await created(s);
+    const before = await s.storage.changeCounter();
+    const saved = await savePage(
+      s.storage,
+      page.id,
+      input({
+        access: {
+          addresses: ["10.0.0.0/8"],
+          mode: "password",
+          password: "correct horse",
+        },
+      })
+    );
+    expect(saved.ok).toBe(true);
+    expect(await s.storage.changeCounter()).toBeGreaterThan(before);
+    const stored = await s.storage.pages.find(page.id);
+    expect(stored?.access.mode).toBe("password");
+    expect(stored?.access.addresses).toEqual(["10.0.0.0/8"]);
+    expect(stored?.access.passwordDigest).toBeString();
+    const hash = (await s.storage.pages.password(page.id)) ?? "";
+    expect(hash.startsWith("$argon2id$")).toBe(true);
+    expect(hash).not.toContain("correct horse");
+    expect(await Bun.password.verify("correct horse", hash)).toBe(true);
+    // The editor's read carries the digest alone, never the hash.
+    const editor = await readPageEditor(s.storage, page.id);
+    expect(JSON.stringify(editor)).not.toContain(hash);
+  });
+
+  test("a save in password mode without a new password keeps the one stored; a new one replaces it and its digest", async () => {
+    const s = await opened();
+    const page = await created(s);
+    await savePage(
+      s.storage,
+      page.id,
+      input({
+        access: { addresses: [], mode: "password", password: "first one" },
+      })
+    );
+    const first = await s.storage.pages.find(page.id);
+    await savePage(
+      s.storage,
+      page.id,
+      input({ access: { addresses: [], mode: "password" } })
+    );
+    const kept = await s.storage.pages.find(page.id);
+    expect(kept?.access.passwordDigest).toBe(first?.access.passwordDigest);
+    expect(
+      await Bun.password.verify(
+        "first one",
+        (await s.storage.pages.password(page.id)) ?? ""
+      )
+    ).toBe(true);
+    await savePage(
+      s.storage,
+      page.id,
+      input({
+        access: { addresses: [], mode: "password", password: "second one" },
+      })
+    );
+    const replaced = await s.storage.pages.find(page.id);
+    expect(replaced?.access.passwordDigest).not.toBe(
+      first?.access.passwordDigest
+    );
+    expect(
+      await Bun.password.verify(
+        "second one",
+        (await s.storage.pages.password(page.id)) ?? ""
+      )
+    ).toBe(true);
+  });
+
+  test("leaving password mode forgets the page password and any other mode keeps no addresses it does not read", async () => {
+    const s = await opened();
+    const page = await created(s);
+    await savePage(
+      s.storage,
+      page.id,
+      input({
+        access: {
+          addresses: ["10.0.0.1"],
+          mode: "password",
+          password: "first one",
+        },
+      })
+    );
+    await savePage(
+      s.storage,
+      page.id,
+      input({ access: { addresses: ["10.0.0.1"], mode: "signed_in" } })
+    );
+    expect(await s.storage.pages.password(page.id)).toBeUndefined();
+    expect((await s.storage.pages.find(page.id))?.access).toEqual({
+      addresses: [],
+      mode: "signed_in",
+      passwordDigest: undefined,
+    });
+    // Back in password mode, a password is needed again.
+    expect(
+      await savePage(
+        s.storage,
+        page.id,
+        input({ access: { addresses: [], mode: "password" } })
+      )
+    ).toEqual({ ok: false, reason: "access_password_missing" });
+  });
+
+  test("password mode with no password stored and none given is refused, and nothing changes", async () => {
+    const s = await opened();
+    const page = await created(s);
+    const before = await s.storage.changeCounter();
+    expect(
+      await savePage(
+        s.storage,
+        page.id,
+        input({ access: { addresses: [], mode: "password" } })
+      )
+    ).toEqual({ ok: false, reason: "access_password_missing" });
+    expect((await s.storage.pages.find(page.id))?.access.mode).toBe("public");
+    expect(await s.storage.changeCounter()).toBe(before);
+  });
+
+  test("an allowed address that is neither an IP address nor a CIDR range is refused", async () => {
+    const s = await opened();
+    const page = await created(s);
+    expect(
+      await savePage(
+        s.storage,
+        page.id,
+        input({
+          access: { addresses: ["10.0.0.0/8", "office"], mode: "addresses" },
+        })
+      )
+    ).toEqual({ ok: false, reason: "access_address_invalid" });
+    expect((await s.storage.pages.find(page.id))?.access.mode).toBe("public");
+  });
+
+  test("addresses mode stores its addresses, and a save with no access makes the page public", async () => {
+    const s = await opened();
+    const page = await created(s);
+    await savePage(
+      s.storage,
+      page.id,
+      input({ access: { addresses: ["2001:db8::/32"], mode: "addresses" } })
+    );
+    expect((await s.storage.pages.find(page.id))?.access).toEqual({
+      addresses: ["2001:db8::/32"],
+      mode: "addresses",
+      passwordDigest: undefined,
+    });
+    await savePage(s.storage, page.id, input());
+    expect((await s.storage.pages.find(page.id))?.access).toEqual(publicAccess);
   });
 });
 

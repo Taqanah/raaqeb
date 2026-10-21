@@ -302,6 +302,7 @@ describe("the OpenAPI document", () => {
       expect(Object.keys(overview.responses).toSorted(byName)).toEqual([
         "200",
         "304",
+        "403",
         "404",
         "503",
       ]);
@@ -371,6 +372,7 @@ describe("the OpenAPI document", () => {
         expect(Object.keys(view.responses).toSorted(byName), path).toEqual([
           "200",
           "304",
+          "403",
           "404",
           "503",
         ]);
@@ -420,6 +422,7 @@ describe("the OpenAPI document", () => {
         expect(Object.keys(summary.responses).toSorted(byName), path).toEqual([
           "200",
           "304",
+          "403",
           "404",
           "503",
         ]);
@@ -462,7 +465,7 @@ describe("the OpenAPI document", () => {
           expect(
             Object.keys(resource.responses).toSorted(byName),
             path
-          ).toEqual(["200", "304", "404", "503"]);
+          ).toEqual(["200", "304", "403", "404", "503"]);
         }
       }
     }

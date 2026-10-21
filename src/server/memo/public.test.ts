@@ -11,6 +11,7 @@ import {
 import { createPage, savePage } from "@/server/pages/pages.ts";
 import type { PublicTarget, ViewTarget } from "@/server/pages/public.ts";
 import { publicAddress } from "@/server/settings/address.ts";
+import { publicAccess } from "@/shared/schemas/page.ts";
 import { createPublicMemo } from "./public.ts";
 
 let scratch: PagesScratch | undefined;
@@ -178,6 +179,7 @@ describe("the memo in front of the public page", () => {
     );
     expect(route.targets).toEqual([
       {
+        access: publicAccess,
         key: `${pageId} document /overview`,
         kind: "document",
         pageId,
@@ -227,20 +229,71 @@ describe("the memo in front of the public page", () => {
     ).toBeUndefined();
   });
 
-  test("a change counter that cannot be read renders the page fresh from the pages last read, never a stale entry and never the admin", async () => {
+  test("a change counter that cannot be read renders the page fresh after its access is read again from storage, never a stale entry and never the admin", async () => {
     const { pageId, s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const route = renders();
+    await memo.answer(request("/"), s.storage, route.render);
+    let found = 0;
+    const broken = {
+      ...s.storage,
+      changeCounter: () => Promise.reject(new Error("gone")),
+      pages: {
+        ...s.storage.pages,
+        find: (id: string) => {
+          found += 1;
+          return s.storage.pages.find(id);
+        },
+      },
+    };
+    const fresh = await memo.answer(request("/"), broken, route.render);
+    expect(await fresh?.text()).toBe("page 2");
+    expect(found).toBe(1);
+    await memo.answer(request("/"), broken, route.render);
+    expect(route.targets).toHaveLength(3);
+    expect(route.targets.at(-1)).toMatchObject({ kind: "view", pageId });
+    // The pages last read say public; storage says private now: storage wins.
+    const page = await s.storage.pages.find(pageId);
+    if (!page) {
+      throw new Error("no page");
+    }
+    await s.storage.pages.save(
+      pageId,
+      { ...page, access: { addresses: [], mode: "signed_in" } },
+      []
+    );
+    const closed = await memo.answer(request("/"), broken, route.render);
+    expect(closed?.status).toBe(403);
+    expect(route.targets).toHaveLength(3);
+  });
+
+  test("a change counter and a page that cannot be read answer as a private page without access, never the page", async () => {
+    const { s } = await withDefaultPage();
     const memo = createPublicMemo({ now: () => now });
     const route = renders();
     await memo.answer(request("/"), s.storage, route.render);
     const broken = {
       ...s.storage,
       changeCounter: () => Promise.reject(new Error("gone")),
+      pages: {
+        ...s.storage.pages,
+        find: () => Promise.reject(new Error("gone")),
+      },
     };
-    const fresh = await memo.answer(request("/"), broken, route.render);
-    expect(await fresh?.text()).toBe("page 2");
-    await memo.answer(request("/"), broken, route.render);
-    expect(route.targets).toHaveLength(3);
-    expect(route.targets.at(-1)).toMatchObject({ kind: "view", pageId });
+    const [stored] = await s.storage.pages.list();
+    for (const path of [
+      "/",
+      `/api/pages/${stored?.id}/overview`,
+      "/badge.svg",
+    ]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.answer(request(path), broken, route.render);
+      expect(answer?.status, path).toBe(403);
+      expect(answer?.headers.get("cache-control"), path).toBe(
+        "private, no-store"
+      );
+    }
+    expect(route.targets).toHaveLength(1);
   });
 
   test("a change counter that cannot be read before any page was known hands the request on", async () => {

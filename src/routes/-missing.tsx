@@ -1,7 +1,7 @@
 import { useLocation, useMatch } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { PageMissing as AdminMissing } from "@/admin/shell/page-missing.tsx";
-import { PageMissing, PlainMissing } from "@/public/views.tsx";
+import { AccessPage, PageMissing, PlainMissing } from "@/public/views.tsx";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import { Route as Root } from "./__root.tsx";
 import { missingOf } from "./-public.ts";
@@ -29,6 +29,16 @@ export function ViewMissing({ data }: { readonly data?: unknown }): ReactNode {
   const missing = missingOf(data);
   if (missingInShell(routeId)) {
     return <AdminMissing />;
+  }
+  if (missing?.access && resolved) {
+    return (
+      <AccessPage
+        frame={missing.frame}
+        mode={missing.access}
+        signIn={missing.signIn ?? "/sign-in"}
+        view={resolved}
+      />
+    );
   }
   if (missing && resolved) {
     // The address past the page's plain address, so the language switch keeps it.

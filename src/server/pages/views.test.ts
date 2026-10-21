@@ -563,3 +563,27 @@ describe("a view document's public answer", () => {
     }
   });
 });
+
+describe("a private page's frame", () => {
+  test("asks search engines not to index it, whatever its own switch says", async () => {
+    scratch = await scratchPages(d0);
+    const s = scratch;
+    const pageId = await page(s, []);
+    const read = async () => {
+      const frame = await readViewFrame(s.storage, pageId);
+      return frame.ok ? frame.document.page.noindex : undefined;
+    };
+    expect(await read()).toBe(false);
+    const stored = await s.storage.pages.find(pageId);
+    if (!stored) {
+      throw new Error("no page");
+    }
+    const saved = await savePage(s.storage, pageId, {
+      ...stored,
+      access: { addresses: [], mode: "signed_in" },
+      layout: [],
+    });
+    expect(saved.ok).toBe(true);
+    expect(await read()).toBe(true);
+  });
+});

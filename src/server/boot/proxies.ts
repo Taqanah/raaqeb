@@ -120,8 +120,11 @@ function inRange(bytes: Uint8Array, range: Range): boolean {
   return true;
 }
 
-/** The network a client address counts as: an IPv4 address alone, written as IPv4 or as IPv4 in IPv6, an IPv6 address's /64, since one host holds a whole /64; text that is no address is itself. */
-export function clientNetwork(address: string): string {
+/** The network a client address counts as: an IPv4 address alone, written as IPv4 or as IPv4 in IPv6, an IPv6 address's /64, since one host holds a whole /64, or the wider prefix asked for (a whole site's /48); text that is no address is itself. */
+export function clientNetwork(
+  address: string,
+  ipv6Prefix: 48 | 64 = 64
+): string {
   if (ipv4.test(address)) {
     return address;
   }
@@ -137,7 +140,7 @@ export function clientNetwork(address: string): string {
   ) {
     return [...bytes.slice(12)].join(".");
   }
-  return `${bytes.slice(0, 8).toHex()}/64`;
+  return `${bytes.slice(0, ipv6Prefix / 8).toHex()}/${ipv6Prefix}`;
 }
 
 /** True for `10.0.0.1`, `10.0.0.0/8`, `::1` or `fd00::/8`. */

@@ -3,8 +3,9 @@ import type { RequestContext } from "@/handler.ts";
 import { documentAnswer } from "@/routes/-resources.ts";
 import { readIncidentView, viewResponse } from "@/server/pages/views.ts";
 
-// One incident as a status page shows it: public on
-// any host; an incident on no component the page shows is not found.
+// One incident as a status page shows it, on any host, to whoever the page's
+// access lets in (everyone, for a public page); an incident on no component
+// the page shows is not found.
 function answer(
   context: RequestContext,
   pageId: string,

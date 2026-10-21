@@ -5435,6 +5435,134 @@ msgid "maintenance_occurrence_alone"
 msgstr "Changing or cancelling it here leaves the series and its other occurrences as they are."
 
 #. js-lingui-explicit-id
+msgid "page_section_access"
+msgstr "Access"
+
+#. js-lingui-explicit-id
+msgid "page_access_label"
+msgstr "Who sees the page"
+
+#. js-lingui-explicit-id
+msgid "page_access_public"
+msgstr "Public"
+
+#. js-lingui-explicit-id
+msgid "page_access_public_note"
+msgstr "Anyone with its address sees it."
+
+#. js-lingui-explicit-id
+msgid "page_access_password"
+msgstr "Password"
+
+#. js-lingui-explicit-id
+msgid "page_access_password_note"
+msgstr "Visitors enter the page password to see it."
+
+#. js-lingui-explicit-id
+msgid "page_access_signed_in"
+msgstr "Signed in"
+
+#. js-lingui-explicit-id
+msgid "page_access_signed_in_note"
+msgstr "Only those signed in to this install see it."
+
+#. js-lingui-explicit-id
+msgid "page_access_addresses"
+msgstr "Allowed addresses"
+
+#. js-lingui-explicit-id
+msgid "page_access_addresses_note"
+msgstr "Only visitors from the addresses you list see it."
+
+#. js-lingui-explicit-id
+msgid "page_access_private_note"
+msgstr "Anyone signed in always sees the page. Search engines never index it. Its subscribers keep their subscriptions and notifications, but their links lead through its access."
+
+#. js-lingui-explicit-id
+msgid "page_field_page_password"
+msgstr "Page password"
+
+#. js-lingui-explicit-id
+msgid "page_field_page_password_hint"
+msgstr "At least 8 characters. Share it with those who should see the page."
+
+#. js-lingui-explicit-id
+msgid "page_field_page_password_set_hint"
+msgstr "A password is set. Type a new one to replace it, and everyone who entered the old one is asked for the new one."
+
+#. js-lingui-explicit-id
+msgid "page_field_allowed_addresses"
+msgstr "Allowed addresses"
+
+#. js-lingui-explicit-id
+msgid "page_field_skip_addresses"
+msgstr "Addresses that need no password"
+
+#. js-lingui-explicit-id
+msgid "page_field_allowed_addresses_hint"
+msgstr "IP addresses or CIDR ranges, separated by commas or lines, matched against the visitor's address as read behind the trusted proxies."
+
+#. js-lingui-explicit-id
+msgid "page_field_skip_addresses_hint"
+msgstr "Optional. Visitors from these addresses see the page without the password: IP addresses or CIDR ranges, separated by commas or lines."
+
+#. js-lingui-explicit-id
+msgid "page_refused_access_password"
+msgstr "Set a page password of at least 8 characters."
+
+#. js-lingui-explicit-id
+msgid "page_refused_access_address"
+msgstr "Each entry must be an IP address or a CIDR range."
+
+#. js-lingui-explicit-id
+msgid "page_refused_access_addresses_missing"
+msgstr "List at least one address."
+
+#. js-lingui-explicit-id
+msgid "page_field_noindex_private"
+msgstr "A private page is never indexed."
+
+#. js-lingui-explicit-id
+msgid "page_private"
+msgstr "Private"
+
+#. js-lingui-explicit-id
+msgid "public_access_title"
+msgstr "This page is private"
+
+#. js-lingui-explicit-id
+msgid "public_access_password_prompt"
+msgstr "Enter the page password to see it."
+
+#. js-lingui-explicit-id
+msgid "public_access_password_field"
+msgstr "Password"
+
+#. js-lingui-explicit-id
+msgid "public_access_open"
+msgstr "Open the page"
+
+#. js-lingui-explicit-id
+msgid "public_access_wrong"
+msgstr "That password is not right."
+
+#. js-lingui-explicit-id
+msgid "public_access_limited"
+msgstr "Too many tries. Try again in a few minutes."
+
+#. js-lingui-explicit-id
+msgid "public_access_signed_in_prompt"
+msgstr "Sign in to this install to see it."
+
+#. js-lingui-explicit-id
+msgid "public_access_sign_in"
+msgstr "Sign in"
+
+#. js-lingui-explicit-id
+msgid "public_access_addresses_prompt"
+msgstr "It opens only from certain networks, and yours is not one of them."
+
+#. js-lingui-explicit-id
 msgid "report_list_title"
 msgstr "Reports"
 

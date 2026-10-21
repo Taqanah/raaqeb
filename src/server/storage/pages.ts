@@ -8,21 +8,26 @@
  * same write. Rows never leave this file.
  */
 import { type SQL, sql } from "drizzle-orm";
+import { z } from "zod";
 import { localeSchema } from "@/shared/i18n/locale.ts";
 import {
   componentsOf,
+  type PageAccessRule,
   type PageImage,
   type PageImageKind,
   type PageItem,
   type PageLayout,
+  pageAccessModeSchema,
   pageCustomizationSchema,
   pageImageKindSchema,
   pageImageKinds,
+  publicAccess,
   type StatusPage,
   type StatusPageFields,
 } from "@/shared/schemas/page.ts";
 import type { Executor } from "./connection.ts";
 import { contentText, storedContent } from "./content.ts";
+import { bumpChangeCounter } from "./counter.ts";
 
 /** A stored image with its bytes. */
 export interface StoredImage extends PageImage {
@@ -49,15 +54,18 @@ export interface PagesRepository {
   layout: (pageId: string) => Promise<PageLayout>;
   /** Every page, in creation order. */
   list: () => Promise<StatusPage[]>;
+  /** The page password's stored hash, or nothing when the page has none or is unknown. */
+  password: (id: string) => Promise<string | undefined>;
   /** Deletes the page, its layout and its images; answers whether it existed. */
   remove: (id: string) => Promise<boolean>;
   /** Deletes one image; answers whether it existed. */
   removeImage: (pageId: string, kind: PageImageKind) => Promise<boolean>;
-  /** Replaces the page's fields and its layout as one write; a component id that does not exist is skipped. Nothing when the id is unknown. */
+  /** Replaces the page's fields and its layout as one write that also moves the change counter; a component id that does not exist is skipped. In password mode the page password becomes `passwordHash`, or stays as stored without one; any other mode keeps none. Nothing when the id is unknown. */
   save: (
     id: string,
     fields: StatusPageFields,
-    layout: PageLayout
+    layout: PageLayout,
+    passwordHash?: string
   ) => Promise<StatusPage | undefined>;
   /** Stores or replaces one image; answers whether the page exists. */
   setImage: (pageId: string, image: StoredImage) => Promise<boolean>;
@@ -75,6 +83,9 @@ export class PageShapeError extends Error {
 
 /** A page row as the driver answers it. */
 interface PageRow {
+  access: string;
+  access_addresses: string;
+  access_password: string | null;
   created_at: number;
   custom_domain: string | null;
   customization: string;
@@ -129,7 +140,7 @@ export function pagesRepository(
   const read = async (run: Executor, where: SQL) =>
     (
       await run.rows<PageRow>(
-        sql`SELECT ${statusPages.id} AS id, ${statusPages.slug} AS slug, ${statusPages.title} AS title, ${statusPages.locale} AS locale, ${statusPages.customDomain} AS custom_domain, ${statusPages.isDefault} AS is_default, ${statusPages.published} AS published, ${statusPages.customization} AS customization, ${statusPages.createdAt} AS created_at, ${statusPages.updatedAt} AS updated_at FROM ${statusPages} ${where} ORDER BY ${statusPages.createdAt}, ${statusPages.id}`
+        sql`SELECT ${statusPages.id} AS id, ${statusPages.slug} AS slug, ${statusPages.title} AS title, ${statusPages.locale} AS locale, ${statusPages.customDomain} AS custom_domain, ${statusPages.isDefault} AS is_default, ${statusPages.published} AS published, ${statusPages.access} AS access, ${statusPages.accessPassword} AS access_password, ${statusPages.accessAddresses} AS access_addresses, ${statusPages.customization} AS customization, ${statusPages.createdAt} AS created_at, ${statusPages.updatedAt} AS updated_at FROM ${statusPages} ${where} ORDER BY ${statusPages.createdAt}, ${statusPages.id}`
       )
     ).map(pageOf);
   const findOne = async (run: Executor, id: string) =>
@@ -215,10 +226,13 @@ export function pagesRepository(
     create: (fields) =>
       executor.transaction(async (tx) => {
         const id = newId();
+        // A new page has no page password, so password mode cannot start here.
+        const access =
+          fields.access?.mode === "password" ? publicAccess : accessOf(fields);
         const time = now();
         await takeDefault(tx, fields);
         await tx.run(
-          sql`INSERT INTO ${statusPages} (${column("id")}, ${column("slug")}, ${column("title")}, ${column("locale")}, ${column("custom_domain")}, ${column("is_default")}, ${column("published")}, ${column("customization")}, ${column("created_at")}, ${column("updated_at")}) VALUES (${id}, ${fields.slug}, ${contentText(fields.title)}, ${fields.locale}, ${fields.customDomain ?? null}, ${fields.isDefault ? 1 : 0}, ${fields.published ? 1 : 0}, ${JSON.stringify(fields.customization)}, ${time}, ${time})`
+          sql`INSERT INTO ${statusPages} (${column("id")}, ${column("slug")}, ${column("title")}, ${column("locale")}, ${column("custom_domain")}, ${column("is_default")}, ${column("published")}, ${column("access")}, ${column("access_addresses")}, ${column("customization")}, ${column("created_at")}, ${column("updated_at")}) VALUES (${id}, ${fields.slug}, ${contentText(fields.title)}, ${fields.locale}, ${fields.customDomain ?? null}, ${fields.isDefault ? 1 : 0}, ${fields.published ? 1 : 0}, ${access.mode}, ${addressesText(access)}, ${JSON.stringify(fields.customization)}, ${time}, ${time})`
         );
         const created = await findOne(tx, id);
         if (!created) {
@@ -262,16 +276,30 @@ export function pagesRepository(
       (await executor.run(
         sql`DELETE FROM ${pageImages} WHERE ${pageImages.pageId} = ${pageId} AND ${pageImages.kind} = ${kind}`
       )) > 0,
-    save: (id, fields, layout) =>
+    password: async (id) => {
+      const [row] = await executor.rows<{ hash: string | null }>(
+        sql`SELECT ${statusPages.accessPassword} AS hash FROM ${statusPages} WHERE ${statusPages.id} = ${id}`
+      );
+      return row?.hash ?? undefined;
+    },
+    save: (id, fields, layout, passwordHash) =>
       executor.transaction(async (tx) => {
         if (!(await findOne(tx, id))) {
           return;
         }
         await takeDefault(tx, fields);
+        const access = accessOf(fields);
+        // Kept in password mode alone: a new one replaces it, none keeps the one stored.
+        const password =
+          access.mode === "password"
+            ? sql`COALESCE(${passwordHash ?? null}, ${column("access_password")})`
+            : sql`NULL`;
         await tx.run(
-          sql`UPDATE ${statusPages} SET ${column("slug")} = ${fields.slug}, ${column("title")} = ${contentText(fields.title)}, ${column("locale")} = ${fields.locale}, ${column("custom_domain")} = ${fields.customDomain ?? null}, ${column("is_default")} = ${fields.isDefault ? 1 : 0}, ${column("published")} = ${fields.published ? 1 : 0}, ${column("customization")} = ${JSON.stringify(fields.customization)}, ${column("updated_at")} = ${now()} WHERE ${statusPages.id} = ${id}`
+          sql`UPDATE ${statusPages} SET ${column("slug")} = ${fields.slug}, ${column("title")} = ${contentText(fields.title)}, ${column("locale")} = ${fields.locale}, ${column("custom_domain")} = ${fields.customDomain ?? null}, ${column("is_default")} = ${fields.isDefault ? 1 : 0}, ${column("published")} = ${fields.published ? 1 : 0}, ${column("access")} = ${access.mode}, ${column("access_password")} = ${password}, ${column("access_addresses")} = ${addressesText(access)}, ${column("customization")} = ${JSON.stringify(fields.customization)}, ${column("updated_at")} = ${now()} WHERE ${statusPages.id} = ${id}`
         );
         await writeLayout(tx, id, layout);
+        // In the same write, so no saved page waits on a separate bump to reach the memo.
+        await bumpChangeCounter(tx);
         return findOne(tx, id);
       }),
     setImage: async (pageId, image) =>
@@ -332,16 +360,57 @@ function layoutsOf(
   );
 }
 
+/** The digest of a page password's stored hash that a page pass names: its SHA-256 cut to 128 bits, in hex. */
+export function passwordDigest(hash: string): string {
+  return new Bun.CryptoHasher("sha256").update(hash).digest("hex").slice(0, 32);
+}
+
+/** The access a write stores: public when the fields name none. */
+function accessOf(fields: StatusPageFields): PageAccessRule {
+  return fields.access ?? publicAccess;
+}
+
+/** The allowed addresses as their column holds them: kept only in the modes that read them. */
+function addressesText(access: PageAccessRule): string {
+  return JSON.stringify(
+    access.mode === "password" || access.mode === "addresses"
+      ? access.addresses
+      : []
+  );
+}
+
+const storedAddressesSchema = z.array(z.string());
+
 function pageOf(row: PageRow): StatusPage {
   const locale = localeSchema.safeParse(row.locale);
+  const mode = pageAccessModeSchema.safeParse(row.access);
+  const addresses = storedAddressesSchema.safeParse(
+    parseJson(row.access_addresses)
+  );
   const customization = pageCustomizationSchema.safeParse(
     parseJson(row.customization)
   );
   const title = storedContent(row.title);
-  if (!(locale.success && customization.success && title)) {
+  if (
+    !(
+      locale.success &&
+      customization.success &&
+      title &&
+      mode.success &&
+      addresses.success
+    )
+  ) {
     throw new PageShapeError(row.id);
   }
   return {
+    access: {
+      addresses: addresses.data,
+      mode: mode.data,
+      passwordDigest:
+        row.access_password === null
+          ? undefined
+          : passwordDigest(row.access_password),
+    },
     createdAt: row.created_at,
     customDomain: row.custom_domain ?? undefined,
     customization: customization.data,

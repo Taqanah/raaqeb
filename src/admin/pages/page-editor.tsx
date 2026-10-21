@@ -40,11 +40,13 @@ import {
   defaultStatusColours,
   footerLabelMaxLength,
   footerLinksMax,
+  type PageAccessMode,
   type PageDeleteResult,
   type PageEditor as PageEditorRead,
   type PageInput,
   type PageRefusal,
   type PageSaveResult,
+  pageAccessModes,
   pageDescriptionMaxLength,
   pageImageKinds,
   pageTitleMaxLength,
@@ -82,15 +84,24 @@ import {
 } from "@/shared/ui/field.tsx";
 import {
   ExternalLinkIcon,
+  GlobeIcon,
+  KeyRoundIcon,
   MonitorIcon,
   MoonIcon,
+  NetworkIcon,
   PlusIcon,
   SunIcon,
   TrashIcon,
+  UsersIcon,
   XIcon,
 } from "@/shared/ui/icons.tsx";
 import { Input } from "@/shared/ui/input.tsx";
 import { localeNames } from "@/shared/ui/locale-switcher.tsx";
+import {
+  OptionCard,
+  OptionCardBody,
+  OptionCards,
+} from "@/shared/ui/option-card.tsx";
 import { Segmented, SegmentedItem } from "@/shared/ui/segmented.tsx";
 import { StatusLevelBadge } from "@/shared/ui/status-level.tsx";
 import { Switch } from "@/shared/ui/switch.tsx";
@@ -118,7 +129,14 @@ const shownLevels: readonly StatusLevel[] = [
   "under_maintenance",
 ];
 
-const textFields = ["contactUrl", "customCss", "customDomain", "slug"] as const;
+const textFields = [
+  "accessAddresses",
+  "accessPassword",
+  "contactUrl",
+  "customCss",
+  "customDomain",
+  "slug",
+] as const;
 type TextField = (typeof textFields)[number];
 
 /** The draft fields a switch flips. */
@@ -135,8 +153,39 @@ const defaultBrand = "#171717";
 
 /** Each choice's handler, taking the segmented control's value. */
 type Choose = Readonly<
-  Record<"barDays" | "locale" | "theme", (value: unknown) => void>
+  Record<
+    "accessMode" | "barDays" | "locale" | "theme",
+    (value: unknown) => void
+  >
 >;
+
+const accessIcons: Readonly<Record<PageAccessMode, typeof GlobeIcon>> = {
+  addresses: NetworkIcon,
+  password: KeyRoundIcon,
+  public: GlobeIcon,
+  signed_in: UsersIcon,
+};
+
+const accessWords: Readonly<
+  Record<
+    PageAccessMode,
+    { readonly note: MessageId; readonly title: MessageId }
+  >
+> = {
+  addresses: {
+    note: "page_access_addresses_note",
+    title: "page_access_addresses",
+  },
+  password: {
+    note: "page_access_password_note",
+    title: "page_access_password",
+  },
+  public: { note: "page_access_public_note", title: "page_access_public" },
+  signed_in: {
+    note: "page_access_signed_in_note",
+    title: "page_access_signed_in",
+  },
+};
 
 const themeIcons = { dark: MoonIcon, light: SunIcon, system: MonitorIcon };
 
@@ -152,6 +201,15 @@ const subscriptionWords: Readonly<Record<SubscriptionChannel, MessageId>> = {
 };
 
 const formId = "page-editor";
+
+/** The field a refusal of the save names, by the path it posts to. */
+const refusedFields: Readonly<Partial<Record<PageRefusal, string>>> = {
+  access_address_invalid: "access.addresses",
+  access_password_missing: "access.password",
+  domain_public_address: "customDomain",
+  domain_taken: "customDomain",
+  slug_taken: "slug",
+};
 
 /** The page's rules, as its save judges them. */
 function judge(draft: PageDraft): PageFieldErrors {
@@ -204,6 +262,12 @@ export function PageEditor({
   // One handler per short choice, each a segmented control; a value outside its list changes nothing.
   const onChoose = useMemo<Choose>(
     () => ({
+      accessMode: (value) => {
+        const mode = pageAccessModes.find((each) => each === value);
+        if (mode) {
+          setDraft((current) => ({ ...current, accessMode: mode }));
+        }
+      },
       barDays: (value) => {
         const days = barLengths.find((each) => String(each) === String(value));
         if (days) {
@@ -247,13 +311,9 @@ export function PageEditor({
       const result = await save(parsed.input).catch(() => undefined);
       if (!result?.ok) {
         const reason = result?.ok === false ? result.reason : "unavailable";
-        if (reason === "slug_taken") {
-          refuse({ slug: pageRefusalWords.slug_taken });
-        } else if (
-          reason === "domain_taken" ||
-          reason === "domain_public_address"
-        ) {
-          refuse({ customDomain: pageRefusalWords[reason] });
+        const field = refusedFields[reason];
+        if (field) {
+          refuse({ [field]: pageRefusalWords[reason] });
         }
         report({ draft, kind: "failed", reason });
         return;
@@ -309,6 +369,12 @@ export function PageEditor({
           onChoose={onChoose}
           onFlag={onFlag}
           onPart={onPart}
+          onText={onText}
+        />
+        <AccessCard
+          draft={draft}
+          errors={errors}
+          onChoose={onChoose}
           onText={onText}
         />
         <LayoutCard
@@ -431,15 +497,17 @@ function Refusal({
   ) : null;
 }
 
-/** One switch with its label and hint, flipping one draft field. */
+/** One switch with its label and hint, flipping one draft field; a disabled one's hint says why. */
 function FlagRow({
   checked,
+  disabled,
   field,
   hint,
   label,
   onFlag,
 }: {
   readonly checked: boolean;
+  readonly disabled?: boolean;
   readonly field: FlagField;
   readonly hint?: string;
   readonly label: string;
@@ -447,9 +515,10 @@ function FlagRow({
 }): ReactNode {
   const flip = useCallback((on: boolean) => onFlag(field, on), [field, onFlag]);
   return (
-    <Field orientation="horizontal">
+    <Field data-disabled={disabled ? true : undefined} orientation="horizontal">
       <Switch
         checked={checked}
+        disabled={disabled}
         id={field}
         name={field}
         onCheckedChange={flip}
@@ -459,6 +528,114 @@ function FlagRow({
         {hint ? <FieldDescription>{hint}</FieldDescription> : null}
       </div>
     </Field>
+  );
+}
+
+/** Who sees the page once it is published: a card per mode, then the page password and the allowed addresses where the mode reads them. */
+function AccessCard({
+  draft,
+  errors,
+  onChoose,
+  onText,
+}: {
+  readonly draft: PageDraft;
+  readonly errors: PageFieldErrors;
+  readonly onChoose: Choose;
+  readonly onText: (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => void;
+}): ReactNode {
+  const { t } = useMessages();
+  const mode = draft.accessMode;
+  return (
+    <Card data-section="page-access">
+      <CardHeader divided>
+        <CardTitle>{t("page_section_access")}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        <Field>
+          <FieldLabel id="access-label">{t("page_access_label")}</FieldLabel>
+          <OptionCards
+            aria-labelledby="access-label"
+            className="sm:grid-cols-2"
+            data-name="accessMode"
+            name="accessMode"
+            onValueChange={onChoose.accessMode}
+            value={mode}
+          >
+            {pageAccessModes.map((each) => {
+              const Icon = accessIcons[each];
+              return (
+                <OptionCard className="gap-3 pe-8" key={each} value={each}>
+                  <OptionCardBody
+                    description={t(accessWords[each].note)}
+                    icon={<Icon />}
+                    title={t(accessWords[each].title)}
+                  />
+                </OptionCard>
+              );
+            })}
+          </OptionCards>
+          {mode === "public" ? null : (
+            <FieldDescription>{t("page_access_private_note")}</FieldDescription>
+          )}
+        </Field>
+        {mode === "password" ? (
+          <Field>
+            <FieldLabel htmlFor="accessPassword">
+              {t("page_field_page_password")}
+            </FieldLabel>
+            <Input
+              aria-invalid={errors["access.password"] ? true : undefined}
+              autoComplete="new-password"
+              id="accessPassword"
+              name="accessPassword"
+              onChange={onText}
+              type="password"
+              value={draft.accessPassword}
+            />
+            <FieldDescription>
+              {t(
+                draft.passwordSet
+                  ? "page_field_page_password_set_hint"
+                  : "page_field_page_password_hint"
+              )}
+            </FieldDescription>
+            <Refusal errors={errors} path="access.password" />
+          </Field>
+        ) : null}
+        {mode === "password" || mode === "addresses" ? (
+          <Field>
+            <FieldLabel htmlFor="accessAddresses">
+              {t(
+                mode === "password"
+                  ? "page_field_skip_addresses"
+                  : "page_field_allowed_addresses"
+              )}
+            </FieldLabel>
+            <Textarea
+              aria-invalid={errors["access.addresses"] ? true : undefined}
+              className="font-mono"
+              dir="ltr"
+              id="accessAddresses"
+              name="accessAddresses"
+              onChange={onText}
+              rows={3}
+              spellCheck={false}
+              value={draft.accessAddresses}
+            />
+            <FieldDescription>
+              {t(
+                mode === "password"
+                  ? "page_field_skip_addresses_hint"
+                  : "page_field_allowed_addresses_hint"
+              )}
+            </FieldDescription>
+            <Refusal errors={errors} path="access.addresses" />
+          </Field>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -901,9 +1078,16 @@ function ContentCard({
           <FieldDescription>{t("page_field_contact_hint")}</FieldDescription>
           <Refusal errors={errors} path="customization.contactUrl" />
         </Field>
+        {/* A private page is never indexed, so its switch shows on and says why it cannot change. */}
         <FlagRow
-          checked={draft.noindex}
+          checked={draft.noindex || draft.accessMode !== "public"}
+          disabled={draft.accessMode !== "public"}
           field="noindex"
+          hint={
+            draft.accessMode === "public"
+              ? undefined
+              : t("page_field_noindex_private")
+          }
           label={t("page_field_noindex")}
           onFlag={onFlag}
         />

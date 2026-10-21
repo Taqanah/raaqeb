@@ -372,6 +372,12 @@ const pageImage = {
 const unpublishedDocument =
   "A page that is not published is not found, except to the signed-in operator, who gets its document with `Cache-Control: no-store`. While no database is open no page is found.";
 
+/** What a private page's output answers a request without access. */
+const privatePage = plainText(
+  "Forbidden",
+  "The page is private and the request has no access: no session of this install, no page pass for the page (the cookie its password earns at the page's address) and no allowed address. A private page's answers, this one and its 200s, carry `Cache-Control: private, no-store` and `X-Robots-Tag: noindex`, and no ETag."
+);
+
 /** A status page output's 503: with no database open it answers 404, so only a failed read is unavailable. */
 const pageUnavailable = plainText(
   "Service Unavailable",
@@ -390,6 +396,7 @@ const pageOverview = {
         "The overview: the page's status level, its open incidents, its maintenance windows in progress or scheduled, and its components with their bars and uptime; each day of a bar carries its downtime, observed time and mean response time, and the incidents and maintenance windows that ran on it. It carries an ETag and `Cache-Control: public, max-age=0, must-revalidate`; it changes when anything it shows changes, and at most five minutes after the clock moves today's figures. A HEAD gets no body.",
     },
     304: { description: "The ETag the request holds is still the document's." },
+    403: privatePage,
     404: plainText("Not Found", `No such page. ${unpublishedDocument}`),
     503: pageUnavailable,
   },
@@ -414,6 +421,7 @@ function viewDocument(
       304: {
         description: "The ETag the request holds is still the document's.",
       },
+      403: privatePage,
       404: plainText("Not Found", `${missing} ${unpublishedDocument}`),
       503: pageUnavailable,
     },
@@ -477,6 +485,7 @@ function pageResource(
       304: {
         description: "The ETag the request holds is still the answer's.",
       },
+      403: privatePage,
       404: plainText(
         "Not Found",
         "No page at this address, or no such address for it, or the page is not published, or no database is open."

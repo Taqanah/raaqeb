@@ -5,7 +5,7 @@ import { resetPasswordCommand, type Terminal } from "./server/auth/command.ts";
 import { resolveBootSettings } from "./server/boot/settings.ts";
 import { createOperatorAccount } from "./server/onboarding/onboarding.ts";
 import { publish } from "./server/pages/fixture.ts";
-import { createPage } from "./server/pages/pages.ts";
+import { createPage, savePage } from "./server/pages/pages.ts";
 import { currentVersion } from "./server/release/release.ts";
 import { publicAddress } from "./server/settings/address.ts";
 import { saveGeneralSettings } from "./server/settings/general.ts";
@@ -645,6 +645,88 @@ describe("the raaqeb command", () => {
       expect(new Set(crowd.map((each) => each.status))).toEqual(new Set([200]));
       const bodies = await Promise.all(crowd.map((each) => each.text()));
       expect(new Set(bodies).size).toBe(1);
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a stranger's burst on a private page costs one render of its access page and none of the page; the right password posted at its address earns a pass that opens it, never framed", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "let renders = 0; export default { fetch: async (r, o) => { renders += 1; const t = o?.context?.publicTarget; if (t && t.locked) { return new Response('<html><body><main data-slot=\"access-page\">locked ' + renders + '</main><p data-slot=\"access-wrong\" hidden>wrong</p></body></html>', { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } }); } return new Response('<html><body>secret render ' + renders + '</body></html>', { headers: { 'cache-control': 'public, max-age=0, must-revalidate', 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(200, {}),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      const stored = await result.storage.pages.find(created.page.id);
+      if (!stored) {
+        throw new Error("no page");
+      }
+      const saved = await savePage(result.storage, created.page.id, {
+        ...stored,
+        access: { addresses: [], mode: "password", password: "correct horse" },
+        layout: [],
+      });
+      if (!saved.ok) {
+        throw new Error(saved.reason);
+      }
+      const origin = `http://127.0.0.1:${result.server.port}`;
+      const crowd = await Promise.all(
+        Array.from({ length: 300 }, (_, index) =>
+          fetch(`${origin}${index % 2 ? "/" : "/history"}`)
+        )
+      );
+      expect(new Set(crowd.map((each) => each.status))).toEqual(new Set([403]));
+      const bodies = new Set(
+        await Promise.all(crowd.map((each) => each.text()))
+      );
+      expect([...bodies].some((body) => body.includes("secret"))).toBe(false);
+      expect([...bodies].every((body) => body.includes("locked 1"))).toBe(true);
+      expect(crowd[0]?.headers.get("x-frame-options")).toBe("DENY");
+      const wrong = await fetch(origin, {
+        body: "password=nope",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          origin,
+        },
+        method: "POST",
+        redirect: "manual",
+      });
+      expect(wrong.status).toBe(403);
+      expect(await wrong.text()).toContain('<p data-slot="access-wrong">');
+      const right = await fetch(origin, {
+        body: "password=correct+horse",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          origin,
+        },
+        method: "POST",
+        redirect: "manual",
+      });
+      expect(right.status).toBe(303);
+      const cookie = right.headers.get("set-cookie")?.split(";")[0] ?? "";
+      const opened = await fetch(origin, { headers: { cookie } });
+      expect(opened.status).toBe(200);
+      expect(await opened.text()).toContain("secret render");
+      expect(opened.headers.get("x-frame-options")).toBe("DENY");
+      // The kept view goes to no one else.
+      const after = await fetch(origin);
+      expect(after.status).toBe(403);
+      expect(await after.text()).not.toContain("secret");
     } finally {
       await result.stop();
     }

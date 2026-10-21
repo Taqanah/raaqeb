@@ -343,6 +343,60 @@ describe("signing up", () => {
       await subscribe(s.storage, key, email(main, "b@example.test"), options())
     ).toEqual({ ok: false, reason: "unavailable" });
   });
+
+  test("a private page takes a sign-up only from a visitor its access lets in, and one with no judge of access from no one, with the same answer as for no page", async () => {
+    const { main, s } = await world();
+    await emailChannel(s);
+    const stored = await s.storage.pages.find(main);
+    if (!stored) {
+      throw new Error("no page");
+    }
+    const saved = await savePage(s.storage, main, {
+      ...stored,
+      access: { addresses: [], mode: "signed_in" },
+      layout: [],
+    });
+    if (!saved.ok) {
+      throw new Error(saved.reason);
+    }
+    const judged: string[] = [];
+    const refused = options({
+      admits: (guarded) => {
+        judged.push(guarded.access.mode);
+        return Promise.resolve(false);
+      },
+    });
+    expect(await subscribe(s.storage, key, email(main), refused)).toEqual({
+      ok: false,
+      reason: "not_found",
+    });
+    expect(judged).toEqual(["signed_in"]);
+    expect(
+      await subscribe(s.storage, key, email(main, "b@example.test"), options())
+    ).toEqual({ ok: false, reason: "not_found" });
+    expect(refused.confirmations).toEqual([]);
+    const allowed = options({ admits: () => Promise.resolve(true) });
+    expect(await subscribe(s.storage, key, email(main), allowed)).toEqual({
+      ok: true,
+    });
+    expect(allowed.confirmations).toHaveLength(1);
+  });
+
+  test("a public page takes a sign-up without asking who the visitor is", async () => {
+    const { main, s } = await world();
+    await emailChannel(s);
+    let asked = false;
+    const run = options({
+      admits: () => {
+        asked = true;
+        return Promise.resolve(false);
+      },
+    });
+    expect(await subscribe(s.storage, key, email(main), run)).toEqual({
+      ok: true,
+    });
+    expect(asked).toBe(false);
+  });
 });
 
 describe("the channels a page offers", () => {

@@ -23,10 +23,16 @@ import {
   resourceNames,
   resourceSuffixes,
 } from "@/shared/schemas/overview.ts";
-import { customDomainOf, type StatusPage } from "@/shared/schemas/page.ts";
+import {
+  customDomainOf,
+  type PageAccess,
+  type StatusPage,
+} from "@/shared/schemas/page.ts";
 
 /** What the index keeps of one page to tell whether a request shows it. */
 export interface PublicPageEntry {
+  /** Who may see it; a private page frames no not-found. */
+  readonly access: PageAccess;
   readonly customDomain: string | undefined;
   readonly id: string;
   readonly isDefault: boolean;
@@ -47,10 +53,14 @@ export type ViewName = "history" | "incident" | "maintenance" | "overview";
 
 /** A request that shows one of a page's views in one locale: the page, the locale, the view and the memo's key. */
 export interface ViewTarget {
+  /** The page's access, which the memo judges before it answers. */
+  readonly access: PageAccess;
   /** The page id, the locale, the host the request came through and the path: the memo's key. */
   readonly key: string;
   readonly kind: "view";
   readonly locale: Locale;
+  /** Whether this render is the page's access page: the page's frame and its way in, in place of the view. */
+  readonly locked?: boolean;
   readonly pageId: string;
   readonly paths: PagePaths;
   /** Whether the page is published; the memo answers an unpublished one to the signed-in operator alone, outside the memo. */
@@ -62,6 +72,7 @@ export interface ViewTarget {
 
 /** A request for one of a page's view documents, the same in both locales. */
 export interface DocumentTarget {
+  readonly access: PageAccess;
   readonly key: string;
   readonly kind: "document";
   readonly pageId: string;
@@ -72,6 +83,7 @@ export interface DocumentTarget {
 
 /** A request for a page's badge, feed or summary: the page, the locale the badge and feed are written in, and the memo's key. */
 export interface ResourceTarget {
+  readonly access: PageAccess;
   readonly key: string;
   readonly kind: "resource";
   /** The locale of the address; the summary's is the page language, and it carries no words. */
@@ -92,6 +104,7 @@ export function publicIndexOf(
 ): PublicIndex {
   return {
     pages: pages.map((page) => ({
+      access: page.access,
       customDomain: page.customDomain,
       id: page.id,
       isDefault: page.isDefault,
@@ -166,6 +179,7 @@ function documentTarget(
     return;
   }
   return {
+    access: page.access,
     key: `${pageId} document ${suffix}`,
     kind: "document",
     pageId,
@@ -243,6 +257,7 @@ export function publicTarget(
   }
   const locale = prefix ?? page.locale;
   const shown = {
+    access: page.access,
     key: `${page.id} ${locale} ${claimed ? "domain" : "main"} ${path}`,
     locale,
     pageId: page.id,
@@ -282,8 +297,12 @@ export function missingView(
   ];
   for (const path of tried) {
     const target = publicTarget(index, host, path);
-    // An unpublished page frames nothing a visitor sees.
-    if (target?.kind === "view" && target.published) {
+    // An unpublished or private page frames nothing a stranger sees.
+    if (
+      target?.kind === "view" &&
+      target.published &&
+      target.access.mode === "public"
+    ) {
       return {
         locale: target.locale,
         pageId: target.pageId,

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Locale } from "@/shared/i18n/locale.ts";
 import {
   defaultCustomization,
+  publicAccess,
   type StatusPage,
 } from "@/shared/schemas/page.ts";
 import {
@@ -30,6 +31,7 @@ function stored(
     createdAt: 0,
     customDomain: undefined,
     customization: defaultCustomization,
+    access: publicAccess,
     id,
     isDefault: false,
     published: true,
@@ -82,6 +84,7 @@ describe("the pages index", () => {
           customDomain: undefined,
           id: "p-main",
           isDefault: true,
+          access: publicAccess,
           published: true,
           locale: "ar",
           slug: "main",
@@ -90,6 +93,7 @@ describe("the pages index", () => {
           customDomain: "status.shop.test",
           id: "p-shop",
           isDefault: false,
+          access: publicAccess,
           published: true,
           locale: "en",
           slug: "shop",
@@ -98,6 +102,7 @@ describe("the pages index", () => {
           customDomain: undefined,
           id: "p-api",
           isDefault: false,
+          access: publicAccess,
           published: true,
           locale: "ar",
           slug: "api",
@@ -336,6 +341,7 @@ describe("a view's document", () => {
       ).toEqual({
         key: "p-api document /overview",
         kind: "document",
+        access: publicAccess,
         pageId: "p-api",
         published: true,
         view: "overview",
@@ -356,6 +362,7 @@ describe("a view's document", () => {
         ).toEqual({
           key: `p-api document ${suffix}`,
           kind: "document",
+          access: publicAccess,
           pageId: "p-api",
           published: true,
           view: name,

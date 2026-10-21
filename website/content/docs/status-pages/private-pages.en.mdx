@@ -1,0 +1,47 @@
+---
+title: Private pages
+description: How to open a status page to some visitors only, by a page password, a sign-in or allowed addresses, and what everyone else sees.
+---
+
+A published status page is public by default: anyone with its address sees it. A private page is seen only by the visitors its access lets in. Everyone else meets the page's access page, in its own frame and branding.
+
+## Set the access
+
+1. Open the page's editor under **Status pages**.
+2. In the **Access** section, pick who sees the page.
+3. Fill in what the choice asks for and select **Save**.
+
+| Access | Who sees the page |
+| --- | --- |
+| **Public** | Anyone with its address. |
+| **Password** | Visitors who enter the page password, at least 8 characters. You may also list addresses that need no password. |
+| **Signed in** | Anyone signed in to this install. |
+| **Allowed addresses** | Visitors from the IP addresses or CIDR ranges you list, such as `203.0.113.0/24` or `2001:db8::/32`. |
+
+Anyone signed in to this install sees a private page of any kind. The addresses are matched against the visitor's address as Raaqeb reads it behind the [trusted proxies](/en/docs/operate/reverse-proxy), so set those first when Raaqeb runs behind a proxy. A save is refused when the password mode has no password, or when an entry is neither an IP address nor a CIDR range.
+
+## The page password
+
+The password is stored as an Argon2id hash, never in clear, and travels as that hash in an export. A visitor who enters it gets a cookie for that page alone, valid for 30 days on that browser. Type a new password and save, and everyone who entered the old one is asked for the new one. Saving with the field empty keeps the password as it is. Leaving password mode forgets it.
+
+A visitor's wrong tries are counted: ten per network in ten minutes, a network being one IPv4 address or one IPv6 `/48`. Past that the page asks them to wait until their oldest try is ten minutes old, the right password included. The right password never counts.
+
+## What a visitor without access sees
+
+At any address of the page's views (the overview, the history, an incident, a maintenance window, in either locale and on its custom domain), the page's frame with:
+
+- in password mode, a field for the page password;
+- in signed-in mode, a button to sign in;
+- in allowed-addresses mode, a line saying their network is not one the page opens from.
+
+The page's JSON documents, badge, feed and summary answer `403 Forbidden`, and its subscribe form takes no sign-up. A private page is never indexed by search engines, whatever its **Hide from search engines** switch says, and its answers carry `Cache-Control: private, no-store`, so no proxy or CDN keeps them.
+
+The page's logo, favicon and cover stay public, since the access page shows them.
+
+## Subscribers
+
+Subscribers of a page made private keep their subscription and keep receiving its notifications by email or webhook. The links in those notifications lead to the page, where the subscriber meets its access like any visitor. Their own subscription page, to confirm or unsubscribe, still opens from its link.
+
+## Custom domains and sign-in
+
+The sign-in belongs to the public address. On a page's custom domain, a signed-in page shows its access page to everyone; anyone signed in reads it at `/status/<slug>` on the public address. A password or allowed-addresses page works the same on both, though a page password entered on one host is asked again on the other.

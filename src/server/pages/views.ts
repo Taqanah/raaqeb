@@ -80,7 +80,8 @@ export function pageOf(
     images: { cover: urls.cover, favicon: urls.favicon, logo: urls.logo },
     labels: customization.labels,
     locale: page.locale,
-    noindex: customization.noindex,
+    // A private page is never indexed, whatever its own switch says.
+    noindex: customization.noindex || page.access.mode !== "public",
     poweredBy: customization.poweredBy,
     statusColours: customization.statusColours,
     theme: customization.theme,

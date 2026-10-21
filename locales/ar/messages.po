@@ -5435,6 +5435,134 @@ msgid "maintenance_occurrence_alone"
 msgstr "تغييره أو إلغاؤه هنا لا يمسّ وقت الصيانة المتكرر ولا مواعيده الأخرى."
 
 #. js-lingui-explicit-id
+msgid "page_section_access"
+msgstr "الوصول"
+
+#. js-lingui-explicit-id
+msgid "page_access_label"
+msgstr "من يرى الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_access_public"
+msgstr "عامة"
+
+#. js-lingui-explicit-id
+msgid "page_access_public_note"
+msgstr "يراها كل من لديه عنوانها."
+
+#. js-lingui-explicit-id
+msgid "page_access_password"
+msgstr "بكلمة مرور"
+
+#. js-lingui-explicit-id
+msgid "page_access_password_note"
+msgstr "يُدخل الزائر كلمة مرور الصفحة ليراها."
+
+#. js-lingui-explicit-id
+msgid "page_access_signed_in"
+msgstr "لمن سجّل الدخول"
+
+#. js-lingui-explicit-id
+msgid "page_access_signed_in_note"
+msgstr "لا يراها إلا من سجّل الدخول إلى هذا التثبيت."
+
+#. js-lingui-explicit-id
+msgid "page_access_addresses"
+msgstr "عناوين مسموح بها"
+
+#. js-lingui-explicit-id
+msgid "page_access_addresses_note"
+msgstr "لا يراها إلا الزوار من العناوين التي تذكرها."
+
+#. js-lingui-explicit-id
+msgid "page_access_private_note"
+msgstr "يرى من سجّل الدخول الصفحة دائمًا، ولا تُفهرسها محركات البحث، ويبقى مشتركوها على اشتراكهم وتصلهم إشعاراتهم، لكن روابطها تمر بالوصول."
+
+#. js-lingui-explicit-id
+msgid "page_field_page_password"
+msgstr "كلمة مرور الصفحة"
+
+#. js-lingui-explicit-id
+msgid "page_field_page_password_hint"
+msgstr "8 أحرف على الأقل. شاركها مع من تريد أن يرى الصفحة."
+
+#. js-lingui-explicit-id
+msgid "page_field_page_password_set_hint"
+msgstr "كلمة المرور محفوظة. اكتب كلمة جديدة لتحل محلها، فيُطلب ممن أدخل القديمة إدخال الجديدة."
+
+#. js-lingui-explicit-id
+msgid "page_field_allowed_addresses"
+msgstr "العناوين المسموح بها"
+
+#. js-lingui-explicit-id
+msgid "page_field_skip_addresses"
+msgstr "عناوين لا تحتاج إلى كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "page_field_allowed_addresses_hint"
+msgstr "عناوين IP أو نطاقات عناوين CIDR، تفصل بينها فواصل أو أسطر، كما يُقرأ عنوان الزائر خلف الوكلاء الموثوقين."
+
+#. js-lingui-explicit-id
+msgid "page_field_skip_addresses_hint"
+msgstr "اختياري. يرى الزوار من هذه العناوين الصفحة دون كلمة المرور: عناوين IP أو نطاقات عناوين CIDR، تفصل بينها فواصل أو أسطر."
+
+#. js-lingui-explicit-id
+msgid "page_refused_access_password"
+msgstr "عيّن كلمة مرور للصفحة من 8 أحرف على الأقل."
+
+#. js-lingui-explicit-id
+msgid "page_refused_access_address"
+msgstr "يجب أن يكون كل عنصر عنوان IP أو نطاق عناوين CIDR."
+
+#. js-lingui-explicit-id
+msgid "page_refused_access_addresses_missing"
+msgstr "اذكر عنوانًا واحدًا على الأقل."
+
+#. js-lingui-explicit-id
+msgid "page_field_noindex_private"
+msgstr "لا تُفهرس الصفحة الخاصة أبدًا."
+
+#. js-lingui-explicit-id
+msgid "page_private"
+msgstr "خاصة"
+
+#. js-lingui-explicit-id
+msgid "public_access_title"
+msgstr "هذه الصفحة خاصة"
+
+#. js-lingui-explicit-id
+msgid "public_access_password_prompt"
+msgstr "أدخل كلمة مرور الصفحة لتراها."
+
+#. js-lingui-explicit-id
+msgid "public_access_password_field"
+msgstr "كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "public_access_open"
+msgstr "افتح الصفحة"
+
+#. js-lingui-explicit-id
+msgid "public_access_wrong"
+msgstr "كلمة المرور غير صحيحة."
+
+#. js-lingui-explicit-id
+msgid "public_access_limited"
+msgstr "محاولات كثيرة. حاول مجددًا بعد بضع دقائق."
+
+#. js-lingui-explicit-id
+msgid "public_access_signed_in_prompt"
+msgstr "سجّل الدخول إلى هذا التثبيت لتراها."
+
+#. js-lingui-explicit-id
+msgid "public_access_sign_in"
+msgstr "تسجيل الدخول"
+
+#. js-lingui-explicit-id
+msgid "public_access_addresses_prompt"
+msgstr "لا تُفتح إلا من شبكات معيّنة، وشبكتك ليست منها."
+
+#. js-lingui-explicit-id
 msgid "report_list_title"
 msgstr "التقارير"
 

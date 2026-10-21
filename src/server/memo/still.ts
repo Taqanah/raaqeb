@@ -20,6 +20,26 @@ export function stillDocument(response: Response): Response {
     .transform(response);
 }
 
+/** An access page with the line that says why a try failed shown, and the password field marked as refused and focused. */
+export function withAccessLine(
+  response: Response,
+  line: "access-limited" | "access-wrong"
+): Response {
+  return new HTMLRewriter()
+    .on(`[data-slot=${line}]`, {
+      element: (element) => {
+        element.removeAttribute("hidden");
+      },
+    })
+    .on("input[name=password]", {
+      element: (element) => {
+        element.setAttribute("aria-invalid", "true");
+        element.setAttribute("autofocus", "");
+      },
+    })
+    .transform(response);
+}
+
 /** The document with its language switch leading to `href`. */
 export function withLocaleSwitch(response: Response, href: string): Response {
   return new HTMLRewriter()

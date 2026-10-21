@@ -4,7 +4,8 @@ import { documentAnswer } from "@/routes/-resources.ts";
 import { readMaintenanceView, viewResponse } from "@/server/pages/views.ts";
 
 // One maintenance window as a status page shows it:
-// public on any host; a window on no component the page shows is not found.
+// on any host, to whoever the page's access lets in (everyone, for a public
+// page); a window on no component the page shows is not found.
 function answer(
   context: RequestContext,
   pageId: string,

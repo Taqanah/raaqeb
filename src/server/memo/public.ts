@@ -8,15 +8,31 @@
  * the counter and the UTC day as the entry's validity. An unpublished
  * page's view or document is answered to the signed-in operator alone,
  * rendered outside the memo and never cached; to anyone else it is not the
- * memo's, like an address no page has. Any other request,
+ * memo's, like an address no page has. A private page's answers are kept
+ * like any page's and answered only to a request its page access lets in;
+ * anyone else gets its access page, kept still, or a plain 403, and a form
+ * POST at one of its views is a try at its page password. Any other request,
  * and every request while no database is open, is not its business, but for
  * a not-found: an address no route answers, or an incident, window or month a
  * page lacks, is answered with a not-found the app renders once per frame and
  * the memo keeps still, so a scanner's burst costs one render.
  */
 
-import { requestOriginHeader } from "@/server/boot/proxies.ts";
+import { verifyPassword } from "@/server/auth/password.ts";
+import type { InstallKey } from "@/server/boot/installkey.ts";
+import {
+  clientAddressHeader,
+  requestOriginHeader,
+} from "@/server/boot/proxies.ts";
 import { busyAnswer } from "@/server/pace.ts";
+import {
+  type AttemptLimiter,
+  admits,
+  createAttemptLimiter,
+  issuePass,
+  passCookie,
+  passwordDigest,
+} from "@/server/pages/access.ts";
 import {
   anonymousPageKey,
   missingAddress,
@@ -42,9 +58,10 @@ import { historyMonth, monthOf } from "@/shared/domain/history.ts";
 import { utcDayStart } from "@/shared/domain/retention.ts";
 import { locales } from "@/shared/i18n/locale.ts";
 import { type PublicView, viewPath } from "@/shared/schemas/overview.ts";
+import type { PageAccess } from "@/shared/schemas/page.ts";
 import { type Month, monthSchema } from "@/shared/schemas/views.ts";
 import { createMemo, memoCap } from "./memo.ts";
-import { stillDocument, withLocaleSwitch } from "./still.ts";
+import { stillDocument, withAccessLine, withLocaleSwitch } from "./still.ts";
 
 export type PublicStorage = Pick<Storage, "changeCounter"> & ViewStorage;
 
@@ -94,6 +111,21 @@ export interface PublicMemo {
     /** Runs the read that tells whether the incident, window or month is on the page, as the entry paces it (a stranger's takes its turn); nothing when no turn is free, which answers 503. Run at once without one. */
     check?: Check
   ) => Promise<Response | undefined>;
+  /**
+   * A visitor's try at a private page's password: a form POST, with
+   * `password`, at any address of one of its views. Counted per client
+   * network before anything is read; a POST from another origin is refused.
+   * The right password answers 303 back to the address with a page pass;
+   * a wrong one, or one past the client's share, the page's access page
+   * saying so. Nothing for any other request.
+   */
+  readonly attempt: (
+    request: Request,
+    storage: PublicStorage | undefined,
+    renderMissing: RenderMissing,
+    /** Runs the password's verification as the entry paces it, one at a time for a stranger; nothing when no turn is free, which answers 503. Run at once without one. */
+    check?: Check
+  ) => Promise<Response | undefined>;
   /** The page whose frame shows a not-found at the request's address, from the pages the last answer read: no database read of its own, so a scanner's address costs none. */
   readonly missing: (request: Request) => PublicView | undefined;
   /**
@@ -134,6 +166,68 @@ function resolvedHost(request: Request): string | undefined {
     // The entry writes an origin it parsed, so this is only a request from elsewhere.
     return undefined;
   }
+}
+
+/** The access a page is judged by when storage cannot say what it is: open to a session alone, never a stranger. */
+const closedAccess: PageAccess = {
+  addresses: [],
+  mode: "signed_in",
+  passwordDigest: undefined,
+};
+
+/** The largest form a try at a page password may post. */
+const attemptBodyBytes = 2048;
+
+/** A private page's answer as it leaves: kept by no cache but the visitor's own, and never indexed; the memo's ETag, which a no-store answer has no use for, left out. */
+function privately(
+  response: Response,
+  rewrite: {
+    readonly "retry-after"?: string | undefined;
+    readonly status?: number;
+  } = {}
+): Response {
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "private, no-store");
+  headers.set("x-robots-tag", "noindex");
+  headers.delete("etag");
+  if (rewrite["retry-after"] !== undefined) {
+    headers.set("retry-after", rewrite["retry-after"]);
+  }
+  return new Response(response.body, {
+    headers,
+    status: rewrite.status ?? response.status,
+  });
+}
+
+/** The answer to a private page's document, badge, feed or summary for a request without access. */
+function forbidden(): Response {
+  return privately(
+    new Response("Forbidden", {
+      headers: { "content-type": "text/plain; charset=utf-8" },
+      status: 403,
+    })
+  );
+}
+
+/** A try's form, read only when it comes from the page's own origin and fits its small bound; else the refusal. */
+async function tryBody(request: Request): Promise<string | Response> {
+  const sent = request.headers.get("origin");
+  // A form posted from another site is no visitor's own try.
+  if (sent !== null && sent !== request.headers.get(requestOriginHeader)) {
+    return forbidden();
+  }
+  if (Number(request.headers.get("content-length")) > attemptBodyBytes) {
+    return tooLarge();
+  }
+  const body = await request.text();
+  return body.length > attemptBodyBytes ? tooLarge() : body;
+}
+
+function tooLarge(): Response {
+  return new Response("Payload Too Large", {
+    headers: { "content-type": "text/plain; charset=utf-8" },
+    status: 413,
+  });
 }
 
 /** The anonymous pages kept at once: six pages in three spellings of their locale. */
@@ -197,6 +291,10 @@ async function lacks(
 
 /** The public memo over the clock the UTC day is read from. `operator` tells whether a request carries the operator's session, which alone sees an unpublished page's views and documents, rendered outside the memo; with none, no one does. */
 export function createPublicMemo(options: {
+  /** Counts the attempts at page passwords; ten per client network in ten minutes by default. */
+  readonly attempts?: AttemptLimiter;
+  /** Seals and opens page passes; with none no visitor holds one. */
+  readonly key?: InstallKey;
   readonly now: () => number;
   readonly operator?: (request: Request) => Promise<boolean>;
 }): PublicMemo {
@@ -207,20 +305,25 @@ export function createPublicMemo(options: {
   const operator = options.operator ?? (() => Promise.resolve(false));
   const targetOf = (request: Request) =>
     publicTarget(index, resolvedHost(request), new URL(request.url).pathname);
+  /** Whether a read at `counter` is newer than the index: the counter only moves up, so an older read that lands last never replaces a newer one. */
+  const newer = (counter: number) =>
+    indexedAt === undefined || counter > indexedAt;
   const read = async (storage: PublicStorage): Promise<number | undefined> => {
     try {
       const counter = await storage.changeCounter();
-      if (counter !== indexedAt) {
+      if (newer(counter)) {
         const [pages, address] = await Promise.all([
           storage.pages.list(),
           readPublicAddress(storage),
         ]);
-        index = publicIndexOf(pages, address);
-        indexedAt = counter;
+        if (newer(counter)) {
+          index = publicIndexOf(pages, address);
+          indexedAt = counter;
+        }
       }
       return counter;
     } catch {
-      // Nothing to judge an entry by: the page renders fresh from the pages last read.
+      // Nothing to judge an entry by: the page renders fresh, its access read again from storage.
       return undefined;
     }
   };
@@ -267,6 +370,85 @@ export function createPublicMemo(options: {
       renderMissing(bare(request, missingAddress(frame)), undefined, refresh)
     );
   };
+  /** A target with its page's access and publication as storage holds them now; closed to all but a session when the page cannot be read; nothing when the page is gone. */
+  const asStored = async <Target extends PublicTarget>(
+    storage: PublicStorage,
+    target: Target
+  ): Promise<Target | undefined> => {
+    try {
+      const page = await storage.pages.find(target.pageId);
+      return (
+        page && { ...target, access: page.access, published: page.published }
+      );
+    } catch {
+      return { ...target, access: closedAccess };
+    }
+  };
+  /** Whether the request may see the target's page, by its page access. */
+  const admitted = (request: Request, target: PublicTarget) =>
+    admits(
+      { access: target.access, id: target.pageId },
+      {
+        client: request.headers.get(clientAddressHeader) ?? undefined,
+        cookie: request.headers.get("cookie"),
+        signedIn: () => operator(request),
+      },
+      options.key,
+      options.now()
+    );
+  /** A private view's access page in its locale, kept still per page, locale and host like a not-found, its language switch keeping the address; with `line`, the line that says why a try failed shown. Without the app's not-found render, a plain 403. */
+  const accessPage = async (
+    request: Request,
+    target: ViewTarget,
+    counter: number | undefined,
+    renderMissing: RenderMissing | undefined,
+    line?: "access-limited" | "access-wrong",
+    /** For a client past its share: how long until its oldest try leaves the period. */
+    retryAfterMs = 0
+  ): Promise<Response> => {
+    if (!renderMissing) {
+      return forbidden();
+    }
+    const key = `access ${target.pageId} ${target.locale} ${target.paths.origin ?? ""}`;
+    const overview = viewPath(target.paths, target.locale, "");
+    const locked: ViewTarget = {
+      ...target,
+      key,
+      locked: true,
+      suffix: "",
+      view: "overview",
+    };
+    const answer = await kept(request, key, counter, (refresh) =>
+      renderMissing(bare(request, overview), locked, refresh)
+    );
+    // A render with no turn is answered as it came.
+    if (answer.status !== 404) {
+      return answer;
+    }
+    const other =
+      locales.find((each) => each !== target.locale) ?? target.locale;
+    const page = withLocaleSwitch(
+      answer,
+      viewPath(target.paths, other, target.suffix)
+    );
+    return privately(line ? withAccessLine(page, line) : page, {
+      "retry-after":
+        line === "access-limited"
+          ? String(Math.ceil(retryAfterMs / 1000))
+          : undefined,
+      status: line === "access-limited" ? 429 : 403,
+    });
+  };
+  /** A private page's answer to a request without access: a view's access page, else a plain 403. */
+  const denied = async (
+    request: Request,
+    target: PublicTarget,
+    counter: number | undefined,
+    renderMissing: RenderMissing | undefined
+  ): Promise<Response> =>
+    target.kind === "view"
+      ? await accessPage(request, target, counter, renderMissing)
+      : forbidden();
   /** A view's not-found in its locale, its language switch keeping the address. */
   const viewNotFound = async (
     request: Request,
@@ -332,53 +514,172 @@ export function createPublicMemo(options: {
     }
   };
 
+  /** What a target shows: its render, or the page's not-found kept still for a view whose incident, window or month its page lacks. */
+  const shownAt = async (
+    request: Request,
+    storage: PublicStorage,
+    target: PublicTarget,
+    counter: number | undefined,
+    refresh: boolean,
+    app: {
+      readonly check: Check | undefined;
+      readonly render: (
+        target: PublicTarget,
+        refresh: boolean
+      ) => Promise<Response>;
+      readonly renderMissing: RenderMissing | undefined;
+    }
+  ): Promise<Response> => {
+    // Only an incident, a window or a month has a read of its own to check.
+    if (
+      !app.renderMissing ||
+      target.kind !== "view" ||
+      !itemPath.test(target.suffix)
+    ) {
+      return await app.render(target, refresh);
+    }
+    const itemRead = () => notOnPage(storage, target);
+    const lacking = app.check ? await app.check(itemRead) : await itemRead();
+    if (lacking === undefined) {
+      return busyAnswer();
+    }
+    return lacking
+      ? await viewNotFound(request, target, counter, app.renderMissing)
+      : await app.render(target, refresh);
+  };
+  /** An unpublished page's view or document, the operator's preview alone: rendered fresh, kept by no one; nothing for anyone else, or for its badge, feed or summary. */
+  const preview = async (
+    request: Request,
+    target: PublicTarget,
+    render: (target: PublicTarget, refresh: boolean) => Promise<Response>
+  ): Promise<Response | undefined> => {
+    if (target.kind === "resource" || !(await operator(request))) {
+      return;
+    }
+    const rendered = await render(target, false);
+    const headers = new Headers(rendered.headers);
+    headers.set("cache-control", "no-store");
+    return new Response(rendered.body, {
+      headers,
+      status: rendered.status,
+    });
+  };
+  const attempts = options.attempts ?? createAttemptLimiter();
+
   return {
+    attempt: async (request, storage, renderMissing, check) => {
+      if (!storage || request.method !== "POST") {
+        return;
+      }
+      const counter = await read(storage);
+      // The page password is read from storage below, so a stale index costs a try at most.
+      const target = targetOf(request);
+      if (
+        target?.kind !== "view" ||
+        !target.published ||
+        target.access.mode !== "password"
+      ) {
+        return;
+      }
+      const body = await tryBody(request);
+      if (body instanceof Response) {
+        return body;
+      }
+      const now = options.now();
+      const client = request.headers.get(clientAddressHeader) ?? undefined;
+      // Counted before any read, so a flood from one client costs no hash. A client past its share is not judged at all, the right password included: judging it would answer a guess.
+      if (!attempts.take(client, now)) {
+        return await accessPage(
+          request,
+          target,
+          counter,
+          renderMissing,
+          "access-limited",
+          attempts.retryAfter(client, now)
+        );
+      }
+      const typed = new URLSearchParams(body).get("password") ?? "";
+      const hash = await storage.pages.password(target.pageId);
+      const judge = () =>
+        hash === undefined
+          ? Promise.resolve(false)
+          : verifyPassword({ hash, password: typed });
+      const right = check ? await check(judge) : await judge();
+      if (right === undefined) {
+        return busyAnswer();
+      }
+      if (!(right && hash !== undefined && options.key)) {
+        return await accessPage(
+          request,
+          target,
+          counter,
+          renderMissing,
+          "access-wrong"
+        );
+      }
+      // The right password costs the client none of its share.
+      attempts.refund(client, now);
+      const pass = await issuePass(
+        options.key,
+        {
+          access: { ...target.access, passwordDigest: passwordDigest(hash) },
+          id: target.pageId,
+        },
+        now
+      );
+      const url = new URL(request.url);
+      return new Response(null, {
+        headers: {
+          "cache-control": "no-store",
+          location: `${url.pathname}${url.search}`,
+          "set-cookie": passCookie(
+            target.pageId,
+            pass,
+            request.headers.get(requestOriginHeader)?.startsWith("https:") ??
+              false
+          ),
+        },
+        status: 303,
+      });
+    },
     answer: async (request, storage, render, counted, renderMissing, check) => {
       if (!storage || (request.method !== "GET" && request.method !== "HEAD")) {
         return;
       }
       const counter = await (counted ?? read(storage));
-      const target = targetOf(request);
+      const resolved = targetOf(request);
+      // With no counter the pages last read vouch for nothing: the page's access is read again, closed when it cannot be.
+      const target =
+        resolved && counter === undefined
+          ? await asStored(storage, resolved)
+          : resolved;
       if (!target) {
         return;
       }
       if (!target.published) {
-        // The operator's preview alone, of a view or its document: rendered fresh, kept by no one.
-        if (target.kind === "resource" || !(await operator(request))) {
-          return;
-        }
-        const rendered = await render(target, false);
-        const headers = new Headers(rendered.headers);
-        headers.set("cache-control", "no-store");
-        return new Response(rendered.body, {
-          headers,
-          status: rendered.status,
+        return await preview(request, target, render);
+      }
+      const open = target.access.mode === "public";
+      // A private page's answers, kept or not, go only to a request its access lets in.
+      if (!(open || (await admitted(request, target)))) {
+        return await denied(request, target, counter, renderMissing);
+      }
+      const shown = (refresh: boolean) =>
+        shownAt(request, storage, target, counter, refresh, {
+          check,
+          render,
+          renderMissing,
         });
-      }
-      // A view whose incident, window or month its page lacks is the page's not-found, kept still.
-      const shown = async (refresh: boolean): Promise<Response> => {
-        // Only an incident, a window or a month has a read of its own to check.
-        if (
-          !renderMissing ||
-          target.kind !== "view" ||
-          !itemPath.test(target.suffix)
-        ) {
-          return await render(target, refresh);
-        }
-        const itemRead = () => notOnPage(storage, target);
-        const lacking = check ? await check(itemRead) : await itemRead();
-        if (lacking === undefined) {
-          return busyAnswer();
-        }
-        return lacking
-          ? await viewNotFound(request, target, counter, renderMissing)
-          : await render(target, refresh);
-      };
-      if (counter === undefined) {
-        return await shown(false);
-      }
-      const validity = { counter, day: utcDayStart(options.now()) };
-      return await memo.respond(request, target.key, validity, shown);
+      const answer =
+        counter === undefined
+          ? await shown(false)
+          : await memo.respond(
+              request,
+              target.key,
+              { counter, day: utcDayStart(options.now()) },
+              shown
+            );
+      return open ? answer : privately(answer);
     },
     notFound: async (request, storage, renderMissing, counted, gone) => {
       const counter = storage ? await (counted ?? read(storage)) : noDatabase;

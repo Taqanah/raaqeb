@@ -284,13 +284,33 @@ _Avoid_: alert, broadcast
 
 **Status page**:
 Arabic: صفحة حالة
-A public page, once published, one of many per install, that shows a chosen set of components and the incidents affecting them. Has a slug, an optional custom domain, and its own customization. One page can be the default for the bare host.
+A page, once published, one of many per install, that shows a chosen set of components and the incidents affecting them. Public unless its page access makes it a private page. Has a slug, an optional custom domain, and its own customization. One page can be the default for the bare host.
 _Avoid_: dashboard, public page, site
 
 **Published**:
 Arabic: منشورة
-Whether a status page is public, a switch the operator sets. A new page starts unpublished. An unpublished page is not found by visitors at any of its addresses, takes no subscription and sends its subscribers nothing; the signed-in operator sees it at its own address, marked as not published. Not a private page: no visitor can be let in.
-_Avoid_: draft, live, visible, private (private pages are a later feature with access rules)
+Whether a status page is shown at all, a switch the operator sets. A new page starts unpublished. An unpublished page is not found by visitors at any of its addresses, takes no subscription and sends its subscribers nothing; the signed-in operator sees it at its own address, marked as not published. Not a private page: no visitor can be let in.
+_Avoid_: draft, live, visible, private (that is a published page with page access)
+
+**Page access**:
+Arabic: الوصول
+Who may see a published status page: everyone (public, the default), visitors who enter its page password, anyone signed in to this install, or visitors from its allowed addresses (IP addresses or CIDR ranges, matched against the client address behind the trusted proxies). In password mode allowed addresses may be set too, and either lets a visitor in. Anyone signed in to this install sees a page of any mode. A new page password ends every page pass the old one earned; leaving password mode forgets the password.
+_Avoid_: visibility, privacy, permissions, protection
+
+**Private page**:
+Arabic: صفحة خاصة
+A published status page whose page access is not public. Its views, documents, feeds, badges, summary and subscription form answer only a request its access lets in; anyone else meets its access page at a view's address and nothing at the rest. It is kept in the memo like any page, answered only after the access check, never cached by anyone but the visitor's own browser and never indexed. It frames no not-found. Its subscribers keep their subscriptions and their subscriber notifications, whose links lead through its access.
+_Avoid_: hidden page, protected page, unpublished page (that one no visitor can see)
+
+**Access page**:
+Arabic: صفحة الوصول
+What a visitor without access meets at any view address of a private page: the page's own frame and branding with its way in. In password mode a form for the page password, which says when a try was wrong or one too many; in signed-in mode the way to sign in; in allowed-addresses mode only that the visitor's network is not one the page opens from. The same document for every visitor of one page, locale and host.
+_Avoid_: login page, lock screen, gate
+
+**Page pass**:
+Arabic: تصريح الصفحة
+What a visitor's browser holds for one private page after its page password was entered: a cookie sealed with the install key that names the page, the password it was earned with and when it ends, 30 days on. It opens no other page and ends with a new page password.
+_Avoid_: session (that is a sign-in), token, access cookie
 
 **View**:
 Arabic: واجهة عرض
@@ -299,7 +319,7 @@ _Avoid_: page (that is the status page), screen, route
 
 **Feed**:
 Arabic: موجز
-A status page's public Atom feed of its incidents and maintenance windows, one in each locale. Anyone can read it; there is no subscription record and no confirmation.
+A status page's Atom feed of its incidents and maintenance windows, one in each locale. Anyone the page lets in can read it, everyone for a public page; there is no subscription record and no confirmation.
 _Avoid_: RSS subscription, feed subscriber
 
 **Day bar**:
@@ -309,7 +329,7 @@ _Avoid_: 90-day bar (its length varies), uptime bar, heatmap, sparkline (that is
 
 **Memo**:
 Arabic: مستذكَر
-The in-process copy of every public response (HTML, JSON document, feed, badge), of the not-found every address of one frame shows, and of the sign-in, recovery and onboarding pages that are the same for everyone, kept and served again until the change counter or the UTC date moves. Once either moves an entry is stale: it is refreshed once, and a request that the refresh does not answer within half a second gets the stale entry, so a visitor may see the previous state for as long as one refresh takes. It has no lifetime and no size rule beyond its caps: pages times locales times views plus the summary, feeds and badges for the public responses, as many again for the not-founds, and one per page and locale for the sign-in pages.
+The in-process copy of every status page response (HTML, JSON document, feed, badge), a private page's answered only to a request its page access lets in, of the not-found every address of one frame shows and the access page of each private page, and of the sign-in, recovery and onboarding pages that are the same for everyone, kept and served again until the change counter or the UTC date moves. Once either moves an entry is stale: it is refreshed once, and a request that the refresh does not answer within half a second gets the stale entry, so a visitor may see the previous state for as long as one refresh takes. It has no lifetime and no size rule beyond its caps: pages times locales times views plus the summary, feeds and badges for the public responses, as many again for the not-founds, and one per page and locale for the sign-in pages.
 _Avoid_: cache, CDN, snapshot
 
 **Stranger**:

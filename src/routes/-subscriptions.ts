@@ -2,7 +2,8 @@
  * The public side of subscriptions: the
  * subscribe form's server function, and the read behind a subscription's
  * own page. No session: the sign-up is counted per client address, as the
- * entry resolved it behind the trusted proxies, five in ten minutes. Not a
+ * entry resolved it behind the trusted proxies, five in ten minutes; a
+ * private page's form takes only a visitor its page access lets in. Not a
  * route file (the leading dash); it imports nothing of the admin, so the
  * public page carries no session-checked server function.
  */
@@ -10,7 +11,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import type { Subscribe } from "@/public/subscribe.tsx";
+import { carriesSession, isOperator } from "@/server/auth/session.ts";
 import { clientAddressHeader } from "@/server/boot/proxies.ts";
+import { admits } from "@/server/pages/access.ts";
 import { readViewFrame } from "@/server/pages/views.ts";
 import {
   createSignUpLimiter,
@@ -36,9 +39,24 @@ export const subscribeFn = createServerFn({ method: "POST" })
       return Promise.resolve({ ok: false, reason: "unavailable" });
     }
     const now = Date.now();
+    const headers = new Headers(getRequestHeaders());
+    const client = headers.get(clientAddressHeader) ?? undefined;
     return subscribe(storage, boot.installKey, data, {
-      client:
-        new Headers(getRequestHeaders()).get(clientAddressHeader) ?? undefined,
+      // A private page's sign-up is judged as its views are.
+      admits: (page) =>
+        admits(
+          page,
+          {
+            client,
+            cookie: headers.get("cookie"),
+            signedIn: async () =>
+              carriesSession(headers) &&
+              (await isOperator(storage, boot, headers)),
+          },
+          boot.installKey,
+          now
+        ),
+      client,
       confirm: (id) =>
         scheduler
           ? scheduler.subscribers.confirm(id, now)

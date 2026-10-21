@@ -215,7 +215,74 @@ export const pageLayoutSchema = z
     { message: "a component appears once" }
   );
 
+/** Who may see a published page (CONTEXT.md "Page access"): everyone, visitors who enter its password, the signed-in users of this install, or visitors from its allowed addresses. */
+export const pageAccessModes = [
+  "public",
+  "password",
+  "signed_in",
+  "addresses",
+] as const;
+export const pageAccessModeSchema = z.enum(pageAccessModes);
+export type PageAccessMode = z.infer<typeof pageAccessModeSchema>;
+
+export const pagePasswordMinLength = 8;
+export const pagePasswordMaxLength = 200;
+export const allowedAddressesMax = 100;
+
+/** A page's access as the operator sets it: the mode and the allowed addresses, which in password mode need no password and in addresses mode are the only way in; other modes keep none. */
+export interface PageAccessRule {
+  readonly addresses: readonly string[];
+  readonly mode: PageAccessMode;
+}
+
+/** A page's access as it is stored: the rule, and a digest of its page password's hash, which every page pass names, so a new password ends them all. No password, no digest. */
+export interface PageAccess extends PageAccessRule {
+  readonly passwordDigest: string | undefined;
+}
+
+/** A public page's access: no rule at all. */
+export const publicAccess: PageAccess = {
+  addresses: [],
+  mode: "public",
+  passwordDigest: undefined,
+};
+
+/** The entries of an allowed addresses list as the field writes them: separated by commas, spaces or lines, blanks dropped. */
+export function addressEntries(text: string): string[] {
+  return text.split(addressSeparator).filter((entry) => entry !== "");
+}
+
+const addressSeparator = /[\s,]+/;
+
+/** The access the editor saves: the mode, the allowed addresses where the mode reads them, and a new page password, left out to keep the one stored. Whether each address is an address or a range is the server's to judge. */
+export const pageAccessInputSchema = z
+  .object({
+    addresses: z
+      .array(z.string().trim().min(1).max(64))
+      .max(allowedAddressesMax)
+      .readonly()
+      .default([]),
+    mode: pageAccessModeSchema,
+    password: z
+      .string()
+      .min(pagePasswordMinLength)
+      .max(pagePasswordMaxLength)
+      .optional(),
+  })
+  .superRefine((access, context) => {
+    if (access.mode === "addresses" && access.addresses.length === 0) {
+      context.addIssue({
+        code: "custom",
+        message: "at least one address",
+        path: ["addresses"],
+      });
+    }
+  });
+export type PageAccessInput = z.infer<typeof pageAccessInputSchema>;
+
 export interface StatusPageFields {
+  /** Public when absent. */
+  readonly access?: PageAccessRule;
   readonly customDomain: string | undefined;
   readonly customization: PageCustomization;
   /** Served at the bare host; at most one page is. */
@@ -228,6 +295,7 @@ export interface StatusPageFields {
 }
 
 export interface StatusPage extends StatusPageFields {
+  readonly access: PageAccess;
   readonly createdAt: number;
   readonly id: string;
   readonly updatedAt: number;
@@ -244,6 +312,8 @@ export type PageCreateInput = z.infer<typeof pageCreateSchema>;
 /** A page as the editor saves it; its title, description, footer link labels and group names hold the page language's text. A status name may be written in any locale alone: one without a name shows the catalog's word. */
 export const pageInputSchema = z
   .object({
+    /** Public when absent. */
+    access: pageAccessInputSchema.optional(),
     customDomain: customDomainSchema.optional(),
     customization: pageCustomizationSchema,
     isDefault: z.boolean(),
@@ -374,7 +444,11 @@ export type PageRefusal =
   /** Another page has the custom domain. */
   | "domain_taken"
   /** The custom domain is the public address's host, which serves the admin and the default page. */
-  | "domain_public_address";
+  | "domain_public_address"
+  /** Password mode with no page password stored and none given. */
+  | "access_password_missing"
+  /** An allowed address that is neither an IP address nor a CIDR range. */
+  | "access_address_invalid";
 
 export type PageListResult =
   | { readonly ok: true; readonly pages: readonly PageListItem[] }

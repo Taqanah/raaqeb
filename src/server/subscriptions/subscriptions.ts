@@ -22,6 +22,7 @@ import {
   webhookReachable,
   webhookRefusedAsWritten,
 } from "@/server/notify/destination.ts";
+import type { GuardedPage } from "@/server/pages/access.ts";
 import { canonicalPaths } from "@/server/pages/public.ts";
 import { readPublicAddress } from "@/server/settings/address.ts";
 import type { Storage } from "@/server/storage/storage.ts";
@@ -101,6 +102,8 @@ export function offeredChannels(
 }
 
 export interface SignUpOptions {
+  /** Whether the visitor may see the page, as its page access judges them; without it a private page takes no sign-up. */
+  readonly admits?: (page: GuardedPage) => Promise<boolean>;
   /** The client's address behind the trusted proxies, which the limiter counts by. */
   readonly client: string | undefined;
   /** Queues the confirmation of the subscription; false when it could not be queued. */
@@ -136,6 +139,13 @@ export async function subscribe(
     ]);
     // An unpublished page takes no sign-up.
     if (!page?.published) {
+      return notFound;
+    }
+    // A private page takes a sign-up from a visitor it lets in alone, with the answer an unknown page gets.
+    if (
+      page.access.mode !== "public" &&
+      !(await (options.admits?.(page) ?? false))
+    ) {
       return notFound;
     }
     const offered = offeredChannels(

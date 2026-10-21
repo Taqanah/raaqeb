@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   defaultCustomization,
   type PageEditor,
+  publicAccess,
 } from "@/shared/schemas/page.ts";
 import {
   addComponent,
@@ -32,6 +33,7 @@ const editor: PageEditor = {
     { componentIds: ["api", "db"], kind: "group", name: { ar: "الخدمات" } },
   ],
   page: {
+    access: publicAccess,
     createdAt: 1,
     customDomain: "status.example.test",
     customization: {
@@ -131,6 +133,7 @@ describe("the page editor's draft", () => {
     const { page } = editor;
     expect(pageInputOf(pageDraftOf(editor))).toEqual({
       input: {
+        access: { addresses: [], mode: "public" },
         customDomain: page.customDomain,
         customization: page.customization,
         isDefault: page.isDefault,
@@ -148,6 +151,87 @@ describe("the page editor's draft", () => {
         title: page.title,
       },
       ok: true,
+    });
+  });
+
+  test("the access is read from the page, its addresses one to a line, no password typed and whether one is set", () => {
+    const draft = pageDraftOf({
+      ...editor,
+      page: {
+        ...editor.page,
+        access: {
+          addresses: ["10.0.0.0/8", "2001:db8::/32"],
+          mode: "password",
+          passwordDigest: "abc",
+        },
+      },
+    });
+    expect(draft).toMatchObject({
+      accessAddresses: "10.0.0.0/8\n2001:db8::/32",
+      accessMode: "password",
+      accessPassword: "",
+      passwordSet: true,
+    });
+    expect(pageDraftOf(editor)).toMatchObject({
+      accessMode: "public",
+      passwordSet: false,
+    });
+  });
+
+  test("the access posts its mode, the addresses as typed apart by commas, spaces or lines where the mode reads them, and a password only when one is typed", () => {
+    const draft = pageDraftOf(editor);
+    const typed = " 10.0.0.1, 10.0.0.2\n\n2001:db8::/32 ";
+    expect(
+      pageInputOf({
+        ...draft,
+        accessAddresses: typed,
+        accessMode: "password",
+        accessPassword: "correct horse",
+      })
+    ).toMatchObject({
+      input: {
+        access: {
+          addresses: ["10.0.0.1", "10.0.0.2", "2001:db8::/32"],
+          mode: "password",
+          password: "correct horse",
+        },
+      },
+      ok: true,
+    });
+    const kept = pageInputOf({
+      ...draft,
+      accessMode: "password",
+      accessPassword: "",
+    });
+    expect(kept.ok && kept.input.access).toEqual({
+      addresses: [],
+      mode: "password",
+    });
+    const signedIn = pageInputOf({
+      ...draft,
+      accessAddresses: typed,
+      accessMode: "signed_in",
+      accessPassword: "correct horse",
+    });
+    expect(signedIn.ok && signedIn.input.access).toEqual({
+      addresses: [],
+      mode: "signed_in",
+    });
+  });
+
+  test("a page password under 8 characters, and addresses mode with no address, are refused on their fields", () => {
+    const draft = pageDraftOf(editor);
+    expect(
+      pageInputOf({ ...draft, accessMode: "password", accessPassword: "short" })
+    ).toEqual({
+      errors: { "access.password": "page_refused_access_password" },
+      ok: false,
+    });
+    expect(
+      pageInputOf({ ...draft, accessAddresses: " ", accessMode: "addresses" })
+    ).toEqual({
+      errors: { "access.addresses": "page_refused_access_addresses_missing" },
+      ok: false,
     });
   });
 

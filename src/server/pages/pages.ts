@@ -10,6 +10,7 @@
  * result and never throws.
  */
 
+import { hashPassword } from "@/server/auth/password.ts";
 import { readPublicAddress } from "@/server/settings/address.ts";
 import { loadCatalog } from "@/server/settings/language.ts";
 import type { Storage } from "@/server/storage/storage.ts";
@@ -28,6 +29,7 @@ import {
   type PageRefusal,
   type PageSaveResult,
 } from "@/shared/schemas/page.ts";
+import { refusedAddress } from "./access.ts";
 import { corruptRecord, readComponentStatuses } from "./components.ts";
 
 export type PageStorage = Pick<
@@ -173,13 +175,17 @@ export async function savePage(
   input: PageInput
 ): Promise<PageSaveResult> {
   try {
-    const refusal = await refusalOf(storage, id, input);
+    const refusal =
+      (await refusalOf(storage, id, input)) ??
+      (await accessRefusal(storage, id, input));
     if (refusal) {
       return { ok: false, reason: refusal };
     }
+    const access = input.access ?? { addresses: [], mode: "public" };
     const page = await storage.pages.save(
       id,
       {
+        access: { addresses: access.addresses, mode: access.mode },
         customDomain: input.customDomain,
         customization: input.customization,
         isDefault: input.isDefault,
@@ -188,13 +194,13 @@ export async function savePage(
         slug: input.slug,
         title: input.title,
       },
-      input.layout
+      input.layout,
+      access.mode === "password" && access.password !== undefined
+        ? await hashPassword(access.password)
+        : undefined
     );
-    if (!page) {
-      return notFound;
-    }
-    await storage.bump();
-    return { ok: true, page };
+    // The save moved the change counter in its own transaction.
+    return page ? { ok: true, page } : notFound;
   } catch {
     return unavailable;
   }
@@ -228,6 +234,28 @@ async function refusalOf(
     customDomainOf(new URL(address).hostname) === domain
   ) {
     return "domain_public_address";
+  }
+}
+
+/** Why the page's access cannot be saved: an allowed address that is no address or range, or password mode with no page password stored and none given. */
+async function accessRefusal(
+  storage: PageStorage,
+  id: string,
+  input: PageInput
+): Promise<PageRefusal | undefined> {
+  const { access } = input;
+  if (!access || access.mode === "public" || access.mode === "signed_in") {
+    return;
+  }
+  if (refusedAddress(access.addresses) !== undefined) {
+    return "access_address_invalid";
+  }
+  if (
+    access.mode === "password" &&
+    access.password === undefined &&
+    (await storage.pages.password(id)) === undefined
+  ) {
+    return "access_password_missing";
   }
 }
 
