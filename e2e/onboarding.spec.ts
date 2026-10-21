@@ -218,7 +218,7 @@ test.describe("the fresh install, walked to the end and then used", () => {
     await expect(page.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
     await page.goto(`${freshOrigin}/admin/monitors`);
     await expect(page.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
-    await expect(page.locator("nav a[data-nav]")).toHaveCount(7);
+    await expect(page.locator("nav a[data-nav]")).toHaveCount(8);
     await page.goto(`${freshOrigin}/sign-out`);
     await expect(page.locator("html[lang=en][dir=ltr]")).toHaveCount(1);
     await page.goto(`${freshOrigin}/admin/settings/account`);

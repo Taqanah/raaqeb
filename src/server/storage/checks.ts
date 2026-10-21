@@ -76,9 +76,10 @@ export interface SummaryRead {
   readonly limitMs: number;
 }
 
-/** A UTC day's checks summed: how many, how many down, and the response times of the others. */
+/** A UTC day's checks summed: how many, how many degraded and down, and the response times of the others. */
 export interface DayTally {
   readonly checks: number;
+  readonly degraded: number;
   readonly down: number;
   /** How many response times `totalMs` sums. */
   readonly timed: number;
@@ -239,6 +240,7 @@ interface SealedRow {
 interface TallyRow {
   check_count: number | string;
   day: number | string;
+  degraded_count: number | string;
   down_count: number | string;
   first_at: number | string;
   last_at: number | string;
@@ -467,6 +469,7 @@ export function checksRepository(executor: Executor): ChecksRepository {
     )}) AND ${checks.startedAt} < ${to}`;
     const day = sql`(${checks.startedAt} / CAST(${dayMs} AS BIGINT)) * CAST(${dayMs} AS BIGINT)`;
     const failed = resultCode("down");
+    const slow = resultCode("degraded");
     // The head rows are never built one by one here, so a code this version does not know is found in the same scan.
     const unknown = sql`${checks.result} NOT IN (${sql.join(
       checkResults.map((result) => sql`${resultCode(result)}`),
@@ -476,7 +479,7 @@ export function checksRepository(executor: Executor): ChecksRepository {
       sql`, `
     )})`;
     const tallies = await executor.rows<TallyRow>(
-      sql`SELECT ${checks.monitorId} AS monitor_id, ${day} AS ${sql.identifier("day")}, COUNT(*) AS check_count, SUM(CASE WHEN ${checks.result} = ${failed} THEN 1 ELSE 0 END) AS down_count, COUNT(CASE WHEN ${checks.result} <> ${failed} THEN ${checks.responseMs} END) AS timed_count, COALESCE(SUM(CASE WHEN ${checks.result} <> ${failed} THEN ${checks.responseMs} END), 0) AS total_ms, MIN(${checks.startedAt}) AS first_at, MAX(${checks.startedAt}) AS last_at, MIN(CASE WHEN ${unknown} THEN ${checks.startedAt} END) AS unknown_at FROM ${checks} WHERE ${where} GROUP BY ${checks.monitorId}, ${sql.identifier("day")}`
+      sql`SELECT ${checks.monitorId} AS monitor_id, ${day} AS ${sql.identifier("day")}, COUNT(*) AS check_count, SUM(CASE WHEN ${checks.result} = ${slow} THEN 1 ELSE 0 END) AS degraded_count, SUM(CASE WHEN ${checks.result} = ${failed} THEN 1 ELSE 0 END) AS down_count, COUNT(CASE WHEN ${checks.result} <> ${failed} THEN ${checks.responseMs} END) AS timed_count, COALESCE(SUM(CASE WHEN ${checks.result} <> ${failed} THEN ${checks.responseMs} END), 0) AS total_ms, MIN(${checks.startedAt}) AS first_at, MAX(${checks.startedAt}) AS last_at, MIN(CASE WHEN ${unknown} THEN ${checks.startedAt} END) AS unknown_at FROM ${checks} WHERE ${where} GROUP BY ${checks.monitorId}, ${sql.identifier("day")}`
     );
     const gaps = await executor.rows<GapRow>(
       executor.backend === "sqlite"
@@ -1036,6 +1039,7 @@ function headSummaryOf(
     read.set(row.monitor_id, own);
     addTally(own.days, Number(row.day), {
       checks: Number(row.check_count),
+      degraded: Number(row.degraded_count),
       down: Number(row.down_count),
       timed: Number(row.timed_count),
       totalMs: Number(row.total_ms),
@@ -1092,6 +1096,7 @@ function addTally(
   const before = days.get(day);
   days.set(day, {
     checks: (before?.checks ?? 0) + tally.checks,
+    degraded: (before?.degraded ?? 0) + tally.degraded,
     down: (before?.down ?? 0) + tally.down,
     timed: (before?.timed ?? 0) + tally.timed,
     totalMs: (before?.totalMs ?? 0) + tally.totalMs,
@@ -1111,6 +1116,7 @@ function tallyDays(
     const timed = check.result !== "down" && check.responseMs !== undefined;
     addTally(days, dayOf(check.startedAt), {
       checks: 1,
+      degraded: check.result === "degraded" ? 1 : 0,
       down: check.result === "down" ? 1 : 0,
       timed: timed ? 1 : 0,
       totalMs: timed ? (check.responseMs ?? 0) : 0,

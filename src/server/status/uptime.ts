@@ -240,7 +240,7 @@ function ranOn(notices: readonly NoticeSpan[], span: Span): DayNotice[] {
 }
 
 /** The parts of the spans inside `span`, which never ends past now, so an open one runs to its end. */
-function clipped(spans: readonly OutageSpan[], span: Span): Span[] {
+export function clipped(spans: readonly OutageSpan[], span: Span): Span[] {
   return spans
     .map((each) => ({
       from: Math.max(each.startedAt, span.from),
@@ -250,7 +250,7 @@ function clipped(spans: readonly OutageSpan[], span: Span): Span[] {
 }
 
 /** The length of the union of the spans, overlaps counted once. */
-function unionLength(spans: readonly Span[]): number {
+export function unionLength(spans: readonly Span[]): number {
   let total = 0;
   let end = Number.NEGATIVE_INFINITY;
   for (const span of spans.toSorted((a, b) => a.from - b.from)) {

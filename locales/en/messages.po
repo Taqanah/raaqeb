@@ -5433,3 +5433,308 @@ msgstr "An occurrence of the series"
 #. js-lingui-explicit-id
 msgid "maintenance_occurrence_alone"
 msgstr "Changing or cancelling it here leaves the series and its other occurrences as they are."
+
+#. js-lingui-explicit-id
+msgid "report_list_title"
+msgstr "Reports"
+
+#. js-lingui-explicit-id
+msgid "report_title"
+msgstr "Uptime report"
+
+#. js-lingui-explicit-id
+msgid "report_lead"
+msgstr "Uptime, downtime and the error budget of a monitor, group, component or status page over a month, a quarter or a range of days. Days are UTC days, and the figures are the ones the status page shows."
+
+#. js-lingui-explicit-id
+msgid "report_subject_label"
+msgstr "Report on"
+
+#. js-lingui-explicit-id
+msgid "report_kind_monitor"
+msgstr "Monitor"
+
+#. js-lingui-explicit-id
+msgid "report_kind_group"
+msgstr "Group"
+
+#. js-lingui-explicit-id
+msgid "report_kind_component"
+msgstr "Component"
+
+#. js-lingui-explicit-id
+msgid "report_kind_page"
+msgstr "Status page"
+
+
+#. js-lingui-explicit-id
+msgid "report_subject_none"
+msgstr "There is nothing of this kind to report on yet."
+
+#. js-lingui-explicit-id
+msgid "report_period_label"
+msgstr "Period"
+
+#. js-lingui-explicit-id
+msgid "report_period_month"
+msgstr "Month"
+
+#. js-lingui-explicit-id
+msgid "report_period_quarter"
+msgstr "Quarter"
+
+#. js-lingui-explicit-id
+msgid "report_period_custom"
+msgstr "Custom range"
+
+#. js-lingui-explicit-id
+msgid "report_month_label"
+msgstr "Month"
+
+#. js-lingui-explicit-id
+msgid "report_quarter_label"
+msgstr "Quarter"
+
+#. js-lingui-explicit-id
+msgid "report_quarter_name"
+msgstr "Q{quarter} {year}"
+
+#. js-lingui-explicit-id
+msgid "report_from"
+msgstr "From"
+
+#. js-lingui-explicit-id
+msgid "report_to"
+msgstr "To"
+
+#. js-lingui-explicit-id
+msgid "report_dates_note"
+msgstr "A report covers whole UTC days, both ends included, up to 366 days and never past today."
+
+#. js-lingui-explicit-id
+msgid "report_target_label"
+msgstr "Uptime target"
+
+#. js-lingui-explicit-id
+msgid "report_target_description"
+msgstr "A percentage from 1 to 99.999 with up to three decimals. 99.9 allows about 43 minutes of downtime in 30 days."
+
+#. js-lingui-explicit-id
+msgid "report_generate"
+msgstr "Generate report"
+
+#. js-lingui-explicit-id
+msgid "report_refused_invalid"
+msgstr "The report could not be made: the last day must not be before the first, the first must not be after today, a range holds at most 366 days, and the target is from 1 to 99.999."
+
+#. js-lingui-explicit-id
+msgid "report_refused_not_found"
+msgstr "What the report was about no longer exists."
+
+#. js-lingui-explicit-id
+msgid "report_refused_unavailable"
+msgstr "The report could not be made. Try again."
+
+#. js-lingui-explicit-id
+msgid "report_refused_corrupt"
+msgstr "This version cannot read a record the report needs:"
+
+#. js-lingui-explicit-id
+msgid "report_empty_title"
+msgstr "No report yet"
+
+#. js-lingui-explicit-id
+msgid "report_empty_description"
+msgstr "Choose what to report on and a period, then generate the report."
+
+#. js-lingui-explicit-id
+msgid "report_range"
+msgstr "{from} to {to}"
+
+#. js-lingui-explicit-id
+msgid "report_open"
+msgstr "This period is not over: the figures run to now and change until it ends."
+
+#. js-lingui-explicit-id
+msgid "report_made"
+msgstr "Made {when}"
+
+#. js-lingui-explicit-id
+msgid "report_uptime"
+msgstr "Uptime"
+
+#. js-lingui-explicit-id
+msgid "report_uptime_none"
+msgstr "No data in this period"
+
+#. js-lingui-explicit-id
+msgid "report_target_value"
+msgstr "Target {target}"
+
+#. js-lingui-explicit-id
+msgid "report_met"
+msgstr "Target met"
+
+#. js-lingui-explicit-id
+msgid "report_missed"
+msgstr "Target missed"
+
+#. js-lingui-explicit-id
+msgid "report_downtime"
+msgstr "Downtime"
+
+#. js-lingui-explicit-id
+msgid "report_observed"
+msgstr "Observed time"
+
+#. js-lingui-explicit-id
+msgid "report_observed_hint"
+msgstr "The time Raaqeb had checks to judge by."
+
+#. js-lingui-explicit-id
+msgid "report_maintenance"
+msgstr "Maintenance"
+
+#. js-lingui-explicit-id
+msgid "report_maintenance_hint"
+msgstr "Shown here, and counted as neither downtime nor observed time."
+
+#. js-lingui-explicit-id
+msgid "report_no_data"
+msgstr "No data"
+
+#. js-lingui-explicit-id
+msgid "report_no_data_hint"
+msgstr "Not downtime: no checks ran, or the monitor was paused."
+
+#. js-lingui-explicit-id
+msgid "report_degraded"
+msgstr "Degraded time"
+
+#. js-lingui-explicit-id
+msgid "report_degraded_hint"
+msgstr "An estimate from the share of degraded checks."
+
+#. js-lingui-explicit-id
+msgid "report_budget"
+msgstr "Error budget"
+
+#. js-lingui-explicit-id
+msgid "report_budget_description"
+msgstr "The downtime the target allows over the observed time."
+
+#. js-lingui-explicit-id
+msgid "report_budget_allowed"
+msgstr "Allowed"
+
+#. js-lingui-explicit-id
+msgid "report_budget_used"
+msgstr "Used"
+
+#. js-lingui-explicit-id
+msgid "report_budget_left"
+msgstr "Left"
+
+#. js-lingui-explicit-id
+msgid "report_budget_over"
+msgstr "Over budget by"
+
+#. js-lingui-explicit-id
+msgid "report_budget_none"
+msgstr "There is no observed time, so no budget."
+
+#. js-lingui-explicit-id
+msgid "report_outages"
+msgstr "Outages"
+
+#. js-lingui-explicit-id
+msgid "report_incidents"
+msgstr "Incidents"
+
+#. js-lingui-explicit-id
+msgid "report_recovery"
+msgstr "Mean time to recovery"
+
+#. js-lingui-explicit-id
+msgid "report_recovery_hint"
+msgstr "Of the outages that recovered in this period."
+
+#. js-lingui-explicit-id
+msgid "report_acknowledge"
+msgstr "Mean time to acknowledge"
+
+#. js-lingui-explicit-id
+msgid "report_acknowledge_hint"
+msgstr "Of the outages that were acknowledged."
+
+#. js-lingui-explicit-id
+msgid "report_mean_none"
+msgstr "None"
+
+#. js-lingui-explicit-id
+msgid "report_unit_minutes"
+msgstr "minutes"
+
+#. js-lingui-explicit-id
+msgid "report_members_title"
+msgstr "Breakdown"
+
+#. js-lingui-explicit-id
+msgid "report_members_group"
+msgstr "Each monitor of the group. The totals above add them up."
+
+#. js-lingui-explicit-id
+msgid "report_members_page"
+msgstr "Each component on the page. The totals above add them up."
+
+#. js-lingui-explicit-id
+msgid "report_column_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "report_column_kind"
+msgstr "Type"
+
+#. js-lingui-explicit-id
+msgid "report_column_target_status"
+msgstr "Target status"
+
+#. js-lingui-explicit-id
+msgid "report_worst_title"
+msgstr "Longest outages"
+
+#. js-lingui-explicit-id
+msgid "report_worst_description"
+msgstr "Each one's time inside the period, less maintenance."
+
+#. js-lingui-explicit-id
+msgid "report_worst_empty"
+msgstr "There was no outage in this period."
+
+#. js-lingui-explicit-id
+msgid "report_outage_ended"
+msgstr "Ended"
+
+#. js-lingui-explicit-id
+msgid "report_outage_open"
+msgstr "Still open"
+
+#. js-lingui-explicit-id
+msgid "report_outage_acknowledged"
+msgstr "Acknowledged at"
+
+#. js-lingui-explicit-id
+msgid "report_print"
+msgstr "Print"
+
+#. js-lingui-explicit-id
+msgid "report_download"
+msgstr "Download CSV"
+
+#. js-lingui-explicit-id
+msgid "report_notes_title"
+msgstr "How the figures are counted"
+
+#. js-lingui-explicit-id
+msgid "report_notes"
+msgstr "Uptime is one minus downtime over observed time, read from the same days the status page reads. Time with no data is not downtime. An outage or an incident counts when it ran inside the period."

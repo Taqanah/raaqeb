@@ -228,6 +228,21 @@ Arabic: نسبة التوفّر
 A monitor's share of a window it was not down: one minus its downtime over its observed time. Shown rounded down, so any outage keeps it under 100%. A window with no observed time has no uptime. Distinct from a component's uptime, which is the union rule of its linked monitors and incidents.
 _Avoid_: availability, SLA, health, readiness
 
+**Report**:
+Arabic: تقرير (تقرير التوفّر)
+A read-only account of one subject's uptime over a range of whole UTC days, built from the daily rollups, the outage records, the incidents and the maintenance windows the status page's bars already read, so its figures match theirs. The subject is a monitor, a group, a component or a status page; for a group or a page the report lists each member (the group's monitors, the page's components) and adds them up, downtime and observed time summed, so a member with more observed time weighs more; a page's total adds its distinct monitors, each once however many of its components link it, and its components with no monitor, so a monitor two components share is not counted twice, though each component's own line counts it. The range is a UTC month, a UTC quarter or any run of days up to 366, never past today (a last day after today is cut to today); one that includes today is marked as not over. It states the uptime against the uptime target, the error budget, the downtime, the outage count, the incident count, the mean time to recovery, the mean time to acknowledge, the degraded time, the time under maintenance and the time with no data, and lists the worst outages. An outage or an incident counts in a report when it ran inside the range, an outage with its time there less maintenance and never more of a day than the monitor was observed that day, as the bars cap it. Mean time to recovery is the mean duration of the outages that recovered inside the range, mean time to acknowledge the mean wait for an acknowledge among the outages that have one; a report leaves out a mean it has nothing to read. Degraded time is an estimate: each day's observed time scaled by its share of degraded checks (a component takes the most of its monitors' on each day). The time with no data is the range less observed time and maintenance. A report is made when asked, stores nothing and has no schedule; it downloads as CSV and prints from the browser.
+_Avoid_: SLA report, availability report, statistics
+
+**Uptime target**:
+Arabic: هدف التوفّر
+The uptime a report judges against, a percentage above 0 and below 100 with up to three decimals, 99.9 unless the operator types another. It belongs to the report that is asked for, in its address, and to no monitor: the same monitor can be read against two targets. Met when uptime, not rounded, reaches it.
+_Avoid_: SLA (a promise made to someone else; the target is only the figure it usually names), objective, threshold
+
+**Error budget**:
+Arabic: ميزانية التعطّل
+The downtime an uptime target allows over a report's observed time: one minus the target, times the observed time. A report shows how much of it the downtime used and how much is left; a negative left is the target missed.
+_Avoid_: allowance, SLO, quota
+
 **Size budget**:
 Arabic: ميزانية التخزين
 The maximum database size setting, default unlimited. When set, Raaqeb deletes the oldest history before a write that would cross it: raw days, then hourly, then daily rollups; never outages, incidents, certificate records, domain registrations or settings. With or without a number, a local SQLite file keeps a 64 MB reserve of free disk; Postgres has no such signal.

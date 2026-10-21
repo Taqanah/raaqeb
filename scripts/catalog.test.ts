@@ -200,10 +200,10 @@ describe("linting the catalogs", () => {
     );
     expect(lintCatalogs([arToo, bad])).toEqual([
       "ar:11: appName is not snake_case with an area prefix",
-      "ar:15: banner_title starts with banner, not an area (app, auth, channel, component, incident, maintenance, monitor, onboarding, page, public, reason, setting, subscription)",
+      "ar:15: banner_title starts with banner, not an area (app, auth, channel, component, incident, maintenance, monitor, onboarding, page, public, reason, report, setting, subscription)",
       "ar:19: app is not snake_case with an area prefix",
       "en:11: appName is not snake_case with an area prefix",
-      "en:15: banner_title starts with banner, not an area (app, auth, channel, component, incident, maintenance, monitor, onboarding, page, public, reason, setting, subscription)",
+      "en:15: banner_title starts with banner, not an area (app, auth, channel, component, incident, maintenance, monitor, onboarding, page, public, reason, report, setting, subscription)",
       "en:19: app is not snake_case with an area prefix",
     ]);
   });

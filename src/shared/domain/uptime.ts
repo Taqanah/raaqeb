@@ -263,11 +263,13 @@ const mostDecimals = 5;
 /**
  * The displayed uptime, or nothing with no observed time. With no downtime
  * it is 100 exactly; otherwise it is rounded down with the fewest decimals,
- * from 2 up to 5, at which it is not all nines, so a small outage shows how
- * small it was and a window with any downtime never reads 100%.
+ * from `fewest` (2 unless a report asks for more) up to 5, at which it is
+ * not all nines, so a small outage shows how small it was and a window with
+ * any downtime never reads 100%.
  */
 export function displayedUptime(
-  reading: Pick<UptimeReading, "downtimeMs" | "observedMs">
+  reading: Pick<UptimeReading, "downtimeMs" | "observedMs">,
+  fewest = fewestDecimals
 ): DisplayedUptime | undefined {
   const { downtimeMs, observedMs } = reading;
   if (observedMs <= 0) {
@@ -279,7 +281,7 @@ export function displayedUptime(
   // Integer arithmetic: 90 days of milliseconds times 10^7 is past what a double holds exactly.
   const up = BigInt(Math.max(0, observedMs - downtimeMs));
   const observed = BigInt(observedMs);
-  let decimals = fewestDecimals;
+  let decimals = fewest;
   let scaled = 0n;
   for (; decimals <= mostDecimals; decimals += 1) {
     const scale = 100n * 10n ** BigInt(decimals);

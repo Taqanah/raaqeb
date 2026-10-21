@@ -10,6 +10,7 @@ import type { MonitorChoice } from "@/shared/schemas/monitor.ts";
 /** An icon name the shell maps to an inline path. */
 export type NavIcon =
   | "monitors"
+  | "reports"
   | "pages"
   | "components"
   | "incidents"
@@ -41,6 +42,12 @@ export const navigation: readonly NavGroup[] = [
         id: "monitors",
         label: "monitor_list_title",
         to: "/admin/monitors",
+      },
+      {
+        icon: "reports",
+        id: "reports",
+        label: "report_list_title",
+        to: "/admin/reports",
       },
     ],
     label: "app_nav_monitoring",

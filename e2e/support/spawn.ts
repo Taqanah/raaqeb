@@ -17,6 +17,8 @@ import { waitForOrigin } from "./wait.ts";
 export interface InstallSeed {
   /** The operator account with the English install's credentials (`operatorEmail`, `operatorPassword`) and the public address at the install's origin, both as onboarding's account screen stores them. */
   readonly account?: boolean;
+  /** The clock the records are written by, for a spec whose history lies in the past; unset, the real one. The account and the settings are written by the real one. */
+  readonly clock?: () => number;
   /** The install language; unset, the install keeps Arabic, its default. */
   readonly language?: Locale;
   /** False starts the server without `--trusted-proxies`, so the settings page may edit them; every sign-in then spends the one budget of 127.0.0.1. */
@@ -70,9 +72,22 @@ async function seed(
         },
       });
     }
-    await what.records?.(opened.storage);
   } finally {
     await opened.storage.close();
+  }
+  if (what.records) {
+    const own = await openStorage(
+      { backend: "sqlite", file: `${dataDir}/raaqeb.sqlite` },
+      { now: what.clock }
+    );
+    if (!own.ok) {
+      throw new Error(own.message);
+    }
+    try {
+      await what.records(own.storage);
+    } finally {
+      await own.storage.close();
+    }
   }
 }
 

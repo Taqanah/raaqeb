@@ -34,7 +34,7 @@ test("the shell renders around an admin page: the grouped navigation, the header
   await expect(
     page.locator("html[lang=en][dir=ltr][data-theme=dark]")
   ).toHaveCount(1);
-  await expect(page.locator("nav a[data-nav]")).toHaveCount(7);
+  await expect(page.locator("nav a[data-nav]")).toHaveCount(8);
   await expect(
     page.locator("a[data-nav=monitors][aria-current=page]")
   ).toHaveCount(1);
@@ -96,9 +96,9 @@ test("the arrow keys move the palette's highlight, Enter opens the highlighted p
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowUp");
-  await expect(highlighted).toHaveAttribute("data-palette-item", "pages");
+  await expect(highlighted).toHaveAttribute("data-palette-item", "reports");
   await page.keyboard.press("Enter");
-  await expectPath(page, "/admin/pages");
+  await expectPath(page, "/admin/reports");
   await expect(page.locator("[data-slot=palette]")).toHaveCount(0);
   // The key N types ى on an Arabic layout; the shortcut, taken on the monitor list alone, follows the physical key.
   await page.click("a[data-nav=monitors]");
@@ -458,7 +458,7 @@ test("a page whose read failed shows the error inside the shell, never its text,
   await page.click("a[data-nav=channels]");
   await expect(page.locator("[data-slot=page-error]")).toBeVisible();
   await expect(page.locator("[data-slot=sidebar]")).toBeVisible();
-  await expect(page.locator("nav a[data-nav]")).toHaveCount(7);
+  await expect(page.locator("nav a[data-nav]")).toHaveCount(8);
   await expect(page.locator("[data-slot=page] h1")).toHaveCount(1);
   await expect(page.getByText("a private failure")).toHaveCount(0);
 

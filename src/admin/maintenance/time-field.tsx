@@ -46,6 +46,8 @@ export interface TimeFieldProps<Name extends string = "ends" | "starts"> {
   /** The server's read time: the Hijri years offered start at its year. */
   readonly now: number;
   readonly onChange: (name: Name, value: string) => void;
+  /** The date alone, as a report's range edge is: the clock is left out and the value keeps its midnight. */
+  readonly timeless?: boolean;
   /** `datetime-local` text in the operator's zone. */
   readonly value: string;
 }
@@ -110,8 +112,18 @@ export function withPart(
 export function TimeField<Name extends string>(
   props: TimeFieldProps<Name>
 ): ReactNode {
-  const { clock, dateless, error, label, name, now, onChange, value } = props;
-  const { locale, t } = useMessages();
+  const {
+    clock,
+    dateless,
+    error,
+    label,
+    name,
+    now,
+    onChange,
+    timeless,
+    value,
+  } = props;
+  const { locale } = useMessages();
   const twelve = clock.clock === "12h";
   const onPart = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
@@ -135,9 +147,6 @@ export function TimeField<Name extends string>(
       onChange(name, `${event.currentTarget.value}T${value.slice(11, 16)}`),
     [name, onChange, value]
   );
-  const hour = Number(value.slice(11, 13));
-  const [am, pm] = dayPeriods(locale);
-  const common = { invalid: Boolean(error), onChange: onPart };
   const gregorian = clock.calendar === "gregorian";
   let date: ReactNode = null;
   if (dateless) {
@@ -179,48 +188,17 @@ export function TimeField<Name extends string>(
         data-value={value}
       >
         {date}
-        <div className="flex items-center gap-2">
-          {/* Hours before minutes, as a time is written in either language. */}
-          <div className="flex items-center gap-1" dir="ltr">
-            <Part
-              {...common}
-              id={dateless ? name : undefined}
-              label={t("maintenance_field_hour")}
-              name={`${name}-hour`}
-              options={
-                twelve
-                  ? [12, ...numbers(1, 11)].map((each) => [each, String(each)])
-                  : numbers(0, 23).map((each) => [each, twoDigits(each)])
-              }
-              part="hour"
-              value={twelve ? hour % 12 || 12 : hour}
-            />
-            <span aria-hidden="true" className="text-muted-foreground">
-              :
-            </span>
-            <Part
-              {...common}
-              label={t("maintenance_field_minute")}
-              name={`${name}-minute`}
-              options={numbers(0, 59).map((each) => [each, twoDigits(each)])}
-              part="minute"
-              value={Number(value.slice(14, 16))}
-            />
-          </div>
-          {twelve ? (
-            <Segmented
-              aria-label={t("maintenance_field_period")}
-              className="w-auto"
-              data-name={`${name}-period`}
-              name={`${name}-period`}
-              onValueChange={onPeriod}
-              value={hour >= 12 ? "pm" : "am"}
-            >
-              <SegmentedItem value="am">{am}</SegmentedItem>
-              <SegmentedItem value="pm">{pm}</SegmentedItem>
-            </Segmented>
-          ) : null}
-        </div>
+        {timeless ? null : (
+          <ClockRow
+            dateless={dateless}
+            invalid={Boolean(error)}
+            name={name}
+            onPart={onPart}
+            onPeriod={onPeriod}
+            twelve={twelve}
+            value={value}
+          />
+        )}
         {clock.calendar === "hijri_gregorian" && !dateless ? (
           <FieldDescription data-slot="gregorian-date">
             {formatDay(locale, Date.parse(value.slice(0, 10)), "gregorian")}
@@ -229,6 +207,74 @@ export function TimeField<Name extends string>(
       </fieldset>
       {error ? <FieldError>{error}</FieldError> : null}
     </Field>
+  );
+}
+
+/** The hour and minute, and the half of the day on a 12-hour clock. */
+function ClockRow({
+  dateless,
+  invalid,
+  name,
+  onPart,
+  onPeriod,
+  twelve,
+  value,
+}: {
+  readonly dateless: boolean | undefined;
+  readonly invalid: boolean;
+  readonly name: string;
+  readonly onPart: (event: ChangeEvent<HTMLSelectElement>) => void;
+  readonly onPeriod: (period: unknown) => void;
+  readonly twelve: boolean;
+  readonly value: string;
+}): ReactNode {
+  const { locale, t } = useMessages();
+  const hour = Number(value.slice(11, 13));
+  const [am, pm] = dayPeriods(locale);
+  const common = { invalid, onChange: onPart };
+  return (
+    <div className="flex items-center gap-2">
+      {/* Hours before minutes, as a time is written in either language. */}
+      <div className="flex items-center gap-1" dir="ltr">
+        <Part
+          {...common}
+          id={dateless ? name : undefined}
+          label={t("maintenance_field_hour")}
+          name={`${name}-hour`}
+          options={
+            twelve
+              ? [12, ...numbers(1, 11)].map((each) => [each, String(each)])
+              : numbers(0, 23).map((each) => [each, twoDigits(each)])
+          }
+          part="hour"
+          value={twelve ? hour % 12 || 12 : hour}
+        />
+        <span aria-hidden="true" className="text-muted-foreground">
+          :
+        </span>
+        <Part
+          {...common}
+          label={t("maintenance_field_minute")}
+          name={`${name}-minute`}
+          options={numbers(0, 59).map((each) => [each, twoDigits(each)])}
+          part="minute"
+          value={Number(value.slice(14, 16))}
+        />
+      </div>
+      {twelve ? (
+        <Segmented
+          aria-label={t("maintenance_field_period")}
+          className="w-auto"
+          data-name={`${name}-period`}
+          name={`${name}-period`}
+          onValueChange={onPeriod}
+          value={hour >= 12 ? "pm" : "am"}
+        >
+          <SegmentedItem value="am">{am}</SegmentedItem>
+          <SegmentedItem value="pm">{pm}</SegmentedItem>
+        </Segmented>
+      ) : null}
+    </div>
   );
 }
 

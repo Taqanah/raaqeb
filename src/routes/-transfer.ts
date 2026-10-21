@@ -22,15 +22,16 @@ export async function signedIn(
   return operator && { setCookie: operator.setCookie };
 }
 
-/** Headers of a file download that no cache keeps. */
+/** Headers of a file download that no cache keeps; the content is zstd unless the file says another type. */
 export function downloadHeaders(
   name: string,
-  setCookie: string | undefined
+  setCookie: string | undefined,
+  type = "application/zstd"
 ): Headers {
   const headers = new Headers({
     "cache-control": "no-store",
     "content-disposition": `attachment; filename="${name}"`,
-    "content-type": "application/zstd",
+    "content-type": type,
   });
   if (setCookie) {
     headers.set("set-cookie", setCookie);

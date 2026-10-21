@@ -94,10 +94,17 @@ async function summedFrom(
   const days = new Map<number, DayTally>();
   for (const row of rows.filter((each) => each.startedAt >= read.from)) {
     const at = Math.floor(row.startedAt / dayMs) * dayMs;
-    const before = days.get(at) ?? { checks: 0, down: 0, timed: 0, totalMs: 0 };
+    const before = days.get(at) ?? {
+      checks: 0,
+      degraded: 0,
+      down: 0,
+      timed: 0,
+      totalMs: 0,
+    };
     const timed = row.result !== "down" && row.responseMs !== undefined;
     days.set(at, {
       checks: before.checks + 1,
+      degraded: before.degraded + (row.result === "degraded" ? 1 : 0),
       down: before.down + (row.result === "down" ? 1 : 0),
       timed: before.timed + (timed ? 1 : 0),
       totalMs: before.totalMs + (timed ? (row.responseMs ?? 0) : 0),

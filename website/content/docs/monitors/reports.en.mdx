@@ -1,0 +1,57 @@
+---
+title: Uptime reports
+description: Uptime, downtime and the error budget of a monitor, group, component or status page over a month, a quarter or a range of days, as a page, a printout and a CSV file.
+---
+
+A report states how a monitor, a group of monitors, a component or a status page did over a stretch of days, against an uptime target. It is made when you ask for it, from the history Raaqeb already keeps, and nothing about it is stored: ask again and it reads the history again.
+
+Open **Reports** in the sidebar.
+
+## What to report on
+
+| Choice | What the report covers |
+|---|---|
+| **Monitor** | One monitor. |
+| **Group** | The monitors in a group. Each is listed, and the totals add them up. |
+| **Component** | One component: its linked monitors and the time incidents held it down. |
+| **Status page** | The components the page shows. Each is listed, and the totals add them up. |
+
+Adding up means summing downtime and observed time, so a monitor observed for longer weighs more. A status page's total counts each of its monitors once, however many of its components link it, so a monitor two components share is not counted twice; each component's own line still counts it.
+
+## The period
+
+Pick a **month** or a **quarter**, or type a **custom range**. A report covers whole UTC days, both ends included, up to 366 days, and never past today; a last day after today is cut to today in the report. A period that reaches today is marked as not over: its figures run to now and change until it ends.
+
+Months and quarters are Gregorian. Dates are written in the calendar you chose in the settings, Gregorian, Hijri or both, and a custom range is typed in it; the days the report reads are the same UTC days either way.
+
+## The uptime target
+
+The target is a percentage from 1 to 99.999 with up to three decimals, 99.9 unless you type another. It belongs to the report you ask for, in its address, and to no monitor, so the same monitor can be read against two targets. The target is met when the uptime, not rounded, reaches it.
+
+## What a report states
+
+| Figure | What it is |
+|---|---|
+| **Uptime** | One minus downtime over observed time, cut down to its decimals so a period with any downtime never reads 100%. The same figure the status page shows. |
+| **Error budget** | The downtime the target allows over the observed time, how much of it the downtime used and how much is left. A negative remainder is the target missed. |
+| **Downtime** | Time inside outages, in minutes. Hover for the exact length. |
+| **Observed time** | The time Raaqeb had checks to judge by. |
+| **Maintenance** | Time under maintenance. It is shown, and counted as neither downtime nor observed time. |
+| **No data** | The period less observed time and maintenance: no checks ran, or the monitor was paused. It is not downtime. |
+| **Degraded time** | An estimate: each day's observed time scaled by its share of degraded checks. |
+| **Outages** | Outages that ran inside the period. |
+| **Incidents** | Incidents that ran inside the period, on the component, or on a component the monitor is linked to. |
+| **Mean time to recovery** | The mean length of the outages that recovered inside the period. |
+| **Mean time to acknowledge** | The mean wait for an acknowledge, over the outages that were acknowledged. |
+
+A mean with nothing to read shows **None**, never zero. The report also lists the longest outages, each with its time inside the period less maintenance and never more of a day than the monitor was observed that day, so time with no data is not shown as downtime there either.
+
+## Print and download
+
+**Print** opens the browser's print dialog; choose **Save as PDF** there. The printout is the report alone, in the page's reading direction, with the form, the buttons and the sidebar left out.
+
+**Download CSV** saves the report as a file a spreadsheet reads: UTF-8 with a byte order mark, one line for the subject and one for each member, then the longest outages after a blank line. Durations are minutes and times are ISO 8601 in UTC. The column titles are in your language.
+
+## Memory
+
+A report reads eight monitors at a time, even for a component that links more, and keeps only their per-day figures, so it never holds more than eight monitors' checks at once; two reports asked together run one after the other. A quarter of 200 monitors checked every minute, today included, took a quarter of a second and about 60 MB of extra memory at its peak on a development machine.

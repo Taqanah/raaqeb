@@ -32,8 +32,10 @@ function render(
     error,
     locale = "ar",
     at = value,
+    timeless,
   }: {
     readonly at?: string;
+    readonly timeless?: boolean;
     readonly clock?: Clock;
     readonly error?: string;
     readonly locale?: Locale;
@@ -49,6 +51,7 @@ function render(
         name="starts"
         now={now}
         onChange={noop}
+        timeless={timeless}
         value={at}
       />
     </MessagesProvider>
@@ -194,6 +197,23 @@ describe("a time field in the Hijri calendar", () => {
     const html = render("hijri", { error: "Enter a date and a time." });
     expect(html).toContain("Enter a date and a time.");
     expect(html.match(invalid)?.length).toBe(5);
+  });
+});
+
+describe("a time field for a date alone", () => {
+  test("keeps the date in either calendar and leaves the hour, the minute and the half of the day out", () => {
+    for (const calendar of ["gregorian", "hijri"] as const) {
+      const html = render(calendar, { clock: "12h", timeless: true });
+      expect(html).not.toContain('name="starts-hour"');
+      expect(html).not.toContain('name="starts-minute"');
+      expect(html).not.toContain('name="starts-period"');
+    }
+    expect(render("gregorian", { timeless: true })).toContain(
+      'name="starts-date"'
+    );
+    expect(
+      select(render("hijri", { timeless: true }), "starts-day").selected
+    ).toBe("1");
   });
 });
 

@@ -93,15 +93,16 @@ export const site: MonitorInput = {
   timeoutMs: 10_000,
 };
 
-/** Records one check a minute from `from` up to `to`, each with the result. */
-export async function checksEveryMinute(
+/** Records one check every `step` from `from` up to `to`, each with the result. */
+export async function checksEvery(
   storage: Storage,
   monitor: Monitor,
   from: number,
   to: number,
-  result: CheckResult
+  result: CheckResult,
+  step = minute
 ): Promise<void> {
-  for (let at = from; at < to; at += minute) {
+  for (let at = from; at < to; at += step) {
     // biome-ignore lint/performance/noAwaitInLoops: the head table's rows go in one at a time, as the scheduler writes them
     await storage.checks.record({
       capture: undefined,
@@ -118,6 +119,17 @@ export async function checksEveryMinute(
       detail: undefined,
     });
   }
+}
+
+/** Records one check a minute from `from` up to `to`, each with the result. */
+export function checksEveryMinute(
+  storage: Storage,
+  monitor: Monitor,
+  from: number,
+  to: number,
+  result: CheckResult
+): Promise<void> {
+  return checksEvery(storage, monitor, from, to, result, minute);
 }
 
 /** Whether the text holds a character XML 1.0 refuses outright: a C0 control but tab, line feed and carriage return, or U+FFFE and U+FFFF. */

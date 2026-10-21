@@ -25,6 +25,7 @@ import type { Storage } from "@/server/storage/storage.ts";
 import { utcDayStart } from "@/shared/domain/retention.ts";
 import { displayedUptime, type Span } from "@/shared/domain/uptime.ts";
 import type { Monitor } from "@/shared/schemas/monitor.ts";
+import type { Outage } from "@/shared/schemas/outage.ts";
 import type { OverviewDay } from "@/shared/schemas/overview.ts";
 import type { Rollup } from "@/shared/schemas/rollup.ts";
 
@@ -32,7 +33,11 @@ const dayMs = 86_400_000;
 
 /** One monitor's history and response times for a bar. */
 export interface MonitorDays {
+  /** The time its checks were degraded by UTC day start: the day's observed time scaled by the share of its checks that were degraded, an estimate. */
+  readonly degraded: ReadonlyMap<number, number>;
   readonly history: MonitorHistory;
+  /** Its outages still open or ended after `from`, newest first. */
+  readonly outages: readonly Outage[];
   /** Response times by UTC day start. */
   readonly response: ReadonlyMap<number, ResponseDay>;
 }
@@ -101,39 +106,54 @@ export async function readMonitorHistories(
     const days = rollups.get(monitor.id) ?? [];
     const summary = summaries.get(monitor.id);
     const excluded = covered.get(monitor.id) ?? [];
+    const observed = monitorObservedDays({
+      coverage: summary?.coverage,
+      coverageFrom,
+      days,
+      excluded,
+      from,
+      gapLimitMs: limit,
+      now,
+    });
+    const daily = dailyOf(days, summary?.days, coverageFrom, observed);
+    const outagesOf = outages.get(monitor.id) ?? [];
     read.set(monitor.id, {
-      history: {
-        covered: excluded,
-        observed: monitorObservedDays({
-          coverage: summary?.coverage,
-          coverageFrom,
-          days,
-          excluded,
-          from,
-          gapLimitMs: limit,
-          now,
-        }),
-        outages: outages.get(monitor.id) ?? [],
-      },
-      response: responseOf(days, summary?.days, coverageFrom),
+      degraded: daily.degraded,
+      history: { covered: excluded, observed, outages: outagesOf },
+      outages: outagesOf,
+      response: daily.response,
     });
   }
   return read;
 }
 
-/** A monitor's mean response time by UTC day start: from its daily rollups before `coverageFrom`, from its checks' day tallies after. */
-function responseOf(
+/** A monitor's mean response time and its degraded time by UTC day start: from its daily rollups before `coverageFrom`, from its checks' day tallies after. */
+function dailyOf(
   days: readonly Rollup[],
   tallies: ReadonlyMap<number, DayTally> | undefined,
-  coverageFrom: number
-): Map<number, ResponseDay> {
+  coverageFrom: number,
+  observed: ReadonlyMap<number, number>
+): {
+  degraded: Map<number, number>;
+  response: Map<number, ResponseDay>;
+} {
   const response = new Map<number, ResponseDay>();
+  const degraded = new Map<number, number>();
   for (const each of days) {
-    if (each.at < coverageFrom && each.averageMs !== undefined) {
+    if (each.at >= coverageFrom) {
+      continue;
+    }
+    if (each.averageMs !== undefined) {
       response.set(each.at, {
         averageMs: each.averageMs,
         timed: each.checks - each.failed,
       });
+    }
+    if (each.degraded > 0) {
+      degraded.set(
+        each.at,
+        Math.round((each.observedMs * each.degraded) / each.checks)
+      );
     }
   }
   for (const [at, tally] of tallies ?? []) {
@@ -143,8 +163,14 @@ function responseOf(
         timed: tally.checks - tally.down,
       });
     }
+    if (tally.degraded > 0) {
+      degraded.set(
+        at,
+        Math.round(((observed.get(at) ?? 0) * tally.degraded) / tally.checks)
+      );
+    }
   }
-  return response;
+  return { degraded, response };
 }
 
 type DaysStorage = Pick<

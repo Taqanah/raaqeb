@@ -188,6 +188,20 @@ describe("the displayed uptime never flatters", () => {
     ).toEqual({ decimals: 2, percent: 99.98 });
   });
 
+  test("a report may ask for more places, so a figure against a target of three decimals is read at three", () => {
+    expect(
+      displayedUptime({ downtimeMs: 1234, observedMs: 10_000_000 }, 3)
+    ).toEqual({ decimals: 3, percent: 99.987 });
+    // The places asked for never undo the rule that 100 shows only with no downtime.
+    expect(
+      displayedUptime({ downtimeMs: 1, observedMs: 90 * day }, 3)?.percent
+    ).toBeLessThan(100);
+    expect(displayedUptime({ downtimeMs: 0, observedMs: day }, 3)).toEqual({
+      decimals: 0,
+      percent: 100,
+    });
+  });
+
   test("decimals grow from 2 up to 5 while the figure is all nines, so a small outage shows how small it was", () => {
     // 99.996%: at two places it would read 99.99, all nines.
     expect(displayedUptime({ downtimeMs: 4, observedMs: 100_000 })).toEqual({

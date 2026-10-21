@@ -152,7 +152,7 @@ function Sidebar({ className, children, ...props }: ComponentProps<"div">) {
 
   return (
     <div
-      className="group peer hidden text-sidebar-foreground md:block"
+      className="group peer hidden text-sidebar-foreground md:block print:hidden"
       data-slot="sidebar"
       data-state={state}
     >

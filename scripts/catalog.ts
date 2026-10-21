@@ -25,6 +25,7 @@ export const areaPrefixes = [
   "page",
   "public",
   "reason",
+  "report",
   "setting",
   "subscription",
 ] as const;

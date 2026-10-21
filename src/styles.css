@@ -363,3 +363,39 @@
     0 1px 2px var(--lift-near),
     0 12px 32px -20px var(--lift-far);
 }
+
+/* A printed admin page is its content: light colours on white paper, no sidebar button, no sticky bar, and a card kept whole on one page when it fits. */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+  [data-slot="sidebar-trigger"] {
+    display: none;
+  }
+  [data-slot="page"] > :first-child {
+    position: static;
+  }
+  /* A flex column loses what it holds when a page breaks inside it (Chromium), so a card (every card carries `data-size`, whatever its slot is named) is a plain block on paper with its own gap. */
+  [data-size]:not([data-slot^="native-select"]) {
+    display: block;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  [data-size]:not([data-slot^="native-select"]) > * + * {
+    margin-top: var(--card-spacing);
+  }
+  /* Nothing scrolls or clips on paper: a card or a table that crosses a page shows all of itself, and a long cell wraps. */
+  [data-size]:not([data-slot^="native-select"]),
+  [data-slot="table-container"] {
+    overflow: visible;
+  }
+  [data-slot="table-cell"] {
+    white-space: normal;
+  }
+  [data-slot="table-row"] {
+    position: static;
+  }
+  @page {
+    margin: 14mm;
+  }
+}

@@ -46,6 +46,8 @@ import { Route as AdminMonitorsIndexRouteImport } from "./routes/admin/monitors/
 import { Route as AdminMonitorsNewRouteImport } from "./routes/admin/monitors/new.tsx";
 import { Route as AdminPagesIndexRouteImport } from "./routes/admin/pages/index.tsx";
 import { Route as AdminPagesNewRouteImport } from "./routes/admin/pages/new.tsx";
+import { Route as AdminReportsIndexRouteImport } from "./routes/admin/reports/index.tsx";
+import { Route as AdminReportsReportDotcsvRouteImport } from "./routes/admin/reports/report[.]csv.ts";
 import { Route as AdminSettingsIndexRouteImport } from "./routes/admin/settings/index.tsx";
 import { Route as AdminSettingsAccountRouteImport } from "./routes/admin/settings/account.tsx";
 import { Route as AdminSettingsAppearanceRouteImport } from "./routes/admin/settings/appearance.tsx";
@@ -274,6 +276,17 @@ const AdminPagesNewRoute = AdminPagesNewRouteImport.update({
   path: "/pages/new",
   getParentRoute: () => AdminRoute,
 } as any);
+const AdminReportsIndexRoute = AdminReportsIndexRouteImport.update({
+  id: "/reports/",
+  path: "/reports/",
+  getParentRoute: () => AdminRoute,
+} as any);
+const AdminReportsReportDotcsvRoute =
+  AdminReportsReportDotcsvRouteImport.update({
+    id: "/reports/report.csv",
+    path: "/reports/report.csv",
+    getParentRoute: () => AdminRoute,
+  } as any);
 const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
   id: "/",
   path: "/",
@@ -520,6 +533,7 @@ export interface FileRoutesByFullPath {
   "/admin/maintenance/new": typeof AdminMaintenanceNewRoute;
   "/admin/monitors/new": typeof AdminMonitorsNewRoute;
   "/admin/pages/new": typeof AdminPagesNewRoute;
+  "/admin/reports/report.csv": typeof AdminReportsReportDotcsvRoute;
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
@@ -540,6 +554,7 @@ export interface FileRoutesByFullPath {
   "/admin/maintenance/": typeof AdminMaintenanceIndexRoute;
   "/admin/monitors/": typeof AdminMonitorsIndexRoute;
   "/admin/pages/": typeof AdminPagesIndexRoute;
+  "/admin/reports/": typeof AdminReportsIndexRoute;
   "/admin/settings/": typeof AdminSettingsIndexRoute;
   "/subscriptions/$token/": typeof SubscriptionsTokenIndexRoute;
   "/{-$locale}/history/": typeof Char123LocaleChar125HistoryIndexRoute;
@@ -595,6 +610,7 @@ export interface FileRoutesByTo {
   "/admin/maintenance/new": typeof AdminMaintenanceNewRoute;
   "/admin/monitors/new": typeof AdminMonitorsNewRoute;
   "/admin/pages/new": typeof AdminPagesNewRoute;
+  "/admin/reports/report.csv": typeof AdminReportsReportDotcsvRoute;
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
@@ -615,6 +631,7 @@ export interface FileRoutesByTo {
   "/admin/maintenance": typeof AdminMaintenanceIndexRoute;
   "/admin/monitors": typeof AdminMonitorsIndexRoute;
   "/admin/pages": typeof AdminPagesIndexRoute;
+  "/admin/reports": typeof AdminReportsIndexRoute;
   "/admin/settings": typeof AdminSettingsIndexRoute;
   "/subscriptions/$token": typeof SubscriptionsTokenIndexRoute;
   "/{-$locale}/history": typeof Char123LocaleChar125HistoryIndexRoute;
@@ -674,6 +691,7 @@ export interface FileRoutesById {
   "/admin/maintenance/new": typeof AdminMaintenanceNewRoute;
   "/admin/monitors/new": typeof AdminMonitorsNewRoute;
   "/admin/pages/new": typeof AdminPagesNewRoute;
+  "/admin/reports/report.csv": typeof AdminReportsReportDotcsvRoute;
   "/admin/settings/account": typeof AdminSettingsAccountRoute;
   "/admin/settings/appearance": typeof AdminSettingsAppearanceRoute;
   "/admin/settings/export": typeof AdminSettingsExportRoute;
@@ -694,6 +712,7 @@ export interface FileRoutesById {
   "/admin/maintenance/": typeof AdminMaintenanceIndexRoute;
   "/admin/monitors/": typeof AdminMonitorsIndexRoute;
   "/admin/pages/": typeof AdminPagesIndexRoute;
+  "/admin/reports/": typeof AdminReportsIndexRoute;
   "/admin/settings/": typeof AdminSettingsIndexRoute;
   "/subscriptions/$token/": typeof SubscriptionsTokenIndexRoute;
   "/{-$locale}/history/": typeof Char123LocaleChar125HistoryIndexRoute;
@@ -754,6 +773,7 @@ export interface FileRouteTypes {
     | "/admin/maintenance/new"
     | "/admin/monitors/new"
     | "/admin/pages/new"
+    | "/admin/reports/report.csv"
     | "/admin/settings/account"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
@@ -774,6 +794,7 @@ export interface FileRouteTypes {
     | "/admin/maintenance/"
     | "/admin/monitors/"
     | "/admin/pages/"
+    | "/admin/reports/"
     | "/admin/settings/"
     | "/subscriptions/$token/"
     | "/{-$locale}/history/"
@@ -829,6 +850,7 @@ export interface FileRouteTypes {
     | "/admin/maintenance/new"
     | "/admin/monitors/new"
     | "/admin/pages/new"
+    | "/admin/reports/report.csv"
     | "/admin/settings/account"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
@@ -849,6 +871,7 @@ export interface FileRouteTypes {
     | "/admin/maintenance"
     | "/admin/monitors"
     | "/admin/pages"
+    | "/admin/reports"
     | "/admin/settings"
     | "/subscriptions/$token"
     | "/{-$locale}/history"
@@ -907,6 +930,7 @@ export interface FileRouteTypes {
     | "/admin/maintenance/new"
     | "/admin/monitors/new"
     | "/admin/pages/new"
+    | "/admin/reports/report.csv"
     | "/admin/settings/account"
     | "/admin/settings/appearance"
     | "/admin/settings/export"
@@ -927,6 +951,7 @@ export interface FileRouteTypes {
     | "/admin/maintenance/"
     | "/admin/monitors/"
     | "/admin/pages/"
+    | "/admin/reports/"
     | "/admin/settings/"
     | "/subscriptions/$token/"
     | "/{-$locale}/history/"
@@ -1257,6 +1282,20 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AdminPagesNewRouteImport;
       parentRoute: typeof AdminRoute;
     };
+    "/admin/reports/": {
+      id: "/admin/reports/";
+      path: "/reports";
+      fullPath: "/admin/reports/";
+      preLoaderRoute: typeof AdminReportsIndexRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/reports/report.csv": {
+      id: "/admin/reports/report.csv";
+      path: "/reports/report.csv";
+      fullPath: "/admin/reports/report.csv";
+      preLoaderRoute: typeof AdminReportsReportDotcsvRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
     "/admin/settings/": {
       id: "/admin/settings/";
       path: "/";
@@ -1574,12 +1613,14 @@ interface AdminRouteChildren {
   AdminMaintenanceNewRoute: typeof AdminMaintenanceNewRoute;
   AdminMonitorsNewRoute: typeof AdminMonitorsNewRoute;
   AdminPagesNewRoute: typeof AdminPagesNewRoute;
+  AdminReportsReportDotcsvRoute: typeof AdminReportsReportDotcsvRoute;
   AdminChannelsIndexRoute: typeof AdminChannelsIndexRoute;
   AdminComponentsIndexRoute: typeof AdminComponentsIndexRoute;
   AdminIncidentsIndexRoute: typeof AdminIncidentsIndexRoute;
   AdminMaintenanceIndexRoute: typeof AdminMaintenanceIndexRoute;
   AdminMonitorsIndexRoute: typeof AdminMonitorsIndexRoute;
   AdminPagesIndexRoute: typeof AdminPagesIndexRoute;
+  AdminReportsIndexRoute: typeof AdminReportsIndexRoute;
   AdminMaintenanceSeriesIdRoute: typeof AdminMaintenanceSeriesIdRoute;
   AdminMonitorsIdEditRoute: typeof AdminMonitorsIdEditRoute;
   AdminMonitorsIdHistoryDotjsonlDotzstRoute: typeof AdminMonitorsIdHistoryDotjsonlDotzstRoute;
@@ -1603,12 +1644,14 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMaintenanceNewRoute: AdminMaintenanceNewRoute,
   AdminMonitorsNewRoute: AdminMonitorsNewRoute,
   AdminPagesNewRoute: AdminPagesNewRoute,
+  AdminReportsReportDotcsvRoute: AdminReportsReportDotcsvRoute,
   AdminChannelsIndexRoute: AdminChannelsIndexRoute,
   AdminComponentsIndexRoute: AdminComponentsIndexRoute,
   AdminIncidentsIndexRoute: AdminIncidentsIndexRoute,
   AdminMaintenanceIndexRoute: AdminMaintenanceIndexRoute,
   AdminMonitorsIndexRoute: AdminMonitorsIndexRoute,
   AdminPagesIndexRoute: AdminPagesIndexRoute,
+  AdminReportsIndexRoute: AdminReportsIndexRoute,
   AdminMaintenanceSeriesIdRoute: AdminMaintenanceSeriesIdRoute,
   AdminMonitorsIdEditRoute: AdminMonitorsIdEditRoute,
   AdminMonitorsIdHistoryDotjsonlDotzstRoute:

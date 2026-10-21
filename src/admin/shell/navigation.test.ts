@@ -8,6 +8,7 @@ describe("the sidebar's grouped navigation", () => {
       group.items.map((item) => item.to)
     );
     expect(paths).toContain("/admin/monitors");
+    expect(paths).toContain("/admin/reports");
     expect(paths).toContain("/admin/pages");
     expect(paths).toContain("/admin/components");
     expect(paths).toContain("/admin/incidents");
