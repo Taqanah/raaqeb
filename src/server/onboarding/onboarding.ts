@@ -97,7 +97,7 @@ export async function onboardingStep(
     return "database";
   }
   try {
-    return (await storage.operatorAccount.exists()) ? "done" : "account";
+    return (await storage.operatorAccounts.exists()) ? "done" : "account";
   } catch {
     return "done";
   }
@@ -273,7 +273,7 @@ async function createOnce(
   browserOrigin: string | null
 ): Promise<CreateAccountResult> {
   try {
-    if (await storage.operatorAccount.exists()) {
+    if (await storage.operatorAccounts.exists()) {
       return { ok: false, reason: "already_exists" };
     }
     // Both are serialised origins, so text equality is origin equality; no Origin at all proves nothing.

@@ -21,9 +21,11 @@ const stored: ChannelForm = {
   },
   generated: { secret: "whsec_x" },
   kept: ["url"],
+  locked: false,
   preview: [],
   recent: [],
   summary: "hooks.example.test",
+  withheld: [],
 };
 
 const typed = (fields: Partial<ChannelDraft>): ChannelDraft => ({

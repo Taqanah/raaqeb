@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { GeneralForm } from "@/admin/settings/general-form.tsx";
 import { useLanguagePreview } from "@/admin/settings/language-preview.ts";
 import { CardsSkeleton } from "@/admin/shell/page-skeleton.tsx";
-import { operatorMiddleware } from "@/routes/-admin.ts";
+import { permitted } from "@/routes/-admin.ts";
 import {
   readGeneralSettings,
   saveGeneralSettings,
@@ -20,18 +20,27 @@ import {
 
 // The general page: every field round-trips through these two server functions.
 const readGeneral = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .handler(
     ({ context }): Promise<GeneralSettings> =>
-      readGeneralSettings(context.storage, context.boot)
+      readGeneralSettings(
+        context.storage,
+        context.boot,
+        context.operator.preferences.operatorLanguage
+      )
   );
 
 const saveGeneral = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .validator(generalSettingsSchema)
   .handler(
     ({ context, data }): Promise<GeneralSaveResult> =>
-      saveGeneralSettings(context.storage, data, context.boot)
+      saveGeneralSettings(
+        context.storage,
+        data,
+        context.boot,
+        context.operator.role
+      )
   );
 
 export const Route = createFileRoute("/admin/settings/")({

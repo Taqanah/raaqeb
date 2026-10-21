@@ -1,64 +1,28 @@
 /**
- * The account page's settings: the operator language, zone,
- * clock and calendar overrides, read beside the install values they fall back to. The
- * email and password changes are the auth module's (`server/auth/account.ts`).
+ * The account page's settings: an operator's own language, zone, clock
+ * and calendar overrides, kept on their account and read beside the install
+ * values they fall back to. The name, email and password changes and the
+ * sessions are the auth module's (`server/auth/account.ts`).
  */
 
-import type { Setting } from "@/server/storage/settings.ts";
 import type { Storage } from "@/server/storage/storage.ts";
-import type { Locale } from "@/shared/i18n/locale.ts";
 import { timeZones } from "@/shared/i18n/timezone.ts";
-import type { Calendar, Clock } from "@/shared/schemas/clock.ts";
 import type {
   AccountSettings,
   AccountSettingsInput,
   SaveResult,
 } from "@/shared/schemas/settings.ts";
-import { readClock, readSetting } from "./clock.ts";
+import { readClock } from "./clock.ts";
 import { readInstallLanguage } from "./language.ts";
-import {
-  operatorCalendar,
-  operatorClock,
-  operatorLanguage,
-  operatorTimeZone,
-} from "./operator.ts";
 
 export async function readAccountSettings(
-  storage: Pick<Storage, "settings">
+  storage: Pick<Storage, "settings">,
+  preferences: AccountSettingsInput
 ): Promise<AccountSettings> {
-  const [
-    language,
-    install,
-    overrideLanguage,
-    overrideZone,
-    overrideClock,
-    overrideCalendar,
-  ] = await Promise.all([
+  const [language, install] = await Promise.all([
     readInstallLanguage(storage),
     readClock(storage),
-    readSetting(storage, operatorLanguage, undefined),
-    readSetting(storage, operatorTimeZone, undefined),
-    readSetting(storage, operatorClock, undefined),
-    readSetting(storage, operatorCalendar, undefined),
   ]);
-  const overrides: {
-    calendar?: Calendar;
-    clock?: Clock;
-    operatorLanguage?: Locale;
-    timeZone?: string;
-  } = {};
-  if (overrideCalendar) {
-    overrides.calendar = overrideCalendar;
-  }
-  if (overrideClock) {
-    overrides.clock = overrideClock;
-  }
-  if (overrideLanguage) {
-    overrides.operatorLanguage = overrideLanguage;
-  }
-  if (overrideZone) {
-    overrides.timeZone = overrideZone;
-  }
   return {
     install: {
       calendar: install.calendar,
@@ -66,35 +30,22 @@ export async function readAccountSettings(
       language,
       timeZone: install.timeZone,
     },
-    overrides,
+    overrides: preferences,
     timeZones: timeZones(),
   };
 }
 
-/** Stores each given override and removes each absent one. */
+/** Stores the account's overrides; an absent one follows the install again. */
 export async function saveAccountSettings(
-  storage: Pick<Storage, "settings">,
+  storage: Pick<Storage, "operatorAccounts">,
+  accountId: string,
   input: AccountSettingsInput
 ): Promise<SaveResult> {
   try {
-    await setOrRemove(storage, operatorLanguage, input.operatorLanguage);
-    await setOrRemove(storage, operatorTimeZone, input.timeZone);
-    await setOrRemove(storage, operatorClock, input.clock);
-    await setOrRemove(storage, operatorCalendar, input.calendar);
-    return { ok: true };
+    return (await storage.operatorAccounts.setPreferences(accountId, input))
+      ? { ok: true }
+      : { ok: false, reason: "unavailable" };
   } catch {
     return { ok: false, reason: "unavailable" };
-  }
-}
-
-async function setOrRemove<T>(
-  storage: Pick<Storage, "settings">,
-  setting: Setting<T>,
-  value: T | undefined
-): Promise<void> {
-  if (value === undefined) {
-    await storage.settings.remove(setting);
-  } else {
-    await storage.settings.set(setting, value);
   }
 }

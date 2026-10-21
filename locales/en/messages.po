@@ -5571,6 +5571,450 @@ msgid "maintenance_occurrence_alone"
 msgstr "Changing or cancelling it here leaves the series and its other occurrences as they are."
 
 #. js-lingui-explicit-id
+msgid "auth_mail_invitation_subject"
+msgstr "Raaqeb: an invitation to the team"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_invitation_sentence"
+msgstr "You are invited to the Raaqeb team. Open the link within seven days to choose your name and password."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_title"
+msgstr "Accept the invitation"
+
+#. js-lingui-explicit-id
+msgid "team_title"
+msgstr "Team"
+
+#. js-lingui-explicit-id
+msgid "team_intro"
+msgstr "The operator accounts that manage this install, and the invitations not accepted yet."
+
+#. js-lingui-explicit-id
+msgid "team_invite"
+msgstr "Invite an operator"
+
+#. js-lingui-explicit-id
+msgid "team_invite_description"
+msgstr "The address receives a link that works once, for seven days, and it shows here for you to copy."
+
+#. js-lingui-explicit-id
+msgid "team_invite_send"
+msgstr "Send invitation"
+
+#. js-lingui-explicit-id
+msgid "team_role"
+msgstr "Role"
+
+#. js-lingui-explicit-id
+msgid "team_role_owner"
+msgstr "Owner"
+
+#. js-lingui-explicit-id
+msgid "team_role_admin"
+msgstr "Admin"
+
+#. js-lingui-explicit-id
+msgid "team_role_editor"
+msgstr "Editor"
+
+#. js-lingui-explicit-id
+msgid "team_role_responder"
+msgstr "Responder"
+
+#. js-lingui-explicit-id
+msgid "team_role_viewer"
+msgstr "Viewer"
+
+#. js-lingui-explicit-id
+msgid "team_role_owner_line"
+msgstr "Everything, giving and taking the owner role, export and import, and how operators sign in."
+
+#. js-lingui-explicit-id
+msgid "team_role_admin_line"
+msgstr "Everything but what is an owner's: notification channels, settings and the team."
+
+#. js-lingui-explicit-id
+msgid "team_role_editor_line"
+msgstr "Monitors, status pages and components, and deleting incidents."
+
+#. js-lingui-explicit-id
+msgid "team_role_responder_line"
+msgstr "Check now, acknowledging outages, writing incidents and scheduling or cancelling maintenance."
+
+#. js-lingui-explicit-id
+msgid "team_role_viewer_line"
+msgstr "Reads the admin area and changes nothing."
+
+#. js-lingui-explicit-id
+msgid "team_accounts"
+msgstr "Accounts"
+
+#. js-lingui-explicit-id
+msgid "team_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "team_you"
+msgstr "You"
+
+#. js-lingui-explicit-id
+msgid "team_status"
+msgstr "Status"
+
+#. js-lingui-explicit-id
+msgid "team_active"
+msgstr "Active"
+
+#. js-lingui-explicit-id
+msgid "team_deactivated"
+msgstr "Deactivated"
+
+#. js-lingui-explicit-id
+msgid "team_second_step"
+msgstr "Second step"
+
+#. js-lingui-explicit-id
+msgid "team_second_step_app"
+msgstr "Authenticator app"
+
+#. js-lingui-explicit-id
+msgid "team_second_step_email"
+msgstr "Emailed code"
+
+#. js-lingui-explicit-id
+msgid "team_second_step_off"
+msgstr "Off"
+
+#. js-lingui-explicit-id
+msgid "team_last_sign_in"
+msgstr "Last sign-in"
+
+#. js-lingui-explicit-id
+msgid "team_never_signed_in"
+msgstr "Not yet"
+
+#. js-lingui-explicit-id
+msgid "team_actions"
+msgstr "Account actions"
+
+#. js-lingui-explicit-id
+msgid "team_owner_only"
+msgstr "Only an owner changes an owner's account."
+
+#. js-lingui-explicit-id
+msgid "team_self_here"
+msgstr "Your own account is changed on the account page."
+
+#. js-lingui-explicit-id
+msgid "team_change_role"
+msgstr "Change role"
+
+#. js-lingui-explicit-id
+msgid "team_change_role_title"
+msgstr "Change this account's role to {role}?"
+
+#. js-lingui-explicit-id
+msgid "team_change_role_lower"
+msgstr "A lower role ends its sessions, so it signs in again."
+
+#. js-lingui-explicit-id
+msgid "team_owner_password"
+msgstr "Giving or taking the owner role needs your password."
+
+#. js-lingui-explicit-id
+msgid "team_your_password"
+msgstr "Your password"
+
+#. js-lingui-explicit-id
+msgid "team_deactivate"
+msgstr "Deactivate"
+
+#. js-lingui-explicit-id
+msgid "team_deactivate_title"
+msgstr "Deactivate this account?"
+
+#. js-lingui-explicit-id
+msgid "team_deactivate_description"
+msgstr "Its sessions end now and it cannot sign in until it is reactivated. The account and its role stay."
+
+#. js-lingui-explicit-id
+msgid "team_reactivate"
+msgstr "Reactivate"
+
+#. js-lingui-explicit-id
+msgid "team_remove"
+msgstr "Remove"
+
+#. js-lingui-explicit-id
+msgid "team_remove_title"
+msgstr "Remove this account?"
+
+#. js-lingui-explicit-id
+msgid "team_remove_description"
+msgstr "The account, its sessions and its password are deleted for good. Incidents it wrote stay."
+
+#. js-lingui-explicit-id
+msgid "team_transfer"
+msgstr "Transfer ownership"
+
+#. js-lingui-explicit-id
+msgid "team_transfer_title"
+msgstr "Transfer ownership to this account?"
+
+#. js-lingui-explicit-id
+msgid "team_transfer_description"
+msgstr "They become an owner and you become an admin. Enter your password to confirm."
+
+#. js-lingui-explicit-id
+msgid "team_invitations"
+msgstr "Invitations"
+
+#. js-lingui-explicit-id
+msgid "team_sent_by"
+msgstr "Sent by"
+
+#. js-lingui-explicit-id
+msgid "team_expires"
+msgstr "Expires"
+
+#. js-lingui-explicit-id
+msgid "team_expired"
+msgstr "Expired"
+
+#. js-lingui-explicit-id
+msgid "team_invite_again"
+msgstr "Send again"
+
+#. js-lingui-explicit-id
+msgid "team_revoke"
+msgstr "Revoke"
+
+#. js-lingui-explicit-id
+msgid "team_revoke_title"
+msgstr "Revoke this invitation?"
+
+#. js-lingui-explicit-id
+msgid "team_revoke_description"
+msgstr "Its link stops working now."
+
+#. js-lingui-explicit-id
+msgid "team_link_title"
+msgstr "Invitation link"
+
+#. js-lingui-explicit-id
+msgid "team_link_emailed"
+msgstr "The invitation went by email. The link works once, for seven days; you can copy it too."
+
+#. js-lingui-explicit-id
+msgid "team_link_copy_only"
+msgstr "This install has no email channel, so copy the link and send it yourself. It works once, for seven days."
+
+#. js-lingui-explicit-id
+msgid "team_link_not_emailed"
+msgstr "The email did not go. Copy the link and send it yourself. It works once, for seven days."
+
+#. js-lingui-explicit-id
+msgid "team_link_once"
+msgstr "The link is not shown again; sending the invitation again makes another."
+
+#. js-lingui-explicit-id
+msgid "team_done"
+msgstr "Done"
+
+#. js-lingui-explicit-id
+msgid "team_refused_invalid"
+msgstr "Enter a valid email address."
+
+#. js-lingui-explicit-id
+msgid "team_refused_already_member"
+msgstr "This address already has an account."
+
+#. js-lingui-explicit-id
+msgid "team_refused_not_allowed"
+msgstr "Your role does not allow this."
+
+#. js-lingui-explicit-id
+msgid "team_refused_too_many"
+msgstr "Too many invitations went out in the last hour. Try again later."
+
+#. js-lingui-explicit-id
+msgid "team_refused_no_address"
+msgstr "No public address is stored for the link. Save one on the general settings page."
+
+#. js-lingui-explicit-id
+msgid "team_refused_not_found"
+msgstr "This no longer exists. Reload the page."
+
+#. js-lingui-explicit-id
+msgid "team_refused_self"
+msgstr "Your own account is changed on the account page."
+
+#. js-lingui-explicit-id
+msgid "team_refused_wrong_password"
+msgstr "The password is wrong."
+
+#. js-lingui-explicit-id
+msgid "team_unavailable"
+msgstr "The team could not be read or changed. Try again shortly."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_intro"
+msgstr "You are invited to the Raaqeb team. Choose your name and password to sign in."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_as"
+msgstr "Role"
+
+#. js-lingui-explicit-id
+msgid "team_invitation_closed"
+msgstr "This invitation does not work: it was used, revoked or has expired. Ask whoever invited you for a new one."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_accept"
+msgstr "Accept and sign in"
+
+#. js-lingui-explicit-id
+msgid "team_invitation_already_member"
+msgstr "This address already has an account. Sign in with it."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_rate_limited"
+msgstr "Too many attempts. Wait a moment and try again."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_unavailable"
+msgstr "The server did not answer. Try again shortly."
+
+#. js-lingui-explicit-id
+msgid "team_name_required"
+msgstr "Enter your name."
+
+#. js-lingui-explicit-id
+msgid "setting_name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+msgid "setting_name_note"
+msgstr "The team sees it on the team page. Leave it empty to show your email in its place."
+
+#. js-lingui-explicit-id
+msgid "setting_sessions"
+msgstr "Sessions"
+
+#. js-lingui-explicit-id
+msgid "setting_sessions_note"
+msgstr "Every browser signed in to your account. Ending a session signs that browser out at its next request."
+
+#. js-lingui-explicit-id
+msgid "setting_session_current"
+msgstr "This browser"
+
+#. js-lingui-explicit-id
+msgid "setting_session_signed_in"
+msgstr "Signed in"
+
+#. js-lingui-explicit-id
+msgid "setting_session_last"
+msgstr "Last active"
+
+#. js-lingui-explicit-id
+msgid "setting_session_address"
+msgstr "IP address"
+
+#. js-lingui-explicit-id
+msgid "setting_session_end"
+msgstr "End session"
+
+#. js-lingui-explicit-id
+msgid "setting_sessions_end_others"
+msgstr "End other sessions"
+
+#. js-lingui-explicit-id
+msgid "setting_session_browser_unknown"
+msgstr "Unknown browser"
+
+#. js-lingui-explicit-id
+msgid "setting_session_browser_on"
+msgstr "{browser} on {system}"
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step"
+msgstr "A second step for every operator"
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step_line"
+msgstr "When on, an operator without a second step reaches only their own account until they switch it on."
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step_owner"
+msgstr "Only an owner changes this."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_required_notice"
+msgstr "This install's owner requires a second step. Switch it on below to reach the rest of the admin area."
+
+#. js-lingui-explicit-id
+msgid "auth_deactivated"
+msgstr "This account is deactivated. Ask an owner or admin to reactivate it."
+
+#. js-lingui-explicit-id
+msgid "app_role_read_only"
+msgstr "Your role ({role}) reads this page and does not change it."
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step_switch"
+msgstr "Require it of every operator"
+
+#. js-lingui-explicit-id
+msgid "setting_password_too_many"
+msgstr "Too many wrong passwords. Wait a quarter of an hour and try again."
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step_needs_own"
+msgstr "Switch your own second step on first, then require it of everyone."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_password_note"
+msgstr "At least 8 characters."
+
+#. js-lingui-explicit-id
+msgid "monitor_empty_description_read"
+msgstr "Monitors show here once an operator whose role changes them adds one."
+
+#. js-lingui-explicit-id
+msgid "monitor_empty_description_add"
+msgstr "Add the first monitor."
+
+#. js-lingui-explicit-id
+msgid "setting_name_label"
+msgstr "Your name"
+
+#. js-lingui-explicit-id
+msgid "channel_auth_owner_only"
+msgstr "Sign-in mail goes through this channel, so only an owner changes it."
+
+#. js-lingui-explicit-id
+msgid "setting_owner_only"
+msgstr "Only an owner changes the public address and the trusted proxies."
+
+#. js-lingui-explicit-id
+msgid "setting_owner_only_field"
+msgstr "Only an owner changes this: reset links, invitations and sign-in limits rely on it."
+
+#. js-lingui-explicit-id
+msgid "setting_auth_channel_owner"
+msgstr "Only an owner chooses the channel: it carries reset links and sign-in codes."
+
+#. js-lingui-explicit-id
+msgid "channel_secret_withheld"
+msgstr "Stored, and shown only to those who edit channels."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_withheld"
+msgstr "The URL is shown only to those who edit monitors: whoever holds it can send heartbeats."
+
+#. js-lingui-explicit-id
 msgid "channel_line_locations"
 msgstr "Seen down from: {value}"
 

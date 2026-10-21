@@ -5,7 +5,7 @@
  * sits in the sidebar, so this row holds the page's controls alone.
  */
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { CardFooter } from "@/shared/ui/card.tsx";
 import { ChevronEndIcon } from "@/shared/ui/icons.tsx";
 import { SidebarTrigger } from "@/shared/ui/sidebar.tsx";
@@ -46,6 +46,9 @@ export const pageColumn =
 export const pageHeaderRow =
   "z-10 -mx-6 -mb-3 flex min-h-control flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-background/85 px-6 py-3 backdrop-blur-sm md:sticky md:top-0";
 
+/** A notice the page shows under its header row: why the operator's role reads the page and cannot change it. */
+export const PageNotice = createContext<ReactNode>(null);
+
 export interface PageProps {
   readonly action?: ReactNode;
   readonly children: ReactNode;
@@ -59,6 +62,7 @@ export function Page({
   parent,
   title,
 }: PageProps): ReactNode {
+  const notice = useContext(PageNotice);
   return (
     <div className={pageColumn} data-slot="page">
       <div className={pageHeaderRow}>
@@ -87,6 +91,7 @@ export function Page({
           <div className="flex flex-wrap items-center gap-2">{action}</div>
         ) : null}
       </div>
+      {notice}
       {children}
     </div>
   );

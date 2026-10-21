@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ExportCard, ImportCard } from "@/admin/settings/export-forms.tsx";
 import { formWidth } from "@/admin/shell/page.tsx";
 import { CardsSkeleton } from "@/admin/shell/page-skeleton.tsx";
-import { operatorMiddleware, readSession } from "@/routes/-admin.ts";
+import { permitted } from "@/routes/-admin.ts";
 import { exportSizes } from "@/server/export/export.ts";
 import {
   type ExportSizes,
@@ -14,18 +14,22 @@ import { cn } from "@/shared/ui/cn.ts";
 
 // Each mode's file size, read after the page opens: the full one reads all history.
 const readSizes = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("transfer")])
   .handler(
     ({ context }): Promise<ExportSizes> =>
       exportSizes(context.storage, context.boot.installKey, Date.now())
   );
 
+// The page reads nothing of its own: its permission check sends a caller whose session ended to sign-in, and one who may not export to the admin.
+const readExportPage = createServerFn({ method: "GET" })
+  .middleware([permitted("transfer")])
+  .handler((): null => null);
+
 // The export and import page: the download's refusal comes back
 // in the search, since the download is a plain GET.
 export const Route = createFileRoute("/admin/settings/export")({
   component: ExportPage,
-  // The page reads nothing of its own; the session check sends a caller whose session ended to sign-in.
-  loader: ({ abortController: { signal } }) => readSession({ signal }),
+  loader: ({ abortController: { signal } }) => readExportPage({ signal }),
   pendingComponent: () => <CardsSkeleton header />,
   validateSearch: exportPageSearchSchema,
 });

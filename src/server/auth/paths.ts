@@ -8,8 +8,9 @@
  * parameter cannot be listed; those are the unblockable ones.
  */
 
-/** The endpoints the browser calls over HTTP: sign-in and sign-out, the reset request and reset, the emailed code's send and verify, and the authenticator app's and backup codes' verify. */
+/** The endpoints the browser calls over HTTP: accepting an invitation, sign-in and sign-out, the reset request and reset, the emailed code's send and verify, and the authenticator app's and backup codes' verify. */
 export const allowedPaths: readonly string[] = [
+  "/invitation/accept",
   "/request-password-reset",
   "/reset-password",
   "/sign-in/email",

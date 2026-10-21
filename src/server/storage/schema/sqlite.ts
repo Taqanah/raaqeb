@@ -36,10 +36,11 @@ export const changeCounter = sqliteTable("change_counter", {
 
 // Better Auth's four core tables, prefixed auth_ and written in the
 // repo's column conventions. The property names are Better Auth's field names;
-// the adapter maps them onto the snake_case columns. v1 holds one operator
-// account (CONTEXT.md); the table is Better Auth's, so more are additive.
+// the adapter maps them onto the snake_case columns. The user table holds
+// the operator accounts (CONTEXT.md), with Raaqeb's own fields beside Better
+// Auth's: the role, deactivation, the last sign-in and the preferences.
 
-/** The operator account's identity row. */
+/** One operator account's identity row. */
 export const authUser = sqliteTable("auth_user", {
   id: text().primaryKey(),
   name: text().notNull(),
@@ -50,6 +51,16 @@ export const authUser = sqliteTable("auth_user", {
   twoFactorEnabled: flag("two_factor_enabled").notNull().default(sql`0`),
   createdAt: millis("created_at").notNull(),
   updatedAt: millis("updated_at").notNull(),
+  // CONTEXT.md "Role"; the migration made the account that existed before roles its owner.
+  role: text().notNull().default("viewer"),
+  // Set while the account is deactivated (CONTEXT.md "Deactivated").
+  deactivatedAt: millis("deactivated_at"),
+  lastSignInAt: millis("last_sign_in_at"),
+  // The operator's own overrides of the install's language, zone, clock and calendar; none follows the install.
+  language: text(),
+  timeZone: text("time_zone"),
+  clock: text(),
+  calendar: text(),
 });
 
 /** One signed-in browser; 7 days, refreshed daily. */
@@ -129,6 +140,19 @@ export const authTwoFactor = sqliteTable(
   },
   (table) => [index("auth_two_factor_user_id").on(table.userId)]
 );
+
+/** An invitation (CONTEXT.md): one per address, its link's token kept as its SHA-256 only. */
+export const invitations = sqliteTable("invitations", {
+  id: text().primaryKey(),
+  email: text().notNull().unique(),
+  role: text().notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  invitedBy: text("invited_by").references(() => authUser.id, {
+    onDelete: "set null",
+  }),
+  createdAt: integer("created_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+});
 
 // Monitors, groups and tags (CONTEXT.md "Group", "Tag"). The
 // check-type part of a monitor is JSON text parsed by shared/schemas/monitor.ts;

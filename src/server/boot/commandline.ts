@@ -1,9 +1,10 @@
 /**
  * The `raaqeb` command line: one optional subcommand, `serve` by
  * default, flags that mirror the boot setting variables, reset-password's
- * `--interactive` and set-address's one argument, and the `--version` and
+ * `--interactive` and its one optional argument, set-address's one argument, and the `--version` and
  * `--help` answers, nothing more.
  */
+import { z } from "zod";
 import { isOrigin } from "@/shared/schemas/address.ts";
 import type { BootValues, BootVariable } from "./settings.ts";
 
@@ -23,6 +24,8 @@ export type CommandLine =
       /** The public address set-address stores, an origin; nothing for every other command. */
       address?: string;
       command: Command;
+      /** The account reset-password names; nothing for every other command, or when it names none. */
+      email?: string;
       flags: BootValues;
       /** `--interactive`, which only reset-password takes. */
       interactive: boolean;
@@ -46,16 +49,16 @@ export function helpText(version: string): string {
 usage: raaqeb [command] [flags]
 
 commands:
-  serve                 run the server; the default
-  health                exit 0 when the server answers at its address
-  reset-password        print a reset link for the operator account
-  set-address <url>     store the public address, as https://status.example.com
-  probe                 check an install's monitors from here, reporting to
-                        RAAQEB_PROBE_SERVER with RAAQEB_PROBE_TOKEN
+  serve                   run the server; the default
+  health                  exit 0 when the server answers at its address
+  reset-password [email]  print a reset link for the operator account the email names
+  set-address <url>       store the public address, as https://status.example.com
+  probe                   check an install's monitors from here, reporting to
+                          RAAQEB_PROBE_SERVER with RAAQEB_PROBE_TOKEN
 
 flags:
-  --version             print the version
-  --help                print this text
+  --version               print the version
+  --help                  print this text
 
 The boot settings also take flags, each the lowercase name of its RAAQEB_ variable (--port, --data-dir).`;
 }
@@ -151,13 +154,25 @@ function commandOf(words: readonly string[], flags: BootValues): CommandLine {
   if (!isCommand(command)) {
     return refuse(`unknown command: ${command}`);
   }
-  const [address, extra] =
-    command === "set-address" ? rest : [undefined, ...rest];
+  const takesOne = command === "set-address" || command === "reset-password";
+  const [argument, extra] = takesOne ? rest : [undefined, ...rest];
   if (extra !== undefined) {
     return refuse(`unexpected argument after ${command}: ${extra}`);
   }
+  if (
+    command === "reset-password" &&
+    argument !== undefined &&
+    !z.email().safeParse(argument).success
+  ) {
+    return refuse(
+      "reset-password takes the email of an operator account, as in: raaqeb reset-password ops@example.com"
+    );
+  }
   return {
-    ...(address !== undefined && { address }),
+    ...(argument !== undefined &&
+      (command === "set-address"
+        ? { address: argument }
+        : { email: argument })),
     command,
     flags,
     interactive: false,

@@ -5,6 +5,10 @@
  * counter's `bump()` sits on the storage itself.
  */
 import type { BootSettings } from "@/server/boot/settings.ts";
+import {
+  type OperatorAccountsRepository,
+  operatorAccountsRepository,
+} from "./accounts.ts";
 import { type AuthDatabase, authDatabase } from "./auth.ts";
 import {
   type CertificatesRepository,
@@ -35,6 +39,10 @@ import {
   type Verdict,
 } from "./inspect.ts";
 import {
+  type InvitationsRepository,
+  invitationsRepository,
+} from "./invitations.ts";
+import {
   type MaintenanceRepository,
   maintenanceRepository,
 } from "./maintenance.ts";
@@ -44,10 +52,6 @@ import {
   type NotificationsRepository,
   notificationsRepository,
 } from "./notifications.ts";
-import {
-  type OperatorAccountRepository,
-  operatorAccountRepository,
-} from "./operator.ts";
 import { type OutagesRepository, outagesRepository } from "./outages.ts";
 import { type PagesRepository, pagesRepository } from "./pages.ts";
 import { type ConnectFailure, openPostgres } from "./postgres.ts";
@@ -112,10 +116,11 @@ export interface Storage {
   readonly components: ComponentsRepository;
   readonly heartbeats: HeartbeatsRepository;
   readonly incidents: IncidentsRepository;
+  readonly invitations: InvitationsRepository;
   readonly maintenance: MaintenanceRepository;
   readonly monitors: MonitorsRepository;
   readonly notifications: NotificationsRepository;
-  readonly operatorAccount: OperatorAccountRepository;
+  readonly operatorAccounts: OperatorAccountsRepository;
   readonly outages: OutagesRepository;
   readonly pages: PagesRepository;
   readonly probes: ProbesRepository;
@@ -249,7 +254,8 @@ export async function openStorage(
       maintenance: maintenanceRepository(run, now),
       monitors: monitorsRepository(run, now),
       notifications: notificationsRepository(run),
-      operatorAccount: operatorAccountRepository(run),
+      invitations: invitationsRepository(run),
+      operatorAccounts: operatorAccountsRepository(run),
       outages: outagesRepository(run),
       pages: pagesRepository(run, now),
       probes: probesRepository(run, now),

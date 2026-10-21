@@ -10,6 +10,7 @@ import { Link } from "@tanstack/react-router";
 import { type ReactNode, useCallback } from "react";
 import { useOperatorCalendar } from "@/admin/shell/calendar.tsx";
 import { ContentText } from "@/admin/shell/content.tsx";
+import { useAllows, useCan } from "@/admin/shell/role.tsx";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type { CheckResult } from "@/shared/schemas/check.ts";
 import type { Monitor } from "@/shared/schemas/monitor.ts";
@@ -103,15 +104,18 @@ export function MonitorTableRow(props: MonitorItemProps): ReactNode {
   const { covered, days, heard, monitor, selected, state, unknown } = props;
   const { t } = useMessages();
   const { acknowledge, remove, select, togglePaused } = useItem(props);
+  const allowed = useAllows();
   return (
     <TableRow
       data-monitor={monitor.id}
       data-state={selected ? "selected" : undefined}
     >
       <TableCell>
+        {/* The selection serves the bulk changes, which a role that cannot change monitors is not offered. */}
         <Checkbox
           aria-label={t("monitor_select_one", { name: monitor.name })}
           checked={selected}
+          disabled={!allowed("monitors")}
           onCheckedChange={select}
         />
       </TableCell>
@@ -141,7 +145,9 @@ export function MonitorTableRow(props: MonitorItemProps): ReactNode {
         <ItemMenu
           monitor={monitor}
           onAcknowledge={
-            props.acknowledgeable === undefined ? undefined : acknowledge
+            props.acknowledgeable === undefined || !allowed("acknowledge")
+              ? undefined
+              : acknowledge
           }
           onDelete={remove}
           onTogglePaused={togglePaused}
@@ -343,6 +349,11 @@ function ItemMenu({
   readonly onTogglePaused: () => void;
 }): ReactNode {
   const { t } = useMessages();
+  const changes = useCan("monitors");
+  // A role that neither changes monitors nor may acknowledge this outage has nothing to choose.
+  if (!(changes || onAcknowledge)) {
+    return null;
+  }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -359,38 +370,49 @@ function ItemMenu({
         <EllipsisIcon />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          render={
-            <Link params={{ id: monitor.id }} to="/admin/monitors/$id/edit" />
-          }
-        >
-          <PencilIcon />
-          {t("monitor_edit")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          data-action="duplicate"
-          render={
-            <Link search={{ copy: monitor.id }} to="/admin/monitors/new" />
-          }
-        >
-          <CopyIcon />
-          {t("monitor_duplicate")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onTogglePaused}>
-          {monitor.paused ? <PlayIcon /> : <PauseIcon />}
-          {monitor.paused ? t("monitor_resume") : t("monitor_pause")}
-        </DropdownMenuItem>
+        {changes ? (
+          <>
+            <DropdownMenuItem
+              render={
+                <Link
+                  params={{ id: monitor.id }}
+                  to="/admin/monitors/$id/edit"
+                />
+              }
+            >
+              <PencilIcon />
+              {t("monitor_edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              data-action="duplicate"
+              render={
+                <Link search={{ copy: monitor.id }} to="/admin/monitors/new" />
+              }
+            >
+              <CopyIcon />
+              {t("monitor_duplicate")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onTogglePaused}>
+              {monitor.paused ? <PlayIcon /> : <PauseIcon />}
+              {monitor.paused ? t("monitor_resume") : t("monitor_pause")}
+            </DropdownMenuItem>
+          </>
+        ) : null}
         {onAcknowledge ? (
           <DropdownMenuItem data-action="acknowledge" onClick={onAcknowledge}>
             <BellOffIcon />
             {t("monitor_acknowledge")}
           </DropdownMenuItem>
         ) : null}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onDelete} variant="destructive">
-          <TrashIcon />
-          {t("app_delete")}
-        </DropdownMenuItem>
+        {changes ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDelete} variant="destructive">
+              <TrashIcon />
+              {t("app_delete")}
+            </DropdownMenuItem>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -21,7 +21,9 @@ import {
   monitorPassword,
   now,
   signingSecret,
+  sourceEditorId,
   sourceInstall,
+  sourceOwnerId,
   subscriberUrl,
   targetInstall,
   today,
@@ -143,6 +145,50 @@ describe("an export", () => {
       "operator_calendar",
     ]) {
       expect(keys).not.toContain(own);
+    }
+  });
+
+  test("carries every operator account with its role, name, deactivation and preferences, and none of its password, sessions or second step", async () => {
+    const lines = await exported(await source());
+    const accounts = configurationOf(lines[0]).operatorAccounts ?? [];
+    expect(accounts).toEqual([
+      {
+        calendar: null,
+        clock: null,
+        createdAt: expect.any(String),
+        deactivatedAt: null,
+        email: "owner@source.example.test",
+        emailVerified: true,
+        id: sourceOwnerId,
+        language: null,
+        name: "",
+        role: "owner",
+        timeZone: null,
+        updatedAt: expect.any(String),
+      },
+      {
+        calendar: "hijri",
+        clock: "24h",
+        createdAt: expect.any(String),
+        deactivatedAt: expect.any(String),
+        email: "huda@source.example.test",
+        emailVerified: false,
+        id: sourceEditorId,
+        language: "en",
+        name: "Huda",
+        role: "editor",
+        timeZone: "Asia/Riyadh",
+        updatedAt: expect.any(String),
+      },
+    ]);
+    const text = JSON.stringify(lines);
+    for (const secret of [
+      "the source owner password hash",
+      "the source session token",
+      "the source app secret",
+      "the source backup codes",
+    ]) {
+      expect(text).not.toContain(secret);
     }
   });
 

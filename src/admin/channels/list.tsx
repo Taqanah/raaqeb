@@ -7,6 +7,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Page } from "@/admin/shell/page.tsx";
+import { useCan } from "@/admin/shell/role.tsx";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import {
   type Channel,
@@ -45,7 +46,8 @@ export function ChannelList({
   readonly result: ChannelListResult;
 }): ReactNode {
   const { t } = useMessages();
-  const add = (
+  // Offered only to a role that may add one; the list reads the same for every role.
+  const add = useCan("channels") ? (
     <Link
       className={buttonVariants()}
       data-slot="add-channel"
@@ -53,7 +55,7 @@ export function ChannelList({
     >
       {t("channel_add")}
     </Link>
-  );
+  ) : null;
   // While the list is empty its card holds the one add button, which says what to add.
   const empty = result.ok && result.channels.length === 0;
   return (

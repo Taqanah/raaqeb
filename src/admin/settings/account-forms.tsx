@@ -66,6 +66,7 @@ const emailMessages: Readonly<Record<EmailChangeRefusal, MessageId>> = {
   invalid: "setting_invalid",
   same_email: "setting_invalid",
   unavailable: "setting_unavailable",
+  too_many_attempts: "setting_password_too_many",
   wrong_password: "setting_invalid",
 };
 /** The email field's own words for a refusal: what to type, where the save line says to check. */
@@ -78,6 +79,7 @@ const fieldMessages: Readonly<
 const passwordMessages: Readonly<Record<PasswordChangeRefusal, MessageId>> = {
   invalid: "setting_invalid",
   unavailable: "setting_unavailable",
+  too_many_attempts: "setting_password_too_many",
   wrong_password: "setting_invalid",
 };
 

@@ -7,6 +7,8 @@
  */
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { useCan } from "@/admin/shell/role.tsx";
+import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import {
   Empty,
@@ -21,20 +23,31 @@ const importPagePath = "/admin/settings/export";
 /** `add` is the page's add button, held here while the list is empty. */
 export function EmptyList({ add }: { readonly add: ReactNode }): ReactNode {
   const { t } = useMessages();
+  const imports = useCan("transfer");
+  const adds = useCan("monitors");
+  // The line says what the operator's role can do here: add one and import, add one, or wait for one.
+  let description: MessageId = "monitor_empty_description_read";
+  if (imports) {
+    description = "monitor_empty_description";
+  } else if (adds) {
+    description = "monitor_empty_description_add";
+  }
   return (
     <Empty>
       <EmptyHeader>
         <EmptyTitle>{t("monitor_empty_title")}</EmptyTitle>
-        <EmptyDescription>{t("monitor_empty_description")}</EmptyDescription>
+        <EmptyDescription>{t(description)}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
         {add}
-        <Link
-          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-          to={importPagePath}
-        >
-          {t("monitor_import_link")}
-        </Link>
+        {imports ? (
+          <Link
+            className="text-muted-foreground text-sm underline-offset-4 hover:underline"
+            to={importPagePath}
+          >
+            {t("monitor_import_link")}
+          </Link>
+        ) : null}
       </EmptyContent>
     </Empty>
   );

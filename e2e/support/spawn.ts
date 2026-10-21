@@ -9,9 +9,35 @@ import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { publicAddress } from "@/server/settings/address.ts";
 import { installLanguage } from "@/server/settings/language.ts";
 import { openStorage, type Storage } from "@/server/storage/storage.ts";
+import type { Role } from "@/shared/domain/roles.ts";
 import type { Locale } from "@/shared/i18n/locale.ts";
 import { operatorEmail, operatorPassword } from "./servers.ts";
 import { waitForOrigin } from "./wait.ts";
+
+/** Another operator account with a password and a role, made as an accepted invitation makes one; for a seed's `records`. */
+export async function seedAccount(
+  storage: Storage,
+  account: {
+    readonly email: string;
+    readonly name: string;
+    readonly password: string;
+    readonly role: Role;
+  }
+): Promise<void> {
+  const auth = await authFor(storage, {
+    betterAuthSecrets: undefined,
+    installKey: await scratchInstallKey(),
+  });
+  await auth.api.signUpEmail({
+    body: {
+      email: account.email,
+      name: account.name,
+      password: account.password,
+    },
+  });
+  const made = await storage.operatorAccounts.findByEmail(account.email);
+  await storage.operatorAccounts.setRole(made?.id ?? "", account.role);
+}
 
 /** What the install starts with; nothing seeded leaves it in onboarding. */
 export interface InstallSeed {

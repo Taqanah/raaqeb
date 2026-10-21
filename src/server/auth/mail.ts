@@ -22,9 +22,11 @@ import { loadCatalog } from "@/server/settings/language.ts";
 import { readOperatorLanguage } from "@/server/settings/operator.ts";
 import { defineSetting, type Setting } from "@/server/storage/settings.ts";
 import type { Storage } from "@/server/storage/storage.ts";
+import { can, type Role } from "@/shared/domain/roles.ts";
 import { createMessages, type MessageId } from "@/shared/i18n/messages.ts";
 import {
   type Channel,
+  type ChannelType,
   type ChannelValues,
   recipientsOf,
   senderOf,
@@ -38,20 +40,36 @@ export const authEmailChannel: Setting<string> = defineSetting(
   z.string()
 );
 
-/** The email channel the last test message went through, as it was then, and the address it went to: an edit of either asks for a new test before the second step's switch opens. */
-export const authEmailTested: Setting<{
+/** What an account's last test message proved: the channel it went through, as it was then, and the address it went to. */
+export interface AuthEmailTest {
   readonly channelId: string;
-  /** The operator account's address the message went to; the codes go to the address in force. */
+  /** The account's address the message went to; the codes go to the address in force. */
   readonly email: string;
   readonly updatedAt: number;
-}> = defineSetting(
-  "auth_email_tested",
-  z.object({ channelId: z.string(), email: z.string(), updatedAt: z.number() })
-);
+}
 
-export type AuthMailStorage = Pick<Storage, "channels" | "settings">;
+const authEmailTestSchema = z.object({
+  channelId: z.string(),
+  email: z.string(),
+  updatedAt: z.number(),
+});
 
-export type AuthMailKind = "reset_link" | "code" | "test" | "email_changed";
+/** The account's last test message: an edit of the channel or of the address asks for a new test before its second step's switch opens. Removing the account removes it (`:<id>`). */
+export function authEmailTestedOf(accountId: string): Setting<AuthEmailTest> {
+  return defineSetting(`auth_email_tested:${accountId}`, authEmailTestSchema);
+}
+
+export type AuthMailStorage = Pick<
+  Storage,
+  "channels" | "operatorAccounts" | "settings"
+>;
+
+export type AuthMailKind =
+  | "reset_link"
+  | "code"
+  | "test"
+  | "email_changed"
+  | "invitation";
 
 export interface AuthMailMessage {
   readonly kind: AuthMailKind;
@@ -73,7 +91,7 @@ export type AuthMailResult =
 
 /** The email channel auth mail goes through: the chosen one while it exists and is an email channel, otherwise the oldest email channel, or nothing. */
 export async function authEmailChannelOf(
-  storage: AuthMailStorage
+  storage: Pick<Storage, "channels" | "settings">
 ): Promise<Channel | undefined> {
   const [channels, chosen] = await Promise.all([
     storage.channels.list(),
@@ -81,6 +99,33 @@ export async function authEmailChannelOf(
   ]);
   const email = channels.filter((channel) => channel.type === "email");
   return email.find((channel) => channel.id === chosen) ?? email[0];
+}
+
+/**
+ * Whether an operator of the role may make, edit or delete the channel.
+ * Auth mail carries reset links, one-time codes and invitations, so whoever
+ * controls the email channel it goes through could take an owner's account:
+ * that channel, and a first email channel made while none carries auth
+ * mail, are an owner's alone. Never throws: a database that cannot answer
+ * allows nothing.
+ */
+export async function mayChangeChannel(
+  storage: Pick<Storage, "channels" | "settings">,
+  role: Role,
+  change: { readonly id: string } | { readonly type: ChannelType }
+): Promise<boolean> {
+  if (can(role, "security")) {
+    return true;
+  }
+  try {
+    const inForce = await authEmailChannelOf(storage);
+    if ("id" in change) {
+      return change.id !== inForce?.id;
+    }
+    return change.type !== "email" || inForce !== undefined;
+  } catch {
+    return false;
+  }
 }
 
 /** What a send records when the database did not answer while the channel was read. */
@@ -113,6 +158,16 @@ const wording: Readonly<
     sentence: "auth_mail_email_changed_sentence",
     subject: "auth_mail_email_changed_subject",
   },
+  invitation: {
+    sentence: "auth_mail_invitation_sentence",
+    subject: "auth_mail_invitation_subject",
+  },
+};
+
+/** The links that go as a button with their page's own title; any other value stays a line of its own, left to right. */
+const buttonTitles: Partial<Record<AuthMailKind, MessageId>> = {
+  invitation: "team_invitation_title",
+  reset_link: "auth_reset_title",
 };
 
 /** Sends one message in the operator language through the auth email channel. Never throws. */
@@ -137,7 +192,9 @@ export async function sendAuthMail(
     if (!values) {
       return { failure: unreadableSecrets, ok: false, reason: "failed" };
     }
-    const locale = await readOperatorLanguage(storage);
+    // In the recipient's own language: an account's, else the install's, as for an invitation.
+    const recipient = await storage.operatorAccounts.findByEmail(message.to);
+    const locale = await readOperatorLanguage(storage, recipient?.preferences);
     const messages = createMessages(locale, await loadCatalog(locale));
     const words = wording[message.kind];
     const text = plainText({
@@ -146,14 +203,14 @@ export async function sendAuthMail(
       sentence: messages._(words.sentence),
       subject: messages._(words.subject),
     });
-    // The reset link is a button with the reset page's own title; a code or a new address stays a line of its own, left to right.
+    const button = buttonTitles[message.kind];
     const html = mailHtml({
       buttons:
-        message.kind === "reset_link" && message.value !== undefined
-          ? [{ url: message.value, words: messages._("auth_reset_title") }]
+        button !== undefined && message.value !== undefined
+          ? [{ url: message.value, words: messages._(button) }]
           : [],
       lines:
-        message.kind !== "reset_link" && message.value !== undefined
+        button === undefined && message.value !== undefined
           ? [{ text: message.value, token: message.value }]
           : [],
       locale,

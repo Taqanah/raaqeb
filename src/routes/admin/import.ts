@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/import")({
     middleware: [originChecked],
     handlers: {
       POST: async ({ context, request }) => {
-        const operator = await signedIn(context, request);
+        const operator = await signedIn(context, request, "transfer");
         if (!operator) {
           return new Response(null, { status: 401 });
         }

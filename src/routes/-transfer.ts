@@ -7,19 +7,38 @@
 
 import { createCsrfMiddleware } from "@tanstack/react-start";
 import type { RequestContext } from "@/handler.ts";
-import { operatorFor } from "@/server/auth/session.ts";
+import {
+  type Operator,
+  operatorFor,
+  refusalOf,
+} from "@/server/auth/session.ts";
+import type { Permission } from "@/shared/domain/roles.ts";
 
-/** The signed-in operator's storage and the cookie to refresh, or nothing without a session. */
+/** The cookie to refresh for a signed-in operator who may do what the permission names, or nothing without a session or the permission, which the route answers as signed out. */
 export async function signedIn(
   context: RequestContext,
-  request: Request
-): Promise<{ readonly setCookie: string | undefined } | undefined> {
+  request: Request,
+  permission: Permission
+): Promise<
+  | { readonly operator: Operator; readonly setCookie: string | undefined }
+  | undefined
+> {
   const operator = await operatorFor(
     context.storage,
     context.boot,
     request.headers
   );
-  return operator && { setCookie: operator.setCookie };
+  if (!operator) {
+    return;
+  }
+  const refusal = await refusalOf(
+    operator.storage,
+    operator.operator,
+    permission
+  ).catch(() => "unavailable");
+  return refusal === undefined
+    ? { operator: operator.operator, setCookie: operator.setCookie }
+    : undefined;
 }
 
 /** Headers of a file download that no cache keeps; the content is zstd unless the file says another type. */

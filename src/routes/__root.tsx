@@ -1,7 +1,9 @@
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { type ReactNode, useMemo } from "react";
 import { z } from "zod";
+import { operatorOfRequest } from "@/server/auth/session.ts";
 import { readAppearance } from "@/server/settings/appearance.ts";
 import {
   documentLanguage,
@@ -87,9 +89,21 @@ const readDocument = createServerFn()
         view,
       };
     }
+    // An admin page renders in the signed-in operator's language; the session read is the one the guard makes in this request.
     const requested =
       data.locale ??
-      (data.admin ? await readOperatorLanguage(context.storage) : undefined);
+      (data.admin
+        ? await readOperatorLanguage(
+            context.storage,
+            (
+              await operatorOfRequest(
+                context.storage,
+                context.boot,
+                getRequest()
+              )
+            )?.operator.preferences
+          )
+        : undefined);
     const [{ catalog, dir, locale, title }, appearance] = await Promise.all([
       documentLanguage(context.storage, requested),
       readAppearance(context.storage),

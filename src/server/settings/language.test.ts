@@ -107,12 +107,13 @@ describe("the document language", () => {
 });
 
 describe("a document in the locale the request asked for", () => {
-  test("the sign-in, sign-out, recovery and onboarding pages may ask; the admin area may not", () => {
+  test("the sign-in, sign-out, recovery, invitation and onboarding pages may ask; the admin area may not", () => {
     expect(localeSwitchPaths).toEqual([
       "/sign-in",
       "/sign-out",
       "/forgot-password",
       "/reset-password",
+      "/invitation",
       "/onboarding",
       "/onboarding/database",
       "/onboarding/account",

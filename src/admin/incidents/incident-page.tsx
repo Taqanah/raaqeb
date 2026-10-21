@@ -22,6 +22,7 @@ import {
 } from "@/admin/shell/content.tsx";
 import { formWithPanel, Page } from "@/admin/shell/page.tsx";
 import { useRefusedFields } from "@/admin/shell/refused-fields.ts";
+import { useCan } from "@/admin/shell/role.tsx";
 import { useSaveFlow } from "@/admin/shell/save-flow.ts";
 import {
   SaveButton,
@@ -793,6 +794,7 @@ function DeleteIncident({
   readonly remove: () => Promise<IncidentDeleteResult | undefined>;
 }): ReactNode {
   const { t } = useMessages();
+  const deletes = useCan("incidents_delete");
   const [open, setOpen] = useState(false);
   const [refused, setRefused] = useState<IncidentRefusal | undefined>();
   const ask = useCallback(() => setOpen(true), []);
@@ -804,6 +806,10 @@ function DeleteIncident({
     }
     setRefused(result?.ok === false ? result.reason : "unavailable");
   }, [onRemoved, remove]);
+  // A responder writes incidents; deleting one is an editor's.
+  if (!deletes) {
+    return null;
+  }
   return (
     <div className="flex flex-col gap-2">
       <Button

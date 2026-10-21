@@ -28,6 +28,7 @@ import {
   createMonitor,
   deleteMonitors,
   editMonitor,
+  heartbeatFor,
   listMonitorChoices,
   listMonitors,
   pauseMonitors,
@@ -69,10 +70,10 @@ import {
   timeoutMaxMs,
 } from "@/shared/schemas/monitor.ts";
 import type { SaveResult } from "@/shared/schemas/settings.ts";
-import { operatorMiddleware } from "./-admin.ts";
+import { permitted } from "./-admin.ts";
 
 export const readMonitorList = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .handler(
     ({ context }): Promise<MonitorListResult> =>
       listMonitors(context.storage, Date.now())
@@ -80,14 +81,14 @@ export const readMonitorList = createServerFn({ method: "GET" })
 
 /** The command palette's read: names and targets alone, never the list's bars. */
 export const readMonitorChoicesFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .handler(
     ({ context }): Promise<MonitorChoicesResult> =>
       listMonitorChoices(context.storage)
   );
 
 export const createMonitorFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("monitors")])
   .validator(monitorInputSchema)
   .handler(
     ({ context, data }): Promise<MonitorSaveResult> =>
@@ -95,7 +96,7 @@ export const createMonitorFn = createServerFn({ method: "POST" })
   );
 
 export const editMonitorFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("monitors")])
   .validator(monitorEditSchema)
   .handler(
     ({ context, data }): Promise<MonitorSaveResult> =>
@@ -109,7 +110,7 @@ export const editMonitorFn = createServerFn({ method: "POST" })
   );
 
 export const pauseMonitorsFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("monitors")])
   .validator(monitorIdsSchema)
   .handler(
     ({ context, data }): Promise<MonitorBulkResult> =>
@@ -117,7 +118,7 @@ export const pauseMonitorsFn = createServerFn({ method: "POST" })
   );
 
 export const resumeMonitorsFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("monitors")])
   .validator(monitorIdsSchema)
   .handler(
     ({ context, data }): Promise<MonitorBulkResult> =>
@@ -126,7 +127,7 @@ export const resumeMonitorsFn = createServerFn({ method: "POST" })
 
 /** One change to every selected monitor: a channel, the group or a tag. */
 export const changeMonitorsFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("monitors")])
   .validator(monitorChangeInputSchema)
   .handler(
     ({ context, data }): Promise<MonitorBulkResult> =>
@@ -134,7 +135,7 @@ export const changeMonitorsFn = createServerFn({ method: "POST" })
   );
 
 export const deleteMonitorsFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("monitors")])
   .validator(monitorIdsSchema)
   .handler(
     ({ context, data }): Promise<MonitorBulkResult> =>
@@ -142,24 +143,30 @@ export const deleteMonitorsFn = createServerFn({ method: "POST" })
   );
 
 export const readMonitorFormFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(monitorFormReadSchema)
-  .handler(
-    ({ context, data }): Promise<MonitorFormResult> =>
-      readMonitorForm(
-        context.storage,
-        context.boot.installKey,
-        data.id,
-        new Headers(getRequestHeaders()).get(requestOriginHeader) ?? undefined,
-        data.copy
-      )
-  );
+  .handler(async ({ context, data }): Promise<MonitorFormResult> => {
+    const result = await readMonitorForm(
+      context.storage,
+      context.boot.installKey,
+      data.id,
+      new Headers(getRequestHeaders()).get(requestOriginHeader) ?? undefined,
+      data.copy
+    );
+    return result.ok
+      ? {
+          ...result,
+          heartbeat: heartbeatFor(result.heartbeat, context.operator.role),
+        }
+      : result;
+  });
 
 /** The operator's time zone, clock and calendar, for the times and dates the page shows. */
 export const readOperatorClockFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("profile")])
   .handler(
-    ({ context }): Promise<TimeOptions> => readOperatorClock(context.storage)
+    ({ context }): Promise<TimeOptions> =>
+      readOperatorClock(context.storage, context.operator.preferences)
   );
 
 /** A test is one attempt, so it waits on the network for up to the longest timeout, past Bun's ten idle seconds. */
@@ -167,7 +174,7 @@ const testHoldSeconds =
   longestCheckMs({ retries: 0, timeoutMs: timeoutMaxMs }) / 1000 + 10;
 
 export const testMonitorFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("monitors")])
   .validator(monitorTestSchema)
   .handler(({ context, data }): Promise<MonitorTestResult> => {
     context.holdOpen(testHoldSeconds);
@@ -182,7 +189,7 @@ export const testMonitorFn = createServerFn({ method: "POST" })
 
 /** The form's container list: the daemon at the endpoint the form holds, read-only, behind the session like every other function. */
 export const listContainersFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("monitors")])
   .validator(containerListSchema)
   .handler(
     ({ data }): Promise<ContainerListResult> =>
@@ -191,24 +198,34 @@ export const listContainersFn = createServerFn({ method: "POST" })
 
 /** The detail page's read of one monitor, with the chart over the range asked for. */
 export const readMonitorDetailFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(monitorDetailReadSchema)
-  .handler(
-    ({ context, data }): Promise<MonitorDetailResult> =>
-      readMonitorDetail(context.storage, data.id, {
-        locations: context.scheduler?.locationStates,
-        now: Date.now(),
-        range: data.range,
-        span: data.span,
-        requestOrigin:
-          new Headers(getRequestHeaders()).get(requestOriginHeader) ??
-          undefined,
-      })
-  );
+  .handler(async ({ context, data }): Promise<MonitorDetailResult> => {
+    const result = await readMonitorDetail(context.storage, data.id, {
+      locations: context.scheduler?.locationStates,
+      now: Date.now(),
+      range: data.range,
+      span: data.span,
+      requestOrigin:
+        new Headers(getRequestHeaders()).get(requestOriginHeader) ?? undefined,
+    });
+    return result.ok
+      ? {
+          ...result,
+          detail: {
+            ...result.detail,
+            heartbeat: heartbeatFor(
+              result.detail.heartbeat,
+              context.operator.role
+            ),
+          },
+        }
+      : result;
+  });
 
 /** The next page of a zoomed span's checks, read when the operator asks for more. */
 export const readSpanChecksFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(spanChecksReadSchema)
   .handler(
     ({ context, data }): Promise<SpanChecksResult> =>
@@ -217,7 +234,7 @@ export const readSpanChecksFn = createServerFn({ method: "GET" })
 
 /** One recent check's failure detail and capture, read when the operator opens it. */
 export const readCheckRecordFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(checkRecordReadSchema)
   .handler(
     ({ context, data }): Promise<CheckRecordResult> =>
@@ -226,7 +243,7 @@ export const readCheckRecordFn = createServerFn({ method: "GET" })
 
 /** "Check now": the scheduler runs the monitor's next check at its next tick. */
 export const checkNowFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("check_now")])
   .validator(checkNowSchema)
   .handler(
     ({ context, data }): Promise<CheckNowResult> =>
@@ -235,7 +252,7 @@ export const checkNowFn = createServerFn({ method: "POST" })
 
 /** Acknowledges the monitor's open outage, which stops its reminders. */
 export const acknowledgeOutageFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("acknowledge")])
   .validator(acknowledgeSchema)
   .handler(
     ({ context, data }): Promise<AcknowledgeResult> =>
@@ -244,7 +261,7 @@ export const acknowledgeOutageFn = createServerFn({ method: "POST" })
 
 /** Dismisses the getting-started checklist for good. */
 export const dismissGettingStartedFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("monitors")])
   .handler(
     ({ context }): Promise<SaveResult> => dismissGettingStarted(context.storage)
   );

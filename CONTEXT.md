@@ -13,17 +13,32 @@ _Avoid_: instance, tenant, workspace, account
 
 **Operator**:
 Arabic: مشغّل
-A signed-in human who manages the install.
-_Avoid_: admin, user (ambiguous with visitors), owner
+A signed-in human who manages the install, with what their role allows.
+_Avoid_: user (ambiguous with visitors), member, staff
 
 **Operator account**:
 Arabic: حساب المشغّل
-The one email-and-password identity that can sign in to the admin area. Created on the onboarding page; v1 has exactly one.
-_Avoid_: admin user, root, superuser
+An email-and-password identity that can sign in to the admin area, with a name, one role and the operator's own preferences. Onboarding creates the first, as an owner; each later one comes from an invitation. Several may exist; the email is unique among them.
+_Avoid_: admin user, root, superuser, user, member
+
+**Role**:
+Arabic: دور (الجمع: أدوار). Roles: مالك، مدير، محرّر، مستجيب، مشاهد.
+What an operator account may do, one of five, each allowing everything the next one does: a viewer reads the admin area; a responder also runs "check now", acknowledges outages, writes incidents and schedules maintenance; an editor also changes monitors, status pages and components and deletes incidents; an admin also changes notification channels and settings and manages every account but an owner's; an owner also gives and takes the owner role, exports and imports, and sets how operators sign in. Every operator, whatever the role, changes their own account. An install always has at least one owner who is not deactivated.
+_Avoid_: permission level, access level, group, admin (alone, for the area)
+
+**Invitation**:
+Arabic: دعوة
+An owner's or admin's offer of an operator account to one email address with one role: a single-use link, emailed through the auth email channel when one exists and always shown for copying, that works for seven days. Accepting it sets the name and password and signs in. Sending it again makes a new link and the old one stops working; revoking it stops it at once. An address that already has an account cannot be invited.
+_Avoid_: invite code, sign-up link, magic link
+
+**Deactivated**:
+Arabic: معطّل
+An operator account that cannot sign in: deactivating it ends its sessions at once and keeps the account, its role and its name, so reactivating it restores it with a new sign-in. Removing an account is the other way to end its access, for good.
+_Avoid_: banned, suspended, disabled (in copy), paused (that is a monitor's state)
 
 **Onboarding**:
 Arabic: مرحلة الإعداد
-The state of an install before an operator account exists. Raaqeb serves only the onboarding pages then: language, database backend, operator account. Ends when the account is created; the pages are gone afterwards.
+The state of an install before any operator account exists. Raaqeb serves only the onboarding pages then: language, database backend, operator account. Ends when the first account, its owner, is created; the pages are gone afterwards.
 _Avoid_: first run, setup mode, installation (that is putting the binary on the server)
 
 **Getting-started checklist**:
@@ -33,12 +48,12 @@ _Avoid_: setup wizard, tour, onboarding (that ends when the account exists), set
 
 **Second step**:
 Arabic: استيثاق ثنائي for the setting (الاستيثاق الثنائي مفعّل); الخطوة الثانية for the sign-in screen after the password
-A code required after the password at sign-in: from the authenticator app when one is set up, a backup code, or an emailed one-time code where an email channel exists. Switched on by the operator, with emailed codes once email works or by setting up the authenticator app. Off by default; turning it off removes the authenticator app and its backup codes.
+A code required after the password at sign-in: from the authenticator app when one is set up, a backup code, or an emailed one-time code where an email channel exists. Switched on by each operator for their own account, with emailed codes once a test message reached their address or by setting up the authenticator app. Off by default; turning it off removes the authenticator app and its backup codes. An owner may require it of every operator: one without it then reaches only their own account until they switch it on.
 _Avoid_: 2FA, MFA (say the mechanism), verification (that word is for the address)
 
 **Authenticator app**:
 Arabic: تطبيق الاستيثاق
-An app on the operator's phone that shows a new six-digit code every 30 seconds from a secret it shares with the install. Set up from a QR code or the secret as text, and in force only once its first code is entered.
+An app on an operator's phone that shows a new six-digit code every 30 seconds from a secret it shares with the install. Set up from a QR code or the secret as text, and in force only once its first code is entered.
 _Avoid_: TOTP in UI copy, authenticator (alone), token generator, 2FA app
 
 **Backup code**:
@@ -48,12 +63,12 @@ _Avoid_: recovery code, one-time code (that is the emailed one), spare code
 
 **One-time code**:
 Arabic: رمز مؤقت
-A six-digit code emailed to the operator, valid for five minutes and three attempts, used by the second step. The authenticator app's codes and backup codes are not one-time codes. Password recovery uses a reset link, not a code.
+A six-digit code emailed to an operator, valid for five minutes and three attempts, used by the second step. The authenticator app's codes and backup codes are not one-time codes. Password recovery uses a reset link, not a code.
 _Avoid_: OTP in UI copy, token (in auth copy; the design component that isolates machine tokens keeps its name), PIN
 
 **Trusted browser**:
 Arabic: متصفح موثوق
-A browser the operator chose to trust when entering the second step's code. It skips the second step for 30 days. Every password reset forgets all of them.
+A browser an operator chose to trust when entering the second step's code. It skips that account's second step for 30 days. A password reset forgets every trusted browser.
 _Avoid_: trusted device, remembered device, remember me
 
 **Reset link**:
@@ -506,12 +521,12 @@ _Avoid_: API key (a management API with keys may replace it later), password, se
 
 **Export**:
 Arabic: تصدير
-One file, `raaqeb-export.jsonl.zst` (JSON Lines under zstd), whose first line is the install's configuration (monitors, groups, tags, channels, components, status pages, incidents, maintenance windows, subscriptions and the settings that travel) and whose following lines, in the full mode, are the check history one record per line, so another install can import it as a stream. The way to move between hosts or backends. Credentials are written in clear, so the file is handled like a backup. One export downloads at a time, and the export page shows the full file's size as an estimate.
+One file, `raaqeb-export.jsonl.zst` (JSON Lines under zstd), whose first line is the install's configuration (monitors, groups, tags, channels, components, status pages, incidents, maintenance windows, subscriptions, the operator accounts without their passwords, sessions or second step, and the settings that travel) and whose following lines, in the full mode, are the check history one record per line, so another install can import it as a stream. The way to move between hosts or backends. Credentials are written in clear, so the file is handled like a backup. One export downloads at a time, and the export page shows the full file's size as an estimate.
 _Avoid_: backup (a backup is a copy of the database itself), dump
 
 **Import**:
 Arabic: استيراد
-Loading an export into an install that has no monitors, status pages, components, incidents or maintenance windows; any other install refuses it. Credentials are encrypted again with the importing install's key, and the file's settings replace the install's own, except the public address and the operator's account and preferences.
+Loading an export into an install that has no monitors, status pages, components, incidents or maintenance windows; any other install refuses it. Credentials are encrypted again with the importing install's key, and the file's settings replace the install's own, except the public address. Each operator account the install lacks, by id and by email, is created with its role, name and preferences and no password, so it signs in once a reset link sets one; an account the install has keeps its own.
 _Avoid_: restore, merge, sync
 
 ### Language
@@ -523,7 +538,7 @@ _Avoid_: language code, culture, region, translation (that is the act of produci
 
 **Calendar**:
 Arabic: التقويم
-How a date reads, and how the operator types one: Gregorian, Hijri (the Umm al-Qura calendar), or Hijri with the Gregorian date beside it. A setting, Gregorian by default, that the operator may override for their own screens; a status page and every notification show the install's. It changes display and entry alone: storage, day boundaries, retention, exports, feeds, the API and logs stay Gregorian.
+How a date reads, and how the operator types one: Gregorian, Hijri (the Umm al-Qura calendar), or Hijri with the Gregorian date beside it. A setting, Gregorian by default, that each operator may override for their own screens; a status page and every notification show the install's. It changes display and entry alone: storage, day boundaries, retention, exports, feeds, the API and logs stay Gregorian.
 _Avoid_: date format, Islamic calendar, lunar calendar
 
 **Install language**:
@@ -533,7 +548,7 @@ _Avoid_: default language, system language
 
 **Operator language**:
 Arabic: لغة المشغّل
-An operator's own locale for the admin area, defaulting to the install language.
+An operator's own locale for the admin area, kept on their account, defaulting to the install language.
 _Avoid_: user language, profile language
 
 **Page language**:

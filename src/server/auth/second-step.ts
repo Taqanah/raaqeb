@@ -11,9 +11,11 @@
  * function answers a result and never throws.
  */
 import { isAPIError } from "better-auth/api";
+import { z } from "zod";
 import type { InstallKey } from "@/server/boot/installkey.ts";
 import type { DeliverIo } from "@/server/notify/channel.ts";
 import { readSetting } from "@/server/settings/clock.ts";
+import { defineSetting, type Setting } from "@/server/storage/settings.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import {
   type AppConfirmInput,
@@ -24,37 +26,70 @@ import {
   appConfirmSchema,
   appPasswordSchema,
   type BackupCodesResult,
+  type RequireSecondStepResult,
   type SaveResult,
   type SecondStepInput,
   type SecondStepResult,
   type SecondStepView,
   secondStepSchema,
 } from "@/shared/schemas/settings.ts";
-import type { Auth } from "./auth.ts";
+import { type Auth, tooManyPasswordsCode } from "./auth.ts";
 import {
   authEmailChannel,
   authEmailChannelOf,
-  authEmailTested,
+  authEmailTestedOf,
   sendAuthMail,
 } from "./mail.ts";
 
 export type SecondStepStorage = Pick<
   Storage,
-  "channels" | "operatorAccount" | "settings"
+  "channels" | "operatorAccounts" | "settings"
 >;
 
-/** The screen's read; nothing before the operator account exists. */
+/** An owner requires a second step of every operator (CONTEXT.md "Second step"); off unless set. */
+export const secondStepRequired: Setting<boolean> = defineSetting(
+  "second_step_required",
+  z.boolean()
+);
+
+/** Whether an owner requires a second step of every operator. */
+export function readSecondStepRequired(
+  storage: Pick<Storage, "settings">
+): Promise<boolean> {
+  return readSetting(storage, secondStepRequired, false);
+}
+
+/** Requires a second step of every operator, or stops requiring it; an owner whose own is off would lock themselves out, so requiring it waits for theirs. */
+export async function requireSecondStep(
+  storage: Pick<Storage, "settings">,
+  owner: { readonly secondStep: boolean },
+  on: boolean
+): Promise<RequireSecondStepResult> {
+  if (on && !owner.secondStep) {
+    return { ok: false, reason: "needs_own" };
+  }
+  try {
+    await storage.settings.set(secondStepRequired, on);
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "unavailable" };
+  }
+}
+
+/** The screen's read for one account; nothing when it does not exist. */
 export async function readSecondStep(
-  storage: SecondStepStorage
+  storage: SecondStepStorage,
+  accountId: string
 ): Promise<SecondStepView | undefined> {
-  const account = await storage.operatorAccount.read();
+  const account = await storage.operatorAccounts.find(accountId);
   if (!account) {
     return;
   }
-  const [channels, inForce, tested] = await Promise.all([
+  const [channels, inForce, tested, required] = await Promise.all([
     storage.channels.list(),
     authEmailChannelOf(storage),
-    readSetting(storage, authEmailTested, undefined),
+    readSetting(storage, authEmailTestedOf(account.id), undefined),
+    readSecondStepRequired(storage),
   ]);
   return {
     channel: inForce?.id,
@@ -64,6 +99,7 @@ export async function readSecondStep(
     email: account.email,
     on: account.secondStep,
     app: account.app,
+    required,
     tested:
       inForce !== undefined &&
       inForce.id === tested?.channelId &&
@@ -89,16 +125,18 @@ export async function chooseAuthEmailChannel(
   }
 }
 
-/** Sends the test message to the operator account's address through the email channel picked on the screen, saved or not, else the one in force, and remembers the channel it went through. */
+/** Sends the test message to the account's address through the email channel picked on the screen, saved or not, else the one in force, and remembers for the account the channel it went through. */
 export async function sendAuthTest(
   storage: SecondStepStorage,
   key: InstallKey,
   io: DeliverIo,
+  accountId: string,
   channelId?: string
 ): Promise<AuthTestResult> {
+  const authEmailTested = authEmailTestedOf(accountId);
   try {
     const [account, channel, tested] = await Promise.all([
-      storage.operatorAccount.read(),
+      storage.operatorAccounts.find(accountId),
       channelId === undefined
         ? authEmailChannelOf(storage)
         : storage.channels.find(channelId),
@@ -142,6 +180,7 @@ export async function switchSecondStep(
   auth: Auth,
   headers: Headers,
   storage: SecondStepStorage,
+  accountId: string,
   input: SecondStepInput
 ): Promise<SecondStepResult> {
   const parsed = secondStepSchema.safeParse(input);
@@ -150,7 +189,7 @@ export async function switchSecondStep(
   }
   const { on, password } = parsed.data;
   try {
-    if (on && !(await readSecondStep(storage))?.tested) {
+    if (on && !(await readSecondStep(storage, accountId))?.tested) {
       return { ok: false, reason: "not_tested" };
     }
     const switched = on
@@ -168,18 +207,23 @@ export async function switchSecondStep(
   } catch (error) {
     return {
       ok: false,
-      reason: wrongPassword(error) ? "wrong_password" : "unavailable",
+      reason: passwordRefusal(error),
     };
   }
 }
 
-/** Better Auth's refusal of the current password. */
-function wrongPassword(error: unknown): boolean {
-  return (
-    isAPIError(error) &&
-    (error.body?.code === "INVALID_PASSWORD" ||
-      error.body?.code === "PASSWORD_TOO_LONG")
-  );
+/** What a failed call that checked the current password is: Better Auth's refusal of it, the account's wrong passwords holding checks back, or anything else. */
+function passwordRefusal(
+  error: unknown
+): "wrong_password" | "too_many_attempts" | "unavailable" {
+  if (!isAPIError(error)) {
+    return "unavailable";
+  }
+  const code = error.body?.code;
+  if (code === "INVALID_PASSWORD" || code === "PASSWORD_TOO_LONG") {
+    return "wrong_password";
+  }
+  return code === tooManyPasswordsCode ? "too_many_attempts" : "unavailable";
 }
 
 /** Starts setting up the authenticator app after verifying the password: a new secret, not in force until its first code, and ten backup codes. */
@@ -209,7 +253,7 @@ export async function setUpApp(
   } catch (error) {
     return {
       ok: false,
-      reason: wrongPassword(error) ? "wrong_password" : "unavailable",
+      reason: passwordRefusal(error),
     };
   }
 }
@@ -261,7 +305,7 @@ export async function newBackupCodes(
   } catch (error) {
     return {
       ok: false,
-      reason: wrongPassword(error) ? "wrong_password" : "unavailable",
+      reason: passwordRefusal(error),
     };
   }
 }
@@ -277,6 +321,7 @@ export async function turnAppOff(
   auth: Auth,
   headers: Headers,
   storage: SecondStepStorage,
+  accountId: string,
   input: AppPasswordInput
 ): Promise<SecondStepResult> {
   const parsed = appPasswordSchema.safeParse(input);
@@ -285,20 +330,20 @@ export async function turnAppOff(
   }
   const { password } = parsed.data;
   try {
-    if (!(await readSecondStep(storage))?.tested) {
-      return await switchSecondStep(auth, headers, storage, {
+    if (!(await readSecondStep(storage, accountId))?.tested) {
+      return await switchSecondStep(auth, headers, storage, accountId, {
         on: false,
         password,
       });
     }
     // Better Auth's disable turns the whole second step off; it has no way to remove the app alone.
     await auth.api.verifyPassword({ body: { password }, headers });
-    await storage.operatorAccount.appOff();
+    await storage.operatorAccounts.appOff(accountId);
     return { ok: true, setCookies: [] };
   } catch (error) {
     return {
       ok: false,
-      reason: wrongPassword(error) ? "wrong_password" : "unavailable",
+      reason: passwordRefusal(error),
     };
   }
 }

@@ -25,6 +25,11 @@ import {
   resetRequestSchema,
   signInSchema,
 } from "@/shared/schemas/auth.ts";
+import {
+  type InvitationAcceptFailure,
+  type InvitationAcceptInput,
+  invitationAcceptSchema,
+} from "@/shared/schemas/team.ts";
 
 export const authBasePath = "/api/auth";
 
@@ -79,12 +84,51 @@ export async function signIn(input: SignInInput): Promise<SignInResult> {
   if (response.status === 400 || response.status === 401) {
     return { failure: "invalid_credentials", ok: false };
   }
-  // 403 is its origin check, decided before the credentials are read, so naming it leaks nothing.
+  // 403 is its origin check, decided before the credentials are read, so naming it leaks nothing; or a deactivated account, named only after its password was right.
   if (response.status === 403) {
-    return { failure: "origin_refused", ok: false };
+    const body = await bodyOf(response);
+    return {
+      failure:
+        body.code === "ACCOUNT_DEACTIVATED" ? "deactivated" : "origin_refused",
+      ok: false,
+    };
   }
   if (response.status === 429) {
     return { failure: "rate_limited", ok: false };
+  }
+  return { failure: "unavailable", ok: false };
+}
+
+export type InvitationAcceptResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly failure: InvitationAcceptFailure };
+
+/** Accepts an invitation; on success the session cookie is set by the response. */
+export async function acceptInvitation(
+  input: InvitationAcceptInput
+): Promise<InvitationAcceptResult> {
+  const parsed = invitationAcceptSchema.safeParse(input);
+  if (!parsed.success) {
+    return { failure: "unavailable", ok: false };
+  }
+  let response: Response;
+  try {
+    response = await post("/invitation/accept", parsed.data);
+  } catch {
+    return { failure: "unavailable", ok: false };
+  }
+  if (response.ok) {
+    return { ok: true };
+  }
+  if (response.status === 429) {
+    return { failure: "rate_limited", ok: false };
+  }
+  const { code } = await bodyOf(response);
+  if (code === "INVITATION_CLOSED") {
+    return { failure: "closed", ok: false };
+  }
+  if (code === "ALREADY_MEMBER") {
+    return { failure: "already_member", ok: false };
   }
   return { failure: "unavailable", ok: false };
 }

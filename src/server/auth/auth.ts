@@ -25,6 +25,12 @@ import { error as logError, info as logInfo, reasonOf } from "@/server/log.ts";
 import { readPublicAddress } from "@/server/settings/address.ts";
 import type { AuthDatabase } from "@/server/storage/auth.ts";
 import type { Storage } from "@/server/storage/storage.ts";
+import {
+  closedGate,
+  type InvitationGate,
+  invitationAccept,
+  invitationGate,
+} from "./invitation.ts";
 import { authMailOver } from "./mail.ts";
 import { hashPassword, verifyPassword } from "./password.ts";
 import { disabledPaths, unblockablePaths } from "./paths.ts";
@@ -102,6 +108,8 @@ export interface CreateAuthInput {
   /** The public address as an origin, Better Auth's base URL and its one trusted origin; nothing before onboarding stores one, and then Better Auth infers it from the request. */
   readonly baseURL: string | undefined;
   readonly database: AuthDatabase;
+  /** The invitations the accept endpoint takes; none is open by default. */
+  readonly invitations?: InvitationGate;
   /** Better Auth's own log lines, already prefixed; routed to stderr by default. */
   readonly log?: (line: string) => void;
   readonly mail: AuthMail;
@@ -221,6 +229,76 @@ const finishingPaths = new Set(
 );
 
 /**
+ * The endpoints that check the signed-in account's current password. The
+ * settings and team pages call them on the server, where Better Auth's rate
+ * limit never runs, so wrong passwords are counted here per account: five in
+ * a quarter of an hour make every check wait until the oldest of them is
+ * that old.
+ */
+const passwordCheckPaths = new Set([
+  "/change-password",
+  "/two-factor/disable",
+  "/two-factor/enable",
+  "/two-factor/generate-backup-codes",
+  "/two-factor/get-totp-uri",
+  "/verify-password",
+]);
+const passwordAttempts = 5;
+const passwordWindowMs = 15 * 60 * 1000;
+
+/** The code a check the account's wrong passwords hold back answers with. */
+export const tooManyPasswordsCode = "TOO_MANY_PASSWORD_ATTEMPTS";
+
+// When each account's recent wrong passwords were typed, process-wide like Better Auth's own limit.
+const wrongPasswords = new Map<string, number[]>();
+
+function recentWrong(account: string, now: number): number[] {
+  const recent = (wrongPasswords.get(account) ?? []).filter(
+    (at) => at > now - passwordWindowMs
+  );
+  if (recent.length === 0) {
+    wrongPasswords.delete(account);
+  } else {
+    wrongPasswords.set(account, recent);
+  }
+  return recent;
+}
+
+/** Refuses a password check while the account's wrong passwords hold it back. */
+async function guardPasswordCheck(ctx: HookContext): Promise<void> {
+  const session = await getSessionFromCtx(ctx);
+  if (
+    session &&
+    recentWrong(session.user.id, Date.now()).length >= passwordAttempts
+  ) {
+    throw new APIError("TOO_MANY_REQUESTS", {
+      code: tooManyPasswordsCode,
+      message: "too many wrong passwords for this account lately",
+    });
+  }
+}
+
+/** Counts a wrong password against the signed-in account. */
+async function countWrongPassword(ctx: HookContext): Promise<void> {
+  const session = await getSessionFromCtx(ctx);
+  if (session) {
+    const now = Date.now();
+    wrongPasswords.set(session.user.id, [
+      ...recentWrong(session.user.id, now),
+      now,
+    ]);
+  }
+}
+
+/** The endpoints whose new session is a sign-in: the password, a code that finishes one, an accepted invitation, onboarding's sign-up. */
+const signingInPaths = new Set([
+  "/sign-in/email",
+  "/sign-up/email",
+  "/invitation/accept",
+  ...finishingPaths,
+]);
+
+/**
  * One log line per sign-in attempt over HTTP, with the client address and
  * never the email: a password that needs the second step waits, a code
  * that passes signs in. A plugin, so it runs after the two-factor plugin's
@@ -285,6 +363,34 @@ export function createAuth(input: CreateAuthInput) {
     appName: "Raaqeb",
     baseURL: input.baseURL,
     database: input.database,
+    databaseHooks: {
+      session: {
+        create: {
+          // A deactivated account makes no session, whichever way it signs in; the password was checked before this.
+          before: async (session, ctx) => {
+            const user = await ctx?.context.internalAdapter.findUserById(
+              session.userId
+            );
+            // The field is Raaqeb's own (user.additionalFields), which the hook's type leaves out.
+            if (user && "deactivatedAt" in user && user.deactivatedAt) {
+              throw new APIError("FORBIDDEN", {
+                code: "ACCOUNT_DEACTIVATED",
+                message: "the account is deactivated",
+              });
+            }
+          },
+        },
+      },
+      user: {
+        create: {
+          // The install's first account is its owner (CONTEXT.md "Role"); onboarding makes it.
+          before: async (user, ctx) =>
+            ctx && (await ctx.context.internalAdapter.countTotalUsers()) === 0
+              ? { data: { ...user, role: "owner" } }
+              : { data: user },
+        },
+      },
+    },
     disabledPaths: [...disabledPaths],
     emailAndPassword: {
       enabled: true,
@@ -309,7 +415,14 @@ export function createAuth(input: CreateAuthInput) {
     hooks: {
       // A reset forgets the trusted browsers; an app code that signed in is spent; an emailed code verifies the address. The sign-in log is signInLog.
       after: createAuthMiddleware(async (ctx) => {
-        if (isAPIError(ctx.context.returned)) {
+        const returned: unknown = ctx.context.returned;
+        if (isAPIError(returned)) {
+          if (
+            passwordCheckPaths.has(ctx.path) &&
+            returned.body?.code === "INVALID_PASSWORD"
+          ) {
+            await countWrongPassword(ctx);
+          }
           return;
         }
         if (ctx.path === "/reset-password") {
@@ -317,6 +430,12 @@ export function createAuth(input: CreateAuthInput) {
           return;
         }
         const user = ctx.context.newSession?.user;
+        // A sign-in that made a session is the account's last one; a password change re-issuing one is none.
+        if (user && signingInPaths.has(ctx.path)) {
+          await ctx.context.internalAdapter.updateUser(user.id, {
+            lastSignInAt: new Date(),
+          });
+        }
         // An app code that signed in is spent until its window has passed (RFC 6238, 5.2); Better Auth keeps no record.
         // Only a sign-in over HTTP spends it: the setup's first code may sign in next.
         if (
@@ -346,6 +465,9 @@ export function createAuth(input: CreateAuthInput) {
       before: createAuthMiddleware(async (ctx) => {
         if (secondStepPaths.has(ctx.path) || backupCodePaths.has(ctx.path)) {
           await guardCodes(ctx);
+        }
+        if (passwordCheckPaths.has(ctx.path)) {
+          await guardPasswordCheck(ctx);
         }
         if (ctx.path !== "/change-password") {
           return;
@@ -384,11 +506,13 @@ export function createAuth(input: CreateAuthInput) {
         },
         // A trusted browser lasts Better Auth's default of 30 days, pinned by a test.
       }),
+      invitationAccept(input.invitations ?? closedGate),
       signInLog(log),
     ],
     rateLimit: {
-      // A reset request sends an email, so it keeps Better Auth's 3 a minute; the reset itself gets sign-in's 3 in 10 seconds.
+      // A reset request sends an email, so it keeps Better Auth's 3 a minute; the reset itself and accepting an invitation get sign-in's 3 in 10 seconds.
       customRules: {
+        "/invitation/accept": { max: 3, window: 10 },
         "/request-password-reset": { max: 3, window: 60 },
         "/reset-password": { max: 3, window: 10 },
       },
@@ -399,7 +523,22 @@ export function createAuth(input: CreateAuthInput) {
     session: { expiresIn: 7 * day, updateAge: day },
     telemetry: { enabled: false },
     // The account page changes the address on the server (server/auth/account.ts) without an email: the second step's codes go to the address in force.
+    // Raaqeb's own fields ride on the user row (storage/schema), so the session read carries the role and the preferences with no second query; no request sets one.
     user: {
+      additionalFields: {
+        calendar: { input: false, required: false, type: "string" },
+        clock: { input: false, required: false, type: "string" },
+        deactivatedAt: { input: false, required: false, type: "date" },
+        language: { input: false, required: false, type: "string" },
+        lastSignInAt: { input: false, required: false, type: "date" },
+        role: {
+          defaultValue: "viewer",
+          input: false,
+          required: true,
+          type: "string",
+        },
+        timeZone: { input: false, required: false, type: "string" },
+      },
       changeEmail: { enabled: true, updateEmailWithoutVerification: true },
     },
   });
@@ -452,6 +591,7 @@ export async function buildAuth(
   return createAuth({
     baseURL: address,
     database: storage.authDatabase,
+    invitations: invitationGate(storage),
     mail,
     secrets: resolved.secrets,
   });
@@ -475,6 +615,7 @@ async function buildFor(storage: Storage, boot: AuthBoot): Promise<Auth> {
   const auth = createAuth({
     baseURL: address,
     database: storage.authDatabase,
+    invitations: invitationGate(storage),
     mail: authMailOver(
       storage,
       boot.installKey,
@@ -519,5 +660,5 @@ export async function handleAuth(
   return auth.handler(request);
 }
 
-/** The constant `name` Better Auth requires on sign-up; the operator account has no name (CONTEXT.md). */
-export const operatorName = "operator";
+/** The `name` onboarding gives the first account on sign-up: none, so its email stands for it until the account page sets one. */
+export const operatorName = "";

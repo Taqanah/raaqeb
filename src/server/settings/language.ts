@@ -76,8 +76,8 @@ export async function loadCatalog(locale: Locale): Promise<Catalog> {
 
 /**
  * The paths whose language switcher may override the install language for
- * one document through `?locale=`: the sign-in, sign-out and
- * recovery pages and the three onboarding screens. The admin area has no locale in
+ * one document through `?locale=`: the sign-in, sign-out,
+ * recovery and invitation pages and the three onboarding screens. The admin area has no locale in
  * its URL.
  */
 export const localeSwitchPaths: readonly string[] = [
@@ -85,6 +85,7 @@ export const localeSwitchPaths: readonly string[] = [
   "/sign-out",
   "/forgot-password",
   "/reset-password",
+  "/invitation",
   "/onboarding",
   "/onboarding/database",
   "/onboarding/account",

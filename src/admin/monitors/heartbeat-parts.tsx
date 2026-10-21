@@ -241,25 +241,36 @@ export function HeartbeatPanel({
       <CardContent className="flex flex-col gap-4">
         {heartbeat ? (
           <>
-            <Copyable
-              copy="heartbeat-url"
-              slot="heartbeat-url"
-              text={heartbeat.url}
-            />
-            <div className="flex flex-col gap-1.5 text-muted-foreground text-sm">
-              <span>{t("monitor_heartbeat_command")}</span>
-              <Copyable
-                copy="heartbeat-command"
-                text={curlLine(heartbeat.url)}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5 text-muted-foreground text-sm">
-              <span>{t("monitor_heartbeat_fail_command")}</span>
-              <Copyable
-                copy="heartbeat-fail-command"
-                text={curlLine(`${heartbeat.url}${heartbeatFailSuffix}`)}
-              />
-            </div>
+            {heartbeat.url === undefined ? (
+              <p
+                className="text-muted-foreground text-sm"
+                data-slot="heartbeat-url-withheld"
+              >
+                {t("monitor_heartbeat_withheld")}
+              </p>
+            ) : (
+              <>
+                <Copyable
+                  copy="heartbeat-url"
+                  slot="heartbeat-url"
+                  text={heartbeat.url}
+                />
+                <div className="flex flex-col gap-1.5 text-muted-foreground text-sm">
+                  <span>{t("monitor_heartbeat_command")}</span>
+                  <Copyable
+                    copy="heartbeat-command"
+                    text={curlLine(heartbeat.url)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 text-muted-foreground text-sm">
+                  <span>{t("monitor_heartbeat_fail_command")}</span>
+                  <Copyable
+                    copy="heartbeat-fail-command"
+                    text={curlLine(`${heartbeat.url}${heartbeatFailSuffix}`)}
+                  />
+                </div>
+              </>
+            )}
             {heartbeat.recent.length > 0 && clock ? (
               <div className="flex flex-col gap-2 text-sm">
                 <span className="text-muted-foreground">

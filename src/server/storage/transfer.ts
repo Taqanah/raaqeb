@@ -32,6 +32,7 @@ export interface Restored {
   readonly maintenanceSeries: readonly string[];
   readonly maintenanceWindows: readonly string[];
   readonly monitors: readonly string[];
+  readonly operatorAccounts: readonly string[];
   readonly probes: readonly string[];
   readonly statusPages: readonly string[];
   readonly tags: readonly string[];
@@ -132,6 +133,7 @@ function batches<Item>(items: readonly Item[], width: number): Item[][] {
 
 export function transferRepository(executor: Executor): TransferRepository {
   const {
+    authUser,
     channels,
     checks,
     components,
@@ -205,6 +207,77 @@ export function transferRepository(executor: Executor): TransferRepository {
     }
   };
 
+  // The account columns that travel: never the credentials, sessions, second step or last sign-in, which belong to the install that holds them.
+  const accountColumns = {
+    calendar: authUser.calendar,
+    clock: authUser.clock,
+    createdAt: authUser.createdAt,
+    deactivatedAt: authUser.deactivatedAt,
+    email: authUser.email,
+    emailVerified: authUser.emailVerified,
+    id: authUser.id,
+    language: authUser.language,
+    name: authUser.name,
+    role: authUser.role,
+    timeZone: authUser.timeZone,
+    updatedAt: authUser.updatedAt,
+  };
+
+  /** The accounts under the configuration's property names, the id first so they read in its order on both backends. */
+  const readAccounts = async (
+    run: Executor
+  ): Promise<Configuration["operatorAccounts"]> => {
+    const select = sql.join(
+      Object.entries(accountColumns).map(
+        ([property, each]) => sql`${each} AS ${column(property)}`
+      ),
+      sql`, `
+    );
+    const rows = await run.rows<Configuration["operatorAccounts"][number]>(
+      sql`SELECT ${select} FROM ${authUser}`
+    );
+    return rows
+      .map((row) => ({
+        ...row,
+        createdAt: Number(row.createdAt),
+        deactivatedAt:
+          row.deactivatedAt === null ? null : Number(row.deactivatedAt),
+        emailVerified: Number(row.emailVerified),
+        updatedAt: Number(row.updatedAt),
+      }))
+      .sort((a, b) => compareCodePoints(a.id, b.id));
+  };
+
+  /** Writes the accounts the install lacks by id and by address, with no credentials, and answers their ids. */
+  const writeAccounts = async (
+    run: Executor,
+    accounts: Configuration["operatorAccounts"]
+  ): Promise<string[]> => {
+    const held = await run.rows<{ email: string; id: string }>(
+      sql`SELECT ${authUser.id} AS id, lower(${authUser.email}) AS email FROM ${authUser}`
+    );
+    const ids = new Set(held.map((row) => row.id));
+    const emails = new Set(held.map((row) => row.email));
+    const fresh = accounts.filter(
+      (account) =>
+        !(ids.has(account.id) || emails.has(account.email.toLowerCase()))
+    );
+    for (const account of fresh) {
+      const values = Object.keys(accountColumns).map(
+        (property) =>
+          sql`${new Map(Object.entries(account)).get(property) ?? null}`
+      );
+      // biome-ignore lint/performance/noAwaitInLoops: an install has a handful of accounts
+      await run.run(
+        sql`INSERT INTO ${authUser} (${sql.join(
+          Object.values(accountColumns).map((each) => column(each.name)),
+          sql`, `
+        )}, ${column(authUser.twoFactorEnabled.name)}) VALUES (${sql.join(values, sql`, `)}, 0)`
+      );
+    }
+    return fresh.map((account) => account.id);
+  };
+
   const holds = async (run: Executor) =>
     (
       await run.rows(
@@ -225,7 +298,8 @@ export function transferRepository(executor: Executor): TransferRepository {
       | typeof channels
       | typeof probes
       | typeof groups
-      | typeof tags,
+      | typeof tags
+      | typeof authUser,
     ids: readonly string[]
   ) => {
     for (const batch of batches(ids, 1)) {
@@ -295,6 +369,7 @@ export function transferRepository(executor: Executor): TransferRepository {
           maintenanceWindows: await read(tx, "maintenanceWindows"),
           maintenanceComponents: await read(tx, "maintenanceComponents"),
           subscriptions: await read(tx, "subscriptions"),
+          operatorAccounts: await readAccounts(tx),
         };
       }),
     historyCounts: async () => {
@@ -340,6 +415,7 @@ export function transferRepository(executor: Executor): TransferRepository {
         await removeIds(tx, probes, restored.probes);
         await removeIds(tx, groups, restored.groups);
         await removeIds(tx, tags, restored.tags);
+        await removeIds(tx, authUser, restored.operatorAccounts);
       }),
     restore: (configuration) =>
       executor.transaction(async (tx) => {
@@ -368,6 +444,10 @@ export function transferRepository(executor: Executor): TransferRepository {
           // biome-ignore lint/performance/noAwaitInLoops: parents before the rows that reference them
           await insert(tx, name, written[name]);
         }
+        const accounts = await writeAccounts(
+          tx,
+          configuration.operatorAccounts
+        );
         const idsOf = (rows: readonly { id: string }[]) =>
           rows.map((row) => row.id);
         return {
@@ -378,6 +458,7 @@ export function transferRepository(executor: Executor): TransferRepository {
           maintenanceSeries: idsOf(written.maintenanceSeries),
           maintenanceWindows: idsOf(written.maintenanceWindows),
           monitors: idsOf(written.monitors),
+          operatorAccounts: accounts,
           probes: idsOf(written.probes),
           statusPages: idsOf(written.statusPages),
           tags: idsOf(written.tags),

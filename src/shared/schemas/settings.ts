@@ -17,6 +17,7 @@ import {
 } from "./clock.ts";
 import { retentionDaysMax, retentionDaysMin } from "./monitor.ts";
 import type { SendFailure } from "./notification.ts";
+import type { AccountSession } from "./team.ts";
 
 /** What the general page shows: the fields, the host zone named beside the zone field, and the database row. */
 export interface GeneralSettings {
@@ -87,6 +88,18 @@ export const emailChangeSchema = z.object({
 });
 export type EmailChangeInput = z.infer<typeof emailChangeSchema>;
 
+/** The account page's name; empty lets the email stand for it. */
+export const nameChangeSchema = z.object({
+  name: z.string().trim().max(100),
+});
+export type NameChangeInput = z.infer<typeof nameChangeSchema>;
+
+/** One session to end, or every one but the browser asking when the id is absent. */
+export const sessionEndSchema = z.object({
+  id: z.string().min(1).optional(),
+});
+export type SessionEndInput = z.infer<typeof sessionEndSchema>;
+
 export const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(passwordMinLength).max(passwordMaxLength),
@@ -139,11 +152,23 @@ export type SaveResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly reason: SaveRefusal };
 
+/** Requiring a second step of everyone, or why not: the owner's own is off. */
+export type RequireSecondStepResult =
+  | SaveResult
+  | { readonly ok: false; readonly reason: "needs_own" };
+
+/** The account page's sessions, or that they could not be read. */
+export type SessionsResult =
+  | { readonly ok: true; readonly sessions: readonly AccountSession[] }
+  | { readonly ok: false; readonly reason: "unavailable" };
+
 /** Why the general page did not save: a settings page's refusals, a public address whose host a status page serves as its custom domain, or a trusted proxy that is not an IP address or a CIDR range. */
 export type GeneralSaveRefusal =
   | SaveRefusal
   | "address_is_page_domain"
-  | "trusted_proxy_invalid";
+  | "trusted_proxy_invalid"
+  /** The save changes the public address or the trusted proxies, which an owner alone changes. */
+  | "not_allowed";
 
 /** The entries of a trusted proxies list as the variable and the field write it: separated by commas, trimmed, blanks dropped. */
 export function proxyEntries(text: string): string[] {
@@ -165,7 +190,9 @@ export type EmailChangeRefusal =
   /** Not signed in, or Better Auth did not answer. */
   | "unavailable"
   /** The current password did not verify. */
-  | "wrong_password";
+  | "wrong_password"
+  /** Too many wrong passwords lately: the account's password checks wait a while. */
+  | "too_many_attempts";
 
 /** The auth settings screen's choice of the email channel auth mail goes through. */
 export const authEmailChannelSchema = z.object({
@@ -202,6 +229,7 @@ export type SecondStepRefusal =
   /** On was asked before a test message went through the channel in force. */
   | "not_tested"
   | "wrong_password"
+  | "too_many_attempts"
   | "unavailable";
 
 /** What the sign-in settings page shows. */
@@ -212,10 +240,12 @@ export interface SecondStepView {
   readonly channel: string | undefined;
   /** Every email channel, oldest first. */
   readonly channels: readonly { readonly id: string; readonly name: string }[];
-  /** The operator account's address, where auth mail goes. */
+  /** The signed-in operator's address, where their auth mail goes. */
   readonly email: string;
   readonly on: boolean;
-  /** A test message went through the channel in force. */
+  /** An owner requires a second step of every operator. */
+  readonly required: boolean;
+  /** A test message went through the channel in force to the signed-in operator's address. */
   readonly tested: boolean;
 }
 
@@ -228,7 +258,11 @@ export const appPasswordSchema = z.object({ password: z.string().min(1) });
 export type AppPasswordInput = z.infer<typeof appPasswordSchema>;
 
 /** Why the authenticator app's setup or a new set of backup codes was refused. */
-export type AppPasswordRefusal = "invalid" | "wrong_password" | "unavailable";
+export type AppPasswordRefusal =
+  | "invalid"
+  | "wrong_password"
+  | "too_many_attempts"
+  | "unavailable";
 
 /** The authenticator app's setup, before its first code: the secret as the QR code carries it and as text, and the ten backup codes, shown once. */
 export type AppSetupResult =
@@ -263,6 +297,7 @@ export type PasswordChangeRefusal =
   | "invalid"
   /** The current password did not verify. */
   | "wrong_password"
+  | "too_many_attempts"
   | "unavailable";
 
 /** The general and account pages' search: a language picked and not yet saved, which the root renders the page in; anything else is none. */

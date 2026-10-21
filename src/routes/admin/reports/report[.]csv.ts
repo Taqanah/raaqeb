@@ -20,7 +20,7 @@ export const Route = createFileRoute("/admin/reports/report.csv")({
   server: {
     handlers: {
       GET: async ({ context, request }) => {
-        const operator = await signedIn(context, request);
+        const operator = await signedIn(context, request, "read");
         if (!operator) {
           return Response.redirect(new URL("/sign-in", request.url), 303);
         }
@@ -36,7 +36,12 @@ export const Route = createFileRoute("/admin/reports/report.csv")({
         if (!storage) {
           return new Response(null, { status: refusals.unavailable });
         }
-        const download = await reportDownload(storage, query.data, Date.now());
+        const download = await reportDownload(
+          storage,
+          query.data,
+          Date.now(),
+          operator.operator.preferences
+        );
         if (!download.ok) {
           return new Response(null, { status: refusals[download.reason] });
         }

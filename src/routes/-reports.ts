@@ -11,10 +11,10 @@ import {
   type ReportResult,
   reportQuerySchema,
 } from "@/shared/schemas/report.ts";
-import { operatorMiddleware } from "./-admin.ts";
+import { permitted } from "./-admin.ts";
 
 export const readReportChoicesFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .handler(
     ({ context }): Promise<ReportChoicesResult> =>
       readReportChoices(context.storage)
@@ -24,7 +24,7 @@ export const readReportChoicesFn = createServerFn({ method: "GET" })
 const readHoldSeconds = 60;
 
 export const readReportFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(reportQuerySchema)
   .handler(({ context, data }): Promise<ReportResult> => {
     context.holdOpen(readHoldSeconds);

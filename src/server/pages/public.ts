@@ -336,7 +336,7 @@ const apiRoutes: readonly RegExp[] = [
 const appRoutes: readonly RegExp[] = [
   /^\/$/,
   /^\/admin(\/.*)?$/,
-  /^\/(forgot-password|health|metrics|reset-password|sign-in|sign-out)$/,
+  /^\/(forgot-password|health|invitation|metrics|reset-password|sign-in|sign-out)$/,
   /^\/onboarding(\/(account|database))?$/,
   /^\/subscriptions\/[^/]+(\/(confirm|unsubscribe))?$/,
   new RegExp(
@@ -388,12 +388,13 @@ const notDocuments: readonly RegExp[] = [
   /^\/subscriptions\/[^/]+\/(confirm|unsubscribe)\/?$/,
 ];
 
-/** The pages everyone gets the same, signed in or not and on any host; a reset page is one only with no link in its search. Onboarding's account screen is not: it fills in the address the request came through. */
+/** The pages everyone gets the same, signed in or not and on any host; a reset or invitation page is one only with no link in its search. Onboarding's account screen is not: it fills in the address the request came through. */
 const anonymousPages = new Set([
   "/sign-in",
   "/forgot-password",
   "/sign-out",
   "/reset-password",
+  "/invitation",
   "/onboarding",
   "/onboarding/database",
 ]);

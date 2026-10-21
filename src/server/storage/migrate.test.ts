@@ -438,3 +438,119 @@ describe("content, one text per locale", () => {
     ).toEqual([{ ar: "الموقع" }]);
   });
 });
+
+/** A database migrated up to the one before the named migration, in a folder of its own, and the rest of the run. */
+async function migratedUpTo(
+  connection: Connection,
+  migration: string
+): Promise<{ readonly cleanup: () => Promise<void> }> {
+  const root = (await Bun.$`mktemp -d`.text()).trim();
+  const local = await localMigrations(connection.backend);
+  const earlier = local.slice(
+    0,
+    local.findIndex((name) => name.endsWith(`_${migration}`))
+  );
+  await Promise.all(
+    earlier.map((name) =>
+      Bun.write(
+        `${root}/${connection.backend}/${name}/migration.sql`,
+        Bun.file(
+          `${migrationsFolder(connection.backend)}/${name}/migration.sql`
+        )
+      )
+    )
+  );
+  await migrateEarlier(connection, root, earlier);
+  return { cleanup: () => Bun.$`rm -rf ${root}`.quiet().then(() => undefined) };
+}
+
+describe("operator accounts arriving on an install that has its operator", () => {
+  test("the operator becomes the owner with their own preferences and test message, and keeps no constant name", async () => {
+    const connection = await fresh();
+    const earlier = await migratedUpTo(connection, "operator_accounts");
+    const run = executor(connection);
+    const setting = (key: string, value: unknown) =>
+      run.run(
+        sql`INSERT INTO settings (key, value, updated_at) VALUES (${key}, ${JSON.stringify(value)}, 0)`
+      );
+    try {
+      await run.run(
+        sql`INSERT INTO auth_user (id, name, email, email_verified, created_at, updated_at) VALUES ('op', 'operator', 'operator@example.com', 1, 0, 0)`
+      );
+      await setting("operator_language", "en");
+      await setting("operator_time_zone", "Asia/Riyadh");
+      await setting("operator_clock", "24h");
+      await setting("operator_calendar", "hijri");
+      await setting("auth_email_tested", {
+        channelId: "c1",
+        email: "operator@example.com",
+        updatedAt: 5,
+      });
+      await setting("install_language", "ar");
+      expect((await migrateDatabase(connection)).ok).toBe(true);
+      const [account] = await run.rows<Record<string, unknown>>(
+        sql`SELECT name, role, language, time_zone, clock, calendar, deactivated_at FROM auth_user`
+      );
+      expect(account).toEqual({
+        calendar: "hijri",
+        clock: "24h",
+        deactivated_at: null,
+        language: "en",
+        name: "",
+        role: "owner",
+        time_zone: "Asia/Riyadh",
+      });
+      const keys = await run.rows<{ key: string }>(
+        sql`SELECT key FROM settings ORDER BY key`
+      );
+      expect(keys.map((row) => row.key)).toEqual([
+        "auth_email_tested:op",
+        "install_language",
+      ]);
+    } finally {
+      await earlier.cleanup();
+    }
+  });
+
+  test("an operator who kept the install's preferences keeps following them", async () => {
+    const connection = await fresh();
+    const earlier = await migratedUpTo(connection, "operator_accounts");
+    const run = executor(connection);
+    try {
+      await run.run(
+        sql`INSERT INTO auth_user (id, name, email, email_verified, created_at, updated_at) VALUES ('op', 'operator', 'operator@example.com', 1, 0, 0)`
+      );
+      expect((await migrateDatabase(connection)).ok).toBe(true);
+      const [account] = await run.rows<Record<string, unknown>>(
+        sql`SELECT role, language, time_zone, clock, calendar FROM auth_user`
+      );
+      expect(account).toEqual({
+        calendar: null,
+        clock: null,
+        language: null,
+        role: "owner",
+        time_zone: null,
+      });
+    } finally {
+      await earlier.cleanup();
+    }
+  });
+
+  test("an install still in onboarding keeps no test message", async () => {
+    const connection = await fresh();
+    const earlier = await migratedUpTo(connection, "operator_accounts");
+    const run = executor(connection);
+    try {
+      await run.run(
+        sql`INSERT INTO settings (key, value, updated_at) VALUES ('auth_email_tested', '{}', 0)`
+      );
+      expect((await migrateDatabase(connection)).ok).toBe(true);
+      const keys = await run.rows<{ key: string }>(
+        sql`SELECT key FROM settings`
+      );
+      expect(keys).toEqual([]);
+    } finally {
+      await earlier.cleanup();
+    }
+  });
+});

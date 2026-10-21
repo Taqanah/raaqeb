@@ -56,17 +56,17 @@ import {
   subscriberListSchema,
   subscriberRemoveSchema,
 } from "@/shared/schemas/subscription.ts";
-import { operatorMiddleware } from "./-admin.ts";
+import { permitted } from "./-admin.ts";
 
 export const readComponentListFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .handler(
     ({ context }): Promise<ComponentListResult> =>
       listComponents(context.storage, Date.now())
   );
 
 export const readComponentFormFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(componentFormSchema)
   .handler(
     ({ context, data }): Promise<ComponentFormResult> =>
@@ -74,7 +74,7 @@ export const readComponentFormFn = createServerFn({ method: "GET" })
   );
 
 export const createComponentFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(componentInputSchema)
   .handler(
     ({ context, data }): Promise<ComponentSaveResult> =>
@@ -82,7 +82,7 @@ export const createComponentFn = createServerFn({ method: "POST" })
   );
 
 export const editComponentFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(componentEditSchema)
   .handler(
     ({ context, data }): Promise<ComponentSaveResult> =>
@@ -90,7 +90,7 @@ export const editComponentFn = createServerFn({ method: "POST" })
   );
 
 export const deleteComponentFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(componentIdSchema)
   .handler(
     ({ context, data }): Promise<ComponentDeleteResult> =>
@@ -98,20 +98,20 @@ export const deleteComponentFn = createServerFn({ method: "POST" })
   );
 
 export const readPageListFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .handler(
     ({ context }): Promise<PageListResult> => listPages(context.storage)
   );
 
 /** The install language, which a new page's language starts from. */
 export const readInstallLanguageFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .handler(
     ({ context }): Promise<Locale> => readInstallLanguage(context.storage)
   );
 
 export const readPageEditorFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(pageIdSchema)
   .handler(
     ({ context, data }): Promise<PageEditorResult> =>
@@ -119,7 +119,7 @@ export const readPageEditorFn = createServerFn({ method: "GET" })
   );
 
 export const createPageFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(pageCreateSchema)
   .handler(
     ({ context, data }): Promise<PageSaveResult> =>
@@ -127,7 +127,7 @@ export const createPageFn = createServerFn({ method: "POST" })
   );
 
 export const savePageFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(pageEditSchema)
   .handler(
     ({ context, data }): Promise<PageSaveResult> =>
@@ -135,7 +135,7 @@ export const savePageFn = createServerFn({ method: "POST" })
   );
 
 export const deletePageFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(pageIdSchema)
   .handler(
     ({ context, data }): Promise<PageDeleteResult> =>
@@ -143,7 +143,7 @@ export const deletePageFn = createServerFn({ method: "POST" })
   );
 
 export const uploadPageImageFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(pageImageUploadOf)
   .handler(
     ({ context, data }): Promise<PageImageResult> =>
@@ -151,7 +151,7 @@ export const uploadPageImageFn = createServerFn({ method: "POST" })
   );
 
 export const removePageImageFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(pageImageRemoveSchema)
   .handler(
     ({ context, data }): Promise<PageImageResult> =>
@@ -160,7 +160,7 @@ export const removePageImageFn = createServerFn({ method: "POST" })
 
 /** A status page's subscribers. */
 export const readSubscribersFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(subscriberListSchema)
   .handler(
     ({ context, data }): Promise<SubscriberListResult> =>
@@ -173,7 +173,7 @@ export const readSubscribersFn = createServerFn({ method: "GET" })
   );
 
 export const removeSubscriberFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("pages")])
   .validator(subscriberRemoveSchema)
   .handler(
     ({ context, data }): Promise<SubscriberRemoveResult> =>

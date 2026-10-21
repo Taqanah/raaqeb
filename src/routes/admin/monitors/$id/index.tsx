@@ -9,6 +9,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { DetailRefused, MonitorDetailView } from "@/admin/monitors/detail.tsx";
 import { MonitorDetailSkeleton } from "@/admin/monitors/skeleton.tsx";
 import { Page } from "@/admin/shell/page.tsx";
+import { useAllows } from "@/admin/shell/role.tsx";
 import {
   acknowledgeOutageFn,
   checkNowFn,
@@ -26,6 +27,7 @@ import {
   type ChartSpan,
   monitorDetailSearchSchema,
 } from "@/shared/schemas/detail.ts";
+import type { Monitor } from "@/shared/schemas/monitor.ts";
 import { Button, buttonVariants } from "@/shared/ui/button.tsx";
 import { cn } from "@/shared/ui/cn.ts";
 import {
@@ -230,68 +232,15 @@ function MonitorDetailPage(): ReactNode {
   }
   const { monitor } = detail;
   const action = (
-    <>
-      {acknowledgeable ? (
-        <Button
-          className={iconOnPhone}
-          data-slot="acknowledge-outage"
-          onClick={acknowledge}
-          type="button"
-          variant="outline"
-        >
-          <BellOffIcon />
-          <span className="max-sm:sr-only">{t("monitor_acknowledge")}</span>
-        </Button>
-      ) : null}
-      {/* A heartbeat monitor's checks come from its heartbeats, and a paused monitor runs none: neither offers check now. */}
-      {monitor.config.type === "heartbeat" || monitor.paused ? null : (
-        <Button
-          className={iconOnPhone}
-          data-slot="check-now"
-          disabled={waiting !== undefined}
-          onClick={askCheck}
-          type="button"
-          variant="outline"
-        >
-          <RefreshIcon
-            className={waiting ? "motion-safe:animate-spin" : undefined}
-          />
-          <span className="max-sm:sr-only">
-            {waiting ? t("monitor_checking") : t("monitor_check_now")}
-          </span>
-        </Button>
-      )}
-      <Button
-        className={iconOnPhone}
-        data-slot="toggle-paused"
-        onClick={togglePaused}
-        type="button"
-        variant="outline"
-      >
-        {monitor.paused ? <PlayIcon /> : <PauseIcon />}
-        <span className="max-sm:sr-only">
-          {monitor.paused ? t("monitor_resume") : t("monitor_pause")}
-        </span>
-      </Button>
-      <Link
-        className={cn(buttonVariants({ variant: "outline" }), iconOnPhone)}
-        data-slot="duplicate-monitor"
-        search={{ copy: id }}
-        to="/admin/monitors/new"
-      >
-        <CopyIcon />
-        <span className="max-sm:sr-only">{t("monitor_duplicate")}</span>
-      </Link>
-      <Link
-        className={buttonVariants()}
-        data-slot="edit-monitor"
-        params={{ id }}
-        to="/admin/monitors/$id/edit"
-      >
-        <PencilIcon />
-        {t("monitor_edit")}
-      </Link>
-    </>
+    <DetailActions
+      acknowledge={acknowledge}
+      acknowledgeable={acknowledgeable}
+      askCheck={askCheck}
+      id={id}
+      monitor={monitor}
+      togglePaused={togglePaused}
+      waiting={waiting !== undefined}
+    />
   );
   return (
     <Page
@@ -324,5 +273,98 @@ function MonitorDetailPage(): ReactNode {
         }
       />
     </Page>
+  );
+}
+
+/** The detail page's actions, each offered to the roles that may take it. */
+function DetailActions({
+  acknowledge,
+  acknowledgeable,
+  askCheck,
+  id,
+  monitor,
+  togglePaused,
+  waiting,
+}: {
+  readonly acknowledge: () => void;
+  readonly acknowledgeable: boolean;
+  readonly askCheck: () => void;
+  readonly id: string;
+  readonly monitor: Monitor;
+  readonly togglePaused: () => void;
+  /** A check now asked for is not answered yet. */
+  readonly waiting: boolean;
+}): ReactNode {
+  const { t } = useMessages();
+  const allowed = useAllows();
+  return (
+    <>
+      {acknowledgeable && allowed("acknowledge") ? (
+        <Button
+          className={iconOnPhone}
+          data-slot="acknowledge-outage"
+          onClick={acknowledge}
+          type="button"
+          variant="outline"
+        >
+          <BellOffIcon />
+          <span className="max-sm:sr-only">{t("monitor_acknowledge")}</span>
+        </Button>
+      ) : null}
+      {/* A heartbeat monitor's checks come from its heartbeats, and a paused monitor runs none: neither offers check now. */}
+      {monitor.config.type === "heartbeat" ||
+      monitor.paused ||
+      !allowed("check_now") ? null : (
+        <Button
+          className={iconOnPhone}
+          data-slot="check-now"
+          disabled={waiting}
+          onClick={askCheck}
+          type="button"
+          variant="outline"
+        >
+          <RefreshIcon
+            className={waiting ? "motion-safe:animate-spin" : undefined}
+          />
+          <span className="max-sm:sr-only">
+            {waiting ? t("monitor_checking") : t("monitor_check_now")}
+          </span>
+        </Button>
+      )}
+      {allowed("monitors") ? (
+        <>
+          <Button
+            className={iconOnPhone}
+            data-slot="toggle-paused"
+            onClick={togglePaused}
+            type="button"
+            variant="outline"
+          >
+            {monitor.paused ? <PlayIcon /> : <PauseIcon />}
+            <span className="max-sm:sr-only">
+              {monitor.paused ? t("monitor_resume") : t("monitor_pause")}
+            </span>
+          </Button>
+          <Link
+            className={cn(buttonVariants({ variant: "outline" }), iconOnPhone)}
+            data-slot="duplicate-monitor"
+            search={{ copy: id }}
+            to="/admin/monitors/new"
+          >
+            <CopyIcon />
+            <span className="max-sm:sr-only">{t("monitor_duplicate")}</span>
+          </Link>
+          <Link
+            className={buttonVariants()}
+            data-slot="edit-monitor"
+            params={{ id }}
+            to="/admin/monitors/$id/edit"
+          >
+            <PencilIcon />
+            {t("monitor_edit")}
+          </Link>
+        </>
+      ) : null}
+    </>
   );
 }

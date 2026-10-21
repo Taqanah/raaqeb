@@ -368,7 +368,8 @@ const writes: readonly (readonly [string, Write, Setup?])[] = [
           requestLog: false,
           timeZone: "Asia/Riyadh",
         },
-        { trustedProxies: [] }
+        { trustedProxies: [] },
+        "owner"
       ),
   ],
   [

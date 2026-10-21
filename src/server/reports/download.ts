@@ -13,6 +13,7 @@ import { readOperatorLanguage } from "@/server/settings/operator.ts";
 import { createMessages } from "@/shared/i18n/messages.ts";
 import { contentIn } from "@/shared/schemas/content.ts";
 import type { ReportQuery } from "@/shared/schemas/report.ts";
+import type { AccountSettingsInput } from "@/shared/schemas/settings.ts";
 
 export type ReportDownloadResult =
   | { readonly body: string; readonly name: string; readonly ok: true }
@@ -24,7 +25,8 @@ export type ReportDownloadResult =
 export async function reportDownload(
   storage: ReportStorage,
   query: ReportQuery,
-  now: number
+  now: number,
+  preferences?: AccountSettingsInput
 ): Promise<ReportDownloadResult> {
   const result = await readReport(storage, query, now);
   if (!result.ok) {
@@ -32,7 +34,7 @@ export async function reportDownload(
   }
   try {
     const [locale, install] = await Promise.all([
-      readOperatorLanguage(storage),
+      readOperatorLanguage(storage, preferences),
       readInstallLanguage(storage),
     ]);
     const messages = createMessages(locale, await loadCatalog(locale));

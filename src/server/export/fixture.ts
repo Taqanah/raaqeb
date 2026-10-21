@@ -21,10 +21,6 @@ import {
 } from "@/server/settings/appearance.ts";
 import { calendar, clock, timeZone } from "@/server/settings/clock.ts";
 import { installLanguage } from "@/server/settings/language.ts";
-import {
-  operatorCalendar,
-  operatorLanguage,
-} from "@/server/settings/operator.ts";
 import { retentionDays, sizeBudgetBytes } from "@/server/settings/retention.ts";
 import { runSql, scratchDatabase } from "@/server/storage/fixture.ts";
 import { sqliteFileName } from "@/server/storage/sqlite.ts";
@@ -103,6 +99,10 @@ export async function targetInstall(): Promise<Install> {
   await target.storage.settings.set(installLanguage, "ar");
   return target;
 }
+
+/** The source install's owner and its deactivated editor. */
+export const sourceOwnerId = "01900000-0000-7000-8000-00000000a001";
+export const sourceEditorId = "01900000-0000-7000-8000-00000000a002";
 
 /** The ids of what `sourceInstall` holds. */
 export interface SourceIds {
@@ -365,8 +365,6 @@ export async function sourceInstall(): Promise<Install & { ids: SourceIds }> {
   await storage.settings.set(sizeBudgetBytes, 512 * 1024 * 1024);
   await storage.settings.set(releaseCheckEnabled, false);
   await storage.settings.set(publicAddress, "https://source.example.test");
-  await storage.settings.set(operatorLanguage, "ar");
-  await storage.settings.set(operatorCalendar, "hijri_gregorian");
   await storage.settings.set(
     betterAuthSecrets,
     "1:source-secret-source-secret-source-secret-sou"
@@ -413,6 +411,36 @@ export async function sourceInstall(): Promise<Install & { ids: SourceIds }> {
       reasons.dns_failed,
       now - 2 * minute,
     ]
+  );
+  // Two operator accounts: the owner with a password, a session and an authenticator app; an editor deactivated, reading English on a 24-hour clock.
+  await runSql(
+    source.location,
+    "INSERT INTO auth_user (id, name, email, email_verified, two_factor_enabled, role, deactivated_at, last_sign_in_at, language, time_zone, clock, calendar, created_at, updated_at) VALUES (?, '', 'owner@source.example.test', 1, 1, 'owner', NULL, ?, NULL, NULL, NULL, NULL, ?, ?), (?, 'Huda', 'huda@source.example.test', 0, 0, 'editor', ?, NULL, 'en', 'Asia/Riyadh', '24h', 'hijri', ?, ?)",
+    [
+      sourceOwnerId,
+      now - hour,
+      today - 300 * day,
+      today - 300 * day,
+      sourceEditorId,
+      now - day,
+      today - 100 * day,
+      today - 90 * day,
+    ]
+  );
+  await runSql(
+    source.location,
+    "INSERT INTO auth_account (id, user_id, account_id, provider_id, password, created_at, updated_at) VALUES ('a-owner', ?, ?, 'credential', 'the source owner password hash', 0, 0)",
+    [sourceOwnerId, sourceOwnerId]
+  );
+  await runSql(
+    source.location,
+    "INSERT INTO auth_session (id, user_id, token, expires_at, created_at, updated_at) VALUES ('s-owner', ?, 'the source session token', ?, 0, 0)",
+    [sourceOwnerId, now + day]
+  );
+  await runSql(
+    source.location,
+    "INSERT INTO auth_two_factor (id, user_id, secret, backup_codes, verified) VALUES ('t-owner', ?, 'the source app secret', 'the source backup codes', 1)",
+    [sourceOwnerId]
   );
   source.at(now);
   return {

@@ -33,17 +33,17 @@ import {
   newIncidentSearchSchema,
   updateFixSchema,
 } from "@/shared/schemas/incident.ts";
-import { operatorMiddleware } from "./-admin.ts";
+import { permitted } from "./-admin.ts";
 
 export const readIncidentListFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .handler(
     ({ context }): Promise<IncidentListResult> =>
       listIncidents(context.storage, Date.now())
   );
 
 export const readNewIncidentFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("incidents")])
   .validator(newIncidentSearchSchema)
   .handler(
     ({ context, data }): Promise<NewIncidentResult> =>
@@ -51,7 +51,7 @@ export const readNewIncidentFn = createServerFn({ method: "GET" })
   );
 
 export const readIncidentFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(incidentIdSchema)
   .handler(
     ({ context, data }): Promise<IncidentPageResult> =>
@@ -59,7 +59,7 @@ export const readIncidentFn = createServerFn({ method: "GET" })
   );
 
 export const createIncidentFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("incidents")])
   .validator(incidentCreateSchema)
   .handler(
     ({ context, data }): Promise<IncidentSaveResult> =>
@@ -72,7 +72,7 @@ export const createIncidentFn = createServerFn({ method: "POST" })
   );
 
 export const editIncidentFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("incidents")])
   .validator(incidentEditSchema)
   .handler(
     ({ context, data }): Promise<IncidentSaveResult> =>
@@ -80,7 +80,7 @@ export const editIncidentFn = createServerFn({ method: "POST" })
   );
 
 export const postUpdateFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("incidents")])
   .validator(incidentPostSchema)
   .handler(
     ({ context, data }): Promise<IncidentSaveResult> =>
@@ -94,7 +94,7 @@ export const postUpdateFn = createServerFn({ method: "POST" })
   );
 
 export const fixUpdateFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("incidents")])
   .validator(updateFixSchema)
   .handler(
     ({ context, data }): Promise<IncidentSaveResult> =>
@@ -102,7 +102,7 @@ export const fixUpdateFn = createServerFn({ method: "POST" })
   );
 
 export const deleteIncidentFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("incidents_delete")])
   .validator(incidentIdSchema)
   .handler(
     ({ context, data }): Promise<IncidentDeleteResult> =>

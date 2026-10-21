@@ -109,6 +109,14 @@ export async function authWithOperator(
   return auth;
 }
 
+/** The id of the account with the address, the operator's by default; empty when there is none. */
+export async function accountIdOf(
+  storage: Pick<Storage, "operatorAccounts">,
+  email: string = testEmail
+): Promise<string> {
+  return (await storage.operatorAccounts.findByEmail(email))?.id ?? "";
+}
+
 // Better Auth keeps its in-memory rate-limit store once per process, so every
 // call that does not measure the limit gets an address of its own.
 let addresses = 0;

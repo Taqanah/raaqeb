@@ -205,7 +205,7 @@ describe("the reset command", () => {
       await resetPasswordCommand(s.storage, s.boot, { interactive: false }, t)
     ).toBe(0);
     expect(t.askedHidden).toEqual([]);
-    expect(await s.storage.operatorAccount.read()).toMatchObject({
+    expect((await s.storage.operatorAccounts.list())[0]).toMatchObject({
       app: false,
       secondStep: false,
     });
@@ -223,7 +223,9 @@ describe("the reset command", () => {
     expect(
       await resetPasswordCommand(s.storage, s.boot, { interactive: false }, t)
     ).toBe(0);
-    expect((await s.storage.operatorAccount.read())?.secondStep).toBe(false);
+    expect((await s.storage.operatorAccounts.list())[0]?.secondStep).toBe(
+      false
+    );
   });
 
   test("an app whose setup was left before its first code is removed too, without a word about a second step that was off", async () => {
@@ -277,8 +279,8 @@ describe("the reset command", () => {
     await secondStepOn(s.storage);
     const failing: Storage = {
       ...s.storage,
-      operatorAccount: {
-        ...s.storage.operatorAccount,
+      operatorAccounts: {
+        ...s.storage.operatorAccounts,
         secondStepOff: () =>
           Promise.reject(new Error("the database went away")),
       },
@@ -288,5 +290,99 @@ describe("the reset command", () => {
       await resetPasswordCommand(failing, s.boot, { interactive: false }, t)
     ).toBe(1);
     expect(t.errors.join("\n")).not.toContain("nothing was changed");
+  });
+});
+
+describe("the reset command on an install with several accounts", () => {
+  async function two(s: Scratch): Promise<Auth> {
+    const auth = await secondStepOn(s.storage);
+    await auth.api.signUpEmail({
+      body: {
+        email: "second@example.com",
+        name: "Second",
+        password: testPassword,
+      },
+    });
+    return auth;
+  }
+
+  test("refuses to guess and names each account to choose from", async () => {
+    const s = await scratch();
+    await two(s);
+    const t = terminal();
+    expect(
+      await resetPasswordCommand(s.storage, s.boot, { interactive: false }, t)
+    ).toBe(2);
+    expect(t.errors).toEqual([
+      "this install has 2 operator accounts; name the one to reset, as in: raaqeb reset-password operator@example.com",
+      "  operator@example.com (owner)",
+      "  second@example.com (viewer)",
+    ]);
+    expect(t.lines).toEqual([]);
+  });
+
+  test("resets the account it names, whatever the case of the address, and leaves the other's second step on", async () => {
+    const s = await scratch();
+    const auth = await two(s);
+    const second =
+      await s.storage.operatorAccounts.findByEmail("second@example.com");
+    await runSql(
+      s.location,
+      "UPDATE auth_user SET two_factor_enabled = 1 WHERE email = 'second@example.com'"
+    );
+    const t = terminal();
+    expect(
+      await resetPasswordCommand(
+        s.storage,
+        s.boot,
+        { email: "Second@Example.com", interactive: false },
+        t
+      )
+    ).toBe(0);
+    const link = linkIn(t.lines) ?? "";
+    const reset = await call(auth, "/reset-password", {
+      body: { newPassword: "a brand new password", token: tokenOf(link) },
+    });
+    expect(reset.status).toBe(200);
+    expect(
+      (
+        await call(auth, "/sign-in/email", {
+          body: {
+            email: "second@example.com",
+            password: "a brand new password",
+          },
+        })
+      ).status
+    ).toBe(200);
+    expect(
+      (await s.storage.operatorAccounts.find(second?.id ?? ""))?.secondStep
+    ).toBe(false);
+    expect(
+      (await s.storage.operatorAccounts.findByEmail("operator@example.com"))
+        ?.secondStep
+    ).toBe(true);
+  });
+
+  test("an address that has no account is refused, and nothing is minted", async () => {
+    const s = await scratch();
+    await two(s);
+    const t = terminal();
+    expect(
+      await resetPasswordCommand(
+        s.storage,
+        s.boot,
+        { email: "nobody@example.com", interactive: false },
+        t
+      )
+    ).toBe(1);
+    expect(t.errors).toEqual([
+      "there is no operator account with the email nobody@example.com",
+    ]);
+    expect(
+      await runSql(
+        s.location,
+        "SELECT id FROM auth_verification WHERE identifier LIKE 'reset-password:%'"
+      )
+    ).toEqual([]);
   });
 });

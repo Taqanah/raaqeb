@@ -122,11 +122,13 @@ export async function readChannelForm(
         channel,
         generated,
         kept,
+        locked: false,
         preview,
         recent,
         summary: values
           ? channelDeclarations[channel.type].summary(values)
           : "",
+        withheld: [],
       },
       ok: true,
     };
@@ -136,6 +138,32 @@ export async function readChannelForm(
     }
     return unavailable;
   }
+}
+
+/**
+ * The channel page's read as the signed-in operator may see it. A generated
+ * value such as the webhook's signing secret lets whoever holds it sign what
+ * the receiver trusts, so it is shown only to a role that edits channels;
+ * another sees that one is stored. `locked` marks the channel auth mail goes
+ * through for a role that may not change it.
+ */
+export function channelFormFor(
+  result: ChannelFormResult,
+  access: { readonly locked: boolean; readonly reveal: boolean }
+): ChannelFormResult {
+  if (!result.ok) {
+    return result;
+  }
+  const { form } = result;
+  return {
+    form: {
+      ...form,
+      generated: access.reveal ? form.generated : {},
+      locked: access.locked,
+      withheld: access.reveal ? [] : Object.keys(form.generated),
+    },
+    ok: true,
+  };
 }
 
 /** Stores a new channel; its generated fields get their first values. */

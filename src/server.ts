@@ -28,9 +28,11 @@ import { authFor, mailSettled, resetLinkOpen } from "./server/auth/auth.ts";
 import {
   needsTerminal,
   processTerminal,
+  type ResetPasswordOptions,
   resetPasswordCommand,
   type Terminal,
 } from "./server/auth/command.ts";
+import { readInvitation } from "./server/auth/invitation.ts";
 import { carriesSession, isOperator } from "./server/auth/session.ts";
 import {
   type CommandLine,
@@ -169,7 +171,7 @@ export async function main(
   if (line.command === "reset-password") {
     return await resetPassword(
       booted.settings,
-      line.interactive,
+      { email: line.email, interactive: line.interactive },
       options.terminal ?? processTerminal(),
       options
     );
@@ -284,17 +286,17 @@ async function beforeBoot(
  */
 async function resetPassword(
   settings: BootSettings,
-  interactive: boolean,
+  reset: ResetPasswordOptions,
   terminal: Terminal,
   options: OpenStorageOptions
 ): Promise<number> {
-  if (interactive && !terminal.interactive) {
+  if (reset.interactive && !terminal.interactive) {
     // Refused before the database opens, so a pipe cannot migrate anything.
     terminal.err(needsTerminal);
     return 2;
   }
   return await besideServer(settings, terminal, options, (storage) =>
-    resetPasswordCommand(storage, settings, { interactive }, terminal)
+    resetPasswordCommand(storage, settings, reset, terminal)
   );
 }
 
@@ -395,9 +397,10 @@ export function maintenanceLine(window: MaintenanceWindow): string {
  * memo keeps (a view, document, badge, feed, summary or not-found) that went
  * stale, which a visitor is answered with while it refreshes; `cold`, one it
  * holds nothing for; `pages`, the pages everyone gets the same (sign-in,
- * forgot-password, sign-out, a reset page with no link, onboarding's language
+ * forgot-password, sign-out, a reset or invitation page with no link, onboarding's language
  * and database screens); `subscriptions`, a subscription's page; `reset`, a
- * reset page whose link is open; `onboarding`, onboarding's account screen
+ * reset page whose link is open or an invitation page whose link is;
+ * `onboarding`, onboarding's account screen
  * and a screen asked with another search; `others`, every other document.
  */
 export type RenderLane =
@@ -500,7 +503,13 @@ export function serve(
     // A request that names no session cookie costs no session read.
     operator: async (request) =>
       carriesSession(request.headers) &&
-      (await isOperator(holder.current, settings, request.headers)),
+      (await isOperator(
+        holder.current,
+        settings,
+        request.headers,
+        undefined,
+        "read"
+      )),
   });
   // Held in memory, read again only when the change counter moves.
   const proxies = heldTrustedProxies(settings.trustedProxies);
@@ -722,6 +731,7 @@ function gatesFor(
 }
 
 const resetPage = /^\/reset-password\/?$/;
+const invitationPage = /^\/invitation\/?$/;
 
 /** What the entry hands a document's render: the request's gates and what a reset link's check reads. */
 interface DocumentGates {
@@ -736,7 +746,7 @@ interface DocumentGates {
   readonly storage: Storage | undefined;
 }
 
-/** The lane a stranger's document renders in: a subscription's page, an onboarding screen, a reset link that is open, every other one; the check tells an open link from one that is not. */
+/** The lane a stranger's document renders in: a subscription's page, an onboarding screen, a reset link or an invitation that is open, every other one; the check tells an open link from one that is not. */
 async function laneOf(url: URL, gates: DocumentGates): Promise<RenderLane> {
   if (subscriptionPage.test(url.pathname)) {
     return "subscriptions";
@@ -748,6 +758,15 @@ async function laneOf(url: URL, gates: DocumentGates): Promise<RenderLane> {
   if (resetPage.test(url.pathname) && token) {
     const open = await gates.checked(() =>
       resetOpen(gates.storage, gates.settings, token)
+    );
+    return open ? "reset" : "others";
+  }
+  // An open invitation shares the open reset link's lane: both are one person's link, rare and short-lived.
+  if (invitationPage.test(url.pathname) && token) {
+    const open = await gates.checked(
+      async () =>
+        (await readInvitation(gates.storage, token.slice(0, 200), Date.now()))
+          .ok
     );
     return open ? "reset" : "others";
   }

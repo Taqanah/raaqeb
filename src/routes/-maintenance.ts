@@ -38,24 +38,24 @@ import {
   seriesEditSchema,
   seriesInputSchema,
 } from "@/shared/schemas/maintenance.ts";
-import { operatorMiddleware } from "./-admin.ts";
+import { permitted } from "./-admin.ts";
 
 export const readMaintenanceListFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .handler(
     ({ context }): Promise<MaintenanceListResult> =>
       listWindows(context.storage, Date.now())
   );
 
 export const readNewMaintenanceFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("maintenance")])
   .handler(
     ({ context }): Promise<NewMaintenanceResult> =>
       readNewWindow(context.storage, Date.now())
   );
 
 export const readMaintenanceFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(maintenanceIdSchema)
   .handler(
     ({ context, data }): Promise<MaintenancePageResult> =>
@@ -63,7 +63,7 @@ export const readMaintenanceFn = createServerFn({ method: "GET" })
   );
 
 export const createMaintenanceFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("maintenance")])
   .validator(maintenanceInputSchema)
   .handler(
     ({ context, data }): Promise<MaintenanceSaveResult> =>
@@ -76,7 +76,7 @@ export const createMaintenanceFn = createServerFn({ method: "POST" })
   );
 
 export const editMaintenanceFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("maintenance")])
   .validator(maintenanceEditSchema)
   .handler(
     ({ context, data }): Promise<MaintenanceSaveResult> =>
@@ -90,7 +90,7 @@ export const editMaintenanceFn = createServerFn({ method: "POST" })
   );
 
 export const endMaintenanceFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("maintenance")])
   .validator(maintenanceIdSchema)
   .handler(
     ({ context, data }): Promise<MaintenanceSaveResult> =>
@@ -98,7 +98,7 @@ export const endMaintenanceFn = createServerFn({ method: "POST" })
   );
 
 export const readSeriesFn = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("read")])
   .validator(maintenanceIdSchema)
   .handler(
     ({ context, data }): Promise<MaintenanceSeriesPageResult> =>
@@ -106,7 +106,7 @@ export const readSeriesFn = createServerFn({ method: "GET" })
   );
 
 export const createSeriesFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("maintenance")])
   .validator(seriesInputSchema)
   .handler(
     ({ context, data }): Promise<MaintenanceSeriesSaveResult> =>
@@ -119,7 +119,7 @@ export const createSeriesFn = createServerFn({ method: "POST" })
   );
 
 export const editSeriesFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("maintenance")])
   .validator(seriesEditSchema)
   .handler(
     ({ context, data }): Promise<MaintenanceSeriesSaveResult> =>
@@ -133,7 +133,7 @@ export const editSeriesFn = createServerFn({ method: "POST" })
   );
 
 export const endSeriesFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("maintenance")])
   .validator(maintenanceIdSchema)
   .handler(
     ({ context, data }): Promise<MaintenanceDeleteResult> =>
@@ -146,7 +146,7 @@ export const endSeriesFn = createServerFn({ method: "POST" })
   );
 
 export const deleteMaintenanceFn = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("maintenance")])
   .validator(maintenanceIdSchema)
   .handler(
     ({ context, data }): Promise<MaintenanceDeleteResult> =>

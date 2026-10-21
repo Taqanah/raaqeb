@@ -56,6 +56,7 @@ const refusalMessages: Readonly<Record<Refusal, MessageId>> = {
   not_tested: "setting_second_step_not_tested",
   unavailable: "setting_unavailable",
   wrong_code: "setting_authenticator_code_wrong",
+  too_many_attempts: "setting_password_too_many",
   wrong_password: "setting_password_wrong",
 };
 

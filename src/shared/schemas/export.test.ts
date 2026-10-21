@@ -26,6 +26,7 @@ const empty: Configuration = {
   monitorProbes: [],
   monitorTags: [],
   monitors: [],
+  operatorAccounts: [],
   pageComponents: [],
   pageImages: [],
   probes: [],

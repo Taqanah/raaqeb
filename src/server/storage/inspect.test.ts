@@ -80,6 +80,7 @@ describe("what Raaqeb owns", () => {
       "incident_statuses",
       "incident_updates",
       "incidents",
+      "invitations",
       "maintenance_components",
       "maintenance_series",
       "maintenance_series_components",

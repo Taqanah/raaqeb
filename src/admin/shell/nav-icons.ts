@@ -12,6 +12,7 @@ import {
   PlusIcon,
   SlidersIcon,
   TriangleAlertIcon,
+  UsersIcon,
   WrenchIcon,
 } from "@/shared/ui/icons.tsx";
 import type { NavIcon, PaletteAction } from "./navigation.ts";
@@ -30,4 +31,5 @@ export const navIcons: Readonly<
   settings: SlidersIcon,
   shortcuts: KeyboardIcon,
   sign_out: LogOutIcon,
+  team: UsersIcon,
 };

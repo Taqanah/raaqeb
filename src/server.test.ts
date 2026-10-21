@@ -2445,7 +2445,8 @@ describe("the trusted proxies saved on the general page", () => {
             timeZone: "UTC",
             trustedProxies: ["127.0.0.1"],
           },
-          { trustedProxies: [] }
+          { trustedProxies: [] },
+          "owner"
         )
       ).toEqual({ ok: true });
       // The browser loads the sign-in page before it posts the form.

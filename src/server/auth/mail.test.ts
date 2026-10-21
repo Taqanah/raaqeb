@@ -8,13 +8,20 @@ import {
   htmlText,
   parse,
 } from "@/server/notify/fixture.ts";
-import { operatorLanguage } from "@/server/settings/operator.ts";
-import { type Scratch, scratchStorage, testEmail } from "./fixture.ts";
+import type { Storage } from "@/server/storage/storage.ts";
+import {
+  accountIdOf,
+  authWithOperator,
+  type Scratch,
+  scratchStorage,
+  testEmail,
+} from "./fixture.ts";
 import {
   authEmailChannel,
   authEmailChannelOf,
   authMailOver,
   emailChangeNoticeOver,
+  mayChangeChannel,
   sendAuthMail,
 } from "./mail.ts";
 
@@ -31,6 +38,14 @@ afterEach(async () => {
   await open?.cleanup();
   open = undefined;
 });
+
+/** The operator's account, reading English. */
+async function englishOperator(storage: Storage): Promise<void> {
+  await authWithOperator(storage);
+  await storage.operatorAccounts.setPreferences(await accountIdOf(storage), {
+    operatorLanguage: "en",
+  });
+}
 
 const io = { fetch, now: Date.now };
 const lineBreak = /\r?\n/;
@@ -75,6 +90,51 @@ function bodyOf(message: string): string {
 function htmlOf(message: string): string {
   return bodyText(parse(message), "text/html");
 }
+
+describe("who changes the channel auth mail goes through", () => {
+  test("is an owner alone: the channel in force, and a first email channel made while none is", async () => {
+    const s = await scratch();
+    expect(await mayChangeChannel(s.storage, "admin", { type: "email" })).toBe(
+      false
+    );
+    expect(await mayChangeChannel(s.storage, "owner", { type: "email" })).toBe(
+      true
+    );
+    expect(
+      await mayChangeChannel(s.storage, "admin", { type: "webhook" })
+    ).toBe(true);
+    const first = await emailChannel(s, "First", 2525);
+    expect(await mayChangeChannel(s.storage, "admin", { id: first })).toBe(
+      false
+    );
+    expect(await mayChangeChannel(s.storage, "owner", { id: first })).toBe(
+      true
+    );
+    // Another email channel made now is not the one in force.
+    expect(await mayChangeChannel(s.storage, "admin", { type: "email" })).toBe(
+      true
+    );
+    const second = await emailChannel(s, "Second", 2526);
+    expect(await mayChangeChannel(s.storage, "admin", { id: second })).toBe(
+      true
+    );
+    await s.storage.settings.set(authEmailChannel, second);
+    expect(await mayChangeChannel(s.storage, "admin", { id: second })).toBe(
+      false
+    );
+    expect(await mayChangeChannel(s.storage, "admin", { id: first })).toBe(
+      true
+    );
+  });
+
+  test("allows nothing when the database cannot answer, never a thrown error", async () => {
+    const s = await scratch();
+    await s.storage.close();
+    expect(
+      await mayChangeChannel(s.storage, "admin", { type: "webhook" })
+    ).toBe(false);
+  });
+});
 
 describe("the channel auth mail goes through", () => {
   test("is the chosen email channel, else the oldest email channel, and nothing without one", async () => {
@@ -141,9 +201,9 @@ describe("sending auth mail", () => {
     }
   });
 
-  test("follows the operator language, so an English operator reads English", async () => {
+  test("follows the recipient's operator language, so an English operator reads English", async () => {
     const s = await scratch();
-    await s.storage.settings.set(operatorLanguage, "en");
+    await englishOperator(s.storage);
     const smtp = fakeSmtp();
     try {
       await emailChannel(s, "Mail", smtp.port);
@@ -155,6 +215,31 @@ describe("sending auth mail", () => {
       const message = smtp.messages[0] ?? "";
       expect(subjectOf(message)).toBe("Raaqeb: your one-time code");
       expect(bodyOf(message).split(lineBreak)).toContain("123456");
+    } finally {
+      smtp.stop();
+    }
+  });
+
+  test("goes to an address with no account in the install language, as an invitation does, its link a button", async () => {
+    const s = await scratch();
+    await englishOperator(s.storage);
+    const smtp = fakeSmtp();
+    const link = "http://raaqeb.test/invitation?token=rqi_abc";
+    try {
+      await emailChannel(s, "Mail", smtp.port);
+      expect(
+        await sendAuthMail(s.storage, s.boot.installKey, io, {
+          kind: "invitation",
+          to: "new@example.com",
+          value: link,
+        })
+      ).toEqual({ ok: true });
+      const message = smtp.messages[0] ?? "";
+      expect(subjectOf(message)).toBe("راقب: دعوة إلى الفريق");
+      expect(bodyOf(message).split(lineBreak)).toContain(link);
+      expect(htmlLinks(htmlOf(message))).toEqual([
+        { url: link, words: "قبول الدعوة" },
+      ]);
     } finally {
       smtp.stop();
     }
@@ -209,7 +294,7 @@ describe("sending auth mail", () => {
 
   test("the HTML part shows a one-time code on a line of its own, left to right, in the operator language", async () => {
     const s = await scratch();
-    await s.storage.settings.set(operatorLanguage, "en");
+    await englishOperator(s.storage);
     const smtp = fakeSmtp();
     try {
       await emailChannel(s, "Mail", smtp.port);

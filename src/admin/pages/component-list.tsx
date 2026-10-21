@@ -10,6 +10,7 @@ import { type ReactNode, useCallback } from "react";
 import { useOperatorCalendar } from "@/admin/shell/calendar.tsx";
 import { ContentText } from "@/admin/shell/content.tsx";
 import { Page } from "@/admin/shell/page.tsx";
+import { useCan } from "@/admin/shell/role.tsx";
 import { formatNumber, formatUptime } from "@/shared/i18n/format.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type { ComponentListResult } from "@/shared/schemas/component.ts";
@@ -44,7 +45,8 @@ export function ComponentList({
   readonly result: ComponentListResult;
 }): ReactNode {
   const { t } = useMessages();
-  const add = (
+  // Offered only to a role that may add one; the list reads the same for every role.
+  const add = useCan("pages") ? (
     <Link
       className={buttonVariants()}
       data-slot="add-component"
@@ -52,7 +54,7 @@ export function ComponentList({
     >
       {t("component_add")}
     </Link>
-  );
+  ) : null;
   // While the list is empty its card holds the one add button, which says what to add.
   const empty = result.ok && result.components.length === 0;
   return (

@@ -5571,6 +5571,450 @@ msgid "maintenance_occurrence_alone"
 msgstr "تغييره أو إلغاؤه هنا لا يمسّ وقت الصيانة المتكرر ولا مواعيده الأخرى."
 
 #. js-lingui-explicit-id
+msgid "auth_mail_invitation_subject"
+msgstr "راقب: دعوة إلى الفريق"
+
+#. js-lingui-explicit-id
+msgid "auth_mail_invitation_sentence"
+msgstr "دُعيت إلى فريق راقب. افتح الرابط خلال سبعة أيام لتختار اسمك وكلمة مرورك."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_title"
+msgstr "قبول الدعوة"
+
+#. js-lingui-explicit-id
+msgid "team_title"
+msgstr "الفريق"
+
+#. js-lingui-explicit-id
+msgid "team_intro"
+msgstr "حسابات المشغّلين الذين يديرون هذا التثبيت، ودعوات من لم ينضم بعد."
+
+#. js-lingui-explicit-id
+msgid "team_invite"
+msgstr "دعوة مشغّل"
+
+#. js-lingui-explicit-id
+msgid "team_invite_description"
+msgstr "يصل إلى البريد رابط يعمل مرة واحدة سبعة أيام، ويظهر هنا لتنسخه."
+
+#. js-lingui-explicit-id
+msgid "team_invite_send"
+msgstr "إرسال الدعوة"
+
+#. js-lingui-explicit-id
+msgid "team_role"
+msgstr "الدور"
+
+#. js-lingui-explicit-id
+msgid "team_role_owner"
+msgstr "مالك"
+
+#. js-lingui-explicit-id
+msgid "team_role_admin"
+msgstr "مدير"
+
+#. js-lingui-explicit-id
+msgid "team_role_editor"
+msgstr "محرّر"
+
+#. js-lingui-explicit-id
+msgid "team_role_responder"
+msgstr "مستجيب"
+
+#. js-lingui-explicit-id
+msgid "team_role_viewer"
+msgstr "مشاهد"
+
+#. js-lingui-explicit-id
+msgid "team_role_owner_line"
+msgstr "كل شيء، ومنح دور المالك وسحبه، والتصدير والاستيراد، وطريقة تسجيل الدخول."
+
+#. js-lingui-explicit-id
+msgid "team_role_admin_line"
+msgstr "كل شيء عدا ما يخص المالكين: قنوات الإشعار والإعدادات والفريق."
+
+#. js-lingui-explicit-id
+msgid "team_role_editor_line"
+msgstr "المراقبات وصفحات الحالة والمكوّنات، وحذف الحوادث."
+
+#. js-lingui-explicit-id
+msgid "team_role_responder_line"
+msgstr "فحص الآن والإقرار بالانقطاعات وكتابة الحوادث وجدولة الصيانة وإلغاؤها."
+
+#. js-lingui-explicit-id
+msgid "team_role_viewer_line"
+msgstr "يقرأ لوحة الإدارة ولا يغيّر شيئًا."
+
+#. js-lingui-explicit-id
+msgid "team_accounts"
+msgstr "الحسابات"
+
+#. js-lingui-explicit-id
+msgid "team_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "team_you"
+msgstr "أنت"
+
+#. js-lingui-explicit-id
+msgid "team_status"
+msgstr "الحالة"
+
+#. js-lingui-explicit-id
+msgid "team_active"
+msgstr "نشط"
+
+#. js-lingui-explicit-id
+msgid "team_deactivated"
+msgstr "معطّل"
+
+#. js-lingui-explicit-id
+msgid "team_second_step"
+msgstr "الاستيثاق الثنائي"
+
+#. js-lingui-explicit-id
+msgid "team_second_step_app"
+msgstr "تطبيق الاستيثاق"
+
+#. js-lingui-explicit-id
+msgid "team_second_step_email"
+msgstr "رمز بالبريد"
+
+#. js-lingui-explicit-id
+msgid "team_second_step_off"
+msgstr "غير مفعّل"
+
+#. js-lingui-explicit-id
+msgid "team_last_sign_in"
+msgstr "آخر تسجيل دخول"
+
+#. js-lingui-explicit-id
+msgid "team_never_signed_in"
+msgstr "لم يسجّل الدخول بعد"
+
+#. js-lingui-explicit-id
+msgid "team_actions"
+msgstr "إجراءات الحساب"
+
+#. js-lingui-explicit-id
+msgid "team_owner_only"
+msgstr "حساب المالك يغيّره مالك."
+
+#. js-lingui-explicit-id
+msgid "team_self_here"
+msgstr "حسابك يُغيَّر من صفحة الحساب."
+
+#. js-lingui-explicit-id
+msgid "team_change_role"
+msgstr "تغيير الدور"
+
+#. js-lingui-explicit-id
+msgid "team_change_role_title"
+msgstr "تغيير دور هذا الحساب إلى {role}؟"
+
+#. js-lingui-explicit-id
+msgid "team_change_role_lower"
+msgstr "دور أدنى ينهي جلساته، فيسجّل الدخول من جديد."
+
+#. js-lingui-explicit-id
+msgid "team_owner_password"
+msgstr "منح دور المالك أو سحبه يحتاج كلمة مرورك."
+
+#. js-lingui-explicit-id
+msgid "team_your_password"
+msgstr "كلمة مرورك"
+
+#. js-lingui-explicit-id
+msgid "team_deactivate"
+msgstr "تعطيل"
+
+#. js-lingui-explicit-id
+msgid "team_deactivate_title"
+msgstr "تعطيل هذا الحساب؟"
+
+#. js-lingui-explicit-id
+msgid "team_deactivate_description"
+msgstr "تنتهي جلساته الآن، ولا يسجّل الدخول حتى يُعاد تنشيطه. يبقى الحساب ودوره."
+
+#. js-lingui-explicit-id
+msgid "team_reactivate"
+msgstr "إعادة التنشيط"
+
+#. js-lingui-explicit-id
+msgid "team_remove"
+msgstr "إزالة"
+
+#. js-lingui-explicit-id
+msgid "team_remove_title"
+msgstr "إزالة هذا الحساب؟"
+
+#. js-lingui-explicit-id
+msgid "team_remove_description"
+msgstr "يُحذف الحساب وجلساته وكلمة مروره نهائيًا. تبقى الحوادث التي كتبها."
+
+#. js-lingui-explicit-id
+msgid "team_transfer"
+msgstr "نقل الملكية"
+
+#. js-lingui-explicit-id
+msgid "team_transfer_title"
+msgstr "نقل الملكية إلى هذا الحساب؟"
+
+#. js-lingui-explicit-id
+msgid "team_transfer_description"
+msgstr "يصير مالكًا وتصير أنت مديرًا. أدخل كلمة مرورك للتأكيد."
+
+#. js-lingui-explicit-id
+msgid "team_invitations"
+msgstr "الدعوات"
+
+#. js-lingui-explicit-id
+msgid "team_sent_by"
+msgstr "أرسلها"
+
+#. js-lingui-explicit-id
+msgid "team_expires"
+msgstr "تنتهي"
+
+#. js-lingui-explicit-id
+msgid "team_expired"
+msgstr "منتهية"
+
+#. js-lingui-explicit-id
+msgid "team_invite_again"
+msgstr "إرسال من جديد"
+
+#. js-lingui-explicit-id
+msgid "team_revoke"
+msgstr "إلغاء الدعوة"
+
+#. js-lingui-explicit-id
+msgid "team_revoke_title"
+msgstr "إلغاء هذه الدعوة؟"
+
+#. js-lingui-explicit-id
+msgid "team_revoke_description"
+msgstr "يتوقف رابطها الآن."
+
+#. js-lingui-explicit-id
+msgid "team_link_title"
+msgstr "رابط الدعوة"
+
+#. js-lingui-explicit-id
+msgid "team_link_emailed"
+msgstr "أُرسلت الدعوة بالبريد. يعمل الرابط مرة واحدة سبعة أيام، ويمكنك نسخه أيضًا."
+
+#. js-lingui-explicit-id
+msgid "team_link_copy_only"
+msgstr "لا قناة بريد في هذا التثبيت، فانسخ الرابط وأرسله بنفسك. يعمل مرة واحدة سبعة أيام."
+
+#. js-lingui-explicit-id
+msgid "team_link_not_emailed"
+msgstr "لم يُرسل البريد. انسخ الرابط وأرسله بنفسك. يعمل مرة واحدة سبعة أيام."
+
+#. js-lingui-explicit-id
+msgid "team_link_once"
+msgstr "لن يظهر الرابط مرة أخرى؛ إرسال الدعوة من جديد يصنع رابطًا آخر."
+
+#. js-lingui-explicit-id
+msgid "team_done"
+msgstr "تم"
+
+#. js-lingui-explicit-id
+msgid "team_refused_invalid"
+msgstr "أدخل عنوان بريد إلكتروني صحيحًا."
+
+#. js-lingui-explicit-id
+msgid "team_refused_already_member"
+msgstr "لهذا العنوان حساب بالفعل."
+
+#. js-lingui-explicit-id
+msgid "team_refused_not_allowed"
+msgstr "دورك لا يسمح بهذا."
+
+#. js-lingui-explicit-id
+msgid "team_refused_too_many"
+msgstr "أُرسلت دعوات كثيرة في الساعة الأخيرة. حاول بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "team_refused_no_address"
+msgstr "لا عنوان عام محفوظًا للرابط. احفظه في الإعدادات العامة."
+
+#. js-lingui-explicit-id
+msgid "team_refused_not_found"
+msgstr "لم يعد هذا موجودًا. أعد تحميل الصفحة."
+
+#. js-lingui-explicit-id
+msgid "team_refused_self"
+msgstr "حسابك يُغيَّر من صفحة الحساب."
+
+#. js-lingui-explicit-id
+msgid "team_refused_wrong_password"
+msgstr "كلمة المرور غير صحيحة."
+
+#. js-lingui-explicit-id
+msgid "team_unavailable"
+msgstr "تعذّرت قراءة الفريق أو تغييره. حاول بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_intro"
+msgstr "دُعيت إلى فريق راقب. اختر اسمك وكلمة مرورك لتسجّل الدخول."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_as"
+msgstr "الدور"
+
+#. js-lingui-explicit-id
+msgid "team_invitation_closed"
+msgstr "هذه الدعوة لا تعمل: استُعملت أو أُلغيت أو انتهت مدتها. اطلب دعوة جديدة ممن دعاك."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_accept"
+msgstr "قبول الدعوة وتسجيل الدخول"
+
+#. js-lingui-explicit-id
+msgid "team_invitation_already_member"
+msgstr "لهذا العنوان حساب بالفعل. سجّل الدخول به."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_rate_limited"
+msgstr "محاولات كثيرة. انتظر قليلًا ثم أعد المحاولة."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_unavailable"
+msgstr "لم يُجب الخادوم. حاول بعد قليل."
+
+#. js-lingui-explicit-id
+msgid "team_name_required"
+msgstr "أدخل اسمك."
+
+#. js-lingui-explicit-id
+msgid "setting_name"
+msgstr "الاسم"
+
+#. js-lingui-explicit-id
+msgid "setting_name_note"
+msgstr "يراه الفريق في صفحة الفريق. اتركه فارغًا ليظهر بريدك الإلكتروني مكانه."
+
+#. js-lingui-explicit-id
+msgid "setting_sessions"
+msgstr "الجلسات"
+
+#. js-lingui-explicit-id
+msgid "setting_sessions_note"
+msgstr "كل متصفح سجّل الدخول إلى حسابك. إنهاء جلسة يُخرج ذلك المتصفح عند طلبه التالي."
+
+#. js-lingui-explicit-id
+msgid "setting_session_current"
+msgstr "هذا المتصفح"
+
+#. js-lingui-explicit-id
+msgid "setting_session_signed_in"
+msgstr "سجّل الدخول"
+
+#. js-lingui-explicit-id
+msgid "setting_session_last"
+msgstr "آخر نشاط"
+
+#. js-lingui-explicit-id
+msgid "setting_session_address"
+msgstr "عنوان IP"
+
+#. js-lingui-explicit-id
+msgid "setting_session_end"
+msgstr "إنهاء الجلسة"
+
+#. js-lingui-explicit-id
+msgid "setting_sessions_end_others"
+msgstr "إنهاء الجلسات الأخرى"
+
+#. js-lingui-explicit-id
+msgid "setting_session_browser_unknown"
+msgstr "متصفح غير معروف"
+
+#. js-lingui-explicit-id
+msgid "setting_session_browser_on"
+msgstr "{browser} على {system}"
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step"
+msgstr "الاستيثاق الثنائي لكل المشغّلين"
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step_line"
+msgstr "حين يُفعَّل، لا يصل مشغّل بلا استيثاق ثنائي إلا إلى حسابه حتى يفعّله."
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step_owner"
+msgstr "يغيّره مالك وحده."
+
+#. js-lingui-explicit-id
+msgid "setting_second_step_required_notice"
+msgstr "يطلب مالك هذا التثبيت الاستيثاق الثنائي. فعّله أدناه لتصل إلى بقية لوحة الإدارة."
+
+#. js-lingui-explicit-id
+msgid "auth_deactivated"
+msgstr "هذا الحساب معطّل. اطلب من مالك أو مدير إعادة تنشيطه."
+
+#. js-lingui-explicit-id
+msgid "app_role_read_only"
+msgstr "دورك ({role}) يقرأ هذه الصفحة ولا يغيّرها."
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step_switch"
+msgstr "اطلبه من كل مشغّل"
+
+#. js-lingui-explicit-id
+msgid "setting_password_too_many"
+msgstr "كلمات مرور خاطئة كثيرة. انتظر ربع ساعة ثم أعد المحاولة."
+
+#. js-lingui-explicit-id
+msgid "setting_require_second_step_needs_own"
+msgstr "فعّل استيثاقك الثنائي أولًا، ثم اطلبه من الجميع."
+
+#. js-lingui-explicit-id
+msgid "team_invitation_password_note"
+msgstr "ثمانية أحرف على الأقل."
+
+#. js-lingui-explicit-id
+msgid "monitor_empty_description_read"
+msgstr "تظهر هنا المراقبات حين يضيفها مشغّل يغيّرها دوره."
+
+#. js-lingui-explicit-id
+msgid "monitor_empty_description_add"
+msgstr "أضف أول مراقبة."
+
+#. js-lingui-explicit-id
+msgid "setting_name_label"
+msgstr "اسمك"
+
+#. js-lingui-explicit-id
+msgid "channel_auth_owner_only"
+msgstr "تمر رسائل تسجيل الدخول عبر هذه القناة، فلا يغيّرها إلا مالك."
+
+#. js-lingui-explicit-id
+msgid "setting_owner_only"
+msgstr "لا يغيّر العنوان العام والوكلاء الموثوقين إلا مالك."
+
+#. js-lingui-explicit-id
+msgid "setting_owner_only_field"
+msgstr "يغيّره مالك فقط، لأن روابط إعادة التعيين والدعوات وحدود تسجيل الدخول تعتمد عليه."
+
+#. js-lingui-explicit-id
+msgid "setting_auth_channel_owner"
+msgstr "يختار القناة مالك فقط، لأنها تحمل روابط إعادة التعيين ورموز تسجيل الدخول."
+
+#. js-lingui-explicit-id
+msgid "channel_secret_withheld"
+msgstr "محفوظ، ولا يراه إلا من يعدّل القنوات."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_withheld"
+msgstr "لا يرى الرابط إلا من يعدّل المراقبات، لأن من يملكه يرسل النبضات."
+
+#. js-lingui-explicit-id
 msgid "channel_line_locations"
 msgstr "رُصدت متعطّلة من: {value}"
 

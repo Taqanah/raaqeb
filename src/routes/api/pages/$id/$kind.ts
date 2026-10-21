@@ -17,7 +17,14 @@ function answer(
     params.id,
     params.kind,
     request,
-    () => isOperator(context.storage, context.boot, request.headers)
+    () =>
+      isOperator(
+        context.storage,
+        context.boot,
+        request.headers,
+        undefined,
+        "read"
+      )
   );
 }
 

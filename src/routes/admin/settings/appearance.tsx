@@ -3,7 +3,7 @@ import { createServerFn, useServerFn } from "@tanstack/react-start";
 import { useCallback } from "react";
 import { AppearanceForm } from "@/admin/settings/appearance-form.tsx";
 import { CardsSkeleton } from "@/admin/shell/page-skeleton.tsx";
-import { operatorMiddleware } from "@/routes/-admin.ts";
+import { permitted } from "@/routes/-admin.ts";
 import {
   readAppearance,
   saveAppearance,
@@ -17,13 +17,13 @@ import type { SaveResult } from "@/shared/schemas/settings.ts";
 // The appearance page: the four scales, read by the root loader
 // into the document's data attributes on the next load.
 const read = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .handler(
     ({ context }): Promise<Appearance> => readAppearance(context.storage)
   );
 
 const save = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .validator(appearanceSchema)
   .handler(
     ({ context, data }): Promise<SaveResult> =>

@@ -35,6 +35,7 @@ import { OutageShapeError } from "@/server/storage/outages.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { connectionAddress } from "@/shared/domain/monitors.ts";
 import { registrationHost } from "@/shared/domain/registrations.ts";
+import { can, type Role } from "@/shared/domain/roles.ts";
 import type { ChannelChoice } from "@/shared/schemas/channel.ts";
 import type { CheckOutcome, CheckResult } from "@/shared/schemas/check.ts";
 import type { Component } from "@/shared/schemas/component.ts";
@@ -427,6 +428,14 @@ export async function heartbeatView(
     recent,
     url: heartbeatUrl(address ?? requestOrigin ?? "", token),
   };
+}
+
+/** A heartbeat monitor's view as the signed-in operator may see it: whoever holds the URL posts heartbeats, so only a role that edits monitors sees it. */
+export function heartbeatFor(
+  view: HeartbeatView | undefined,
+  role: Role
+): HeartbeatView | undefined {
+  return view && !can(role, "monitors") ? { ...view, url: undefined } : view;
 }
 
 /** The form's read: the monitor to edit (none for a new one), the names of its credentials, a heartbeat monitor's URL and last heartbeat, the group and tag names to suggest, the channels and probes to select, and the install's retention. The URL is at the public address, or at the request's origin when none is stored. A new monitor may duplicate `copy`: its fields and whether it has credentials, never them. */

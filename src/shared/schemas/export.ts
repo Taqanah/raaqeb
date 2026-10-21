@@ -11,9 +11,11 @@
  * import modules move them across.
  */
 import { z } from "zod";
+import { roles } from "@/shared/domain/roles.ts";
 import { localeSchema } from "@/shared/i18n/locale.ts";
 import { channelTypeSchema } from "./channel.ts";
 import { checkResults } from "./check.ts";
+import { calendarSchema, clockSchema, timeZoneSchema } from "./clock.ts";
 import { contentSchema } from "./content.ts";
 import { credentialsSchema } from "./credentials.ts";
 import { chartRangeSchema } from "./detail.ts";
@@ -313,11 +315,34 @@ export const configurationSchema = z.object({
       createdAt: timeCodec,
     })
   ),
+  // The accounts without their credentials, sessions or second step (CONTEXT.md "Export"); a file written before them carries none.
+  operatorAccounts: z
+    .array(
+      z.object({
+        id,
+        name: plain,
+        email: z.email(),
+        emailVerified: flagCodec,
+        role: z.enum(roles),
+        deactivatedAt: timeCodec.nullable(),
+        language: localeSchema.nullable(),
+        timeZone: timeZoneSchema.nullable(),
+        clock: clockSchema.nullable(),
+        calendar: calendarSchema.nullable(),
+        createdAt: timeCodec,
+        updatedAt: timeCodec,
+      })
+    )
+    .default([]),
 });
 
 /** The configuration as storage holds it: what `configurationSchema` decodes to. */
 export type Configuration = z.output<typeof configurationSchema>;
-export type ConfigurationTable = keyof Configuration;
+/** The stored tables a configuration lists in their own columns; the accounts are read and written apart, as Better Auth's table. */
+export type ConfigurationTable = Exclude<
+  keyof Configuration,
+  "operatorAccounts"
+>;
 
 /** The first line of the file. */
 export const headerSchema = z.object({

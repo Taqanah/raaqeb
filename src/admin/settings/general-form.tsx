@@ -17,6 +17,7 @@ import {
   useState,
 } from "react";
 import { formWidth } from "@/admin/shell/page.tsx";
+import { useCan } from "@/admin/shell/role.tsx";
 import { SaveFooter } from "@/admin/shell/save-footer.tsx";
 import { useFocusRefused } from "@/admin/shell/use-focus-refused.ts";
 import { isLocale, type Locale, locales } from "@/shared/i18n/locale.ts";
@@ -62,6 +63,7 @@ import { zoneOption } from "./zones.ts";
 const messages: Readonly<Record<GeneralSaveRefusal, MessageId>> = {
   address_is_page_domain: "setting_invalid",
   invalid: "setting_invalid",
+  not_allowed: "setting_owner_only",
   trusted_proxy_invalid: "setting_invalid",
   unavailable: "setting_unavailable",
 };
@@ -103,6 +105,8 @@ export function GeneralForm({
     settings.installLanguage
   );
   const proxies = settings.trustedProxies.entries.join(", ");
+  // Reset links and invitations are built on the address, and sign-in limits read the client behind the proxies: an owner's to change.
+  const owner = useCan("security");
   const [typed, setTyped] = useState({
     publicAddress: settings.publicAddress,
     trustedProxies: proxies,
@@ -280,6 +284,7 @@ export function GeneralForm({
                 id="publicAddress"
                 name="publicAddress"
                 onChange={onTyped}
+                readOnly={!owner}
                 required
                 type="url"
                 variant="token"
@@ -287,6 +292,11 @@ export function GeneralForm({
               <FieldDescription>
                 {t("setting_public_address_hint")}
               </FieldDescription>
+              {owner ? null : (
+                <FieldDescription data-slot="owner-only">
+                  {t("setting_owner_only_field")}
+                </FieldDescription>
+              )}
               {addressRefusal ? (
                 <FieldError data-error-for="publicAddress">
                   {t(addressRefusal)}
@@ -322,12 +332,18 @@ export function GeneralForm({
                   id="trustedProxies"
                   name="trustedProxies"
                   onChange={onTyped}
+                  readOnly={!owner}
                   variant="token"
                 />
                 <FieldDescription>
                   {t("setting_trusted_proxies_hint")}{" "}
                   <Token>10.0.0.1, 172.16.0.0/12</Token>
                 </FieldDescription>
+                {owner ? null : (
+                  <FieldDescription data-slot="owner-only">
+                    {t("setting_owner_only_field")}
+                  </FieldDescription>
+                )}
                 {proxiesRefused ? (
                   <FieldError data-error-for="trustedProxies">
                     {t("setting_trusted_proxies_invalid")}

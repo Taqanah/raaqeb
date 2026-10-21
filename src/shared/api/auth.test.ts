@@ -1,5 +1,6 @@
 import { afterAll, afterEach, describe, expect, spyOn, test } from "bun:test";
 import {
+  acceptInvitation,
   authBasePath,
   requestReset,
   resetPassword,
@@ -379,5 +380,64 @@ describe("password recovery from the browser", () => {
     expect(
       await resetPassword({ newPassword: "a brand new password", token: "abc" })
     ).toEqual({ failure: "unavailable", ok: false });
+  });
+});
+
+describe("a deactivated account signing in", () => {
+  test("is told so: a 403 that names the deactivation, after the password was right, is not the origin check", async () => {
+    answer = () =>
+      Promise.resolve(json(403, { code: "ACCOUNT_DEACTIVATED", message: "" }));
+    expect(
+      await signIn({ email: "operator@example.com", password: "12345678" })
+    ).toEqual({ failure: "deactivated", ok: false });
+  });
+});
+
+describe("accepting an invitation from the browser", () => {
+  const input = { name: "Huda", password: "a good password", token: "rqi_x" };
+
+  test("posts the token, the name and the password to the endpoint; a 200 signed in", async () => {
+    answer = () => Promise.resolve(json(200, { ok: true }));
+    expect(await acceptInvitation(input)).toEqual({ ok: true });
+    expect(calls[0]?.url).toBe(`${authBasePath}/invitation/accept`);
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual(input);
+  });
+
+  test("words the endpoint's codes: a closed link, an address with an account, the rate limit, anything else", async () => {
+    answer = () =>
+      Promise.resolve(json(400, { code: "INVITATION_CLOSED", message: "" }));
+    expect(await acceptInvitation(input)).toEqual({
+      failure: "closed",
+      ok: false,
+    });
+    answer = () =>
+      Promise.resolve(json(400, { code: "ALREADY_MEMBER", message: "" }));
+    expect(await acceptInvitation(input)).toEqual({
+      failure: "already_member",
+      ok: false,
+    });
+    answer = () => Promise.resolve(new Response(null, { status: 429 }));
+    expect(await acceptInvitation(input)).toEqual({
+      failure: "rate_limited",
+      ok: false,
+    });
+    answer = () => Promise.resolve(new Response(null, { status: 500 }));
+    expect(await acceptInvitation(input)).toEqual({
+      failure: "unavailable",
+      ok: false,
+    });
+    answer = () => Promise.reject(new Error("offline"));
+    expect(await acceptInvitation(input)).toEqual({
+      failure: "unavailable",
+      ok: false,
+    });
+  });
+
+  test("an input outside the rule never leaves the page", async () => {
+    expect(await acceptInvitation({ ...input, password: "short" })).toEqual({
+      failure: "unavailable",
+      ok: false,
+    });
+    expect(calls).toHaveLength(0);
   });
 });

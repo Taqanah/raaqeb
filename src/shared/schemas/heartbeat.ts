@@ -63,10 +63,11 @@ export interface Heartbeat {
 /** How many of its latest heartbeats a heartbeat monitor's page lists. */
 export const heartbeatsShown = 10;
 
-/** What the edit form shows of a heartbeat monitor: its unique URL, the last heartbeat and the latest ones with what each reported. */
+/** What the edit form and the detail page show of a heartbeat monitor: its unique URL, the last heartbeat and the latest ones with what each reported. */
 export interface HeartbeatView {
   readonly last: Heartbeat | undefined;
   /** Newest first, up to `heartbeatsShown`; the first is `last`. */
   readonly recent: readonly Heartbeat[];
-  readonly url: string;
+  /** None for a role that does not edit monitors: the URL's token posts heartbeats. */
+  readonly url: string | undefined;
 }

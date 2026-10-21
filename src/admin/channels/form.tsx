@@ -105,6 +105,7 @@ import { SendFailureText, SendRow, SendStatus } from "./send-parts.tsx";
 
 const refusals: Readonly<Record<ChannelRefusal, MessageId>> = {
   invalid: "app_form_invalid",
+  not_allowed: "channel_auth_owner_only",
   not_found: "channel_not_found",
   unavailable: "channel_unavailable",
 };
@@ -249,6 +250,13 @@ export function ChannelForm({
         )}
       >
         <div className="flex flex-col gap-6">
+          {form?.locked ? (
+            <Alert data-slot="channel-locked">
+              <AlertDescription>
+                {t("channel_auth_owner_only")}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <form
             className="flex flex-col gap-6"
             data-slot="channel-form"
@@ -256,111 +264,114 @@ export function ChannelForm({
             noValidate
             onSubmit={onSubmit}
           >
-            <Card>
-              <CardHeader divided>
-                <CardTitle>{t("channel_section_details")}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-5">
-                <Field>
-                  <FieldLabel htmlFor="name">
-                    {t("channel_field_name")}
-                  </FieldLabel>
-                  <Input
-                    aria-invalid={errors.name ? true : undefined}
-                    dir="auto"
-                    id="name"
-                    name="name"
-                    onChange={onField}
-                    value={draft.name}
-                  />
-                  {errors.name ? (
-                    <FieldError>{t(errors.name)}</FieldError>
-                  ) : null}
-                </Field>
-                <TypeField form={form} onType={onType} type={draft.type} />
-                {declaration.localized ? (
+            {/* The channel auth mail goes through is an owner's alone to change. */}
+            <fieldset className="contents" disabled={form?.locked}>
+              <Card>
+                <CardHeader divided>
+                  <CardTitle>{t("channel_section_details")}</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-5">
                   <Field>
-                    <FieldLabel id="locale-label">
-                      {t("channel_field_locale")}
+                    <FieldLabel htmlFor="name">
+                      {t("channel_field_name")}
                     </FieldLabel>
-                    <Segmented
-                      aria-labelledby="locale-label"
-                      data-name="locale"
-                      name="locale"
-                      onValueChange={onLocale}
-                      value={draft.locale}
-                    >
-                      <SegmentedItem value="">
-                        {t("channel_locale_install")}
-                      </SegmentedItem>
-                      {locales.map((each) => (
-                        <SegmentedItem key={each} lang={each} value={each}>
-                          {localeNames[each]}
-                        </SegmentedItem>
-                      ))}
-                    </Segmented>
+                    <Input
+                      aria-invalid={errors.name ? true : undefined}
+                      dir="auto"
+                      id="name"
+                      name="name"
+                      onChange={onField}
+                      value={draft.name}
+                    />
+                    {errors.name ? (
+                      <FieldError>{t(errors.name)}</FieldError>
+                    ) : null}
                   </Field>
-                ) : null}
-                <Field orientation="horizontal">
-                  <Switch
-                    checked={draft.appliesToNew}
-                    id="appliesToNew"
-                    name="appliesToNew"
-                    onCheckedChange={onAppliesToNew}
-                  />
-                  <div className="flex flex-col gap-0.5">
-                    <FieldLabel htmlFor="appliesToNew">
-                      {t("channel_field_applies_to_new")}
-                    </FieldLabel>
-                    <FieldDescription>
-                      {t("channel_field_applies_to_new_hint")}
-                    </FieldDescription>
-                  </div>
-                </Field>
-                {fieldsFor(declaration, draft.values).map((field) =>
-                  field.kind === "generated" ? (
-                    <GeneratedField
-                      draft={draft}
-                      field={field}
-                      form={form}
-                      key={field.name}
-                      onRenew={onRenew}
+                  <TypeField form={form} onType={onType} type={draft.type} />
+                  {declaration.localized ? (
+                    <Field>
+                      <FieldLabel id="locale-label">
+                        {t("channel_field_locale")}
+                      </FieldLabel>
+                      <Segmented
+                        aria-labelledby="locale-label"
+                        data-name="locale"
+                        name="locale"
+                        onValueChange={onLocale}
+                        value={draft.locale}
+                      >
+                        <SegmentedItem value="">
+                          {t("channel_locale_install")}
+                        </SegmentedItem>
+                        {locales.map((each) => (
+                          <SegmentedItem key={each} lang={each} value={each}>
+                            {localeNames[each]}
+                          </SegmentedItem>
+                        ))}
+                      </Segmented>
+                    </Field>
+                  ) : null}
+                  <Field orientation="horizontal">
+                    <Switch
+                      checked={draft.appliesToNew}
+                      id="appliesToNew"
+                      name="appliesToNew"
+                      onCheckedChange={onAppliesToNew}
                     />
-                  ) : (
-                    <TypedField
-                      draft={draft}
-                      errors={errors}
-                      field={field}
-                      kept={kept.includes(field.name)}
-                      key={field.name}
-                      onField={onField}
-                    />
-                  )
-                )}
-                {form && form.summary === "" ? (
-                  <Alert variant="destructive">
-                    <AlertDescription>
-                      {t("channel_secrets_unreadable")}
-                    </AlertDescription>
-                  </Alert>
-                ) : null}
-              </CardContent>
-              <SaveFooter
-                fresh={!form}
-                pendingLabel={t("channel_saving")}
-                refusals={refusals}
-                saved="channel_saved"
-                slot="save-channel"
-                view={saving}
-              >
-                <Link
-                  className={buttonVariants({ variant: "outline" })}
-                  to={listPath}
+                    <div className="flex flex-col gap-0.5">
+                      <FieldLabel htmlFor="appliesToNew">
+                        {t("channel_field_applies_to_new")}
+                      </FieldLabel>
+                      <FieldDescription>
+                        {t("channel_field_applies_to_new_hint")}
+                      </FieldDescription>
+                    </div>
+                  </Field>
+                  {fieldsFor(declaration, draft.values).map((field) =>
+                    field.kind === "generated" ? (
+                      <GeneratedField
+                        draft={draft}
+                        field={field}
+                        form={form}
+                        key={field.name}
+                        onRenew={onRenew}
+                      />
+                    ) : (
+                      <TypedField
+                        draft={draft}
+                        errors={errors}
+                        field={field}
+                        kept={kept.includes(field.name)}
+                        key={field.name}
+                        onField={onField}
+                      />
+                    )
+                  )}
+                  {form && form.summary === "" ? (
+                    <Alert variant="destructive">
+                      <AlertDescription>
+                        {t("channel_secrets_unreadable")}
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+                </CardContent>
+                <SaveFooter
+                  fresh={!form}
+                  pendingLabel={t("channel_saving")}
+                  refusals={refusals}
+                  saved="channel_saved"
+                  slot="save-channel"
+                  view={saving}
                 >
-                  {t("app_cancel")}
-                </Link>
-              </SaveFooter>
-            </Card>
+                  <Link
+                    className={buttonVariants({ variant: "outline" })}
+                    to={listPath}
+                  >
+                    {t("app_cancel")}
+                  </Link>
+                </SaveFooter>
+              </Card>
+            </fieldset>
           </form>
           {form ? (
             <NotificationPreviewCard
@@ -368,7 +379,7 @@ export function ChannelForm({
               preview={form.preview}
             />
           ) : null}
-          {remove ? (
+          {remove && !form?.locked ? (
             <DeleteChannel onRemoved={onRemoved} remove={remove} />
           ) : null}
         </div>
@@ -518,11 +529,16 @@ function GeneratedField({
 }): ReactNode {
   const { t } = useMessages();
   const value = form?.generated[field.name];
+  const withheld = form?.withheld.includes(field.name) ?? false;
   return (
     <Field>
       <FieldLabel>{t(field.label)}</FieldLabel>
       {value === undefined ? (
-        <FieldDescription>{t("channel_secret_after_save")}</FieldDescription>
+        <FieldDescription>
+          {t(
+            withheld ? "channel_secret_withheld" : "channel_secret_after_save"
+          )}
+        </FieldDescription>
       ) : (
         <Token
           className="block select-all break-all"

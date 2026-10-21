@@ -5,6 +5,7 @@
     "boot-settings",
     "data-directory",
     "commands",
+    "team",
     "reverse-proxy",
     "outbound-proxy",
     "custom-domains",

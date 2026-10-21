@@ -1,7 +1,13 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setSystemTime, test } from "bun:test";
 import { scratchDatabase } from "@/server/storage/fixture.ts";
 import { openStorage, type Storage } from "@/server/storage/storage.ts";
-import { changeOperatorEmail, changeOperatorPassword } from "./account.ts";
+import {
+  changeOperatorEmail,
+  changeOperatorPassword,
+  endOwnSessions,
+  readOwnSessions,
+  renameOperator,
+} from "./account.ts";
 import { type Auth, type AuthMail, createAuth, operatorName } from "./auth.ts";
 import { readOperator } from "./session.ts";
 
@@ -231,5 +237,182 @@ describe("the email change after the address was verified", () => {
     });
     const after = await context.internalAdapter.findUserByEmail(email);
     expect(after?.user.emailVerified).toBe(true);
+  });
+
+  test("to an address another account has changes nothing and tells nobody, and answers as a change does", async () => {
+    const auth = await authWithOperator();
+    await auth.api.signUpEmail({
+      body: { email: "taken@example.com", name: "", password },
+    });
+    const headers = await signedIn(auth);
+    const context = await auth.$context;
+    const mine = await context.internalAdapter.findUserByEmail(email);
+    await context.internalAdapter.updateUser(mine?.user.id ?? "", {
+      emailVerified: true,
+    });
+    const notices: Notices = [];
+    const answered = await change(auth, headers, "taken@example.com", notices);
+    expect(answered.ok).toBe(true);
+    expect(notices).toEqual([]);
+    const after = await context.internalAdapter.findUserByEmail(email);
+    expect(after?.user.emailVerified).toBe(true);
+  });
+});
+
+describe("the operator's own name", () => {
+  test("is changed, trimmed, and may be left empty for the email to stand for it", async () => {
+    const auth = await authWithOperator();
+    const store = open?.storage;
+    if (!store) {
+      throw new Error("no storage");
+    }
+    const session = await readOperator(auth, await signedIn(auth));
+    const id = session?.operator.id ?? "";
+    expect(await renameOperator(store, id, { name: "  Huda  " })).toEqual({
+      ok: true,
+    });
+    expect((await store.operatorAccounts.find(id))?.name).toBe("Huda");
+    expect(await renameOperator(store, id, { name: "" })).toEqual({ ok: true });
+    expect((await store.operatorAccounts.find(id))?.name).toBe("");
+    expect(await renameOperator(store, id, { name: "x".repeat(101) })).toEqual({
+      ok: false,
+      reason: "invalid",
+    });
+    expect(await renameOperator(store, "gone", { name: "Huda" })).toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
+  });
+});
+
+describe("the operator's own sessions", () => {
+  test("are listed newest first with the one asking marked, and each other one can be ended", async () => {
+    const auth = await authWithOperator();
+    const store = open?.storage;
+    if (!store) {
+      throw new Error("no storage");
+    }
+    const first = await signedIn(auth);
+    const second = await signedIn(auth);
+    const asking = (await readOperator(auth, second))?.operator;
+    if (!asking) {
+      throw new Error("not signed in");
+    }
+    const read = await readOwnSessions(store, asking, Date.now());
+    if (!read.ok) {
+      throw new Error("not read");
+    }
+    // The sign-up signed in too, so three.
+    expect(read.sessions).toHaveLength(3);
+    expect(read.sessions.filter((one) => one.current)).toHaveLength(1);
+    expect(read.sessions.find((one) => one.current)?.id).toBe(asking.sessionId);
+    const other = read.sessions.find((one) => !one.current)?.id ?? "";
+    expect(await endOwnSessions(store, asking, { id: other })).toEqual({
+      ok: true,
+    });
+    expect(await readOperator(auth, first)).toBeUndefined();
+    expect(await readOperator(auth, second)).toBeDefined();
+  });
+
+  test("ending every other one keeps the one asking; it is never ended here, since signing out does that", async () => {
+    const auth = await authWithOperator();
+    const store = open?.storage;
+    if (!store) {
+      throw new Error("no storage");
+    }
+    const first = await signedIn(auth);
+    const third = await signedIn(auth);
+    const asking = (await readOperator(auth, third))?.operator;
+    if (!asking) {
+      throw new Error("not signed in");
+    }
+    expect(
+      await endOwnSessions(store, asking, { id: asking.sessionId })
+    ).toEqual({ ok: false, reason: "invalid" });
+    expect(await endOwnSessions(store, asking, {})).toEqual({ ok: true });
+    expect(await readOperator(auth, first)).toBeUndefined();
+    expect(await readOperator(auth, third)).toBeDefined();
+  });
+
+  test("another account's session is not the operator's to end", async () => {
+    const auth = await authWithOperator();
+    const store = open?.storage;
+    if (!store) {
+      throw new Error("no storage");
+    }
+    await auth.api.signUpEmail({
+      body: { email: "other@example.com", name: "", password },
+    });
+    const theirs = await auth.api.signInEmail({
+      body: { email: "other@example.com", password },
+      returnHeaders: true,
+    });
+    const theirHeaders = new Headers({
+      cookie: cookieHeader(theirs.headers.getSetCookie()),
+    });
+    const theirSession = (await readOperator(auth, theirHeaders))?.operator
+      .sessionId;
+    const asking = (await readOperator(auth, await signedIn(auth)))?.operator;
+    if (!(asking && theirSession)) {
+      throw new Error("not signed in");
+    }
+    expect(await endOwnSessions(store, asking, { id: theirSession })).toEqual({
+      ok: false,
+      reason: "invalid",
+    });
+    expect(await readOperator(auth, theirHeaders)).toBeDefined();
+  });
+});
+
+describe("the current password's checks on the server", () => {
+  afterEach(() => {
+    setSystemTime();
+  });
+
+  const tries = (auth: Auth, headers: Headers, currentPassword: string) =>
+    changeOperatorPassword(auth, headers, {
+      currentPassword,
+      newPassword: "another good password",
+    });
+
+  test("after five wrong ones refuse the next for a quarter of an hour, the right one too, then take it again", async () => {
+    const auth = await authWithOperator();
+    const headers = await signedIn(auth);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: the attempts count in order
+      expect(await tries(auth, headers, "a guess")).toEqual({
+        ok: false,
+        reason: "wrong_password",
+      });
+    }
+    expect(await tries(auth, headers, password)).toEqual({
+      ok: false,
+      reason: "too_many_attempts",
+    });
+    expect(
+      await change(auth, headers, "new@example.com", [], password)
+    ).toEqual({ ok: false, reason: "too_many_attempts" });
+    setSystemTime(Date.now() + 16 * 60 * 1000);
+    expect((await tries(auth, headers, password)).ok).toBe(true);
+  });
+
+  test("count each account's own wrong passwords, never another's", async () => {
+    const auth = await authWithOperator();
+    const headers = await signedIn(auth);
+    await auth.api.signUpEmail({
+      body: { email: "other@example.com", name: "", password },
+    });
+    const theirs = await auth.api.signInEmail({
+      body: { email: "other@example.com", password },
+      returnHeaders: true,
+    });
+    const theirHeaders = new Headers({
+      cookie: cookieHeader(theirs.headers.getSetCookie()),
+    });
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: the attempts count in order
+      await tries(auth, theirHeaders, "a guess");
+    }
+    expect((await tries(auth, headers, password)).ok).toBe(true);
   });
 });

@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { When } from "@/admin/incidents/incident-words.tsx";
 import { ContentList, ContentText } from "@/admin/shell/content.tsx";
 import { Page } from "@/admin/shell/page.tsx";
+import { useCan } from "@/admin/shell/role.tsx";
 import { formatDuration, type TimeOptions } from "@/shared/i18n/format.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type {
@@ -51,7 +52,8 @@ export function WindowList({
   readonly result: MaintenanceListResult;
 }): ReactNode {
   const { t } = useMessages();
-  const add = (
+  // Offered only to a role that may add one; the list reads the same for every role.
+  const add = useCan("maintenance") ? (
     <Link
       className={buttonVariants()}
       data-slot="add-window"
@@ -59,7 +61,7 @@ export function WindowList({
     >
       {t("maintenance_add")}
     </Link>
-  );
+  ) : null;
   // While the list is empty its card holds the one add button, which says what to add.
   const empty =
     result.ok &&

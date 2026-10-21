@@ -1,4 +1,9 @@
-import { createFileRoute, Outlet, useRouter } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  useLocation,
+  useRouter,
+} from "@tanstack/react-router";
 import {
   createIsomorphicFn,
   createServerFn,
@@ -8,8 +13,9 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { Suspense, useEffect } from "react";
 import { OperatorCalendarProvider } from "@/admin/shell/calendar.tsx";
 import { InstallLanguageProvider } from "@/admin/shell/content.tsx";
+import { FormGate, RoleProvider } from "@/admin/shell/role.tsx";
 import { AdminShell } from "@/admin/shell/shell.tsx";
-import type { Operator } from "@/server/auth/session.ts";
+import { type Operator, refusalOf } from "@/server/auth/session.ts";
 import { readNewerRelease, refreshRelease } from "@/server/release/release.ts";
 import { readInstallLanguage } from "@/server/settings/language.ts";
 import { readOperatorClock } from "@/server/settings/operator.ts";
@@ -17,7 +23,7 @@ import type { Locale } from "@/shared/i18n/locale.ts";
 import type { Calendar } from "@/shared/schemas/clock.ts";
 import type { Release } from "@/shared/schemas/release.ts";
 import { sidebarOpenFromCookie } from "@/shared/ui/sidebar.tsx";
-import { operatorMiddleware, readSession } from "./-admin.ts";
+import { permitted, readSession } from "./-admin.ts";
 import { readMonitorChoicesFn } from "./-monitors.ts";
 import { requireOnboardingDone } from "./-onboarding.ts";
 
@@ -52,6 +58,8 @@ interface ShellData {
   /** Whose text install-wide content requires. */
   readonly installLanguage: Locale;
   readonly operator: Operator;
+  /** An owner requires a second step the operator has not switched on: they reach their own account alone. */
+  readonly pending: boolean;
   readonly release: Release | undefined;
   readonly sidebarOpen: boolean;
 }
@@ -64,16 +72,21 @@ interface ShellData {
 // invalidates the matches, never on a click between admin pages
 // (load-client.js, the "stay" rule).
 const readShell = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("profile")])
   .handler(async ({ context }): Promise<ShellData> => {
     const headers = new Headers(getRequestHeaders());
     refreshRelease(context.storage, { fetch, now: Date.now }).catch(
       () => undefined
     );
     return {
-      calendar: (await readOperatorClock(context.storage)).calendar,
+      calendar: (
+        await readOperatorClock(context.storage, context.operator.preferences)
+      ).calendar,
       installLanguage: await readInstallLanguage(context.storage),
       operator: context.operator,
+      pending:
+        (await refusalOf(context.storage, context.operator, "read")) ===
+        "second_step",
       release: await readNewerRelease(context.storage),
       sidebarOpen: sidebarOpenFromCookie(headers.get("cookie")),
     };
@@ -86,11 +99,12 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminLayout() {
-  const { calendar, installLanguage, operator, release, sidebarOpen } =
+  const { calendar, installLanguage, operator, pending, release, sidebarOpen } =
     Route.useLoaderData();
   // Through useServerFn, a redirect the session check throws navigates (an expired session goes to sign-in).
   const readMonitors = useServerFn(readMonitorChoicesFn);
   const router = useRouter();
+  const pathname = useLocation({ select: (location) => location.pathname });
   // Each page's skeleton is a chunk of its own (vite.config.ts); loaded once the shell is up, it is there when a click asks for it.
   useEffect(() => {
     for (const route of Object.values(router.routesById)) {
@@ -98,20 +112,24 @@ function AdminLayout() {
     }
   }, [router]);
   return (
-    <AdminShell
-      operatorEmail={operator.email}
-      readMonitors={readMonitors}
-      release={release}
-      sidebarOpen={sidebarOpen}
-    >
-      <InstallLanguageProvider value={installLanguage}>
-        <OperatorCalendarProvider value={calendar}>
-          {/* A page whose skeleton has not loaded yet suspends here, inside the shell, not at the document's root. */}
-          <Suspense>
-            <Outlet />
-          </Suspense>
-        </OperatorCalendarProvider>
-      </InstallLanguageProvider>
-    </AdminShell>
+    <RoleProvider pending={pending} role={operator.role}>
+      <AdminShell
+        operatorEmail={operator.email}
+        readMonitors={readMonitors}
+        release={release}
+        sidebarOpen={sidebarOpen}
+      >
+        <InstallLanguageProvider value={installLanguage}>
+          <OperatorCalendarProvider value={calendar}>
+            {/* A page whose skeleton has not loaded yet suspends here, inside the shell, not at the document's root. */}
+            <Suspense>
+              <FormGate pathname={pathname}>
+                <Outlet />
+              </FormGate>
+            </Suspense>
+          </OperatorCalendarProvider>
+        </InstallLanguageProvider>
+      </AdminShell>
+    </RoleProvider>
   );
 }

@@ -711,3 +711,79 @@ describe("Better Auth's own log lines", () => {
     expect(auth.options.telemetry?.enabled).toBe(false);
   });
 });
+
+describe("the accounts' roles", () => {
+  test("the first account is the install's owner, and a later one a viewer", async () => {
+    const auth = await authWithOperator();
+    await auth.api.signUpEmail({
+      body: { email: "later@example.com", name: "Later", password },
+    });
+    const rows = await runSql(
+      open?.location ?? { backend: "sqlite", file: "" },
+      "SELECT email, role FROM auth_user ORDER BY created_at"
+    );
+    expect(rows).toEqual([
+      { email, role: "owner" },
+      { email: "later@example.com", role: "viewer" },
+    ]);
+  });
+});
+
+describe("a deactivated account", () => {
+  test("cannot sign in with the right password, and is told so; a wrong one is refused as for anyone", async () => {
+    const auth = await authWithOperator();
+    const location = open?.location ?? { backend: "sqlite", file: "" };
+    // As deactivating does: the mark, and no session left.
+    await runSql(location, "UPDATE auth_user SET deactivated_at = 1");
+    await runSql(location, "DELETE FROM auth_session");
+    const refused = await signIn(auth);
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({ code: "ACCOUNT_DEACTIVATED" });
+    expect(refused.headers.get("set-cookie") ?? "").not.toContain(
+      "session_token=ey"
+    );
+    const wrong = await signIn(auth, {
+      body: { email, password: "not the password" },
+    });
+    expect(wrong.status).toBe(401);
+    expect(
+      await runSql(
+        open?.location ?? { backend: "sqlite", file: "" },
+        "SELECT id FROM auth_session"
+      )
+    ).toEqual([]);
+  });
+
+  test("signs in again once reactivated", async () => {
+    const auth = await authWithOperator();
+    const location = open?.location ?? { backend: "sqlite", file: "" };
+    await runSql(location, "UPDATE auth_user SET deactivated_at = 1");
+    expect((await signIn(auth)).status).toBe(403);
+    await runSql(location, "UPDATE auth_user SET deactivated_at = NULL");
+    expect((await signIn(auth)).status).toBe(200);
+  });
+});
+
+describe("the last sign-in", () => {
+  test("is recorded when a sign-in makes a session, and not when a password change re-issues one", async () => {
+    const auth = await authWithOperator();
+    const location = open?.location ?? { backend: "sqlite", file: "" };
+    const lastSignIn = async () =>
+      Number(
+        (
+          await runSql(location, "SELECT last_sign_in_at AS at FROM auth_user")
+        )[0]?.at ?? 0
+      );
+    await runSql(location, "UPDATE auth_user SET last_sign_in_at = NULL");
+    const before = Date.now();
+    const signedIn = await signIn(auth);
+    const at = await lastSignIn();
+    expect(at).toBeGreaterThanOrEqual(before);
+    await runSql(location, "UPDATE auth_user SET last_sign_in_at = 5");
+    await auth.api.changePassword({
+      body: { currentPassword: password, newPassword: "another good password" },
+      headers: new Headers({ cookie: cookieOf(signedIn) }),
+    });
+    expect(await lastSignIn()).toBe(5);
+  });
+});

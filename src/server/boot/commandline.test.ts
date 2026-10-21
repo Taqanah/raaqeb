@@ -47,6 +47,43 @@ describe("the reset command's flag", () => {
   });
 });
 
+describe("the reset command's account", () => {
+  test("is the one email after reset-password, wherever --interactive stands", () => {
+    expect(accepted(["reset-password", "ops@example.com"])).toEqual({
+      command: "reset-password",
+      email: "ops@example.com",
+      flags: {},
+      interactive: false,
+      ok: true,
+    });
+    expect(
+      accepted(["reset-password", "--interactive", "ops@example.com"]).email
+    ).toBe("ops@example.com");
+  });
+
+  test("may be left out, for an install with one account", () => {
+    expect(accepted(["reset-password"]).email).toBeUndefined();
+  });
+
+  test("a second argument is refused", () => {
+    expect(refused(["reset-password", "a@example.com", "b@example.com"])).toBe(
+      "unexpected argument after reset-password: b@example.com"
+    );
+  });
+
+  test("an argument that is not an email is refused before the database opens", () => {
+    expect(refused(["reset-password", "owner"])).toBe(
+      "reset-password takes the email of an operator account, as in: raaqeb reset-password ops@example.com"
+    );
+  });
+
+  test("no other command takes one", () => {
+    expect(refused(["health", "ops@example.com"])).toBe(
+      "unexpected argument after health: ops@example.com"
+    );
+  });
+});
+
 describe("set-address and its address", () => {
   test("set-address takes the public address as its one argument, beside the flags", () => {
     expect(

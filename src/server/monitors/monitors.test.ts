@@ -60,6 +60,7 @@ import {
   createMonitor,
   deleteMonitors,
   editMonitor,
+  heartbeatFor,
   listMonitorChoices,
   listMonitors,
   pauseMonitors,
@@ -1686,6 +1687,22 @@ describe("the monitors the list offers to acknowledge", () => {
 });
 
 describe("a heartbeat monitor in the form", () => {
+  test("its URL is shown to a role that edits monitors and kept from the others, the last heartbeat shown to all", () => {
+    const last = { arrivedAt: 1, failure: undefined, sourceIp: undefined };
+    const view = {
+      last,
+      recent: [last],
+      url: "https://status.example.test/api/heartbeat/abc",
+    };
+    expect(heartbeatFor(view, "editor")).toEqual(view);
+    expect(heartbeatFor(view, "responder")).toEqual({
+      last,
+      recent: [last],
+      url: undefined,
+    });
+    expect(heartbeatFor(undefined, "viewer")).toBeUndefined();
+  });
+
   test("the edit form reads its unique URL at the public address, and no heartbeat before the first", async () => {
     const store = await storage();
     await store.settings.set(publicAddress, "https://status.example.test");

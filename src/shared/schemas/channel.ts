@@ -526,8 +526,12 @@ export type ChannelEditInput = z.infer<typeof channelEditSchema>;
 
 export const channelIdSchema = z.object({ id: z.string().min(1) });
 
-/** Why a channel write or a send test did not happen. */
-export type ChannelRefusal = "invalid" | "not_found" | "unavailable";
+/** Why a channel write or a send test did not happen; `not_allowed` is a change to the email channel auth mail goes through, which an owner alone makes. */
+export type ChannelRefusal =
+  | "invalid"
+  | "not_allowed"
+  | "not_found"
+  | "unavailable";
 
 /** One channel on the list: what it is, what it reaches and how its newest notification went. */
 export interface ChannelListItem {
@@ -550,11 +554,15 @@ export interface ChannelForm {
   readonly generated: Readonly<Record<string, string>>;
   /** The typed secret fields that have a stored value, which an empty field keeps. */
   readonly kept: readonly string[];
+  /** Auth mail goes through the channel and the signed-in operator's role may not change it. */
+  readonly locked: boolean;
   /** The notification preview: one sample of each operator notification the channel can receive. */
   readonly preview: readonly NotificationPreview[];
   /** Newest first. */
   readonly recent: readonly Notification[];
   readonly summary: string;
+  /** The generated values stored and not shown, to a role that does not edit channels. */
+  readonly withheld: readonly string[];
 }
 
 /** A URL in a notification, with the words that open it where the channel can link. */

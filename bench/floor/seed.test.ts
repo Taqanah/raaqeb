@@ -84,7 +84,7 @@ describe("seeding an install for the benchmark", () => {
     const location = await scratch();
     await seedInstall(location, await options());
     const storage = await reopen(location);
-    expect(await storage.operatorAccount.exists()).toBe(true);
+    expect(await storage.operatorAccounts.exists()).toBe(true);
   });
 
   test("stores the fleet in its order, active, with the ids in creation order", async () => {

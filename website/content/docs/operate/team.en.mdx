@@ -1,0 +1,54 @@
+---
+title: Team and roles
+description: Operator accounts, the five roles and what each may do, invitations, deactivating and removing an account, handing ownership on, and requiring a second step of everyone.
+---
+
+An install has one or more operator accounts. Onboarding makes the first, and it is the install's owner. Every later account comes from an invitation, and each has one role. The team page, under Install in the sidebar, lists them for an owner or an admin.
+
+## Roles
+
+Each role may do everything the role below it does, and more:
+
+| | Owner | Admin | Editor | Responder | Viewer |
+|---|---|---|---|---|---|
+| Read monitors, status pages, components, incidents, maintenance and channels | yes | yes | yes | yes | yes |
+| Change their own name, email, password, language, sessions and second step | yes | yes | yes | yes | yes |
+| Check now, acknowledge an outage | yes | yes | yes | yes | |
+| Write incidents and their updates | yes | yes | yes | yes | |
+| Schedule, edit, end and cancel maintenance | yes | yes | yes | yes | |
+| Change monitors, status pages, components and subscribers | yes | yes | yes | | |
+| Delete an incident | yes | yes | yes | | |
+| Change notification channels and settings | yes | yes | | | |
+| Invite, change, deactivate and remove accounts that are not owners | yes | yes | | | |
+| Give or take the owner role, hand ownership on | yes | | | | |
+| Export and import | yes | | | | |
+| Require a second step of everyone | yes | | | | |
+
+The server checks the role on every call; the admin pages only hide or disable what a role cannot do, with the reason. A page whose record a role cannot change opens read-only.
+
+## Invitations
+
+Invite an operator from the team page with their email and a role. The invitation's link works once, for seven days. Where an email channel exists the link is emailed; it is always shown once on the page so you can copy it and send it yourself. Send an invitation again for a new link (the old one stops working), or revoke it. At most 20 invitations go out an hour.
+
+The person who opens the link chooses a name and a password and is signed in. An address that already has an account cannot be invited.
+
+## Changing, deactivating and removing
+
+- **A role** changes at once; a lower role ends the account's sessions, so it signs in again under it. Giving or taking the owner role asks for your password.
+- **Deactivating** ends the account's sessions now and keeps the account; it cannot sign in until it is reactivated.
+- **Removing** deletes the account, its sessions and its password for good. Incidents it wrote stay.
+- **Handing ownership on** makes another account an owner and you an admin, after your password.
+
+Nobody changes their own account on the team page, so the last owner cannot leave the install without one. An install may have several owners.
+
+## A second step for everyone
+
+An owner whose own second step is on may require it of every operator, on the sign-in settings page. An operator without one then reaches only their own account until they switch it on.
+
+## When a password is lost
+
+`raaqeb reset-password <email>` prints a reset link for the account with that email ([commands](/en/docs/operate/commands)). An owner who lost theirs can use it from the server.
+
+## Export and import
+
+An export carries every account with its role, name and preferences, never its password, sessions or second step. An import creates each account the install lacks, without a password: it signs in once a reset link sets one. An account the install already has keeps its own role and password.

@@ -3,7 +3,7 @@ import { createServerFn, useServerFn } from "@tanstack/react-start";
 import { useCallback } from "react";
 import { StorageForm } from "@/admin/settings/storage-form.tsx";
 import { CardsSkeleton } from "@/admin/shell/page-skeleton.tsx";
-import { operatorMiddleware } from "@/routes/-admin.ts";
+import { permitted } from "@/routes/-admin.ts";
 import {
   readStorageSettings,
   saveStorageSettings,
@@ -17,14 +17,14 @@ import {
 
 // The storage page: the retention and the size budget round-trip through these two server functions.
 const readStorage = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .handler(
     ({ context }): Promise<StorageSettings> =>
       readStorageSettings(context.storage)
   );
 
 const saveStorage = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .validator(storageSettingsSchema)
   .handler(
     ({ context, data }): Promise<SaveResult> =>

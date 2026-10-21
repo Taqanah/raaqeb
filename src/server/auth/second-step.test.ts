@@ -6,6 +6,7 @@ import type { Storage } from "@/server/storage/storage.ts";
 import { changeOperatorEmail } from "./account.ts";
 import { type Auth, createAuth, mailSettled, operatorName } from "./auth.ts";
 import {
+  accountIdOf,
   appCode,
   authWithOperator,
   call,
@@ -20,12 +21,14 @@ import {
   testPassword,
   testSecrets,
 } from "./fixture.ts";
-import { authEmailTested } from "./mail.ts";
+import { authEmailTestedOf } from "./mail.ts";
 import {
   chooseAuthEmailChannel,
   confirmApp,
   newBackupCodes,
   readSecondStep,
+  readSecondStepRequired,
+  requireSecondStep,
   sendAuthTest,
   setUpApp,
   switchSecondStep,
@@ -437,7 +440,9 @@ describe("setting up the authenticator app", () => {
     const auth = await authWithOperator(storage);
     const headers = new Headers({ cookie: cookiesOf(await signIn(auth)) });
     await setUpApp(auth, headers, { password: testPassword });
-    expect(await readSecondStep(storage)).toMatchObject({
+    expect(
+      await readSecondStep(storage, await accountIdOf(storage))
+    ).toMatchObject({
       app: false,
       on: false,
     });
@@ -458,7 +463,9 @@ describe("setting up the authenticator app", () => {
       ok: false,
       reason: "wrong_code",
     });
-    expect(await readSecondStep(storage)).toMatchObject({
+    expect(
+      await readSecondStep(storage, await accountIdOf(storage))
+    ).toMatchObject({
       app: false,
       on: false,
     });
@@ -490,7 +497,9 @@ describe("setting up the authenticator app", () => {
     expect(confirmed.ok).toBe(true);
     // The session is re-issued with the step on; the page adopts its cookie.
     expect(confirmed.ok && confirmed.setCookies.length).toBeGreaterThan(0);
-    expect(await readSecondStep(storage)).toMatchObject({
+    expect(
+      await readSecondStep(storage, await accountIdOf(storage))
+    ).toMatchObject({
       app: true,
       on: true,
     });
@@ -560,7 +569,9 @@ describe("setting up the authenticator app", () => {
     expect(
       (await confirmApp(auth, headers, { code: appCode(setUp.uri) })).ok
     ).toBe(true);
-    expect(await readSecondStep(storage)).toMatchObject({
+    expect(
+      await readSecondStep(storage, await accountIdOf(storage))
+    ).toMatchObject({
       app: true,
       on: true,
     });
@@ -819,20 +830,34 @@ describe("turning the second step off with the app set up", () => {
     const { location, storage } = await scratch();
     const { auth, backupCodes, session, uri } = await withApp(storage);
     expect(
-      await switchSecondStep(auth, session, storage, {
-        on: false,
-        password: "not the password",
-      })
+      await switchSecondStep(
+        auth,
+        session,
+        storage,
+        await accountIdOf(storage),
+        {
+          on: false,
+          password: "not the password",
+        }
+      )
     ).toEqual({ ok: false, reason: "wrong_password" });
     expect(
       (
-        await switchSecondStep(auth, session, storage, {
-          on: false,
-          password: testPassword,
-        })
+        await switchSecondStep(
+          auth,
+          session,
+          storage,
+          await accountIdOf(storage),
+          {
+            on: false,
+            password: testPassword,
+          }
+        )
       ).ok
     ).toBe(true);
-    expect(await readSecondStep(storage)).toMatchObject({
+    expect(
+      await readSecondStep(storage, await accountIdOf(storage))
+    ).toMatchObject({
       app: false,
       on: false,
     });
@@ -892,7 +917,9 @@ describe("the auth settings screen", () => {
 
   test("reads nothing before the operator account exists", async () => {
     const { storage } = await scratch();
-    expect(await readSecondStep(storage)).toBeUndefined();
+    expect(
+      await readSecondStep(storage, await accountIdOf(storage))
+    ).toBeUndefined();
   });
 
   test("lists every email channel oldest first, the oldest in force, the operator's address, and no test yet", async () => {
@@ -906,7 +933,9 @@ describe("the auth settings screen", () => {
     });
     const first = await emailChannel(s, "First", 2525);
     const second = await emailChannel(s, "Second", 2526);
-    expect(await readSecondStep(s.storage)).toEqual({
+    expect(
+      await readSecondStep(s.storage, await accountIdOf(s.storage))
+    ).toEqual({
       app: false,
       channel: first,
       channels: [
@@ -915,6 +944,7 @@ describe("the auth settings screen", () => {
       ],
       email: testEmail,
       on: false,
+      required: false,
       tested: false,
     });
   });
@@ -927,7 +957,9 @@ describe("the auth settings screen", () => {
     expect(await chooseAuthEmailChannel(s.storage, second)).toEqual({
       ok: true,
     });
-    expect((await readSecondStep(s.storage))?.channel).toBe(second);
+    expect(
+      (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.channel
+    ).toBe(second);
     const hook = await createChannel(s.storage, s.boot.installKey, {
       appliesToNew: false,
       name: "Ops webhook",
@@ -937,7 +969,9 @@ describe("the auth settings screen", () => {
     expect(
       await chooseAuthEmailChannel(s.storage, hook.ok ? hook.channel.id : "")
     ).toEqual({ ok: false, reason: "invalid" });
-    expect((await readSecondStep(s.storage))?.channel).toBe(second);
+    expect(
+      (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.channel
+    ).toBe(second);
     expect(first).not.toBe(second);
   });
 
@@ -947,16 +981,29 @@ describe("the auth settings screen", () => {
     const smtp = fakeSmtp();
     try {
       const id = await emailChannel(s, "Mail", smtp.port);
-      expect(await sendAuthTest(s.storage, s.boot.installKey, io)).toEqual({
+      expect(
+        await sendAuthTest(
+          s.storage,
+          s.boot.installKey,
+          io,
+          await accountIdOf(s.storage)
+        )
+      ).toEqual({
         ok: true,
       });
       expect(smtp.messages).toHaveLength(1);
       expect(smtp.commands.join("\n")).toContain(`RCPT TO:<${testEmail}>`);
       expect(smtp.commands.join("\n")).not.toContain("team@example.com");
-      expect((await s.storage.settings.get(authEmailTested))?.channelId).toBe(
-        id
-      );
-      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+      expect(
+        (
+          await s.storage.settings.get(
+            authEmailTestedOf(await accountIdOf(s.storage))
+          )
+        )?.channelId
+      ).toBe(id);
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(true);
     } finally {
       smtp.stop();
     }
@@ -968,14 +1015,25 @@ describe("the auth settings screen", () => {
     const smtp = fakeSmtp({ refuseRecipient: testEmail });
     try {
       await emailChannel(s, "Mail", smtp.port);
-      const result = await sendAuthTest(s.storage, s.boot.installKey, io);
+      const result = await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        await accountIdOf(s.storage)
+      );
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.reason).toBe("failed");
         expect(result.failure?.reason).toBe("unexpected_status");
       }
-      expect(await s.storage.settings.get(authEmailTested)).toBeUndefined();
-      expect((await readSecondStep(s.storage))?.tested).toBe(false);
+      expect(
+        await s.storage.settings.get(
+          authEmailTestedOf(await accountIdOf(s.storage))
+        )
+      ).toBeUndefined();
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(false);
     } finally {
       smtp.stop();
     }
@@ -984,7 +1042,14 @@ describe("the auth settings screen", () => {
   test("without an email channel the test answers no channel", async () => {
     const s = await scratch();
     await authWithOperator(s.storage);
-    expect(await sendAuthTest(s.storage, s.boot.installKey, io)).toEqual({
+    expect(
+      await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        await accountIdOf(s.storage)
+      )
+    ).toEqual({
       ok: false,
       reason: "no_channel",
     });
@@ -999,21 +1064,40 @@ describe("the auth settings screen", () => {
     try {
       await emailChannel(s, "Mail", smtp.port);
       expect(
-        await switchSecondStep(auth, headers, s.storage, {
+        await switchSecondStep(
+          auth,
+          headers,
+          s.storage,
+          await accountIdOf(s.storage),
+          {
+            on: true,
+            password: testPassword,
+          }
+        )
+      ).toEqual({ ok: false, reason: "not_tested" });
+      await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        await accountIdOf(s.storage)
+      );
+      const switched = await switchSecondStep(
+        auth,
+        headers,
+        s.storage,
+        await accountIdOf(s.storage),
+        {
           on: true,
           password: testPassword,
-        })
-      ).toEqual({ ok: false, reason: "not_tested" });
-      await sendAuthTest(s.storage, s.boot.installKey, io);
-      const switched = await switchSecondStep(auth, headers, s.storage, {
-        on: true,
-        password: testPassword,
-      });
+        }
+      );
       expect(switched.ok).toBe(true);
       if (switched.ok) {
         expect(switched.setCookies.length).toBeGreaterThan(0);
       }
-      expect((await readSecondStep(s.storage))?.on).toBe(true);
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.on
+      ).toBe(true);
       const next = await signIn(auth);
       expect(await next.json()).toMatchObject({ twoFactorRedirect: true });
       expect(sent).toEqual([]);
@@ -1027,12 +1111,26 @@ describe("the auth settings screen", () => {
     await authWithOperator(s.storage);
     const smtp = fakeSmtp();
     await emailChannel(s, "Mail", smtp.port);
-    await sendAuthTest(s.storage, s.boot.installKey, io);
-    expect((await readSecondStep(s.storage))?.tested).toBe(true);
+    await sendAuthTest(
+      s.storage,
+      s.boot.installKey,
+      io,
+      await accountIdOf(s.storage)
+    );
+    expect(
+      (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+    ).toBe(true);
     smtp.stop();
-    const failed = await sendAuthTest(s.storage, s.boot.installKey, io);
+    const failed = await sendAuthTest(
+      s.storage,
+      s.boot.installKey,
+      io,
+      await accountIdOf(s.storage)
+    );
     expect(failed.ok).toBe(false);
-    expect((await readSecondStep(s.storage))?.tested).toBe(false);
+    expect(
+      (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+    ).toBe(false);
   });
 
   test("editing the channel after the test asks for a new test", async () => {
@@ -1041,8 +1139,15 @@ describe("the auth settings screen", () => {
     const smtp = fakeSmtp();
     try {
       const id = await emailChannel(s, "Mail", smtp.port);
-      await sendAuthTest(s.storage, s.boot.installKey, io);
-      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+      await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        await accountIdOf(s.storage)
+      );
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(true);
       const edited = await editChannel(s.storage, s.boot.installKey, id, {
         appliesToNew: false,
         name: "Mail",
@@ -1056,7 +1161,9 @@ describe("the auth settings screen", () => {
         },
       });
       expect(edited.ok).toBe(true);
-      expect((await readSecondStep(s.storage))?.tested).toBe(false);
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(false);
     } finally {
       smtp.stop();
     }
@@ -1066,11 +1173,13 @@ describe("the auth settings screen", () => {
     const s = await scratch();
     const auth = await authWithOperator(s.storage);
     const headers = new Headers({ cookie: cookiesOf(await signIn(auth)) });
+    // The account's id, which outlives the address it is found by.
+    const id = await accountIdOf(s.storage);
     const smtp = fakeSmtp();
     try {
       await emailChannel(s, "Mail", smtp.port);
-      await sendAuthTest(s.storage, s.boot.installKey, io);
-      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+      await sendAuthTest(s.storage, s.boot.installKey, io, id);
+      expect((await readSecondStep(s.storage, id))?.tested).toBe(true);
       const changed = await changeOperatorEmail(
         auth,
         headers,
@@ -1078,9 +1187,9 @@ describe("the auth settings screen", () => {
         () => Promise.resolve()
       );
       expect(changed.ok).toBe(true);
-      expect((await readSecondStep(s.storage))?.tested).toBe(false);
+      expect((await readSecondStep(s.storage, id))?.tested).toBe(false);
       expect(
-        await switchSecondStep(auth, headers, s.storage, {
+        await switchSecondStep(auth, headers, s.storage, id, {
           on: true,
           password: testPassword,
         })
@@ -1097,10 +1206,19 @@ describe("the auth settings screen", () => {
     try {
       await emailChannel(s, "First", smtp.port);
       const second = await emailChannel(s, "Second", smtp.port);
-      await sendAuthTest(s.storage, s.boot.installKey, io);
-      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+      await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        await accountIdOf(s.storage)
+      );
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(true);
       await chooseAuthEmailChannel(s.storage, second);
-      expect((await readSecondStep(s.storage))?.tested).toBe(false);
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(false);
     } finally {
       smtp.stop();
     }
@@ -1115,14 +1233,24 @@ describe("the auth settings screen", () => {
       await emailChannel(s, "First", inForce.port);
       const second = await emailChannel(s, "Second", picked.port);
       expect(
-        await sendAuthTest(s.storage, s.boot.installKey, io, second)
+        await sendAuthTest(
+          s.storage,
+          s.boot.installKey,
+          io,
+          await accountIdOf(s.storage),
+          second
+        )
       ).toEqual({ ok: true });
       expect(inForce.messages).toHaveLength(0);
       expect(picked.messages).toHaveLength(1);
       // The proof is for the picked channel: the switch opens once it is saved.
-      expect((await readSecondStep(s.storage))?.tested).toBe(false);
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(false);
       await chooseAuthEmailChannel(s.storage, second);
-      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(true);
     } finally {
       inForce.stop();
       picked.stop();
@@ -1137,8 +1265,15 @@ describe("the auth settings screen", () => {
     try {
       await emailChannel(s, "First", inForce.port);
       const second = await emailChannel(s, "Second", picked.port);
-      await sendAuthTest(s.storage, s.boot.installKey, io);
-      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+      await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        await accountIdOf(s.storage)
+      );
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(true);
       const failed = await sendAuthTest(
         s.storage,
         s.boot.installKey,
@@ -1146,7 +1281,9 @@ describe("the auth settings screen", () => {
         second
       );
       expect(failed.ok).toBe(false);
-      expect((await readSecondStep(s.storage))?.tested).toBe(true);
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.tested
+      ).toBe(true);
     } finally {
       inForce.stop();
       picked.stop();
@@ -1160,7 +1297,13 @@ describe("the auth settings screen", () => {
     try {
       await emailChannel(s, "Mail", smtp.port);
       expect(
-        await sendAuthTest(s.storage, s.boot.installKey, io, "gone")
+        await sendAuthTest(
+          s.storage,
+          s.boot.installKey,
+          io,
+          await accountIdOf(s.storage),
+          "gone"
+        )
       ).toEqual({ ok: false, reason: "no_channel" });
       expect(smtp.messages).toHaveLength(0);
     } finally {
@@ -1175,17 +1318,34 @@ describe("the auth settings screen", () => {
     const smtp = fakeSmtp();
     try {
       await emailChannel(s, "Mail", smtp.port);
-      await sendAuthTest(s.storage, s.boot.installKey, io);
+      await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        await accountIdOf(s.storage)
+      );
       expect(
-        await switchSecondStep(auth, headers, s.storage, {
-          on: true,
-          password: "not the password",
-        })
+        await switchSecondStep(
+          auth,
+          headers,
+          s.storage,
+          await accountIdOf(s.storage),
+          {
+            on: true,
+            password: "not the password",
+          }
+        )
       ).toEqual({ ok: false, reason: "wrong_password" });
-      const switched = await switchSecondStep(auth, headers, s.storage, {
-        on: true,
-        password: testPassword,
-      });
+      const switched = await switchSecondStep(
+        auth,
+        headers,
+        s.storage,
+        await accountIdOf(s.storage),
+        {
+          on: true,
+          password: testPassword,
+        }
+      );
       // Enabling replaces the session; the page adopts the cookies it answers.
       const renewed = new Headers({
         cookie: switched.ok
@@ -1193,12 +1353,20 @@ describe("the auth settings screen", () => {
           : "",
       });
       expect(
-        await switchSecondStep(auth, renewed, s.storage, {
-          on: false,
-          password: "not the password",
-        })
+        await switchSecondStep(
+          auth,
+          renewed,
+          s.storage,
+          await accountIdOf(s.storage),
+          {
+            on: false,
+            password: "not the password",
+          }
+        )
       ).toEqual({ ok: false, reason: "wrong_password" });
-      expect((await readSecondStep(s.storage))?.on).toBe(true);
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.on
+      ).toBe(true);
     } finally {
       smtp.stop();
     }
@@ -1210,21 +1378,42 @@ describe("the auth settings screen", () => {
     const smtp = fakeSmtp();
     try {
       await emailChannel(s, "Mail", smtp.port);
-      await sendAuthTest(s.storage, s.boot.installKey, io);
+      await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        await accountIdOf(s.storage)
+      );
       expect(
-        await turnAppOff(auth, session, s.storage, {
-          password: "not the password",
-        })
+        await turnAppOff(
+          auth,
+          session,
+          s.storage,
+          await accountIdOf(s.storage),
+          {
+            password: "not the password",
+          }
+        )
       ).toEqual({ ok: false, reason: "wrong_password" });
-      expect((await readSecondStep(s.storage))?.app).toBe(true);
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.app
+      ).toBe(true);
       expect(
         (
-          await turnAppOff(auth, session, s.storage, {
-            password: testPassword,
-          })
+          await turnAppOff(
+            auth,
+            session,
+            s.storage,
+            await accountIdOf(s.storage),
+            {
+              password: testPassword,
+            }
+          )
         ).ok
       ).toBe(true);
-      expect(await readSecondStep(s.storage)).toMatchObject({
+      expect(
+        await readSecondStep(s.storage, await accountIdOf(s.storage))
+      ).toMatchObject({
         app: false,
         on: true,
       });
@@ -1256,17 +1445,25 @@ describe("the auth settings screen", () => {
     const s = await scratch();
     const { auth, backupCodes, session } = await withApp(s.storage);
     expect(
-      await turnAppOff(auth, session, s.storage, {
+      await turnAppOff(auth, session, s.storage, await accountIdOf(s.storage), {
         password: "not the password",
       })
     ).toEqual({ ok: false, reason: "wrong_password" });
-    const off = await turnAppOff(auth, session, s.storage, {
-      password: testPassword,
-    });
+    const off = await turnAppOff(
+      auth,
+      session,
+      s.storage,
+      await accountIdOf(s.storage),
+      {
+        password: testPassword,
+      }
+    );
     expect(off.ok).toBe(true);
     // Better Auth re-issues the session with the step off; the page adopts its cookie.
     expect(off.ok && off.setCookies.length).toBeGreaterThan(0);
-    expect(await readSecondStep(s.storage)).toMatchObject({
+    expect(
+      await readSecondStep(s.storage, await accountIdOf(s.storage))
+    ).toMatchObject({
       app: false,
       on: false,
     });
@@ -1284,11 +1481,20 @@ describe("the auth settings screen", () => {
     const smtp = fakeSmtp();
     try {
       await emailChannel(s, "First", smtp.port);
-      await sendAuthTest(s.storage, s.boot.installKey, io);
+      await sendAuthTest(
+        s.storage,
+        s.boot.installKey,
+        io,
+        await accountIdOf(s.storage)
+      );
       const second = await emailChannel(s, "Second", smtp.port);
       await chooseAuthEmailChannel(s.storage, second);
-      await turnAppOff(auth, session, s.storage, { password: testPassword });
-      expect((await readSecondStep(s.storage))?.on).toBe(false);
+      await turnAppOff(auth, session, s.storage, await accountIdOf(s.storage), {
+        password: testPassword,
+      });
+      expect(
+        (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.on
+      ).toBe(false);
     } finally {
       smtp.stop();
     }
@@ -1304,13 +1510,47 @@ describe("the auth settings screen", () => {
       cookie,
     });
     const headers = new Headers({ cookie: cookiesOf(verified) });
-    expect(await s.storage.settings.get(authEmailTested)).toBeUndefined();
-    const result = await switchSecondStep(auth, headers, s.storage, {
-      on: false,
-      password: testPassword,
-    });
+    expect(
+      await s.storage.settings.get(
+        authEmailTestedOf(await accountIdOf(s.storage))
+      )
+    ).toBeUndefined();
+    const result = await switchSecondStep(
+      auth,
+      headers,
+      s.storage,
+      await accountIdOf(s.storage),
+      {
+        on: false,
+        password: testPassword,
+      }
+    );
     expect(result.ok).toBe(true);
-    expect((await readSecondStep(s.storage))?.on).toBe(false);
+    expect(
+      (await readSecondStep(s.storage, await accountIdOf(s.storage)))?.on
+    ).toBe(false);
     expect(setsSession(await signIn(auth))).toBe(true);
+  });
+});
+
+describe("requiring a second step of every operator", () => {
+  test("is refused to an owner whose own is off, so nobody locks themselves out of what they turned on", async () => {
+    const s = await scratch();
+    expect(
+      await requireSecondStep(s.storage, { secondStep: false }, true)
+    ).toEqual({ ok: false, reason: "needs_own" });
+    expect(await readSecondStepRequired(s.storage)).toBe(false);
+  });
+
+  test("is stored for an owner whose own is on, and stopped by any owner", async () => {
+    const s = await scratch();
+    expect(
+      await requireSecondStep(s.storage, { secondStep: true }, true)
+    ).toEqual({ ok: true });
+    expect(await readSecondStepRequired(s.storage)).toBe(true);
+    expect(
+      await requireSecondStep(s.storage, { secondStep: false }, false)
+    ).toEqual({ ok: true });
+    expect(await readSecondStepRequired(s.storage)).toBe(false);
   });
 });

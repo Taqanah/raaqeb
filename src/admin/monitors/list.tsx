@@ -5,6 +5,7 @@
  * the locale arrange them here, so typing never re-reads the database.
  */
 import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCan } from "@/admin/shell/role.tsx";
 import { arrangeMonitors, filterOptions } from "@/shared/domain/monitors.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type { ChannelChoice } from "@/shared/schemas/channel.ts";
@@ -108,6 +109,7 @@ export function MonitorList({
   unknown,
 }: MonitorListProps): ReactNode {
   const { locale, t } = useMessages();
+  const changes = useCan("monitors");
   const [selected, setSelected] = useState(noSelection);
   const [pendingDelete, setPendingDelete] = useState<
     PendingDelete | undefined
@@ -312,7 +314,7 @@ export function MonitorList({
           <AlertDescription>{t("monitor_unavailable")}</AlertDescription>
         </Alert>
       ) : null}
-      {selectedIds.length > 0 ? (
+      {selectedIds.length > 0 && changes ? (
         <div
           className="flex min-h-control flex-wrap items-center gap-2 rounded-lg bg-subtle px-3 py-1 text-sm"
           data-slot="monitor-bulk"
@@ -413,6 +415,7 @@ function SelectAll({
   readonly slot?: string;
 }): ReactNode {
   const { t } = useMessages();
+  const changes = useCan("monitors");
   const onCheckedChange = useCallback(
     (on: boolean) => onChange(on),
     [onChange]
@@ -422,6 +425,7 @@ function SelectAll({
       aria-label={t("monitor_select_all")}
       checked={checked}
       data-slot={slot}
+      disabled={!changes}
       indeterminate={mixed}
       onCheckedChange={onCheckedChange}
     />

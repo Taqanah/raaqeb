@@ -17,8 +17,9 @@ export const signInSchema = z.object({
 
 export type SignInInput = z.infer<typeof signInSchema>;
 
-/** Why a sign-in did not sign in: wrong email or password (one code, so nothing is learned about the address), the page not opened at the public address, too many attempts, or the server did not answer. */
+/** Why a sign-in did not sign in: a deactivated account (said only once its password was right); wrong email or password (one code, so nothing is learned about the address), the page not opened at the public address, too many attempts, or the server did not answer. */
 export type SignInFailure =
+  | "deactivated"
   | "invalid_credentials"
   | "origin_refused"
   | "rate_limited"

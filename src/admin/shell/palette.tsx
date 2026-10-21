@@ -31,6 +31,7 @@ import { Token } from "@/shared/ui/token.tsx";
 import { keyLabel } from "./keyboard.ts";
 import { navIcons } from "./nav-icons.ts";
 import { type PaletteItem, paletteGroups } from "./navigation.ts";
+import { useAllows } from "./role.tsx";
 
 interface Entry {
   readonly item: PaletteItem;
@@ -148,6 +149,7 @@ function PaletteSearch({
   readonly readMonitors: () => Promise<MonitorChoicesResult | undefined>;
 }): ReactNode {
   const { locale, t } = useMessages();
+  const allowed = useAllows();
   const [query, setQuery] = useState("");
   const [monitors, setMonitors] = useState<readonly MonitorChoice[]>([]);
   useEffect(() => {
@@ -167,7 +169,7 @@ function PaletteSearch({
   }, [readMonitors]);
   const groups = useMemo<readonly Group[]>(
     () =>
-      paletteGroups(query, monitors, locale).map((group) => ({
+      paletteGroups(query, monitors, locale, allowed).map((group) => ({
         items: group.items.map((item) => ({
           item,
           label: labelOf(item, t),
@@ -176,7 +178,7 @@ function PaletteSearch({
         label: t(group.label),
         value: group.id,
       })),
-    [locale, monitors, query, t]
+    [allowed, locale, monitors, query, t]
   );
   const { contains } = Autocomplete.useFilter();
   // The monitor rows are already the list's search rule's answer, and the list searched is always offered.

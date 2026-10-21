@@ -13,6 +13,7 @@ import { Route as AdminRouteImport } from "./routes/admin.tsx";
 import { Route as DesignRouteImport } from "./routes/design.tsx";
 import { Route as ForgotPasswordRouteImport } from "./routes/forgot-password.tsx";
 import { Route as HealthRouteImport } from "./routes/health.ts";
+import { Route as InvitationRouteImport } from "./routes/invitation.tsx";
 import { Route as MetricsRouteImport } from "./routes/metrics.ts";
 import { Route as OnboardingRouteImport } from "./routes/onboarding.tsx";
 import { Route as ResetPasswordRouteImport } from "./routes/reset-password.tsx";
@@ -22,6 +23,7 @@ import { Route as AdminIndexRouteImport } from "./routes/admin/index.tsx";
 import { Route as AdminExportRouteImport } from "./routes/admin/export.ts";
 import { Route as AdminImportRouteImport } from "./routes/admin/import.ts";
 import { Route as AdminSettingsRouteImport } from "./routes/admin/settings.tsx";
+import { Route as AdminTeamRouteImport } from "./routes/admin/team.tsx";
 import { Route as ApiCustomDomainRouteImport } from "./routes/api/custom-domain.ts";
 import { Route as ApiOpenapiDotjsonRouteImport } from "./routes/api/openapi[.]json.ts";
 import { Route as OnboardingIndexRouteImport } from "./routes/onboarding/index.tsx";
@@ -111,6 +113,11 @@ const HealthRoute = HealthRouteImport.update({
   path: "/health",
   getParentRoute: () => rootRouteImport,
 } as any);
+const InvitationRoute = InvitationRouteImport.update({
+  id: "/invitation",
+  path: "/invitation",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const MetricsRoute = MetricsRouteImport.update({
   id: "/metrics",
   path: "/metrics",
@@ -154,6 +161,11 @@ const AdminImportRoute = AdminImportRouteImport.update({
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: "/settings",
   path: "/settings",
+  getParentRoute: () => AdminRoute,
+} as any);
+const AdminTeamRoute = AdminTeamRouteImport.update({
+  id: "/team",
+  path: "/team",
   getParentRoute: () => AdminRoute,
 } as any);
 const ApiCustomDomainRoute = ApiCustomDomainRouteImport.update({
@@ -524,6 +536,7 @@ export interface FileRoutesByFullPath {
   "/design": typeof DesignRoute;
   "/forgot-password": typeof ForgotPasswordRoute;
   "/health": typeof HealthRoute;
+  "/invitation": typeof InvitationRoute;
   "/metrics": typeof MetricsRoute;
   "/onboarding": typeof OnboardingRouteWithChildren;
   "/reset-password": typeof ResetPasswordRoute;
@@ -532,6 +545,7 @@ export interface FileRoutesByFullPath {
   "/admin/export": typeof AdminExportRoute;
   "/admin/import": typeof AdminImportRoute;
   "/admin/settings": typeof AdminSettingsRouteWithChildren;
+  "/admin/team": typeof AdminTeamRoute;
   "/api/custom-domain": typeof ApiCustomDomainRoute;
   "/api/openapi.json": typeof ApiOpenapiDotjsonRoute;
   "/onboarding/account": typeof OnboardingAccountRoute;
@@ -606,12 +620,14 @@ export interface FileRoutesByTo {
   "/design": typeof DesignRoute;
   "/forgot-password": typeof ForgotPasswordRoute;
   "/health": typeof HealthRoute;
+  "/invitation": typeof InvitationRoute;
   "/metrics": typeof MetricsRoute;
   "/reset-password": typeof ResetPasswordRoute;
   "/sign-in": typeof SignInRoute;
   "/sign-out": typeof SignOutRoute;
   "/admin/export": typeof AdminExportRoute;
   "/admin/import": typeof AdminImportRoute;
+  "/admin/team": typeof AdminTeamRoute;
   "/api/custom-domain": typeof ApiCustomDomainRoute;
   "/api/openapi.json": typeof ApiOpenapiDotjsonRoute;
   "/onboarding/account": typeof OnboardingAccountRoute;
@@ -688,6 +704,7 @@ export interface FileRoutesById {
   "/design": typeof DesignRoute;
   "/forgot-password": typeof ForgotPasswordRoute;
   "/health": typeof HealthRoute;
+  "/invitation": typeof InvitationRoute;
   "/metrics": typeof MetricsRoute;
   "/onboarding": typeof OnboardingRouteWithChildren;
   "/reset-password": typeof ResetPasswordRoute;
@@ -696,6 +713,7 @@ export interface FileRoutesById {
   "/admin/export": typeof AdminExportRoute;
   "/admin/import": typeof AdminImportRoute;
   "/admin/settings": typeof AdminSettingsRouteWithChildren;
+  "/admin/team": typeof AdminTeamRoute;
   "/api/custom-domain": typeof ApiCustomDomainRoute;
   "/api/openapi.json": typeof ApiOpenapiDotjsonRoute;
   "/onboarding/account": typeof OnboardingAccountRoute;
@@ -773,6 +791,7 @@ export interface FileRouteTypes {
     | "/design"
     | "/forgot-password"
     | "/health"
+    | "/invitation"
     | "/metrics"
     | "/onboarding"
     | "/reset-password"
@@ -781,6 +800,7 @@ export interface FileRouteTypes {
     | "/admin/export"
     | "/admin/import"
     | "/admin/settings"
+    | "/admin/team"
     | "/api/custom-domain"
     | "/api/openapi.json"
     | "/onboarding/account"
@@ -855,12 +875,14 @@ export interface FileRouteTypes {
     | "/design"
     | "/forgot-password"
     | "/health"
+    | "/invitation"
     | "/metrics"
     | "/reset-password"
     | "/sign-in"
     | "/sign-out"
     | "/admin/export"
     | "/admin/import"
+    | "/admin/team"
     | "/api/custom-domain"
     | "/api/openapi.json"
     | "/onboarding/account"
@@ -936,6 +958,7 @@ export interface FileRouteTypes {
     | "/design"
     | "/forgot-password"
     | "/health"
+    | "/invitation"
     | "/metrics"
     | "/onboarding"
     | "/reset-password"
@@ -944,6 +967,7 @@ export interface FileRouteTypes {
     | "/admin/export"
     | "/admin/import"
     | "/admin/settings"
+    | "/admin/team"
     | "/api/custom-domain"
     | "/api/openapi.json"
     | "/onboarding/account"
@@ -1020,6 +1044,7 @@ export interface RootRouteChildren {
   DesignRoute: typeof DesignRoute;
   ForgotPasswordRoute: typeof ForgotPasswordRoute;
   HealthRoute: typeof HealthRoute;
+  InvitationRoute: typeof InvitationRoute;
   MetricsRoute: typeof MetricsRoute;
   OnboardingRoute: typeof OnboardingRouteWithChildren;
   ResetPasswordRoute: typeof ResetPasswordRoute;
@@ -1089,6 +1114,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof HealthRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/invitation": {
+      id: "/invitation";
+      path: "/invitation";
+      fullPath: "/invitation";
+      preLoaderRoute: typeof InvitationRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/metrics": {
       id: "/metrics";
       path: "/metrics";
@@ -1150,6 +1182,13 @@ declare module "@tanstack/react-router" {
       path: "/settings";
       fullPath: "/admin/settings";
       preLoaderRoute: typeof AdminSettingsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/team": {
+      id: "/admin/team";
+      path: "/team";
+      fullPath: "/admin/team";
+      preLoaderRoute: typeof AdminTeamRouteImport;
       parentRoute: typeof AdminRoute;
     };
     "/api/custom-domain": {
@@ -1663,6 +1702,7 @@ interface AdminRouteChildren {
   AdminExportRoute: typeof AdminExportRoute;
   AdminImportRoute: typeof AdminImportRoute;
   AdminSettingsRoute: typeof AdminSettingsRouteWithChildren;
+  AdminTeamRoute: typeof AdminTeamRoute;
   AdminIndexRoute: typeof AdminIndexRoute;
   AdminChannelsIdRoute: typeof AdminChannelsIdRoute;
   AdminChannelsNewRoute: typeof AdminChannelsNewRoute;
@@ -1694,6 +1734,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminExportRoute: AdminExportRoute,
   AdminImportRoute: AdminImportRoute,
   AdminSettingsRoute: AdminSettingsRouteWithChildren,
+  AdminTeamRoute: AdminTeamRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminChannelsIdRoute: AdminChannelsIdRoute,
   AdminChannelsNewRoute: AdminChannelsNewRoute,
@@ -1745,6 +1786,7 @@ const rootRouteChildren: RootRouteChildren = {
   DesignRoute: DesignRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HealthRoute: HealthRoute,
+  InvitationRoute: InvitationRoute,
   MetricsRoute: MetricsRoute,
   OnboardingRoute: OnboardingRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,

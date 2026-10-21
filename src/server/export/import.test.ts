@@ -9,7 +9,6 @@ import { imagePolicy, pageImageResponse } from "@/server/pages/images.ts";
 import { publicAddress } from "@/server/settings/address.ts";
 import { calendar, timeZone } from "@/server/settings/clock.ts";
 import { installLanguage } from "@/server/settings/language.ts";
-import { operatorCalendar } from "@/server/settings/operator.ts";
 import { runSql } from "@/server/storage/fixture.ts";
 import {
   intervalMaxMs,
@@ -30,7 +29,9 @@ import {
   minute,
   monitorPassword,
   now,
+  sourceEditorId,
   sourceInstall,
+  sourceOwnerId,
   subscriberUrl,
   targetInstall,
   today,
@@ -112,10 +113,12 @@ function asVersion1(header: {
     maintenanceSeries?: unknown;
     maintenanceSeriesComponents?: unknown;
     maintenanceWindows: { id: string; seriesId?: string | null }[];
+    operatorAccounts?: unknown;
   };
   version: number;
 }) {
   header.version = 1;
+  header.configuration.operatorAccounts = undefined;
   header.configuration.maintenanceSeries = undefined;
   header.configuration.maintenanceSeriesComponents = undefined;
   // A version 1 window has no series, so the series' occurrence goes with it.
@@ -403,8 +406,6 @@ describe("an import", () => {
   test("writes the settings that travel over the install's own and keeps the rest of its own", async () => {
     const from = await source();
     const into = await target();
-    // The target operator's own calendar, which the source's own (hijri_gregorian) must not replace.
-    await into.storage.settings.set(operatorCalendar, "gregorian");
     await importInstall(
       into.storage,
       into.key,
@@ -417,7 +418,79 @@ describe("an import", () => {
     expect(await into.storage.settings.get(publicAddress)).toBe(
       "https://target.example.test"
     );
-    expect(await into.storage.settings.get(operatorCalendar)).toBe("gregorian");
+  });
+
+  test("creates each operator account the install lacks, with its role, name, deactivation and preferences, and no password, session or second step", async () => {
+    const from = await source();
+    const into = await target();
+    await importInstall(
+      into.storage,
+      into.key,
+      fileOf(await exportLines(from, "configuration")),
+      now
+    );
+    expect(
+      await into.storage.operatorAccounts.find(sourceOwnerId)
+    ).toMatchObject({
+      app: false,
+      deactivatedAt: null,
+      email: "owner@source.example.test",
+      role: "owner",
+      secondStep: false,
+    });
+    expect(
+      await into.storage.operatorAccounts.find(sourceEditorId)
+    ).toMatchObject({
+      deactivatedAt: expect.any(Number),
+      name: "Huda",
+      preferences: {
+        calendar: "hijri",
+        clock: "24h",
+        operatorLanguage: "en",
+        timeZone: "Asia/Riyadh",
+      },
+      role: "editor",
+    });
+    expect(await count(into, "auth_account")).toBe(0);
+    expect(await count(into, "auth_session")).toBe(0);
+    expect(await count(into, "auth_two_factor")).toBe(0);
+  });
+
+  test("keeps the account the install has at an address the file carries as the install has it, and its own operator's", async () => {
+    const from = await source();
+    const into = await target();
+    await runSql(
+      into.location,
+      "INSERT INTO auth_user (id, name, email, email_verified, role, created_at, updated_at) VALUES ('mine', 'Mine', 'HUDA@source.example.test', 1, 'owner', 0, 0)"
+    );
+    await importInstall(
+      into.storage,
+      into.key,
+      fileOf(await exportLines(from, "configuration")),
+      now
+    );
+    const accounts = await into.storage.operatorAccounts.list();
+    expect(accounts.map((each) => [each.id, each.email, each.role])).toEqual([
+      ["mine", "HUDA@source.example.test", "owner"],
+      [sourceOwnerId, "owner@source.example.test", "owner"],
+    ]);
+  });
+
+  test("of a file with no operator accounts, as one written before them, creates none", async () => {
+    const from = await source();
+    const into = await target();
+    const lines = await exportLines(from, "configuration");
+    const header = JSON.parse(lines[0] ?? "{}");
+    header.configuration.operatorAccounts = undefined;
+    expect(
+      await importInstall(
+        into.storage,
+        into.key,
+        fileOf([JSON.stringify(header)]),
+        now
+      )
+    ).toMatchObject({ ok: true });
+    expect(await count(into, "auth_user")).toBe(0);
   });
 
   test("moves the change counter once, at its end", async () => {
@@ -669,6 +742,15 @@ describe("an import", () => {
     expect(await count(into, "subscriptions")).toBe(0);
     expect(await into.storage.settings.get(installLanguage)).toBe("ar");
     expect(await into.storage.changeCounter()).toBe(before);
+  });
+
+  test("that fails at a line takes out the operator accounts it wrote too", async () => {
+    const from = await source();
+    const into = await target();
+    const lines = await exportLines(from);
+    const broken = [...lines.slice(0, 40), "{not json", ...lines.slice(40)];
+    await importInstall(into.storage, into.key, fileOf(broken), now);
+    expect(await count(into, "auth_user")).toBe(0);
   });
 
   test("refuses a record of a monitor its configuration does not hold", async () => {

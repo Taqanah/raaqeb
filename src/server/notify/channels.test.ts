@@ -16,6 +16,7 @@ import {
 } from "@/shared/schemas/channel.ts";
 import type { DeliverIo } from "./channel.ts";
 import {
+  channelFormFor,
   createChannel,
   deleteChannel,
   editChannel,
@@ -155,6 +156,28 @@ describe("the channels module", () => {
       ok: false,
       reason: "not_found",
     });
+  });
+
+  test("a role that does not edit channels sees that a signing secret is stored, never the secret", async () => {
+    const store = await storage();
+    const channel = await created(store);
+    const read = await readChannelForm(store, key, channel.id, Date.now());
+    const hidden = channelFormFor(read, { locked: false, reveal: false });
+    expect(hidden.ok && hidden.form.generated).toEqual({});
+    expect(hidden.ok && hidden.form.withheld).toEqual(["secret"]);
+    expect(JSON.stringify(hidden)).not.toContain("whsec_");
+    const shown = channelFormFor(read, { locked: true, reveal: true });
+    expect(shown.ok && shown.form.generated.secret).toMatch(signingSecretShape);
+    expect(shown.ok && shown.form.locked).toBe(true);
+    expect(
+      channelFormFor(
+        { ok: false, reason: "not_found" },
+        {
+          locked: false,
+          reveal: false,
+        }
+      )
+    ).toEqual({ ok: false, reason: "not_found" });
   });
 
   test("a channel with a value missing or out of shape is refused and nothing is stored", async () => {

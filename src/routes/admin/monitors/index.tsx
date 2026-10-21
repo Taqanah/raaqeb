@@ -7,6 +7,7 @@ import { type BulkCall, MonitorList } from "@/admin/monitors/list.tsx";
 import { MonitorListSkeleton } from "@/admin/monitors/skeleton.tsx";
 import { keyLabel } from "@/admin/shell/keyboard.ts";
 import { Page } from "@/admin/shell/page.tsx";
+import { useCan } from "@/admin/shell/role.tsx";
 import { useSavedToast } from "@/admin/shell/toasts.tsx";
 import {
   acknowledgeOutageFn,
@@ -120,7 +121,9 @@ function MonitorsPage() {
     },
     [router]
   );
-  const add = (
+  const changes = useCan("monitors");
+  // Offered only to a role that changes monitors, as the getting-started card is.
+  const add = changes ? (
     <Link
       aria-keyshortcuts="N"
       className={buttonVariants()}
@@ -133,7 +136,7 @@ function MonitorsPage() {
         {keyLabel("KeyN", false, locale)}
       </Kbd>
     </Link>
-  );
+  ) : null;
   const empty = data.ok && data.monitors.length === 0;
   let body: ReactNode;
   if (!data.ok) {
@@ -172,7 +175,7 @@ function MonitorsPage() {
   return (
     // While the list is empty its card holds the one add button.
     <Page action={empty ? undefined : add} title={t("monitor_list_title")}>
-      {data.ok && data.gettingStarted ? (
+      {data.ok && data.gettingStarted && changes ? (
         <GettingStartedCard dismiss={dismiss} lines={data.gettingStarted} />
       ) : null}
       {body}

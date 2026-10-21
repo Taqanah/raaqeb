@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import { can, type Role } from "@/shared/domain/roles.ts";
 import type { MonitorChoice } from "@/shared/schemas/monitor.ts";
-import { navigation, type PaletteItem, paletteGroups } from "./navigation.ts";
+import {
+  navigation,
+  navigationFor,
+  type PaletteItem,
+  paletteGroups,
+} from "./navigation.ts";
 
 describe("the sidebar's grouped navigation", () => {
   test("holds the screens under groups, every one under /admin", () => {
@@ -17,6 +23,46 @@ describe("the sidebar's grouped navigation", () => {
     expect(paths).toContain("/admin/settings");
     expect(paths.every((path) => path.startsWith("/admin/"))).toBe(true);
     expect(navigation.length).toBeGreaterThan(1);
+  });
+});
+
+describe("the navigation an operator is offered", () => {
+  const paths = (role: Role) =>
+    navigationFor((permission) => can(role, permission)).flatMap((group) =>
+      group.items.map((item) => item.to)
+    );
+
+  test("is every page for an owner or admin, the team page among them", () => {
+    expect(paths("owner")).toEqual(
+      navigation.flatMap((group) => group.items.map((item) => item.to))
+    );
+    expect(paths("admin")).toContain("/admin/team");
+  });
+
+  test("for an editor, responder or viewer leaves the team out and leads settings to their own account", () => {
+    for (const role of ["editor", "responder", "viewer"] as const) {
+      expect(paths(role)).not.toContain("/admin/team");
+      expect(paths(role)).not.toContain("/admin/settings");
+      expect(paths(role)).toContain("/admin/settings/account");
+      expect(paths(role)).toContain("/admin/monitors");
+    }
+  });
+
+  test("in the palette offers a new monitor only to a role that makes one, and the setup check only to one that reads settings", () => {
+    const offered = (role: Role) =>
+      paletteGroups("", [], "en", (permission) => can(role, permission))
+        .flatMap((group) => group.items)
+        .map((item) => {
+          if (item.kind === "page") {
+            return item.item.to;
+          }
+          return item.kind === "action" ? item.action : item.id;
+        });
+    expect(offered("editor")).toContain("new_monitor");
+    expect(offered("responder")).not.toContain("new_monitor");
+    expect(offered("viewer")).not.toContain("/admin/settings/setup-check");
+    expect(offered("viewer")).toContain("sign_out");
+    expect(offered("admin")).toContain("/admin/settings/setup-check");
   });
 });
 

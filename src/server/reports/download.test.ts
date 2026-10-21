@@ -9,7 +9,6 @@ import {
   scratchPages,
   site,
 } from "@/server/pages/fixture.ts";
-import { operatorLanguage } from "@/server/settings/operator.ts";
 import type { ReportQuery } from "@/shared/schemas/report.ts";
 import { reportDownload } from "./download.ts";
 
@@ -62,7 +61,6 @@ describe("a report's download", () => {
   test("takes the operator's language for its titles, and a component's name in it when it has one", async () => {
     scratch = await scratchPages(d0);
     const { storage } = scratch;
-    await storage.settings.set(operatorLanguage, "en");
     const created = await createComponent(storage, {
       description: undefined,
       monitorIds: [],
@@ -75,7 +73,8 @@ describe("a report's download", () => {
     const download = await reportDownload(
       storage,
       query({ id: created.component.id, subject: "component" }),
-      now
+      now,
+      { operatorLanguage: "en" }
     );
     expect(download.ok).toBe(true);
     if (download.ok) {

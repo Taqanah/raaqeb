@@ -7,7 +7,17 @@
  */
 import { answerLimitMs, withinLimit } from "@/server/storage/deadline.ts";
 import type { Storage } from "@/server/storage/storage.ts";
+import { can, type Permission, type Role } from "@/shared/domain/roles.ts";
+import { localeSchema } from "@/shared/i18n/locale.ts";
+import {
+  calendarSchema,
+  clockSchema,
+  timeZoneSchema,
+} from "@/shared/schemas/clock.ts";
+import type { AccountSettingsInput } from "@/shared/schemas/settings.ts";
+import { roleSchema } from "@/shared/schemas/team.ts";
 import { type Auth, type AuthBoot, authFor } from "./auth.ts";
+import { readSecondStepRequired } from "./second-step.ts";
 
 /** Whether the request names a session cookie at all; whether it is a live session is `isOperator`'s to read. */
 export function carriesSession(headers: Headers): boolean {
@@ -17,9 +27,44 @@ export function carriesSession(headers: Headers): boolean {
 /** Better Auth's session cookie under Raaqeb's prefix (auth.ts), plain or under the secure prefix it takes over https. */
 const sessionCookie = /(^|;\s*)(__Secure-)?raaqeb\.session_token=/;
 
+/** The signed-in operator: their account as the session read it, with the session's own id. */
 export interface Operator {
   readonly email: string;
   readonly id: string;
+  /** Empty when the operator gave none. */
+  readonly name: string;
+  readonly preferences: AccountSettingsInput;
+  readonly role: Role;
+  /** The second step is on for the account. */
+  readonly secondStep: boolean;
+  readonly sessionId: string;
+}
+
+/**
+ * Why the operator may not do what the permission names: their role does
+ * not allow it, or the owner requires a second step they have not switched
+ * on, which leaves them their own account alone.
+ */
+export type Refusal = "role" | "second_step";
+
+/** Nothing when the operator may do what the permission names, else why not. Throws when the database cannot answer. */
+export async function refusalOf(
+  storage: Pick<Storage, "settings">,
+  operator: Operator,
+  permission: Permission
+): Promise<Refusal | undefined> {
+  if (!can(operator.role, permission)) {
+    return "role";
+  }
+  // The setting is read only for an operator it could stop: their own account is always theirs.
+  if (
+    permission === "profile" ||
+    operator.secondStep ||
+    !(await readSecondStepRequired(storage))
+  ) {
+    return;
+  }
+  return "second_step";
 }
 
 export interface OperatorSession {
@@ -46,12 +91,48 @@ export async function readOperator(
     answerMs
   ).catch(() => undefined);
   const session = read?.response;
-  if (!session) {
+  // A deactivated account has no session left; one that outlived it by a race is none either.
+  if (!session || session.user.deactivatedAt) {
     return;
   }
   return {
-    operator: { email: session.user.email, id: session.user.id },
+    operator: operatorOf(session.user, session.session.id),
     setCookie: read.headers.get("set-cookie") ?? undefined,
+  };
+}
+
+/** The operator a session's user row names, its role and preferences parsed as storage parses them. */
+function operatorOf(
+  user: {
+    readonly calendar?: string | null;
+    readonly clock?: string | null;
+    readonly email: string;
+    readonly id: string;
+    readonly language?: string | null;
+    readonly name: string;
+    readonly role: string;
+    readonly timeZone?: string | null;
+    readonly twoFactorEnabled?: boolean | null;
+  },
+  sessionId: string
+): Operator {
+  const preferences: AccountSettingsInput = Object.fromEntries(
+    Object.entries({
+      calendar: calendarSchema.safeParse(user.calendar).data,
+      clock: clockSchema.safeParse(user.clock).data,
+      operatorLanguage: localeSchema.safeParse(user.language).data,
+      timeZone: timeZoneSchema.safeParse(user.timeZone).data,
+    }).filter(([, value]) => value !== undefined)
+  );
+  return {
+    email: user.email,
+    id: user.id,
+    name: user.name,
+    preferences,
+    // A role the code no longer names is the least one, never more.
+    role: roleSchema.catch("viewer").parse(user.role),
+    secondStep: user.twoFactorEnabled === true,
+    sessionId,
   };
 }
 
@@ -99,14 +180,18 @@ export async function operatorFor(
  * Whether the request carries the operator's session, read without
  * refreshing it (`disableRefresh`, Better Auth 1.7's getSession), so the
  * row's expiry never moves past a cookie the response does not re-issue:
- * for the preview of an unpublished page and its images, which set
- * no cookie. False with no database, or when it cannot answer.
+ * for the entry's pace, which a signed-in operator skips, and for the
+ * preview of an unpublished page and its images, which set no cookie. With
+ * a `permission`, as for a preview, also whether the operator holds it now,
+ * a required second step included, as every admin page asks. False for a
+ * deactivated account, with no database, or when it cannot answer.
  */
 export async function isOperator(
   storage: Storage | undefined,
   boot: AuthBoot,
   headers: Headers,
-  answerMs: number = answerLimitMs
+  answerMs: number = answerLimitMs,
+  permission?: Permission
 ): Promise<boolean> {
   if (!storage) {
     return false;
@@ -117,7 +202,14 @@ export async function isOperator(
       auth.api.getSession({ headers, query: { disableRefresh: true } }),
       answerMs
     );
-    return session !== null;
+    if (!session || session.user.deactivatedAt) {
+      return false;
+    }
+    if (permission === undefined) {
+      return true;
+    }
+    const operator = operatorOf(session.user, session.session.id);
+    return (await refusalOf(storage, operator, permission)) === undefined;
   } catch {
     // A database that cannot answer is no session, as for the guard.
     return false;

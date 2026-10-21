@@ -2,7 +2,6 @@
 // English server holds the operator account; the Arabic server stays in
 // onboarding, where e2e/onboarding.spec.ts pins that sign-in goes there.
 
-import { operatorLanguage } from "@/server/settings/operator.ts";
 import {
   clientAddress,
   expect,
@@ -313,7 +312,12 @@ test.describe("the language either side of signing in", () => {
   test.beforeAll(async () => {
     install = await spawnInstall({
       account: true,
-      records: (storage) => storage.settings.set(operatorLanguage, "en"),
+      records: async (storage) => {
+        const [owner] = await storage.operatorAccounts.list();
+        await storage.operatorAccounts.setPreferences(owner?.id ?? "", {
+          operatorLanguage: "en",
+        });
+      },
     });
   });
   test.afterAll(async () => {

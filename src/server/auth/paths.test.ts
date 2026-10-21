@@ -66,8 +66,9 @@ describe("every endpoint Better Auth mounts is triaged", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 
-  test("the browser may call sign-in, sign-out, the reset request and reset, the emailed code's send and verify, and the app's and backup codes' verify, nothing else", () => {
+  test("the browser may call accepting an invitation, sign-in, sign-out, the reset request and reset, the emailed code's send and verify, and the app's and backup codes' verify, nothing else", () => {
     expect([...allowedPaths].toSorted()).toEqual([
+      "/invitation/accept",
       "/request-password-reset",
       "/reset-password",
       "/sign-in/email",

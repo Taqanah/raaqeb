@@ -46,6 +46,7 @@ export interface SignInFormProps {
 }
 
 const failureMessage = {
+  deactivated: "auth_deactivated",
   invalid_credentials: "auth_invalid_credentials",
   origin_refused: "auth_origin_refused",
   rate_limited: "auth_rate_limited",
@@ -170,7 +171,9 @@ export function SignInForm({ email, onSignedIn }: SignInFormProps): ReactNode {
             ) : null}
           </Field>
           {failure ? (
-            <FieldError>{t(failureMessage[failure])}</FieldError>
+            <FieldError data-failure={failure}>
+              {t(failureMessage[failure])}
+            </FieldError>
           ) : null}
           {failure === "origin_refused" ? <SetAddressCommand /> : null}
           <Button disabled={pending} type="submit">

@@ -1,14 +1,16 @@
 /**
- * `raaqeb reset-password`: mints Better Auth's core reset
- * token for the operator account and prints its link, so the password never
+ * `raaqeb reset-password [email]`: mints Better Auth's core reset
+ * token for the operator account the email names, or the one account of an
+ * install that has one, and prints its link, so the password never
  * touches the shell; with `--interactive` it asks for the new password with
  * hidden input and resets it through the same endpoint, so sessions and
- * trusted browsers are revoked the same way. Either way it switches the
- * second step off and removes the authenticator app, for the operator who
- * also lost the phone or email: shell access proves ownership. Runs beside
- * a live server over the same database. Exit codes follow `health`: 0 done,
- * 1 no account, no public address or a database that did not answer, 2 a
- * command line the terminal cannot serve.
+ * trusted browsers are revoked the same way. Either way it switches that
+ * account's second step off and removes its authenticator app, for the
+ * operator who also lost the phone or email: shell access proves ownership.
+ * Runs beside a live server over the same database. Exit codes follow
+ * `health`: 0 done, 1 no such account, no public address or a database that
+ * did not answer, 2 a command line the terminal cannot serve or that names
+ * no account where several exist.
  */
 // biome-ignore lint/style/noRestrictedImports: Bun has no prompt with hidden input; readline over a muted output is the platform's way.
 import { createInterface } from "node:readline";
@@ -30,6 +32,8 @@ export interface Terminal {
 }
 
 export interface ResetPasswordOptions {
+  /** The account's email; it may be left out while the install has one account. */
+  readonly email?: string;
   readonly interactive: boolean;
 }
 
@@ -49,9 +53,29 @@ export async function resetPasswordCommand(
     return 2;
   }
   try {
-    const account = await storage.operatorAccount.read();
-    if (!account) {
+    const accounts = await storage.operatorAccounts.list();
+    if (accounts.length === 0) {
       terminal.err("there is no operator account yet; finish onboarding first");
+      return 1;
+    }
+    const named = options.email?.toLowerCase();
+    if (named === undefined && accounts.length > 1) {
+      terminal.err(
+        `this install has ${accounts.length} operator accounts; name the one to reset, as in: raaqeb reset-password ${accounts[0]?.email}`
+      );
+      for (const one of accounts) {
+        terminal.err(`  ${one.email} (${one.role})`);
+      }
+      return 2;
+    }
+    const account =
+      named === undefined
+        ? accounts[0]
+        : accounts.find((one) => one.email.toLowerCase() === named);
+    if (!account) {
+      terminal.err(
+        `there is no operator account with the email ${options.email}`
+      );
       return 1;
     }
     if (!(await readPublicAddress(storage))) {
@@ -91,7 +115,7 @@ export async function resetPasswordCommand(
       );
     }
     // Shell access proves ownership, so the second step goes off with its authenticator app; an app never confirmed goes too.
-    await storage.operatorAccount.secondStepOff();
+    await storage.operatorAccounts.secondStepOff(account.id);
     if (account.secondStep) {
       terminal.out(
         "The second step is off, and the authenticator app and its backup codes are removed. Turn it on again on the sign-in settings page."

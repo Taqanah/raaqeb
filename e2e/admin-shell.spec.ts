@@ -34,7 +34,8 @@ test("the shell renders around an admin page: the grouped navigation, the header
   await expect(
     page.locator("html[lang=en][dir=ltr][data-theme=dark]")
   ).toHaveCount(1);
-  await expect(page.locator("nav a[data-nav]")).toHaveCount(8);
+  // The reports and team pages among them, for the owner.
+  await expect(page.locator("nav a[data-nav]")).toHaveCount(9);
   await expect(
     page.locator("a[data-nav=monitors][aria-current=page]")
   ).toHaveCount(1);
@@ -458,7 +459,8 @@ test("a page whose read failed shows the error inside the shell, never its text,
   await page.click("a[data-nav=channels]");
   await expect(page.locator("[data-slot=page-error]")).toBeVisible();
   await expect(page.locator("[data-slot=sidebar]")).toBeVisible();
-  await expect(page.locator("nav a[data-nav]")).toHaveCount(8);
+  // The reports and team pages among them, for the owner.
+  await expect(page.locator("nav a[data-nav]")).toHaveCount(9);
   await expect(page.locator("[data-slot=page] h1")).toHaveCount(1);
   await expect(page.getByText("a private failure")).toHaveCount(0);
 

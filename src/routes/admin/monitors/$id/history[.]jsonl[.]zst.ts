@@ -18,7 +18,7 @@ export const Route = createFileRoute("/admin/monitors/$id/history.jsonl.zst")({
   server: {
     handlers: {
       GET: async ({ context, params, request }) => {
-        const operator = await signedIn(context, request);
+        const operator = await signedIn(context, request, "read");
         if (!operator) {
           return Response.redirect(new URL("/sign-in", request.url), 303);
         }

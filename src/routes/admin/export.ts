@@ -15,7 +15,7 @@ export const Route = createFileRoute("/admin/export")({
   server: {
     handlers: {
       GET: async ({ context, request }) => {
-        const operator = await signedIn(context, request);
+        const operator = await signedIn(context, request, "transfer");
         if (!operator) {
           return Response.redirect(new URL("/sign-in", request.url), 303);
         }

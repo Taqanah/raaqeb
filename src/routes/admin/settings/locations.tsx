@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { LocationsForm } from "@/admin/settings/locations-form.tsx";
 import { formWidth } from "@/admin/shell/page.tsx";
 import { CardsSkeleton } from "@/admin/shell/page-skeleton.tsx";
-import { operatorMiddleware } from "@/routes/-admin.ts";
+import { permitted } from "@/routes/-admin.ts";
 import { readOperatorClockFn } from "@/routes/-monitors.ts";
 import { probeGate } from "@/server/probes/api.ts";
 import {
@@ -25,14 +25,14 @@ import { cn } from "@/shared/ui/cn.ts";
 // The locations page: the main location and the probes, and the three
 // commands that make a probe, give it a new token and delete it.
 const read = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .handler(
     ({ context }): Promise<ProbesResult> =>
       readProbes(context.storage, Date.now(), probeGate.refusedPush)
   );
 
 const make = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .validator(probeCreateSchema)
   .handler(
     ({ context, data }): Promise<ProbeTokenResult> =>
@@ -40,7 +40,7 @@ const make = createServerFn({ method: "POST" })
   );
 
 const renew = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .validator(probeIdSchema)
   .handler(
     ({ context, data }): Promise<ProbeTokenResult> =>
@@ -48,7 +48,7 @@ const renew = createServerFn({ method: "POST" })
   );
 
 const remove = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .validator(probeIdSchema)
   .handler(
     ({ context, data }): Promise<ProbeRemoveResult> =>

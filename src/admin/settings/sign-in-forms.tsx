@@ -23,6 +23,7 @@ import { useMessages } from "@/shared/i18n/react.tsx";
 import type {
   AuthEmailChannelInput,
   AuthTestResult,
+  RequireSecondStepResult,
   SaveRefusal,
   SecondStepInput,
   SecondStepRefusal,
@@ -39,6 +40,7 @@ import {
 } from "@/shared/ui/card.tsx";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -48,6 +50,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/shared/ui/native-select.tsx";
+import { Switch } from "@/shared/ui/switch.tsx";
 import { Token } from "@/shared/ui/token.tsx";
 import { type SaveCall, useDraftSave, useSave } from "./use-save.ts";
 
@@ -60,10 +63,13 @@ const switchMessages: Readonly<Record<SecondStepRefusal, MessageId>> = {
   invalid: "setting_invalid",
   not_tested: "setting_second_step_not_tested",
   unavailable: "setting_unavailable",
+  too_many_attempts: "setting_password_too_many",
   wrong_password: "setting_password_wrong",
 };
 
 export interface AuthEmailFormProps {
+  /** The signed-in operator may choose the channel; any operator tests it to their own address. */
+  readonly canChoose: boolean;
   readonly choose: SaveCall<AuthEmailChannelInput, SaveRefusal>;
   readonly onChanged: () => void;
   readonly sendTest: (input: AuthEmailChannelInput) => Promise<AuthTestResult>;
@@ -79,6 +85,7 @@ type TestState =
 
 /** The email channel auth mail goes through, and its test message. */
 export function AuthEmailForm({
+  canChoose,
   choose,
   onChanged,
   sendTest,
@@ -161,6 +168,7 @@ export function AuthEmailForm({
               </FieldLabel>
               <NativeSelect
                 className="w-full"
+                disabled={!canChoose}
                 id="channelId"
                 name="channelId"
                 onChange={onChannel}
@@ -172,6 +180,11 @@ export function AuthEmailForm({
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
+              {canChoose ? null : (
+                <FieldDescription data-slot="auth-email-channel-admin">
+                  {t("setting_auth_channel_owner")}
+                </FieldDescription>
+              )}
             </Field>
             <div className="flex flex-wrap items-center gap-3">
               <Button
@@ -199,7 +212,9 @@ export function AuthEmailForm({
             ) : null}
           </FieldGroup>
         </CardContent>
-        <SaveFooter refusals={channelMessages} view={saving} />
+        {canChoose ? (
+          <SaveFooter refusals={channelMessages} view={saving} />
+        ) : null}
       </Card>
     </form>
   );
@@ -334,5 +349,77 @@ export function SecondStepForm({
         )}
       </Card>
     </form>
+  );
+}
+
+export interface RequireSecondStepFormProps {
+  /** The signed-in operator may change it: an owner. */
+  readonly canChange: boolean;
+  readonly change: (input: {
+    readonly on: boolean;
+  }) => Promise<RequireSecondStepResult>;
+  readonly onChanged: () => void;
+  /** The signed-in operator's own second step is on, which requiring it of everyone waits for. */
+  readonly ownOn: boolean;
+  readonly required: boolean;
+}
+
+/** An owner's switch requiring a second step of every operator (CONTEXT.md "Second step"). */
+export function RequireSecondStepForm({
+  canChange,
+  change,
+  onChanged,
+  ownOn,
+  required,
+}: RequireSecondStepFormProps): ReactNode {
+  const { t } = useMessages();
+  const { state, submit } = useSave(change, onChanged);
+  const toggle = useCallback((on: boolean) => submit({ on }), [submit]);
+  // Off, it turns on only for an owner whose own second step is on; on, any owner turns it off.
+  const locked = !(canChange && (required || ownOn));
+  let line: MessageId = "setting_require_second_step_line";
+  if (!canChange) {
+    line = "setting_require_second_step_owner";
+  } else if (locked) {
+    line = "setting_require_second_step_needs_own";
+  }
+  return (
+    <Card data-required={required} data-slot="require-second-step">
+      <CardHeader divided>
+        <CardTitle>{t("setting_require_second_step")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Field orientation="horizontal">
+          <Switch
+            aria-labelledby="requireSecondStep-label"
+            checked={required}
+            data-slot="require-second-step-switch"
+            disabled={locked || state.kind === "pending"}
+            id="requireSecondStep"
+            onCheckedChange={toggle}
+          />
+          <div className="flex flex-col gap-0.5">
+            <FieldLabel
+              htmlFor="requireSecondStep"
+              id="requireSecondStep-label"
+            >
+              {t("setting_require_second_step_switch")}
+            </FieldLabel>
+            <FieldDescription data-slot="require-second-step-line">
+              {t(line)}
+            </FieldDescription>
+          </div>
+        </Field>
+        {state.kind === "failed" ? (
+          <FieldError className="mt-3">
+            {t(
+              state.reason === "needs_own"
+                ? "setting_require_second_step_needs_own"
+                : "setting_unavailable"
+            )}
+          </FieldError>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }

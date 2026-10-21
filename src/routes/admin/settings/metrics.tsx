@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { MetricsForm } from "@/admin/settings/metrics-form.tsx";
 import { formWidth } from "@/admin/shell/page.tsx";
 import { CardsSkeleton } from "@/admin/shell/page-skeleton.tsx";
-import { operatorMiddleware } from "@/routes/-admin.ts";
+import { permitted } from "@/routes/-admin.ts";
 import {
   makeMetricsToken,
   readMetrics,
@@ -20,21 +20,21 @@ import { cn } from "@/shared/ui/cn.ts";
 // The metrics page: the endpoint's state, and the two commands that make a
 // token (turning it on, or replacing it) and forget it.
 const read = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .handler(
     async ({ context }): Promise<MetricsView | undefined> =>
       await readMetrics(context.storage).catch(() => undefined)
   );
 
 const make = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .handler(
     ({ context }): Promise<MetricsTokenResult> =>
       makeMetricsToken(context.storage)
   );
 
 const turnOff = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("settings")])
   .handler(
     ({ context }): Promise<SaveResult> => turnMetricsOff(context.storage)
   );

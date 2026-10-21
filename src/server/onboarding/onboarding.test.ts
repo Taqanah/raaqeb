@@ -386,7 +386,11 @@ describe("choosing the database", () => {
       if (!storage) {
         throw new Error("onboarding attached no database");
       }
-      const settings = await readGeneralSettings(storage, context.boot);
+      const settings = await readGeneralSettings(
+        storage,
+        context.boot,
+        undefined
+      );
       expect(settings.database.backend).toBe("postgres");
       await scratch.cleanup();
     }
@@ -497,7 +501,7 @@ describe("creating the operator account", () => {
     expect(await storage.settings.get(publicAddress)).toBe(
       "http://status.example.com"
     );
-    expect(await storage.operatorAccount.exists()).toBe(true);
+    expect(await storage.operatorAccounts.exists()).toBe(true);
     const cookies = result.ok ? result.setCookies : [];
     expect(cookies).toHaveLength(1);
     expect(cookies[0]).toStartWith("raaqeb.session_token=");
@@ -553,7 +557,7 @@ describe("creating the operator account", () => {
       ok: false,
       reason: "already_exists",
     });
-    expect(await storage.operatorAccount.exists()).toBe(true);
+    expect(await storage.operatorAccounts.exists()).toBe(true);
   });
 
   test("is refused with no database open", async () => {
@@ -590,7 +594,7 @@ describe("a public address the browser is not at", () => {
     ).toEqual({ ok: false, reason: "address_elsewhere" });
     expect(await storage.settings.get(publicAddress)).toBeUndefined();
     expect(await storage.settings.get(installLanguage)).toBeUndefined();
-    expect(await storage.operatorAccount.exists()).toBe(false);
+    expect(await storage.operatorAccounts.exists()).toBe(false);
   });
 
   test("is stored once confirmed: onboarding over a tunnel or at localhost before DNS is fair", async () => {
@@ -604,7 +608,7 @@ describe("a public address the browser is not at", () => {
     expect(await storage.settings.get(publicAddress)).toBe(
       account.publicAddress
     );
-    expect(await storage.operatorAccount.exists()).toBe(true);
+    expect(await storage.operatorAccounts.exists()).toBe(true);
   });
 
   test("an install that already has its account says so, whatever the address", async () => {
@@ -627,7 +631,7 @@ describe("a public address the browser is not at", () => {
       ok: false,
       reason: "address_elsewhere",
     });
-    expect(await storage.operatorAccount.exists()).toBe(false);
+    expect(await storage.operatorAccounts.exists()).toBe(false);
   });
 });
 

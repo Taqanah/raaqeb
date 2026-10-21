@@ -67,6 +67,9 @@ describe("the configuration export and import carry", () => {
   test("every column of every table they carry, on both schema files, so a new column cannot be left behind unseen", () => {
     const byName = (a: string, b: string) => a.localeCompare(b);
     for (const name of Object.keys(configurationSchema.shape)) {
+      if (name === "operatorAccounts") {
+        continue;
+      }
       const carried = Object.keys(
         configurationSchema.shape[name as ConfigurationTable].element.shape
       ).sort(byName);
@@ -76,6 +79,23 @@ describe("the configuration export and import carry", () => {
           carried
         );
       }
+    }
+  });
+
+  test("every column of an operator account but its picture, second step and last sign-in, which stay with the install", () => {
+    const byName = (a: string, b: string) => a.localeCompare(b);
+    const carried = Object.keys(
+      configurationSchema.shape.operatorAccounts.unwrap().element.shape
+    ).sort(byName);
+    for (const dialect of [tables.sqlite, tables.postgres]) {
+      expect(
+        Object.keys(getTableColumns(dialect.authUser))
+          .filter(
+            (one) =>
+              !["image", "lastSignInAt", "twoFactorEnabled"].includes(one)
+          )
+          .sort(byName)
+      ).toEqual(carried);
     }
   });
 });

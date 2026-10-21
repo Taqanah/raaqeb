@@ -28,6 +28,7 @@ export const areaPrefixes = [
   "report",
   "setting",
   "subscription",
+  "team",
 ] as const;
 
 export interface CatalogMessage {

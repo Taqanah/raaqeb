@@ -8,6 +8,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { ContentList, ContentText } from "@/admin/shell/content.tsx";
 import { Page } from "@/admin/shell/page.tsx";
+import { useCan } from "@/admin/shell/role.tsx";
 import { formatDuration, type TimeOptions } from "@/shared/i18n/format.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type {
@@ -45,7 +46,8 @@ export function IncidentList({
   readonly result: IncidentListResult;
 }): ReactNode {
   const { t } = useMessages();
-  const add = (
+  // Offered only to a role that may add one; the list reads the same for every role.
+  const add = useCan("incidents") ? (
     <Link
       className={buttonVariants()}
       data-slot="add-incident"
@@ -53,7 +55,7 @@ export function IncidentList({
     >
       {t("incident_add")}
     </Link>
-  );
+  ) : null;
   // While the list is empty its card holds the one add button, which says what to add.
   const empty = result.ok && result.list.incidents.length === 0;
   return (

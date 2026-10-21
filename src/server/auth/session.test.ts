@@ -9,12 +9,15 @@ import {
   createAuth,
   operatorName,
 } from "./auth.ts";
+import { secondStepRequired } from "./second-step.ts";
 import {
   carriesSession,
   isOperator,
+  type Operator,
   operatorFor,
   operatorOfRequest,
   readOperator,
+  refusalOf,
 } from "./session.ts";
 
 const boot: AuthBoot = {
@@ -48,7 +51,7 @@ afterAll(async () => {
 });
 
 describe("the signed-in operator behind a request", () => {
-  test("is read from the session cookie as an id and an email, nothing more", async () => {
+  test("is read from the session cookie as the account's id, email, name, role, second step and preferences, with the session's id", async () => {
     await auth.api.signUpEmail({
       body: { email, name: operatorName, password },
     });
@@ -61,6 +64,11 @@ describe("the signed-in operator behind a request", () => {
     expect(session?.operator).toEqual({
       email,
       id: signedIn.response.user.id,
+      name: operatorName,
+      preferences: {},
+      role: "owner",
+      secondStep: false,
+      sessionId: expect.any(String),
     });
     // A fresh session is not due for refresh: no cookie to re-issue.
     expect(session?.setCookie).toBeUndefined();
@@ -167,7 +175,7 @@ describe("the operator for a request context", () => {
       boot,
       new Headers({ cookie })
     );
-    expect(context?.operator).toEqual({
+    expect(context?.operator).toMatchObject({
       email,
       id: signedIn.response.user.id,
     });
@@ -225,6 +233,29 @@ describe("the operator for a request context", () => {
     );
   });
 
+  test("a preview is no operator's while a second step is required and theirs is off, as for every admin page", async () => {
+    const own = await authFor(opened.storage, boot);
+    const signedIn = await own.api.signInEmail({
+      body: { email, password },
+      returnHeaders: true,
+    });
+    const cookie = signedIn.headers.get("set-cookie")?.split(";")[0] ?? "";
+    const headers = new Headers({ cookie });
+    await opened.storage.settings.set(secondStepRequired, true);
+    try {
+      expect(
+        await isOperator(opened.storage, boot, headers, undefined, "read")
+      ).toBe(false);
+      // The entry's pace asks only whether a session is there.
+      expect(await isOperator(opened.storage, boot, headers)).toBe(true);
+    } finally {
+      await opened.storage.settings.remove(secondStepRequired);
+    }
+    expect(
+      await isOperator(opened.storage, boot, headers, undefined, "read")
+    ).toBe(true);
+  });
+
   test("a preview's read is no session, within the limit, when the database never answers", async () => {
     // The open storage with an auth adapter whose every call stays pending.
     const silent = {
@@ -276,5 +307,104 @@ describe("whether a request carries a session", () => {
     expect(of("theme=dark")).toBe(false);
     expect(of("xraaqeb.session_token=abc")).toBe(false);
     expect(of()).toBe(false);
+  });
+});
+
+describe("the account behind a session", () => {
+  async function signedInAs(address: string): Promise<string> {
+    await auth.api.signUpEmail({
+      body: { email: address, name: "Someone", password },
+    });
+    const signedIn = await auth.api.signInEmail({
+      body: { email: address, password },
+      returnHeaders: true,
+    });
+    return signedIn.headers.get("set-cookie")?.split(";")[0] ?? "";
+  }
+
+  test("a later account is a viewer until its role is changed, and the next read sees the new role", async () => {
+    // On Postgres an earlier test's scratch database drops the tables this one shares, so an account is made first.
+    await signedInAs("earlier@example.com");
+    const cookie = await signedInAs("later@example.com");
+    expect(
+      (await readOperator(auth, new Headers({ cookie })))?.operator
+    ).toMatchObject({ name: "Someone", role: "viewer" });
+    await runSql(
+      scratch.location,
+      "UPDATE auth_user SET role = 'editor', language = 'en', clock = '24h' WHERE email = ?",
+      ["later@example.com"]
+    );
+    expect(
+      (await readOperator(auth, new Headers({ cookie })))?.operator
+    ).toMatchObject({
+      preferences: { clock: "24h", operatorLanguage: "en" },
+      role: "editor",
+    });
+  });
+
+  test("a session that outlived its account's deactivation reads as no operator", async () => {
+    const cookie = await signedInAs("gone@example.com");
+    await runSql(
+      scratch.location,
+      "UPDATE auth_user SET deactivated_at = ? WHERE email = ?",
+      [Date.now(), "gone@example.com"]
+    );
+    expect(await readOperator(auth, new Headers({ cookie }))).toBeUndefined();
+  });
+
+  test("a role the code no longer names reads as a viewer, never as more", async () => {
+    const cookie = await signedInAs("odd@example.com");
+    await runSql(
+      scratch.location,
+      "UPDATE auth_user SET role = 'superuser' WHERE email = ?",
+      ["odd@example.com"]
+    );
+    expect(
+      (await readOperator(auth, new Headers({ cookie })))?.operator.role
+    ).toBe("viewer");
+  });
+});
+
+describe("what an operator may do", () => {
+  const operator = (role: Operator["role"], secondStep: boolean): Operator => ({
+    email: "a@example.com",
+    id: "a",
+    name: "",
+    preferences: {},
+    role,
+    secondStep,
+    sessionId: "s",
+  });
+
+  test("is what the role allows while no second step is required", async () => {
+    expect(
+      await refusalOf(opened.storage, operator("editor", false), "monitors")
+    ).toBeUndefined();
+    expect(
+      await refusalOf(opened.storage, operator("editor", false), "channels")
+    ).toBe("role");
+    expect(
+      await refusalOf(opened.storage, operator("viewer", false), "read")
+    ).toBeUndefined();
+  });
+
+  test("once an owner requires a second step, is their own account alone until theirs is on", async () => {
+    await opened.storage.settings.set(secondStepRequired, true);
+    try {
+      expect(
+        await refusalOf(opened.storage, operator("owner", false), "read")
+      ).toBe("second_step");
+      expect(
+        await refusalOf(opened.storage, operator("owner", false), "profile")
+      ).toBeUndefined();
+      expect(
+        await refusalOf(opened.storage, operator("owner", true), "security")
+      ).toBeUndefined();
+      expect(
+        await refusalOf(opened.storage, operator("viewer", true), "monitors")
+      ).toBe("role");
+    } finally {
+      await opened.storage.settings.remove(secondStepRequired);
+    }
   });
 });

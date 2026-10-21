@@ -1,9 +1,13 @@
 /**
  * The sidebar's grouped navigation and the command palette's contents: every admin page under its group, the monitors a query
- * finds, and the actions the palette adds. Pure, so the palette can be
- * pinned to hold every page. Labels are message ids, worded by the shell.
+ * finds, and the actions the palette adds. Each page names what it needs,
+ * so an operator is offered the pages their role opens (`navigationFor`).
+ * Pure, so the palette can be pinned to hold every page. Labels are message
+ * ids, worded by the shell.
  */
+
 import { matchesSearch } from "@/shared/domain/monitors.ts";
+import type { Permission } from "@/shared/domain/roles.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import type { MonitorChoice } from "@/shared/schemas/monitor.ts";
 
@@ -16,12 +20,17 @@ export type NavIcon =
   | "incidents"
   | "maintenance"
   | "channels"
+  | "team"
   | "settings";
 
 export interface NavItem {
   readonly icon: NavIcon;
   readonly id: string;
   readonly label: MessageId;
+  /** Where the item leads an operator whose role does not open its page; without one, the item is left out for them. */
+  readonly otherwise?: string;
+  /** What the page needs (shared/domain/roles.ts). */
+  readonly permission: Permission;
   /** The path; a page a later step builds answers the not-found page until then. */
   readonly to: string;
 }
@@ -41,12 +50,14 @@ export const navigation: readonly NavGroup[] = [
         icon: "monitors",
         id: "monitors",
         label: "monitor_list_title",
+        permission: "read",
         to: "/admin/monitors",
       },
       {
         icon: "reports",
         id: "reports",
         label: "report_list_title",
+        permission: "read",
         to: "/admin/reports",
       },
     ],
@@ -59,24 +70,28 @@ export const navigation: readonly NavGroup[] = [
         icon: "pages",
         id: "pages",
         label: "page_list_title",
+        permission: "read",
         to: "/admin/pages",
       },
       {
         icon: "components",
         id: "components",
         label: "component_list_title",
+        permission: "read",
         to: "/admin/components",
       },
       {
         icon: "incidents",
         id: "incidents",
         label: "incident_list_title",
+        permission: "read",
         to: "/admin/incidents",
       },
       {
         icon: "maintenance",
         id: "maintenance",
         label: "maintenance_list_title",
+        permission: "read",
         to: "/admin/maintenance",
       },
     ],
@@ -89,12 +104,23 @@ export const navigation: readonly NavGroup[] = [
         icon: "channels",
         id: "channels",
         label: "channel_list_title",
+        permission: "read",
         to: "/admin/channels",
+      },
+      {
+        icon: "team",
+        id: "team",
+        label: "team_title",
+        permission: "team",
+        to: "/admin/team",
       },
       {
         icon: "settings",
         id: "settings",
         label: "setting_title",
+        // Every operator has settings of their own: the account page.
+        otherwise: "/admin/settings/account",
+        permission: "settings",
         to: "/admin/settings",
       },
     ],
@@ -109,10 +135,36 @@ const paletteOnly: Readonly<Record<string, readonly NavItem[]>> = {
       icon: "settings",
       id: "setup_check",
       label: "setting_setup_check",
+      permission: "settings",
       to: "/admin/settings/setup-check",
     },
   ],
 };
+
+/** The items an operator's role opens, each led to the page it opens for them; a group left empty is left out. */
+function itemsFor(
+  items: readonly NavItem[],
+  allowed: (permission: Permission) => boolean
+): NavItem[] {
+  return items.flatMap((item) => {
+    if (allowed(item.permission)) {
+      return [item];
+    }
+    return item.otherwise === undefined
+      ? []
+      : [{ ...item, permission: "profile" as const, to: item.otherwise }];
+  });
+}
+
+/** The navigation an operator is offered: the pages their role opens. */
+export function navigationFor(
+  allowed: (permission: Permission) => boolean
+): readonly NavGroup[] {
+  return navigation.flatMap((group) => {
+    const items = itemsFor(group.items, allowed);
+    return items.length === 0 ? [] : [{ ...group, items }];
+  });
+}
 
 /** What the palette offers beyond navigation. */
 export type PaletteAction = "new_monitor" | "shortcuts" | "sign_out";
@@ -141,14 +193,16 @@ export interface PaletteGroup {
 }
 
 /**
- * Every page, then, once the query has text, the monitors it finds under the
- * list's search rule, by name under the locale, and the list searched for
- * it; then the actions.
+ * Every page the operator's role opens, then, once the query has text, the
+ * monitors it finds under the list's search rule, by name under the locale,
+ * and the list searched for it; then the actions, a new monitor only for a
+ * role that makes one.
  */
 export function paletteGroups(
   query: string,
   monitors: readonly MonitorChoice[],
-  locale: string
+  locale: string,
+  allowed: (permission: Permission) => boolean = () => true
 ): readonly PaletteGroup[] {
   const text = query.trim();
   const collator = new Intl.Collator(locale);
@@ -172,38 +226,50 @@ export function paletteGroups(
             label: "monitor_list_title",
           },
         ];
+  const actions: PaletteItem[] = [
+    {
+      action: "new_monitor",
+      id: "new_monitor",
+      kind: "action",
+      label: "monitor_add",
+    },
+    {
+      action: "shortcuts",
+      id: "shortcuts",
+      kind: "action",
+      label: "app_shortcuts",
+    },
+    {
+      action: "sign_out",
+      id: "sign_out",
+      kind: "action",
+      label: "auth_sign_out",
+    },
+  ];
   return [
-    ...navigation.map((group) => ({
-      id: group.id,
-      items: [...group.items, ...(paletteOnly[group.id] ?? [])].map((item) => ({
-        item,
-        kind: "page" as const,
-      })),
-      label: group.label,
-    })),
+    ...navigation.flatMap((group) => {
+      const items = itemsFor(
+        [...group.items, ...(paletteOnly[group.id] ?? [])],
+        allowed
+      );
+      return items.length === 0
+        ? []
+        : [
+            {
+              id: group.id,
+              items: items.map((item) => ({ item, kind: "page" as const })),
+              label: group.label,
+            },
+          ];
+    }),
     ...found,
     {
       id: "actions",
-      items: [
-        {
-          action: "new_monitor",
-          id: "new_monitor",
-          kind: "action",
-          label: "monitor_add",
-        },
-        {
-          action: "shortcuts",
-          id: "shortcuts",
-          kind: "action",
-          label: "app_shortcuts",
-        },
-        {
-          action: "sign_out",
-          id: "sign_out",
-          kind: "action",
-          label: "auth_sign_out",
-        },
-      ],
+      items: actions.filter(
+        (item) =>
+          !(item.kind === "action" && item.action === "new_monitor") ||
+          allowed("monitors")
+      ),
       label: "app_nav_actions",
     },
   ];

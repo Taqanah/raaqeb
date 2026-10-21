@@ -35,9 +35,10 @@ import {
 } from "@/shared/ui/sidebar.tsx";
 import { keyLabel } from "./keyboard.ts";
 import { navIcons } from "./nav-icons.ts";
-import { navigation, type PaletteItem } from "./navigation.ts";
+import { navigationFor, type PaletteItem } from "./navigation.ts";
 import { Palette } from "./palette.tsx";
 import { ReleaseBanner } from "./release-banner.tsx";
+import { useAllows } from "./role.tsx";
 import { ShortcutSheet } from "./shortcut-sheet.tsx";
 import { Toasts } from "./toasts.tsx";
 import { useKeyboard } from "./use-keyboard.ts";
@@ -86,6 +87,7 @@ function ShellInner({
   release,
 }: Omit<AdminShellProps, "sidebarOpen">): ReactNode {
   const { locale, t } = useMessages();
+  const allowed = useAllows();
   const router = useRouter();
   const pathname = useLocation({ select: (location) => location.pathname });
   const { setOpenMobile, toggleSidebar } = useSidebar();
@@ -126,7 +128,9 @@ function ShellInner({
       },
       // N creates a monitor from the monitor list only; elsewhere the key is not taken.
       new_monitor:
-        pathname === monitorsPath ? () => go(newMonitorPath) : undefined,
+        pathname === monitorsPath && allowed("monitors")
+          ? () => go(newMonitorPath)
+          : undefined,
       palette: () => setPaletteOpen((open) => !open),
       // Presses the Save of the form holding the focus, which does nothing while it rests.
       save: () => {
@@ -146,7 +150,7 @@ function ShellInner({
       shortcuts: openSheet,
       sidebar: toggleSidebar,
     }),
-    [go, openPalette, openSheet, pathname, toggleSidebar]
+    [allowed, go, openPalette, openSheet, pathname, toggleSidebar]
   );
   useKeyboard(handlers);
 
@@ -220,7 +224,7 @@ function ShellInner({
         <SidebarContent>
           {/* The sidebar itself is the navigation landmark. */}
           <div>
-            {navigation.map((group) => (
+            {navigationFor(allowed).map((group) => (
               <SidebarGroup key={group.id}>
                 {/* A group of one needs no heading. */}
                 {group.items.length > 1 ? (

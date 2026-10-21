@@ -12,7 +12,6 @@ import {
   savePublicAddress,
 } from "./general.ts";
 import { installLanguage } from "./language.ts";
-import { operatorLanguage } from "./operator.ts";
 import { trustedProxies } from "./proxies.ts";
 import { requestLogEnabled } from "./request-log.ts";
 
@@ -59,7 +58,7 @@ describe("the public address and the pages' custom domains", () => {
       slug: "status",
       title: { ar: "حالة" },
     });
-    expect(await saveGeneralSettings(store, input, boot)).toEqual({
+    expect(await saveGeneralSettings(store, input, boot, "owner")).toEqual({
       ok: false,
       reason: "address_is_page_domain",
     });
@@ -72,7 +71,8 @@ describe("the public address and the pages' custom domains", () => {
           ...input,
           publicAddress: "https://status.example.test.",
         },
-        boot
+        boot,
+        "owner"
       )
     ).toEqual({ ok: false, reason: "address_is_page_domain" });
     expect(
@@ -82,7 +82,8 @@ describe("the public address and the pages' custom domains", () => {
           ...input,
           publicAddress: "https://admin.example.test",
         },
-        boot
+        boot,
+        "owner"
       )
     ).toEqual({ ok: true });
   });
@@ -91,7 +92,7 @@ describe("the public address and the pages' custom domains", () => {
 describe("the general settings page", () => {
   test("a fresh install shows Arabic, the host zone, a 12-hour clock, no public address and the release check on", async () => {
     const store = await storage();
-    const settings = await readGeneralSettings(store, boot);
+    const settings = await readGeneralSettings(store, boot, undefined);
     // The zone list comes from the server's ICU, so the document and the browser offer the same names.
     expect(settings.timeZones).toContain("Asia/Riyadh");
     const { timeZones: _zones, ...rest } = settings;
@@ -112,24 +113,64 @@ describe("the general settings page", () => {
 
   test("names the operator's own language, and nothing while it follows the install's", async () => {
     const store = await storage();
-    expect((await readGeneralSettings(store, boot)).operatorLanguage).toBe(
-      undefined
+    expect(
+      (await readGeneralSettings(store, boot, undefined)).operatorLanguage
+    ).toBe(undefined);
+    expect(
+      (await readGeneralSettings(store, boot, "en")).operatorLanguage
+    ).toBe("en");
+  });
+
+  test("the public address and the trusted proxies are an owner's to change; an admin saves the rest as they are", async () => {
+    const store = await storage();
+    await saveGeneralSettings(
+      store,
+      { ...input, trustedProxies: ["10.0.0.1"] },
+      boot,
+      "owner"
     );
-    await store.settings.set(operatorLanguage, "en");
-    expect((await readGeneralSettings(store, boot)).operatorLanguage).toBe(
-      "en"
-    );
+    expect(
+      await saveGeneralSettings(
+        store,
+        { ...input, clock: "12h", trustedProxies: ["10.0.0.1"] },
+        boot,
+        "admin"
+      )
+    ).toEqual({ ok: true });
+    expect(await store.settings.get(clock)).toBe("12h");
+    expect(
+      await saveGeneralSettings(
+        store,
+        { ...input, publicAddress: "https://elsewhere.example.test" },
+        boot,
+        "admin"
+      )
+    ).toEqual({ ok: false, reason: "not_allowed" });
+    expect(
+      await saveGeneralSettings(
+        store,
+        { ...input, trustedProxies: ["0.0.0.0/0"] },
+        boot,
+        "admin"
+      )
+    ).toEqual({ ok: false, reason: "not_allowed" });
+    expect(await store.settings.get(publicAddress)).toBe(input.publicAddress);
+    expect(await store.settings.get(trustedProxies)).toEqual(["10.0.0.1"]);
   });
 
   test("every field round-trips through save and read", async () => {
     const store = await storage();
-    expect(await saveGeneralSettings(store, input, boot)).toEqual({ ok: true });
-    expect(await readGeneralSettings(store, boot)).toMatchObject(input);
+    expect(await saveGeneralSettings(store, input, boot, "owner")).toEqual({
+      ok: true,
+    });
+    expect(await readGeneralSettings(store, boot, undefined)).toMatchObject(
+      input
+    );
   });
 
   test("saving writes the rows the rest of the install reads: the install language, the public address, the zone, the clock, the calendar and the switch", async () => {
     const store = await storage();
-    await saveGeneralSettings(store, input, boot);
+    await saveGeneralSettings(store, input, boot, "owner");
     expect(await store.settings.get(installLanguage)).toBe("en");
     expect(await store.settings.get(publicAddress)).toBe(
       "https://status.example.test"
@@ -142,37 +183,56 @@ describe("the general settings page", () => {
 
   test("the request log switch is off until saved on, and the entry reads the row it is saved to", async () => {
     const store = await storage();
-    expect((await readGeneralSettings(store, boot)).requestLog).toBe(false);
-    await saveGeneralSettings(store, { ...input, requestLog: true }, boot);
-    expect((await readGeneralSettings(store, boot)).requestLog).toBe(true);
+    expect((await readGeneralSettings(store, boot, undefined)).requestLog).toBe(
+      false
+    );
+    await saveGeneralSettings(
+      store,
+      { ...input, requestLog: true },
+      boot,
+      "owner"
+    );
+    expect((await readGeneralSettings(store, boot, undefined)).requestLog).toBe(
+      true
+    );
     expect(await store.settings.get(requestLogEnabled)).toBe(true);
-    await saveGeneralSettings(store, input, boot);
-    expect((await readGeneralSettings(store, boot)).requestLog).toBe(false);
+    await saveGeneralSettings(store, input, boot, "owner");
+    expect((await readGeneralSettings(store, boot, undefined)).requestLog).toBe(
+      false
+    );
   });
 
   test("saving moves the change counter: the time zone reads a heartbeat monitor's cron schedule, so the scheduler reads the settings again", async () => {
     const store = await storage();
     const before = await store.changeCounter();
-    await saveGeneralSettings(store, input, boot);
+    await saveGeneralSettings(store, input, boot, "owner");
     expect(await store.changeCounter()).toBe(before + 1);
   });
 
   test("the database row names the backend and is managed by environment only when DATABASE_URL is set", async () => {
     const store = await storage();
     const postgres = { backend: "postgres", settings: store.settings } as const;
-    const fromEnvironment = await readGeneralSettings(postgres, {
-      databaseUrlFromEnvironment: true,
-      trustedProxies: [],
-    });
+    const fromEnvironment = await readGeneralSettings(
+      postgres,
+      {
+        databaseUrlFromEnvironment: true,
+        trustedProxies: [],
+      },
+      undefined
+    );
     expect(fromEnvironment.database).toEqual({
       backend: "postgres",
       managedByEnvironment: true,
     });
     // The boot settings name no URL here, as when onboarding chose Postgres: the open storage names the backend before a restart.
-    const fromConfig = await readGeneralSettings(postgres, {
-      databaseUrlFromEnvironment: false,
-      trustedProxies: [],
-    });
+    const fromConfig = await readGeneralSettings(
+      postgres,
+      {
+        databaseUrlFromEnvironment: false,
+        trustedProxies: [],
+      },
+      undefined
+    );
     expect(fromConfig.database).toEqual({
       backend: "postgres",
       managedByEnvironment: false,
@@ -182,11 +242,13 @@ describe("the general settings page", () => {
   test("a database that stops answering is reported as unavailable, never thrown, and reading answers the defaults", async () => {
     const store = await storage();
     await store.close();
-    expect(await saveGeneralSettings(store, input, boot)).toEqual({
+    expect(await saveGeneralSettings(store, input, boot, "owner")).toEqual({
       ok: false,
       reason: "unavailable",
     });
-    expect((await readGeneralSettings(store, boot)).installLanguage).toBe("ar");
+    expect(
+      (await readGeneralSettings(store, boot, undefined)).installLanguage
+    ).toBe("ar");
   });
 });
 
@@ -198,11 +260,14 @@ describe("the trusted proxies on the general page", () => {
       await saveGeneralSettings(
         store,
         { ...input, trustedProxies: entries },
-        boot
+        boot,
+        "owner"
       )
     ).toEqual({ ok: true });
     expect(await store.settings.get(trustedProxies)).toEqual(entries);
-    expect((await readGeneralSettings(store, boot)).trustedProxies).toEqual({
+    expect(
+      (await readGeneralSettings(store, boot, undefined)).trustedProxies
+    ).toEqual({
       entries,
       managedByEnvironment: false,
     });
@@ -225,7 +290,8 @@ describe("the trusted proxies on the general page", () => {
           ...input,
           trustedProxies: ["10.0.0.1", bad],
         },
-        boot
+        boot,
+        "owner"
       );
       expect(saved, bad).toEqual({
         ok: false,
@@ -245,9 +311,15 @@ describe("the trusted proxies on the general page", () => {
         ...input,
         trustedProxies: ["10.0.0.1"],
       },
-      boot
+      boot,
+      "owner"
     );
-    await saveGeneralSettings(store, { ...input, trustedProxies: [] }, boot);
+    await saveGeneralSettings(
+      store,
+      { ...input, trustedProxies: [] },
+      boot,
+      "owner"
+    );
     expect(await store.settings.get(trustedProxies)).toEqual([]);
   });
 
@@ -259,19 +331,26 @@ describe("the trusted proxies on the general page", () => {
         ...input,
         trustedProxies: ["10.0.0.1"],
       },
-      boot
+      boot,
+      "owner"
     );
-    expect(await saveGeneralSettings(store, input, boot)).toEqual({ ok: true });
+    expect(await saveGeneralSettings(store, input, boot, "owner")).toEqual({
+      ok: true,
+    });
     expect(await store.settings.get(trustedProxies)).toEqual(["10.0.0.1"]);
   });
 
   test("with RAAQEB_TRUSTED_PROXIES set, the field shows the variable's entries, managed by environment, over any stored ones", async () => {
     const store = await storage();
     await store.settings.set(trustedProxies, ["10.0.0.1"]);
-    const settings = await readGeneralSettings(store, {
-      databaseUrlFromEnvironment: false,
-      trustedProxies: ["172.31.253.2"],
-    });
+    const settings = await readGeneralSettings(
+      store,
+      {
+        databaseUrlFromEnvironment: false,
+        trustedProxies: ["172.31.253.2"],
+      },
+      undefined
+    );
     expect(settings.trustedProxies).toEqual({
       entries: ["172.31.253.2"],
       managedByEnvironment: true,
@@ -286,7 +365,8 @@ describe("the trusted proxies on the general page", () => {
       await saveGeneralSettings(
         store,
         { ...input, trustedProxies: ["0.0.0.0/0"] },
-        managed
+        managed,
+        "owner"
       )
     ).toEqual({ ok: true });
     expect(await store.settings.get(trustedProxies)).toEqual(["10.0.0.1"]);
@@ -296,7 +376,8 @@ describe("the trusted proxies on the general page", () => {
       await saveGeneralSettings(
         store,
         { ...input, trustedProxies: ["proxy.internal"] },
-        managed
+        managed,
+        "owner"
       )
     ).toEqual({ ok: true });
     expect(await store.settings.get(trustedProxies)).toEqual(["10.0.0.1"]);

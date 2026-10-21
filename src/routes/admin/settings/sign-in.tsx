@@ -5,25 +5,30 @@ import {
   setResponseHeader,
 } from "@tanstack/react-start/server";
 import { useCallback } from "react";
+import { z } from "zod";
 import { AuthenticatorForm } from "@/admin/settings/authenticator-form.tsx";
 import {
   AuthEmailForm,
+  RequireSecondStepForm,
   SecondStepForm,
 } from "@/admin/settings/sign-in-forms.tsx";
 import { formWidth } from "@/admin/shell/page.tsx";
 import { CardsSkeleton } from "@/admin/shell/page-skeleton.tsx";
-import { operatorMiddleware } from "@/routes/-admin.ts";
+import { useAllows } from "@/admin/shell/role.tsx";
+import { permitted } from "@/routes/-admin.ts";
 import {
   chooseAuthEmailChannel,
   confirmApp,
   newBackupCodes,
   readSecondStep,
+  requireSecondStep,
   sendAuthTest,
   setUpApp,
   switchSecondStep,
   turnAppOff,
 } from "@/server/auth/second-step.ts";
 import { smtpTimeoutMs } from "@/server/notify/channel.ts";
+import { useMessages } from "@/shared/i18n/react.tsx";
 import {
   type AppConfirmInput,
   type AppConfirmResult,
@@ -35,12 +40,14 @@ import {
   appPasswordSchema,
   authEmailChannelSchema,
   type BackupCodesResult,
+  type RequireSecondStepResult,
   type SaveResult,
   type SecondStepInput,
   type SecondStepResult,
   type SecondStepView,
   secondStepSchema,
 } from "@/shared/schemas/settings.ts";
+import { Alert, AlertDescription } from "@/shared/ui/alert.tsx";
 import { cn } from "@/shared/ui/cn.ts";
 
 // The sign-in settings page: the email channel auth mail goes
@@ -49,14 +56,16 @@ import { cn } from "@/shared/ui/cn.ts";
 // Auth with the request's headers and put the session cookie it re-issues on
 // the response.
 const read = createServerFn({ method: "GET" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("profile")])
   .handler(
     async ({ context }): Promise<SecondStepView | undefined> =>
-      await readSecondStep(context.storage).catch(() => undefined)
+      await readSecondStep(context.storage, context.operator.id).catch(
+        () => undefined
+      )
   );
 
 const choose = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("security")])
   .validator(authEmailChannelSchema)
   .handler(
     ({ context, data }): Promise<SaveResult> =>
@@ -68,7 +77,7 @@ const testHoldSeconds = smtpTimeoutMs / 1000 + 10;
 
 // The channel picked on the screen, saved or not: the test is of what Save would store.
 const test = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("profile")])
   .validator(authEmailChannelSchema)
   .handler(({ context, data }): Promise<AuthTestResult> => {
     context.holdOpen(testHoldSeconds);
@@ -76,18 +85,20 @@ const test = createServerFn({ method: "POST" })
       context.storage,
       context.boot.installKey,
       { fetch, now: Date.now },
+      context.operator.id,
       data.channelId
     );
   });
 
 const change = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("profile")])
   .validator(secondStepSchema)
   .handler(async ({ context, data }): Promise<SecondStepResult> => {
     const result = await switchSecondStep(
       context.auth,
       new Headers(getRequestHeaders()),
       context.storage,
+      context.operator.id,
       data
     );
     if (result.ok && result.setCookies.length > 0) {
@@ -97,7 +108,7 @@ const change = createServerFn({ method: "POST" })
   });
 
 const setUp = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("profile")])
   .validator(appPasswordSchema)
   .handler(
     ({ context, data }): Promise<AppSetupResult> =>
@@ -105,7 +116,7 @@ const setUp = createServerFn({ method: "POST" })
   );
 
 const confirm = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("profile")])
   .validator(appConfirmSchema)
   .handler(async ({ context, data }): Promise<AppConfirmResult> => {
     const result = await confirmApp(
@@ -121,13 +132,14 @@ const confirm = createServerFn({ method: "POST" })
   });
 
 const appOff = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("profile")])
   .validator(appPasswordSchema)
   .handler(async ({ context, data }): Promise<SecondStepResult> => {
     const result = await turnAppOff(
       context.auth,
       new Headers(getRequestHeaders()),
       context.storage,
+      context.operator.id,
       data
     );
     // With no emailed codes ready the second step goes off too, and Better Auth re-issues the session.
@@ -137,8 +149,17 @@ const appOff = createServerFn({ method: "POST" })
     return result;
   });
 
+/** An owner requires a second step of every operator, or stops requiring it. */
+const requireSecondStepFn = createServerFn({ method: "POST" })
+  .middleware([permitted("security")])
+  .validator(z.object({ on: z.boolean() }))
+  .handler(
+    ({ context, data }): Promise<RequireSecondStepResult> =>
+      requireSecondStep(context.storage, context.operator, data.on)
+  );
+
 const newCodes = createServerFn({ method: "POST" })
-  .middleware([operatorMiddleware])
+  .middleware([permitted("profile")])
   .validator(appPasswordSchema)
   .handler(
     ({ context, data }): Promise<BackupCodesResult> =>
@@ -154,6 +175,7 @@ export const Route = createFileRoute("/admin/settings/sign-in")({
 function SignInSettingsPage() {
   const view = Route.useLoaderData();
   const router = useRouter();
+  const { t } = useMessages();
   // Through useServerFn, a redirect the session check throws navigates (an expired session goes to sign-in).
   const chooseFn = useServerFn(choose);
   const testFn = useServerFn(test);
@@ -162,6 +184,12 @@ function SignInSettingsPage() {
   const confirmFn = useServerFn(confirm);
   const newCodesFn = useServerFn(newCodes);
   const appOffFn = useServerFn(appOff);
+  const requireFn = useServerFn(requireSecondStepFn);
+  const allowed = useAllows();
+  const requireCall = useCallback(
+    (input: { readonly on: boolean }) => requireFn({ data: input }),
+    [requireFn]
+  );
   const chooseCall = useCallback(
     (input: AuthEmailChannelInput) => chooseFn({ data: input }),
     [chooseFn]
@@ -198,7 +226,15 @@ function SignInSettingsPage() {
   }
   return (
     <div className={cn("flex flex-col gap-6", formWidth)}>
+      {view.required && !view.on ? (
+        <Alert data-slot="second-step-required" variant="destructive">
+          <AlertDescription>
+            {t("setting_second_step_required_notice")}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <AuthEmailForm
+        canChoose={allowed("security")}
         choose={chooseCall}
         onChanged={refresh}
         sendTest={testCall}
@@ -213,6 +249,15 @@ function SignInSettingsPage() {
         turnOff={appOffCall}
         view={view}
       />
+      {allowed("settings") ? (
+        <RequireSecondStepForm
+          canChange={allowed("security")}
+          change={requireCall}
+          onChanged={refresh}
+          ownOn={view.on}
+          required={view.required}
+        />
+      ) : null}
     </div>
   );
 }
