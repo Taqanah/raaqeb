@@ -5,6 +5,7 @@ import {
   BellIcon,
   BlocksIcon,
   ChartLineIcon,
+  HistoryIcon,
   type IconProps,
   KeyboardIcon,
   LayoutIcon,
@@ -20,6 +21,7 @@ import type { NavIcon, PaletteAction } from "./navigation.ts";
 export const navIcons: Readonly<
   Record<NavIcon | PaletteAction, (props: IconProps) => ReactNode>
 > = {
+  audit: HistoryIcon,
   channels: BellIcon,
   components: BlocksIcon,
   incidents: TriangleAlertIcon,

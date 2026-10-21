@@ -15,6 +15,7 @@ import { errorNoticeIds } from "@/shared/i18n/messages.ts";
 /** The first segment of every message id: the area of the interface it belongs to. */
 export const areaPrefixes = [
   "app",
+  "audit",
   "auth",
   "channel",
   "component",

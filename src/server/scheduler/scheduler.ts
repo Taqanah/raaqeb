@@ -17,6 +17,7 @@
  * to exit when it is five minutes old.
  */
 
+import { purgeAudit } from "@/server/audit/audit.ts";
 import type { InstallKey } from "@/server/boot/installkey.ts";
 import {
   evaluateHeartbeat,
@@ -117,6 +118,7 @@ function sentWith(
 /** What the scheduler needs of storage; the storage module satisfies it. */
 export type SchedulerStorage = Pick<
   Storage,
+  | "audit"
   | "bump"
   | "certificates"
   | "changeCounter"
@@ -524,6 +526,8 @@ export function createScheduler(
     bump,
     expire: async (now) => {
       await storage.subscriptions.expire(now - confirmationLifetimeMs);
+      // Audit entries past the install's retention go with the day's purge.
+      await purgeAudit(storage, now);
     },
     isStopped,
   });

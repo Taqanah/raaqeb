@@ -218,8 +218,8 @@ test.describe("the fresh install, walked to the end and then used", () => {
     await expect(page.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
     await page.goto(`${freshOrigin}/admin/monitors`);
     await expect(page.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
-    // The reports and team pages among them, for the owner.
-    await expect(page.locator("nav a[data-nav]")).toHaveCount(9);
+    // The reports, team and audit log pages among them, for the owner.
+    await expect(page.locator("nav a[data-nav]")).toHaveCount(10);
     await page.goto(`${freshOrigin}/sign-out`);
     await expect(page.locator("html[lang=en][dir=ltr]")).toHaveCount(1);
     await page.goto(`${freshOrigin}/admin/settings/account`);

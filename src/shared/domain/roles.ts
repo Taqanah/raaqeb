@@ -33,6 +33,7 @@ export const permissions = [
   "channels",
   "settings",
   "team",
+  "audit",
   "owners",
   "transfer",
   "security",
@@ -42,7 +43,7 @@ export type Permission = (typeof permissions)[number];
 /** What each role adds to the role after it; the viewer's are its own. */
 const added: Readonly<Record<Role, readonly Permission[]>> = {
   owner: ["owners", "transfer", "security"],
-  admin: ["channels", "settings", "team"],
+  admin: ["channels", "settings", "team", "audit"],
   editor: ["monitors", "pages", "incidents_delete"],
   responder: ["check_now", "acknowledge", "incidents", "maintenance"],
   viewer: ["read", "profile"],

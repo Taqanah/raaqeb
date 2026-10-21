@@ -28,6 +28,7 @@ const matrix: Readonly<Record<Permission, string>> = {
   channels: "OA...",
   settings: "OA...",
   team: "OA...",
+  audit: "OA...",
   owners: "O....",
   transfer: "O....",
   security: "O....",

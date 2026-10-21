@@ -123,6 +123,7 @@ const expected: Readonly<Record<string, string>> = {
   "-team.ts deactivateFn": "OA...",
   "-team.ts reactivateFn": "OA...",
   "-team.ts removeFn": "OA...",
+  "admin/audit.tsx readAuditFn": "OA...",
   // An owner's: ownership, export and import, how operators sign in.
   "-team.ts transferOwnershipFn": "O....",
   "admin/settings/export.tsx readSizes": "O....",

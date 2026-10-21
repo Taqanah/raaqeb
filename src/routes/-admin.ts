@@ -10,11 +10,14 @@
 import { redirect } from "@tanstack/react-router";
 import { createMiddleware, createServerFn } from "@tanstack/react-start";
 import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
+import { record } from "@/server/audit/audit.ts";
 import {
   type Operator,
   operatorOfRequest,
   refusalOf,
 } from "@/server/auth/session.ts";
+import { clientAddressHeader } from "@/server/boot/proxies.ts";
+import { auditedFunctions } from "@/shared/domain/audit.ts";
 import type { Permission } from "@/shared/domain/roles.ts";
 
 /**
@@ -29,7 +32,7 @@ import type { Permission } from "@/shared/domain/roles.ts";
  */
 export function permitted(permission: Permission) {
   return createMiddleware({ type: "function" }).server(
-    async ({ context, next }) => {
+    async ({ context, data, method, next, serverFnMeta }) => {
       const signedIn = await operatorOfRequest(
         context.storage,
         context.boot,
@@ -55,8 +58,38 @@ export function permitted(permission: Permission) {
       if (refusal === "role") {
         throw redirect({ to: "/admin" });
       }
-      return next({ context: { auth, operator, storage } });
+      const done = await next({ context: { auth, operator, storage } });
+      // A change that went through is an audit entry (CONTEXT.md "Audit entry"), recorded here so no server function can leave it out.
+      const action =
+        method === "POST" ? auditedFunctions[keyOf(serverFnMeta)] : undefined;
+      const result: unknown = Reflect.get(done, "result");
+      if (action && succeeded(result)) {
+        await record(storage, {
+          action,
+          actor: { email: operator.email, id: operator.id },
+          address: getRequest().headers.get(clientAddressHeader) ?? undefined,
+          input: data,
+          now: Date.now(),
+        });
+      }
+      return done;
     }
+  );
+}
+
+/** A server function as the audit table names it: its file under src/routes and its name. */
+function keyOf(meta: { readonly filename: string; readonly name: string }) {
+  return `${meta.filename.slice(meta.filename.indexOf(routesFolder) + routesFolder.length)} ${meta.name}`;
+}
+const routesFolder = "routes/";
+
+/** Whether a server function's answer is not a refusal: every one answers `{ ok: false }` for one. */
+function succeeded(result: unknown): boolean {
+  return !(
+    typeof result === "object" &&
+    result !== null &&
+    "ok" in result &&
+    result.ok === false
   );
 }
 

@@ -19,6 +19,7 @@ import {
 import { generateRandomString } from "better-auth/crypto";
 import { betterAuth } from "better-auth/minimal";
 import { twoFactor } from "better-auth/plugins/two-factor";
+import { record } from "@/server/audit/audit.ts";
 import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import type { BootSettings } from "@/server/boot/settings.ts";
 import { error as logError, info as logInfo, reasonOf } from "@/server/log.ts";
@@ -117,6 +118,9 @@ async function forgetTrustedBrowsers(adapter: {
 }
 
 export interface CreateAuthInput {
+  /** The versioned secrets text. */
+  /** Writes each sign-in's audit entry. */
+  readonly audit?: AuthAudit;
   /** The public address as an origin, Better Auth's base URL and its one trusted origin; nothing before onboarding stores one, and then Better Auth infers it from the request. */
   readonly baseURL: string | undefined;
   readonly database: AuthDatabase;
@@ -125,7 +129,6 @@ export interface CreateAuthInput {
   /** Better Auth's own log lines, already prefixed; routed to stderr by default. */
   readonly log?: (line: string) => void;
   readonly mail: AuthMail;
-  /** The versioned secrets text. */
   readonly secrets: string;
   /** The identity provider operators may sign in with; none while single sign-on is off. */
   readonly sso?: SsoProvider;
@@ -325,41 +328,50 @@ function refused(returned: unknown): returned is APIError {
  * One log line per sign-in attempt over HTTP, with the client address and
  * never the email: a password that needs the second step waits, a code
  * that passes signs in. A plugin, so it runs after the two-factor plugin's
- * hook has decided whether a code is due. A 429 never reaches here.
+ * hook has decided whether a code is due. A 429 never reaches here. Each
+ * sign-in, and each refused one with the email typed, is also an audit
+ * entry; a sign-in that waits for its second step is one once the code
+ * passes.
  */
-function signInLog(log: (line: string) => void): BetterAuthPlugin {
+function signInLog(
+  log: (line: string) => void,
+  audit: AuthAudit | undefined
+): BetterAuthPlugin {
   return {
     hooks: {
       after: [
         {
-          handler: createAuthMiddleware((ctx) => {
-            const address =
-              ctx.request?.headers.get(clientAddressHeader) ??
-              "an unknown address";
+          handler: createAuthMiddleware(async (ctx) => {
+            const address = ctx.request?.headers.get(clientAddressHeader);
             const returned: unknown = ctx.context.returned;
             const pending =
               typeof returned === "object" &&
               returned !== null &&
               "twoFactorRedirect" in returned;
-            let event = "sign-in";
-            if (ctx.path === callbackPath) {
-              event = ctx.context.newSession
-                ? "sign-in through single sign-on"
-                : "sign-in through single sign-on refused";
-            } else if (refused(returned)) {
-              event =
-                ctx.path === "/sign-in/email"
-                  ? "sign-in refused"
-                  : "sign-in refused at the second step";
-            } else if (pending) {
-              event = "sign-in waits for the second step";
+            const user = ctx.context.newSession?.user;
+            log(
+              `${logEventOf(ctx.path, user !== undefined, returned, pending)} from ${address ?? "an unknown address"}`
+            );
+            if (pending) {
+              return;
             }
-            log(`${event} from ${address}`);
-            return Promise.resolve();
+            const method = methodOf(ctx.path);
+            const typed: unknown = ctx.body?.email;
+            await audit?.({
+              action: user ? "sign_in.succeed" : "sign_in.refuse",
+              actor: user && { email: user.email, id: user.id },
+              address: address ?? undefined,
+              // A refused sign-in names the email typed, never the password.
+              input:
+                user || typeof typed !== "string"
+                  ? { method }
+                  : { email: typed.toLowerCase(), method },
+            });
           }),
           matcher: (ctx) =>
             ctx.request !== undefined &&
             (ctx.path === "/sign-in/email" ||
+              ctx.path === "/invitation/accept" ||
               ctx.path === callbackPath ||
               finishingPaths.has(ctx.path ?? "")),
         },
@@ -368,6 +380,45 @@ function signInLog(log: (line: string) => void): BetterAuthPlugin {
     id: "raaqeb-sign-in-log",
   };
 }
+
+/** A sign-in attempt's log line, before its address. */
+function logEventOf(
+  path: string,
+  signedIn: boolean,
+  returned: unknown,
+  pending: boolean
+): string {
+  if (path === callbackPath) {
+    return signedIn
+      ? "sign-in through single sign-on"
+      : "sign-in through single sign-on refused";
+  }
+  if (refused(returned)) {
+    return path === "/sign-in/email"
+      ? "sign-in refused"
+      : "sign-in refused at the second step";
+  }
+  return pending ? "sign-in waits for the second step" : "sign-in";
+}
+
+/** How an endpoint signs in, as an audit entry names it. */
+function methodOf(path: string): string {
+  if (path === callbackPath) {
+    return "provider";
+  }
+  if (path === "/invitation/accept") {
+    return "invitation";
+  }
+  return path === "/sign-in/email" ? "password" : "second_step";
+}
+
+/** Writes a sign-in's audit entry (server/audit/audit.ts); none for an instance built without a storage's log. */
+export type AuthAudit = (event: {
+  readonly action: string;
+  readonly actor: { readonly email: string; readonly id: string } | undefined;
+  readonly address: string | undefined;
+  readonly input: unknown;
+}) => Promise<void>;
 
 /** The Better Auth instance for these inputs: minimal build, Argon2id, UUIDv7 ids, 7-day sessions refreshed daily, the disabled-paths list, the in-memory rate limit keyed on the address the entry resolved. */
 export function createAuth(input: CreateAuthInput) {
@@ -582,7 +633,7 @@ export function createAuth(input: CreateAuthInput) {
         // A trusted browser lasts Better Auth's default of 30 days, pinned by a test.
       }),
       invitationAccept(invitations, (role) => passwordRefused(sso, role)),
-      signInLog(log),
+      signInLog(log, input.audit),
       ...(sso ? [ssoPlugin(sso)] : []),
     ],
     rateLimit: {
@@ -752,6 +803,7 @@ async function buildFor(storage: Storage, boot: AuthBoot): Promise<Auth> {
     );
   }
   const auth = createAuth({
+    audit: (event) => record(storage, { ...event, now: Date.now() }),
     baseURL: address,
     database: storage.authDatabase,
     invitations: invitationGate(storage),

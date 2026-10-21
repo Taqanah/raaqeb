@@ -25,6 +25,7 @@ import { bumpChangeCounter } from "./counter.ts";
 
 /** The ids an import wrote, so a failed one can take them out again. */
 export interface Restored {
+  readonly auditEntries: readonly string[];
   readonly channels: readonly string[];
   readonly components: readonly string[];
   readonly groups: readonly string[];
@@ -133,6 +134,7 @@ function batches<Item>(items: readonly Item[], width: number): Item[][] {
 
 export function transferRepository(executor: Executor): TransferRepository {
   const {
+    auditEntries,
     authUser,
     channels,
     checks,
@@ -278,6 +280,34 @@ export function transferRepository(executor: Executor): TransferRepository {
     return fresh.map((account) => account.id);
   };
 
+  /** The audit log, oldest first, under the configuration's property names. */
+  const readAudit = async (
+    run: Executor
+  ): Promise<Configuration["auditEntries"]> =>
+    (
+      await run.rows<Configuration["auditEntries"][number]>(
+        sql`SELECT ${auditEntries.id} AS id, ${auditEntries.at} AS ${column("at")}, ${auditEntries.actorId} AS ${column("actorId")}, ${auditEntries.actorEmail} AS ${column("actorEmail")}, ${auditEntries.action} AS action, ${auditEntries.targetId} AS ${column("targetId")}, ${auditEntries.detail} AS detail, ${auditEntries.address} AS address FROM ${auditEntries} ORDER BY ${auditEntries.at}, ${auditEntries.id}`
+      )
+    ).map((row) => ({ ...row, at: Number(row.at) }));
+
+  /** Writes the entries the install lacks by id and answers their ids. */
+  const writeAudit = async (
+    run: Executor,
+    entries: Configuration["auditEntries"]
+  ): Promise<string[]> => {
+    const written: string[] = [];
+    for (const entry of entries) {
+      // biome-ignore lint/performance/noAwaitInLoops: one statement after another on the transaction's connection
+      const changed = await run.run(
+        sql`INSERT INTO ${auditEntries} (${column(auditEntries.id.name)}, ${column(auditEntries.at.name)}, ${column(auditEntries.actorId.name)}, ${column(auditEntries.actorEmail.name)}, ${column(auditEntries.action.name)}, ${column(auditEntries.targetId.name)}, ${column(auditEntries.detail.name)}, ${column(auditEntries.address.name)}) VALUES (${entry.id}, ${entry.at}, ${entry.actorId}, ${entry.actorEmail}, ${entry.action}, ${entry.targetId}, ${entry.detail}, ${entry.address}) ON CONFLICT (${column(auditEntries.id.name)}) DO NOTHING`
+      );
+      if (changed > 0) {
+        written.push(entry.id);
+      }
+    }
+    return written;
+  };
+
   const holds = async (run: Executor) =>
     (
       await run.rows(
@@ -299,7 +329,8 @@ export function transferRepository(executor: Executor): TransferRepository {
       | typeof probes
       | typeof groups
       | typeof tags
-      | typeof authUser,
+      | typeof authUser
+      | typeof auditEntries,
     ids: readonly string[]
   ) => {
     for (const batch of batches(ids, 1)) {
@@ -370,6 +401,7 @@ export function transferRepository(executor: Executor): TransferRepository {
           maintenanceComponents: await read(tx, "maintenanceComponents"),
           subscriptions: await read(tx, "subscriptions"),
           operatorAccounts: await readAccounts(tx),
+          auditEntries: await readAudit(tx),
         };
       }),
     historyCounts: async () => {
@@ -416,6 +448,7 @@ export function transferRepository(executor: Executor): TransferRepository {
         await removeIds(tx, groups, restored.groups);
         await removeIds(tx, tags, restored.tags);
         await removeIds(tx, authUser, restored.operatorAccounts);
+        await removeIds(tx, auditEntries, restored.auditEntries);
       }),
     restore: (configuration) =>
       executor.transaction(async (tx) => {
@@ -448,9 +481,11 @@ export function transferRepository(executor: Executor): TransferRepository {
           tx,
           configuration.operatorAccounts
         );
+        const audit = await writeAudit(tx, configuration.auditEntries);
         const idsOf = (rows: readonly { id: string }[]) =>
           rows.map((row) => row.id);
         return {
+          auditEntries: audit,
           channels: idsOf(written.channels),
           components: idsOf(written.components),
           groups: idsOf(written.groups),

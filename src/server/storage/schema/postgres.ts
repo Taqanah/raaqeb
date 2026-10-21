@@ -178,6 +178,22 @@ export const invitations = pgTable("invitations", {
   expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
 });
 
+/** One audit entry (CONTEXT.md "Audit entry"): who did what to what, from where, when. Written once, deleted only past retention. The actor's email is kept beside the id, so a removed account's entries still name it. */
+export const auditEntries = pgTable(
+  "audit_entries",
+  {
+    id: text().primaryKey(),
+    at: bigint({ mode: "number" }).notNull(),
+    actorId: text("actor_id"),
+    actorEmail: text("actor_email"),
+    action: text().notNull(),
+    targetId: text("target_id"),
+    detail: text().notNull(),
+    address: text(),
+  },
+  (table) => [index("audit_entries_at").on(table.at)]
+);
+
 // Monitors, groups and tags (CONTEXT.md "Group", "Tag"). The
 // check-type part of a monitor is JSON text parsed by shared/schemas/monitor.ts;
 // the columns are what the list, the scheduler and the filters read by name.

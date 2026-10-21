@@ -6195,6 +6195,242 @@ msgid "team_invitation_sso_only"
 msgstr "تُقبل هذه الدعوة عبر مزوّد الهوية."
 
 #. js-lingui-explicit-id
+msgid "audit_title"
+msgstr "سجل التدقيق"
+
+#. js-lingui-explicit-id
+msgid "audit_intro"
+msgstr "كل تغيير أجراه مشغّل، وكل تسجيل دخول ومحاولة مرفوضة، بالأحدث أولًا. يُحذف ما تجاوز مدة الاحتفاظ."
+
+#. js-lingui-explicit-id
+msgid "audit_unavailable"
+msgstr "تعذرت قراءة السجل. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
+msgid "audit_empty"
+msgstr "لا مدخلات تطابق."
+
+#. js-lingui-explicit-id
+msgid "audit_filter_actor"
+msgstr "الحساب"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_kind"
+msgstr "النوع"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_all"
+msgstr "الكل"
+
+#. js-lingui-explicit-id
+msgid "audit_column_action"
+msgstr "الإجراء"
+
+#. js-lingui-explicit-id
+msgid "audit_column_actor"
+msgstr "من"
+
+#. js-lingui-explicit-id
+msgid "audit_column_target"
+msgstr "السجل"
+
+#. js-lingui-explicit-id
+msgid "audit_column_address"
+msgstr "العنوان"
+
+#. js-lingui-explicit-id
+msgid "audit_column_time"
+msgstr "الوقت"
+
+#. js-lingui-explicit-id
+msgid "audit_older"
+msgstr "الأقدم"
+
+#. js-lingui-explicit-id
+msgid "audit_nobody"
+msgstr "بلا حساب"
+
+#. js-lingui-explicit-id
+msgid "audit_action"
+msgstr "{verb}: {target}"
+
+#. js-lingui-explicit-id
+msgid "audit_target_account"
+msgstr "الحساب"
+
+#. js-lingui-explicit-id
+msgid "audit_target_appearance"
+msgstr "المظهر"
+
+#. js-lingui-explicit-id
+msgid "audit_target_auth_mail"
+msgstr "قناة بريد الدخول"
+
+#. js-lingui-explicit-id
+msgid "audit_target_channel"
+msgstr "قناة إشعار"
+
+#. js-lingui-explicit-id
+msgid "audit_target_component"
+msgstr "مكوّن"
+
+#. js-lingui-explicit-id
+msgid "audit_target_incident"
+msgstr "حادثة"
+
+#. js-lingui-explicit-id
+msgid "audit_target_invitation"
+msgstr "دعوة"
+
+#. js-lingui-explicit-id
+msgid "audit_target_maintenance"
+msgstr "وقت صيانة"
+
+#. js-lingui-explicit-id
+msgid "audit_target_member"
+msgstr "حساب مشغّل"
+
+#. js-lingui-explicit-id
+msgid "audit_target_metrics"
+msgstr "المقاييس"
+
+#. js-lingui-explicit-id
+msgid "audit_target_monitor"
+msgstr "مراقبة"
+
+#. js-lingui-explicit-id
+msgid "audit_target_outage"
+msgstr "انقطاع"
+
+#. js-lingui-explicit-id
+msgid "audit_target_ownership"
+msgstr "الملكية"
+
+#. js-lingui-explicit-id
+msgid "audit_target_page"
+msgstr "صفحة حالة"
+
+#. js-lingui-explicit-id
+msgid "audit_target_password"
+msgstr "كلمة المرور"
+
+#. js-lingui-explicit-id
+msgid "audit_target_probe"
+msgstr "مسبار"
+
+#. js-lingui-explicit-id
+msgid "audit_target_second_step"
+msgstr "الاستيثاق الثنائي"
+
+#. js-lingui-explicit-id
+msgid "audit_target_series"
+msgstr "صيانة متكررة"
+
+#. js-lingui-explicit-id
+msgid "audit_target_session"
+msgstr "الجلسات"
+
+#. js-lingui-explicit-id
+msgid "audit_target_settings"
+msgstr "الإعدادات العامة"
+
+#. js-lingui-explicit-id
+msgid "audit_target_sign_in"
+msgstr "تسجيل الدخول"
+
+#. js-lingui-explicit-id
+msgid "audit_target_sso"
+msgstr "الدخول الموحد"
+
+#. js-lingui-explicit-id
+msgid "audit_target_storage"
+msgstr "التخزين"
+
+#. js-lingui-explicit-id
+msgid "audit_target_subscriber"
+msgstr "مشترك"
+
+#. js-lingui-explicit-id
+msgid "audit_target_transfer"
+msgstr "التصدير والاستيراد"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_acknowledge"
+msgstr "إقرار"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_change"
+msgstr "تغيير"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_check"
+msgstr "فحص الآن"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_create"
+msgstr "إنشاء"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_deactivate"
+msgstr "تعطيل"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_delete"
+msgstr "حذف"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_end"
+msgstr "إنهاء"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_export"
+msgstr "تصدير"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_import"
+msgstr "استيراد"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_pause"
+msgstr "إيقاف مؤقت"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_post"
+msgstr "نشر تحديث"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_reactivate"
+msgstr "إعادة تنشيط"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_refuse"
+msgstr "رفض"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_reset"
+msgstr "إعادة تعيين"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_resume"
+msgstr "استئناف"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_revoke"
+msgstr "إلغاء"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_send"
+msgstr "إرسال من جديد"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_succeed"
+msgstr "نجاح"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_upload"
+msgstr "رفع صورة"
+
+#. js-lingui-explicit-id
 msgid "channel_line_locations"
 msgstr "رُصدت متعطّلة من: {value}"
 

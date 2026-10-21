@@ -23,13 +23,18 @@ _Avoid_: admin user, root, superuser, user, member
 
 **Role**:
 Arabic: دور (الجمع: أدوار). Roles: مالك، مدير، محرّر، مستجيب، مشاهد.
-What an operator account may do, one of five, each allowing everything the next one does: a viewer reads the admin area; a responder also runs "check now", acknowledges outages, writes incidents and schedules maintenance; an editor also changes monitors, status pages and components and deletes incidents; an admin also changes notification channels and settings and manages every account but an owner's; an owner also gives and takes the owner role, exports and imports, and sets how operators sign in. Every operator, whatever the role, changes their own account. An install always has at least one owner who is not deactivated.
+What an operator account may do, one of five, each allowing everything the next one does: a viewer reads the admin area; a responder also runs "check now", acknowledges outages, writes incidents and schedules maintenance; an editor also changes monitors, status pages and components and deletes incidents; an admin also changes notification channels and settings, reads the audit log and manages every account but an owner's; an owner also gives and takes the owner role, exports and imports, and sets how operators sign in. Every operator, whatever the role, changes their own account. An install always has at least one owner who is not deactivated.
 _Avoid_: permission level, access level, group, admin (alone, for the area)
 
 **Invitation**:
 Arabic: دعوة
 An owner's or admin's offer of an operator account to one email address with one role: a single-use link, emailed through the auth email channel when one exists and always shown for copying, that works for seven days. Accepting it sets the name and password and signs in; under single sign-on, signing in through the identity provider with that address accepts it too. Sending it again makes a new link and the old one stops working; revoking it stops it at once. It stays open only while its sender may still give its role. An address that already has an account cannot be invited.
 _Avoid_: invite code, sign-up link, magic link
+
+**Audit entry**:
+Arabic: مُدخل في سجل التدقيق; the page is سجل التدقيق
+One record of who did what to what, from which address and when: a change an operator made in the admin area, a sign-in, or a refused sign-in with the email typed. It keeps what was asked without secrets, never what a password or key was. Entries are only added, read by owners and admins, travel in the export, and are deleted once older than the install's retention.
+_Avoid_: activity feed, history (that is a monitor's checks), event (that is a monitor's change of state), log (alone: that is the server's output)
 
 **Deactivated**:
 Arabic: معطّل

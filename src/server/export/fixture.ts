@@ -442,6 +442,27 @@ export async function sourceInstall(): Promise<Install & { ids: SourceIds }> {
     "INSERT INTO auth_two_factor (id, user_id, secret, backup_codes, verified) VALUES ('t-owner', ?, 'the source app secret', 'the source backup codes', 1)",
     [sourceOwnerId]
   );
+  // Two audit entries: the owner's change of a monitor, and a refused sign-in with no account.
+  await source.storage.audit.append({
+    action: "monitor.change",
+    actorEmail: "owner@source.example.test",
+    actorId: sourceOwnerId,
+    address: "203.0.113.7",
+    at: now - hour,
+    detail: { name: "API" },
+    id: "01900000-0000-7000-8000-00000000e001",
+    targetId: api.id,
+  });
+  await source.storage.audit.append({
+    action: "sign_in.refuse",
+    actorEmail: null,
+    actorId: null,
+    address: null,
+    at: now - minute,
+    detail: { email: "who@example.test", method: "password" },
+    id: "01900000-0000-7000-8000-00000000e002",
+    targetId: null,
+  });
   source.at(now);
   return {
     ...source,

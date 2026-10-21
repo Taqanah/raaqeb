@@ -21,6 +21,7 @@ export type NavIcon =
   | "maintenance"
   | "channels"
   | "team"
+  | "audit"
   | "settings";
 
 export interface NavItem {
@@ -113,6 +114,13 @@ export const navigation: readonly NavGroup[] = [
         label: "team_title",
         permission: "team",
         to: "/admin/team",
+      },
+      {
+        icon: "audit",
+        id: "audit",
+        label: "audit_title",
+        permission: "audit",
+        to: "/admin/audit",
       },
       {
         icon: "settings",

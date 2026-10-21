@@ -70,8 +70,11 @@ describe("the configuration export and import carry", () => {
       if (name === "operatorAccounts") {
         continue;
       }
+      // The audit log is carried whole, its default for a file written before it unwrapped.
       const carried = Object.keys(
-        configurationSchema.shape[name as ConfigurationTable].element.shape
+        name === "auditEntries"
+          ? configurationSchema.shape.auditEntries.unwrap().element.shape
+          : configurationSchema.shape[name as ConfigurationTable].element.shape
       ).sort(byName);
       for (const dialect of [tables.sqlite, tables.postgres]) {
         const table = dialect[name as keyof typeof dialect];

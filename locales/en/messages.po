@@ -6195,6 +6195,242 @@ msgid "team_invitation_sso_only"
 msgstr "This invitation is accepted through the identity provider."
 
 #. js-lingui-explicit-id
+msgid "audit_title"
+msgstr "Audit log"
+
+#. js-lingui-explicit-id
+msgid "audit_intro"
+msgstr "Every change an operator made, and every sign-in and refused attempt, newest first. Entries past the retention period are deleted."
+
+#. js-lingui-explicit-id
+msgid "audit_unavailable"
+msgstr "The log could not be read. Try again."
+
+#. js-lingui-explicit-id
+msgid "audit_empty"
+msgstr "No entries match."
+
+#. js-lingui-explicit-id
+msgid "audit_filter_actor"
+msgstr "Account"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_kind"
+msgstr "Kind"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_all"
+msgstr "All"
+
+#. js-lingui-explicit-id
+msgid "audit_column_action"
+msgstr "Action"
+
+#. js-lingui-explicit-id
+msgid "audit_column_actor"
+msgstr "Who"
+
+#. js-lingui-explicit-id
+msgid "audit_column_target"
+msgstr "Record"
+
+#. js-lingui-explicit-id
+msgid "audit_column_address"
+msgstr "Address"
+
+#. js-lingui-explicit-id
+msgid "audit_column_time"
+msgstr "Time"
+
+#. js-lingui-explicit-id
+msgid "audit_older"
+msgstr "Older"
+
+#. js-lingui-explicit-id
+msgid "audit_nobody"
+msgstr "No account"
+
+#. js-lingui-explicit-id
+msgid "audit_action"
+msgstr "{target}: {verb}"
+
+#. js-lingui-explicit-id
+msgid "audit_target_account"
+msgstr "Account"
+
+#. js-lingui-explicit-id
+msgid "audit_target_appearance"
+msgstr "Appearance"
+
+#. js-lingui-explicit-id
+msgid "audit_target_auth_mail"
+msgstr "Sign-in mail channel"
+
+#. js-lingui-explicit-id
+msgid "audit_target_channel"
+msgstr "Notification channel"
+
+#. js-lingui-explicit-id
+msgid "audit_target_component"
+msgstr "Component"
+
+#. js-lingui-explicit-id
+msgid "audit_target_incident"
+msgstr "Incident"
+
+#. js-lingui-explicit-id
+msgid "audit_target_invitation"
+msgstr "Invitation"
+
+#. js-lingui-explicit-id
+msgid "audit_target_maintenance"
+msgstr "Maintenance window"
+
+#. js-lingui-explicit-id
+msgid "audit_target_member"
+msgstr "Operator account"
+
+#. js-lingui-explicit-id
+msgid "audit_target_metrics"
+msgstr "Metrics"
+
+#. js-lingui-explicit-id
+msgid "audit_target_monitor"
+msgstr "Monitor"
+
+#. js-lingui-explicit-id
+msgid "audit_target_outage"
+msgstr "Outage"
+
+#. js-lingui-explicit-id
+msgid "audit_target_ownership"
+msgstr "Ownership"
+
+#. js-lingui-explicit-id
+msgid "audit_target_page"
+msgstr "Status page"
+
+#. js-lingui-explicit-id
+msgid "audit_target_password"
+msgstr "Password"
+
+#. js-lingui-explicit-id
+msgid "audit_target_probe"
+msgstr "Probe"
+
+#. js-lingui-explicit-id
+msgid "audit_target_second_step"
+msgstr "Second step"
+
+#. js-lingui-explicit-id
+msgid "audit_target_series"
+msgstr "Recurring maintenance"
+
+#. js-lingui-explicit-id
+msgid "audit_target_session"
+msgstr "Sessions"
+
+#. js-lingui-explicit-id
+msgid "audit_target_settings"
+msgstr "General settings"
+
+#. js-lingui-explicit-id
+msgid "audit_target_sign_in"
+msgstr "Sign-in"
+
+#. js-lingui-explicit-id
+msgid "audit_target_sso"
+msgstr "Single sign-on"
+
+#. js-lingui-explicit-id
+msgid "audit_target_storage"
+msgstr "Storage"
+
+#. js-lingui-explicit-id
+msgid "audit_target_subscriber"
+msgstr "Subscriber"
+
+#. js-lingui-explicit-id
+msgid "audit_target_transfer"
+msgstr "Export and import"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_acknowledge"
+msgstr "acknowledged"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_change"
+msgstr "changed"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_check"
+msgstr "checked now"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_create"
+msgstr "created"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_deactivate"
+msgstr "deactivated"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_delete"
+msgstr "deleted"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_end"
+msgstr "ended"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_export"
+msgstr "exported"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_import"
+msgstr "imported"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_pause"
+msgstr "paused"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_post"
+msgstr "update posted"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_reactivate"
+msgstr "reactivated"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_refuse"
+msgstr "refused"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_reset"
+msgstr "reset"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_resume"
+msgstr "resumed"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_revoke"
+msgstr "revoked"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_send"
+msgstr "sent again"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_succeed"
+msgstr "succeeded"
+
+#. js-lingui-explicit-id
+msgid "audit_verb_upload"
+msgstr "image uploaded"
+
+#. js-lingui-explicit-id
 msgid "channel_line_locations"
 msgstr "Seen down from: {value}"
 

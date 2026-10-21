@@ -10,6 +10,7 @@ import {
 } from "./export.ts";
 
 const empty: Configuration = {
+  auditEntries: [],
   channels: [],
   componentGroups: [],
   componentMonitors: [],

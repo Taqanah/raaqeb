@@ -63,6 +63,10 @@ An address that already has an account signs in as it once the provider says the
 
 If the provider's discovery document does not answer within five seconds, the button stays and the provider is tried again a minute later; passwords keep working meanwhile.
 
+## The audit log
+
+Owners and admins read the audit log from the sidebar: every change an operator made in the admin area, every sign-in, and every refused sign-in with the email typed, newest first, with who, the record, the client address (behind your trusted proxies) and the time. Filter it by account or by kind. An entry keeps what was asked without its secrets (never a password, a key or a token), is never changed, travels in the export, and is deleted once it is older than the install's retention.
+
 ## When a password is lost
 
 `raaqeb reset-password <email>` prints a reset link for the account with that email ([commands](/en/docs/operate/commands)). An owner who lost theirs can use it from the server.

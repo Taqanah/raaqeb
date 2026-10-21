@@ -334,14 +334,29 @@ export const configurationSchema = z.object({
       })
     )
     .default([]),
+  // The audit log (CONTEXT.md "Audit entry"), each entry's detail as its stored JSON text; a file written before it carries none.
+  auditEntries: z
+    .array(
+      z.object({
+        id,
+        at: timeCodec,
+        actorId: id.nullable(),
+        actorEmail: plain.nullable(),
+        action: plain,
+        targetId: plain.nullable(),
+        detail: plain,
+        address: plain.nullable(),
+      })
+    )
+    .default([]),
 });
 
 /** The configuration as storage holds it: what `configurationSchema` decodes to. */
 export type Configuration = z.output<typeof configurationSchema>;
-/** The stored tables a configuration lists in their own columns; the accounts are read and written apart, as Better Auth's table. */
+/** The stored tables a configuration lists in their own columns; the accounts and the audit log are read and written apart. */
 export type ConfigurationTable = Exclude<
   keyof Configuration,
-  "operatorAccounts"
+  "auditEntries" | "operatorAccounts"
 >;
 
 /** The first line of the file. */
