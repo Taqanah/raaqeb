@@ -59,6 +59,7 @@ import {
   bringForward,
   dueMonitors,
   eventsOf,
+  failedWhileUp,
   type MonitorEvent,
   movesCounter,
   reconcileSchedule,
@@ -410,7 +411,13 @@ export function createScheduler(
       check.result === "down"
         ? undefined
         : await storage.outages.close(monitor.id, check.startedAt);
-    const settlement = { check, closed, opened, previous };
+    const { detail } = outcome;
+    // What the failing heartbeat behind a heartbeat_failed check carried, for the notification.
+    const failure =
+      detail?.params.reason === "heartbeat_failed"
+        ? { exitCode: detail.params.exitCode, message: detail.error }
+        : undefined;
+    const settlement = { check, closed, failure, opened, previous };
     for (const event of eventsOf(settlement)) {
       options.onEvent?.(event);
       // biome-ignore lint/performance/noAwaitInLoops: a settlement raises at most two events, queued in order
@@ -421,14 +428,17 @@ export function createScheduler(
     }
   }
 
-  /** A heartbeat monitor's run: its window's one check from the latest heartbeat, then the heartbeats past the latest hundred go. */
+  /** A heartbeat monitor's run: its window's one check from the latest heartbeat, or from the failing heartbeat that brought the evaluation forward, then the heartbeats past the latest hundred go. */
   async function evaluateWindow(
     entry: ScheduleEntry,
-    now: number
+    now: number,
+    failed?: Heartbeat
   ): Promise<CheckOutcome> {
     const { id } = entry.monitor;
     // Only what arrived before this evaluation's time: a heartbeat landing while it reads belongs to the next window.
-    const latest = await storage.heartbeats.latest([id], now);
+    const latest = failed
+      ? new Map([[id, failed]])
+      : await storage.heartbeats.latest([id], now);
     await storage.heartbeats
       .prune(id, heartbeatsKept)
       .catch((error: unknown) => {
@@ -439,6 +449,7 @@ export function createScheduler(
     return evaluateHeartbeat({
       graceMs: entry.graceMs,
       lastArrivedAt: latest.get(id)?.arrivedAt,
+      lastFailure: latest.get(id)?.failure,
       monitorId: id,
       now,
       since: entry.since,
@@ -447,11 +458,12 @@ export function createScheduler(
 
   function runOf(
     monitor: Monitor,
-    now: number
+    now: number,
+    failed?: Heartbeat
   ): Promise<CheckOutcome> | undefined {
     if (monitor.config.type === "heartbeat") {
       const entry = schedule?.get(monitor.id);
-      return entry && evaluateWindow(entry, now);
+      return entry && evaluateWindow(entry, now, failed);
     }
     return runCheck(
       { ...monitor, credentials: credentials.get(monitor.id) },
@@ -459,13 +471,19 @@ export function createScheduler(
     );
   }
 
-  function start(monitor: Monitor, now: number): void {
+  function start(monitor: Monitor, now: number, failed?: Heartbeat): void {
     // The run takes the window as it stands before afterCheck opens the next one.
-    const run = runOf(monitor, now);
+    const run = runOf(monitor, now, failed);
     if (!(run && schedule)) {
       return;
     }
-    schedule = afterCheck(schedule, monitor.id, now, timeZone);
+    schedule = afterCheck(
+      schedule,
+      monitor.id,
+      now,
+      timeZone,
+      failed && failed.arrivedAt + 1
+    );
     const flight = run
       .then((outcome) => {
         const settlement = settle(monitor, outcome);
@@ -485,22 +503,25 @@ export function createScheduler(
     flightStarts.set(monitor.id, now);
   }
 
-  /** Evaluates now each down heartbeat monitor that heard a heartbeat since its window opened, rather than at the window's end. One read, and only while one is down. */
-  async function startRecovered(now: number): Promise<void> {
-    const down = [...(schedule?.values() ?? [])]
+  /** Evaluates now each heartbeat monitor whose heartbeats since its window opened say what its state does not: a down monitor whose latest heartbeat says the job ran, and a monitor that is not down that heard any failure, even one a heartbeat that says the job ran followed. Reads only what each kind needs: the latest heartbeats of the down ones, the latest failures of the others. */
+  async function startHeard(now: number): Promise<void> {
+    const heartbeatMonitors = [...(schedule?.values() ?? [])]
       .map(({ monitor }) => monitor)
-      .filter(
-        (monitor) =>
-          monitor.config.type === "heartbeat" &&
-          states.get(monitor.id) === "down"
-      )
+      .filter((monitor) => monitor.config.type === "heartbeat")
       .map((monitor) => monitor.id);
-    if (down.length === 0) {
-      return;
-    }
+    const down = heartbeatMonitors.filter((id) => states.get(id) === "down");
+    const notDown = heartbeatMonitors.filter((id) => states.get(id) !== "down");
     let latest: ReadonlyMap<string, Heartbeat>;
+    let failures: ReadonlyMap<string, Heartbeat>;
     try {
-      latest = await storage.heartbeats.latest(down, now);
+      [latest, failures] = await Promise.all([
+        down.length > 0
+          ? storage.heartbeats.latest(down, now)
+          : new Map<string, Heartbeat>(),
+        notDown.length > 0
+          ? storage.heartbeats.lastFailures(notDown, now)
+          : new Map<string, Heartbeat>(),
+      ]);
     } catch (error) {
       logError(
         `the scheduler could not read the heartbeats: ${reasonOf(error)}`
@@ -510,16 +531,28 @@ export function createScheduler(
     if (stopped || !schedule) {
       return;
     }
-    const arrivals = new Map(
-      [...latest].map(([id, heartbeat]) => [id, heartbeat.arrivedAt])
+    // A down monitor recovers on a heartbeat that says the job ran; a failure while down waits for the window's end.
+    const ran = new Map(
+      [...latest]
+        .filter(([, heartbeat]) => !heartbeat.failure)
+        .map(([id, heartbeat]) => [id, heartbeat.arrivedAt])
     );
-    for (const monitor of arrivedWhileDown(
+    const flying = new Set(inFlight.keys());
+    // Both lists are read before any evaluation starts, which moves the schedule.
+    const recovered = arrivedWhileDown(schedule, states, ran, flying);
+    const failed = failedWhileUp(
       schedule,
       states,
-      arrivals,
-      new Set(inFlight.keys())
-    )) {
+      new Map(
+        [...failures].map(([id, heartbeat]) => [id, heartbeat.arrivedAt])
+      ),
+      flying
+    );
+    for (const monitor of recovered) {
       start(monitor, now);
+    }
+    for (const monitor of failed) {
+      start(monitor, now, failures.get(monitor.id));
     }
   }
 
@@ -565,6 +598,9 @@ export function createScheduler(
       schedule = bringForward(schedule, requested, now);
       requested.clear();
     }
+    // Before the due windows, so a failure heard inside one is evaluated as itself, with its message, and not lost to a later heartbeat that says the job ran; what it starts is in flight, and the due loop leaves it.
+    await startHeard(now);
+    // The schedule as startHeard left it: its evaluations opened their next windows.
     for (const monitor of dueMonitors(
       schedule,
       new Set(inFlight.keys()),
@@ -572,7 +608,6 @@ export function createScheduler(
     )) {
       start(monitor, now);
     }
-    await startRecovered(now);
     if (monitorsRead) {
       operator.remind(now, monitors, (id) => states.get(id) === "down");
     }

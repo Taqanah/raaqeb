@@ -715,6 +715,60 @@ test("the form creates a heartbeat monitor and opens its edit page, where the ne
   await expect(page.locator("input[name=every]")).toHaveValue("2");
 });
 
+test("a job that reports failure takes its heartbeat monitor down at once with its message, and the next heartbeat that says it ran brings it back", async ({
+  page,
+  request,
+}) => {
+  await signIn(page, "/admin/monitors/new");
+  await page.fill("input[name=name]", "Report job");
+  await page.click("[role=radio][data-value=heartbeat]");
+  await page.fill("input[name=every]", "2");
+  await page.click(
+    "[role=radiogroup][data-name=everyUnit] [role=radio][data-value=hours]"
+  );
+  await page.click("[data-slot=save-monitor]");
+  await expect.poll(() => new URL(page.url()).pathname).toMatch(editPath);
+  const [, , , id] = new URL(page.url()).pathname.split("/");
+  const url =
+    (await page.locator("[data-slot=heartbeat-url]").textContent()) ?? "";
+  // A status it does not know is a plain heartbeat, as any query was before.
+  expect((await request.get(`${url}?status=sideways`)).status()).toBe(200);
+  // The scheduler opens the monitor's first window within a tick of the save, and a heartbeat that comes before it is no window's, so the job tells again until the monitor is down.
+  await expect
+    .poll(async () => {
+      const told = await request.post(`${url}/fail?exit=2`, {
+        data: "dump failed:\ndisk full",
+      });
+      expect(told.status()).toBe(200);
+      expect(await told.text()).toBe("OK");
+      await page.goto(`${englishOrigin}/admin/monitors/${id}`);
+      return await page.evaluate(
+        () =>
+          document
+            .querySelector("[data-slot=monitor-state]")
+            ?.getAttribute("data-state") ?? "none"
+      );
+    })
+    .toBe("down");
+  const last = page.locator("[data-slot=last-heartbeat]");
+  await expect(last).toContainText("Failed");
+  await expect(last).toContainText("dump failed: disk full");
+  await expect(last).toContainText("2");
+  await expect
+    .poll(async () => {
+      expect((await request.get(url)).status()).toBe(200);
+      await page.goto(`${englishOrigin}/admin/monitors/${id}`);
+      return await page.evaluate(
+        () =>
+          document
+            .querySelector("[data-slot=monitor-state]")
+            ?.getAttribute("data-state") ?? "none"
+      );
+    })
+    .toBe("up");
+  await expect(last).toContainText("Succeeded");
+});
+
 test("a Docker monitor's form lists the daemon's containers until the endpoint changes, one click names the container and test now reaches it; with no session the list goes to sign-in", async ({
   context,
   page,

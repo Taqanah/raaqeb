@@ -35,6 +35,7 @@ describe("the reason dictionary", () => {
       tls_required: 22,
       smtp_no_greeting: 23,
       smtp_stalled: 24,
+      heartbeat_failed: 25,
     });
   });
 
@@ -97,5 +98,24 @@ describe("the reason dictionary", () => {
     expect(
       reasonParamsSchema.safeParse({ reason: "later_reason" }).success
     ).toBe(false);
+  });
+});
+
+describe("the heartbeat_failed reason", () => {
+  test("carries the exit code the job gave, or none", () => {
+    expect(
+      reasonParamsSchema.safeParse({ exitCode: 2, reason: "heartbeat_failed" })
+        .success
+    ).toBe(true);
+    expect(
+      reasonParamsSchema.safeParse({ reason: "heartbeat_failed" }).success
+    ).toBe(true);
+    expect(
+      reasonParamsSchema.safeParse({
+        exitCode: 256,
+        reason: "heartbeat_failed",
+      }).success
+    ).toBe(false);
+    expect(reasonName(25)).toBe("heartbeat_failed");
   });
 });

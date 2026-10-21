@@ -40,11 +40,19 @@ async function namedByPages(): Promise<
 }
 
 describe("the API reference", () => {
-  test("shows a heartbeat's GET, HEAD and POST as one entry", () => {
+  test("shows a heartbeat's GET and HEAD as one entry, and its POST, which has a body for the failure's message, as another", () => {
     const entries = operationsAt(doc, "/api/heartbeat/{token}");
-    expect(entries).toHaveLength(1);
-    expect(entries[0]?.methods).toEqual(["get", "head", "post"]);
-    expect(entries[0]?.paths).toEqual(["/api/heartbeat/{token}"]);
+    expect(entries.map((entry) => entry.methods)).toEqual([
+      ["get", "head"],
+      ["post"],
+    ]);
+    expect(entries.map((entry) => entry.paths)).toEqual([
+      ["/api/heartbeat/{token}"],
+      ["/api/heartbeat/{token}"],
+    ]);
+    expect(entries[1]?.requestBodies).toEqual([
+      { mediaType: "text/plain", schema: { type: "string" } },
+    ]);
   });
 
   test("shows a badge's four addresses as one entry, with every address's path parameters", () => {

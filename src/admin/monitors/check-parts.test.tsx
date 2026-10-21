@@ -170,6 +170,47 @@ describe("the failure detail of a container that is not running", () => {
     );
     expect(html).toContain('data-slot="token" dir="ltr">restarting (1)</bdi>');
   });
+
+  test("shows the message a failing heartbeat carried as text that follows its own direction, not as a left-to-right token", () => {
+    const html = render(
+      "ar",
+      <FailureDetail
+        failure={{
+          error: "فشل النسخ الاحتياطي",
+          params: { exitCode: 2, reason: "heartbeat_failed" },
+        }}
+      />
+    );
+    expect(html).toContain('dir="auto"');
+    expect(html).toContain("فشل النسخ الاحتياطي");
+    expect(html).not.toContain(
+      'data-slot="token" dir="ltr">فشل النسخ الاحتياطي'
+    );
+  });
+
+  test("shows the exit code and the message a failing heartbeat carried, and no exit line when it gave none", () => {
+    const withCode = render(
+      "en",
+      <FailureDetail
+        failure={{
+          error: "dump failed",
+          params: { exitCode: 2, reason: "heartbeat_failed" },
+        }}
+      />
+    );
+    expect(withCode).toContain('data-slot="token" dir="ltr">exit 2</bdi>');
+    expect(withCode).toContain("dump failed");
+    const without = render(
+      "en",
+      <FailureDetail
+        failure={{
+          error: undefined,
+          params: { reason: "heartbeat_failed" },
+        }}
+      />
+    );
+    expect(without).not.toContain("exit ");
+  });
 });
 
 describe("a check's response time", () => {

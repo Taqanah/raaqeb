@@ -1415,6 +1415,10 @@ msgid "reason_smtp_stalled"
 msgstr "توقف خادوم SMTP عن الإجابة أثناء الإرسال"
 
 #. js-lingui-explicit-id
+msgid "reason_heartbeat_failed"
+msgstr "أبلغت المهمة عن فشلها"
+
+#. js-lingui-explicit-id
 msgid "monitor_status_up"
 msgstr "يعمل"
 
@@ -2039,16 +2043,28 @@ msgid "monitor_heartbeat_command"
 msgstr "مثلًا في آخر المهمة:"
 
 #. js-lingui-explicit-id
-msgid "monitor_heartbeat_last"
-msgstr "آخر نبضة"
-
-#. js-lingui-explicit-id
-msgid "monitor_heartbeat_source"
-msgstr "عنوان المصدر"
+msgid "monitor_heartbeat_fail_command"
+msgstr "وإذا فشلت، فتستدعي رابط الفشل:"
 
 #. js-lingui-explicit-id
 msgid "monitor_heartbeat_none"
 msgstr "لم تصل أي نبضة بعد."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_recent"
+msgstr "آخر النبضات"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_status_ok"
+msgstr "نجحت"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_status_failed"
+msgstr "فشلت"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_exit_code"
+msgstr "رمز الخروج"
 
 #. js-lingui-explicit-id
 msgid "monitor_heartbeat_renew"
@@ -2565,6 +2581,14 @@ msgstr "النطاق: {value}"
 #. js-lingui-explicit-id
 msgid "channel_line_reason"
 msgstr "العلة: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_exit_code"
+msgstr "رمز الخروج: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_message"
+msgstr "الرسالة: {value}"
 
 #. js-lingui-explicit-id
 msgid "channel_line_downtime"

@@ -10,6 +10,7 @@
 import { evaluationAt } from "@/server/checks/heartbeat.ts";
 import type { CertificateWarning } from "@/shared/schemas/certificate.ts";
 import type { Check, CheckResult } from "@/shared/schemas/check.ts";
+import type { HeartbeatFailure } from "@/shared/schemas/heartbeat.ts";
 import type { Monitor } from "@/shared/schemas/monitor.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
 import type { ReasonCode } from "@/shared/schemas/reason.ts";
@@ -154,13 +155,15 @@ export function dueMonitors(
  * this one was due, so the tick's lateness never adds up; a check that
  * started more than an interval late anchors on its own start instead, so
  * runs never pile up to catch up. After a heartbeat evaluation the next
- * window opens at the evaluation.
+ * window opens at the evaluation, or at `opensAt` when a failing heartbeat
+ * brought the evaluation forward.
  */
 export function afterCheck(
   schedule: Schedule,
   monitorId: string,
   startedAt: number,
-  timeZone: string
+  timeZone: string,
+  opensAt?: number
 ): Schedule {
   const entry = schedule.get(monitorId);
   if (!entry) {
@@ -168,8 +171,11 @@ export function afterCheck(
   }
   const next = new Map(schedule);
   if (entry.monitor.config.type === "heartbeat") {
-    // The next window opens at this evaluation.
-    next.set(monitorId, windowEntry(entry.monitor, startedAt, timeZone));
+    // The next window opens at this evaluation, or just after the failing heartbeat that caused it: a heartbeat that says the job ran after the failure then counts for the window, and recovers the monitor.
+    next.set(
+      monitorId,
+      windowEntry(entry.monitor, opensAt ?? startedAt, timeZone)
+    );
     return next;
   }
   const { intervalMs } = entry.monitor;
@@ -217,6 +223,24 @@ export function arrivedWhileDown(
     .map(({ monitor }) => monitor);
 }
 
+/** The heartbeat monitors that are not down and whose latest heartbeat after their window opened said the job failed: evaluated at once, not at the window's end. */
+export function failedWhileUp(
+  schedule: Schedule,
+  states: ReadonlyMap<string, CheckResult>,
+  failedArrivals: ReadonlyMap<string, number>,
+  inFlight: ReadonlySet<string>
+): Monitor[] {
+  return [...schedule.values()]
+    .filter(
+      ({ monitor, since }) =>
+        monitor.config.type === "heartbeat" &&
+        states.get(monitor.id) !== "down" &&
+        !inFlight.has(monitor.id) &&
+        (failedArrivals.get(monitor.id) ?? since - 1) >= since
+    )
+    .map(({ monitor }) => monitor);
+}
+
 /** A monitor event (CONTEXT.md "Monitor event"): the four a settled check raises, certificate expiring, which the certificate pass raises, and domain expiring, which the registration pass raises. */
 export type MonitorEvent =
   | {
@@ -226,6 +250,8 @@ export type MonitorEvent =
       /** The outage this down event opened or this recovered event closed; the notification of each follows it. */
       readonly outage?: Outage;
       readonly reason: ReasonCode;
+      /** What a heartbeat that reported failure carried, on the down event it opened. */
+      readonly failure?: HeartbeatFailure;
     }
   | {
       readonly at: number;
@@ -254,6 +280,8 @@ export type MonitorEvent =
 export interface Settlement {
   readonly check: Check;
   readonly closed: Outage | undefined;
+  /** What the failing heartbeat behind a down check carried. */
+  readonly failure?: HeartbeatFailure | undefined;
   readonly opened: boolean;
   readonly previous: CheckResult | undefined;
 }
@@ -266,7 +294,7 @@ export interface Settlement {
  * degraded monitor going down.
  */
 export function eventsOf(settlement: Settlement): MonitorEvent[] {
-  const { check, closed, opened, previous } = settlement;
+  const { check, closed, failure, opened, previous } = settlement;
   const { result } = check;
   const base = {
     at: check.startedAt,
@@ -289,7 +317,12 @@ export function eventsOf(settlement: Settlement): MonitorEvent[] {
           startedAt: check.startedAt,
         }
       : undefined;
-    events.push({ ...base, kind: "down", outage });
+    events.push({
+      ...base,
+      kind: "down",
+      outage,
+      ...(failure && { failure }),
+    });
   }
   if (previous !== "degraded" && result === "degraded") {
     events.push({ ...base, kind: "degraded_started" });

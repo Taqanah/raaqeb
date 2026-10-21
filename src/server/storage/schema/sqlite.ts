@@ -307,7 +307,7 @@ export const outages = sqliteTable(
   (table) => [primaryKey({ columns: [table.monitorId, table.startedAt] })]
 );
 
-/** One incoming call to a heartbeat monitor's unique URL (CONTEXT.md "Heartbeat"): when it arrived and from which address. Each monitor keeps its latest hundred. */
+/** One incoming call to a heartbeat monitor's unique URL (CONTEXT.md "Heartbeat"): when it arrived, from which address, and, for a call that reported failure, its exit code and short message. Each monitor keeps its latest hundred. */
 export const heartbeats = sqliteTable(
   "heartbeats",
   {
@@ -316,6 +316,9 @@ export const heartbeats = sqliteTable(
       .references(() => monitors.id, { onDelete: "cascade" }),
     arrivedAt: integer("arrived_at").notNull(),
     sourceIp: text("source_ip"),
+    failed: integer("failed").notNull().default(0),
+    exitCode: integer("exit_code"),
+    message: text("message"),
   },
   (table) => [primaryKey({ columns: [table.monitorId, table.arrivedAt] })]
 );

@@ -3,7 +3,7 @@ title: Heartbeat
 description: Watch cron jobs, backups and other scheduled work with a heartbeat monitor that expects your job to call its URL on a schedule.
 ---
 
-A heartbeat monitor waits for your job to call its unique URL. Each call is a heartbeat. If no heartbeat arrives by the expected time plus the grace period, the monitor is down with "Heartbeat late". Use it for work that runs on its own schedule and that Raaqeb cannot reach: cron jobs, backups, queue workers, machines behind a firewall.
+A heartbeat monitor waits for your job to call its unique URL. Each call is a heartbeat. If no heartbeat arrives by the expected time plus the grace period, the monitor is down with "Heartbeat late". A job that ran and failed can say so, and the monitor goes down at once. Use it for work that runs on its own schedule and that Raaqeb cannot reach: cron jobs, backups, queue workers, machines behind a firewall.
 
 ## Add a heartbeat monitor
 
@@ -18,7 +18,7 @@ Select **Add monitor** and choose **Heartbeat** as the **Check type**. A heartbe
 
 For a schedule longer than 30 days, use a cron expression.
 
-The **Heartbeat URL** panel shows the URL once the monitor is saved, with a ready `curl` line, the **Last heartbeat** and its **Source address**. To retire a URL that leaked, switch on **A new URL on save** and select **Save**: the old URL stops working at once.
+The **Heartbeat URL** panel shows the URL once the monitor is saved, with a ready `curl` line for success and one for failure, and the **Latest heartbeats**: for each, when it arrived, whether it **Succeeded** or **Failed**, a failure's **Exit code** and message, and the source address. To retire a URL that leaked, switch on **A new URL on save** and select **Save**: the old URL stops working at once.
 
 ## Send heartbeats
 
@@ -36,7 +36,7 @@ The token is 22 characters of letters, digits, `-` and `_`. It is the only key: 
 | An unknown or malformed token | `404` with the text `Not Found`. Nothing is stored. |
 | The database did not answer | `503` with the text `Service Unavailable`. |
 
-A `HEAD` answer has no body, and no answer is cached. Raaqeb keeps each heartbeat's arrival time and source address, never a request body or query. The source address is the caller's address behind your [trusted proxies](/en/docs/operate/reverse-proxy). Each monitor keeps its latest 100 heartbeats. A paused monitor still stores them.
+A `HEAD` answer has no body, and no answer is cached. Raaqeb keeps each heartbeat's arrival time and source address, and for a failure its exit code and message; never any other part of the request. The source address is the caller's address behind your [trusted proxies](/en/docs/operate/reverse-proxy). Each monitor keeps its latest 100 heartbeats. A paused monitor still stores them.
 
 Call the URL at the end of the job, only when it succeeded. The line the panel shows fails on an error status, stays quiet otherwise, retries three times and gives up after 10 seconds:
 
@@ -50,7 +50,7 @@ In a crontab, chain it after the job with `&&`, so a failed job sends no heartbe
 30 2 * * * /usr/local/bin/backup.sh && curl -fsS -m 10 --retry 3 -o /dev/null https://status.example.com/api/heartbeat/<token>
 ```
 
-A `POST` works the same; whatever body it carries is ignored:
+A `POST` works the same; its body is ignored unless the call reports a failure:
 
 ```sh
 curl -fsS -m 10 --retry 3 -o /dev/null -X POST https://status.example.com/api/heartbeat/<token>
@@ -62,16 +62,52 @@ On Windows:
 Invoke-WebRequest -Uri https://status.example.com/api/heartbeat/<token> -Method Post -UseBasicParsing | Out-Null
 ```
 
+## Report a failure
+
+A job that runs and fails would otherwise only show up when its next heartbeat is late. Tell Raaqeb at once instead, with the same URL and `/fail` after the token, or `status=fail` in the query:
+
+```text
+https://status.example.com/api/heartbeat/<token>/fail
+https://status.example.com/api/heartbeat/<token>?status=fail
+```
+
+Either call can carry an exit code and a short message, in the query or, for a `POST`, as the body:
+
+| Part | What it does |
+|---|---|
+| `exit` | The job's exit code, a whole number from 0 to 255. A nonzero code says the job failed by itself, so `?exit=$?` works with no `status`. A value that is not one is ignored. |
+| `message` | A short text shown with the failure. Control characters and runs of whitespace become one space, and it is cut to 256 characters. `msg` is the same, for push URLs written for Uptime Kuma. |
+| `POST` body | The message, when the query has none. Only the first kilobyte is read. |
+| `status` | `fail` or `down`, in any case, says the job failed. Any other value, `ok` and `up` among them, says nothing: the job ran, as a call without a status says. |
+
+A message on a call that says the job ran is dropped. `GET`, `HEAD` and `POST` all work, and the answer is `200` with the text `OK`, as for any heartbeat.
+
+In a crontab, report the outcome either way. The shell's `$?` is the job's exit code:
+
+```text
+30 2 * * * /usr/local/bin/backup.sh; curl -fsS -m 10 --retry 3 -o /dev/null "https://status.example.com/api/heartbeat/<token>?exit=$?"
+```
+
+To send the job's own output as the message, post it:
+
+```sh
+out=$(/usr/local/bin/backup.sh 2>&1) && curl -fsS -m 10 --retry 3 -o /dev/null https://status.example.com/api/heartbeat/<token> \
+  || curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "$out" https://status.example.com/api/heartbeat/<token>/fail
+```
+
+About a second after a failure arrives, the monitor is down with the reason "The job reported a failure", the exit code, and the message in the check's details, and the down notification goes out with the exit code and the message. It does not wait for the period to end, and a failure that a heartbeat saying the job ran followed a moment later still opens the outage, which that heartbeat then closes. The next heartbeat that says the job ran recovers it, again at once. While the monitor is already down, further failures are judged at the end of each window, so a job that keeps failing adds one check a window, not one a call.
+
 ## Up and down
 
 Raaqeb judges a heartbeat monitor in windows. A window opens when you save the monitor, when you resume it, when Raaqeb starts, and each time the previous window is judged. Raaqeb judges a window once, at the next expected time plus the grace period, and records one check:
 
 - **Up**: a heartbeat arrived since the window opened. Early heartbeats count.
 - **Down**: none arrived. The reason is "Heartbeat late", with the grace period, and the check has no response time.
+- **Down**: the latest one said the job failed. The reason is "The job reported a failure".
 
 The next window opens at that moment. With a fixed period, judgements therefore fall one period plus grace period apart. With a cron expression, the expected time is the expression's next fire after the window opened, in the install time zone.
 
-While the monitor is down, a heartbeat produces an up check at once, about a second after it arrives, rather than at the window's end. The outage closes and the recovered notification goes out then.
+While the monitor is down, a heartbeat that says the job ran produces an up check at once, about a second after it arrives, rather than at the window's end. The outage closes and the recovered notification goes out then.
 
 Before its first check, the list shows the monitor as **Waiting for first heartbeat**, then, once a heartbeat has arrived, as **Waiting for first check** until the window is judged. Raaqeb cannot receive heartbeats while it is stopped, so a restart opens a fresh window instead of judging the time it was down. For uptime, a gap in the checks longer than twice the expected period plus grace period is no data.
 

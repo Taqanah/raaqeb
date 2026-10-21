@@ -1,14 +1,20 @@
 ---
 title: Heartbeats
-description: The address a job calls to tell its heartbeat monitor it ran.
+description: The addresses a job calls to tell its heartbeat monitor it ran, or that it failed.
 ---
 
 import { ApiOperation } from "../../../docs/api/view.tsx";
 
-A heartbeat monitor expects a heartbeat once per period. When none arrives within the period and its grace period, its check is down with the reason "heartbeat late". Each heartbeat monitor has its own URL with a token, shown in its **Heartbeat URL** panel once saved; [heartbeat monitors](/en/docs/monitors/heartbeat) covers the setup. Call it at the end of your job with whichever method is easiest:
+A heartbeat monitor expects a heartbeat once per period. When none arrives within the period and its grace period, its check is down with the reason "heartbeat late". A job that failed can say so, and the check is down at once with the reason "the job reported a failure". Each heartbeat monitor has its own URL with a token, shown in its **Heartbeat URL** panel once saved; [heartbeat monitors](/en/docs/monitors/heartbeat) covers the setup. Call it at the end of your job with whichever method is easiest:
 
 ```sh
 curl -fsS https://status.example.com/api/heartbeat/<token>
+```
+
+To report a failure, add `/fail` after the token, with an optional exit code and short message:
+
+```sh
+curl -fsS "https://status.example.com/api/heartbeat/<token>/fail?exit=2&message=disk%20full"
 ```
 
 The token is the only credential. Anyone who has it can record heartbeats for the monitor.
@@ -16,3 +22,7 @@ The token is the only credential. Anyone who has it can record heartbeats for th
 ## Record a heartbeat
 
 <ApiOperation path="/api/heartbeat/{token}" />
+
+## Record a failed heartbeat
+
+<ApiOperation path="/api/heartbeat/{token}/fail" />

@@ -40,6 +40,7 @@ import {
 } from "@/shared/schemas/credentials.ts";
 import {
   type HeartbeatView,
+  heartbeatsShown,
   heartbeatUrl,
 } from "@/shared/schemas/heartbeat.ts";
 import type { MaintenanceWindow } from "@/shared/schemas/maintenance.ts";
@@ -377,12 +378,13 @@ export async function heartbeatView(
   if (monitor.config.type !== "heartbeat" || token === undefined) {
     return;
   }
-  const [address, latest] = await Promise.all([
+  const [address, recent] = await Promise.all([
     readPublicAddress(storage),
-    storage.heartbeats.latest([monitor.id]),
+    storage.heartbeats.recent(monitor.id, heartbeatsShown),
   ]);
   return {
-    last: latest.get(monitor.id),
+    last: recent[0],
+    recent,
     url: heartbeatUrl(address ?? requestOrigin ?? "", token),
   };
 }

@@ -95,7 +95,7 @@ _Avoid_: ping, run, probe, attempt (that is one try inside a check), heartbeat (
 
 **Reason**:
 Arabic: علة for why a check failed (the notification line); سبب for why any check ended as it did (the checks table, passes included)
-Why a check ended as it did: one code from a fixed list (timeout, DNS failed, connection refused, certificate expired, unexpected status, assertion failed, slow, heartbeat late, and so on) with the values it saw. Rendered in the reader's locale; never free text.
+Why a check ended as it did: one code from a fixed list (timeout, DNS failed, connection refused, certificate expired, unexpected status, assertion failed, slow, heartbeat late, heartbeat failed, and so on) with the values it saw. Rendered in the reader's locale; never free text.
 _Avoid_: error message (that is the raw text kept beside a failed check), status message, cause
 
 **Capture**:
@@ -140,7 +140,7 @@ _Avoid_: Docker check, container check (that is one run), service monitor
 
 **Heartbeat monitor**:
 Arabic: مراقبة النبض
-A monitor that expects the target to send heartbeats on a schedule. Once per expected period plus grace period it produces one check: up if a heartbeat arrived since the last one, otherwise down with the reason "heartbeat late" and no response time. While it is down, a heartbeat produces an up check at once rather than at the period's end.
+A monitor that expects the target to send heartbeats on a schedule. Once per expected period plus grace period it produces one check: up if a heartbeat arrived since the last one, otherwise down with the reason "heartbeat late" and no response time. While it is down, a heartbeat produces an up check at once rather than at the period's end. A heartbeat that says the job failed does the opposite: the monitor is down at once, with the reason "heartbeat failed", until the next heartbeat that says the job ran.
 _Avoid_: push monitor, cron monitor, dead man's switch
 
 **Grace period**:
@@ -150,7 +150,7 @@ _Avoid_: tolerance, slack, buffer
 
 **Heartbeat**:
 Arabic: نبضة
-One incoming call from the user's job to a heartbeat monitor's unique URL.
+One incoming call from the user's job to a heartbeat monitor's unique URL. It says the job ran, or, at the URL's fail address or with a failing status or a nonzero exit code, that it failed, with an optional short message and exit code.
 _Avoid_: ping, beat, push
 
 **Degraded**:

@@ -32,6 +32,7 @@ function schemaOf(schema: z.ZodType): unknown {
 }
 
 interface Operation {
+  description?: string;
   parameters?: {
     description?: string;
     in: string;
@@ -39,6 +40,7 @@ interface Operation {
     required: boolean;
     schema: unknown;
   }[];
+  requestBody?: unknown;
   responses: Record<
     string,
     { content?: Record<string, { schema: unknown }>; description: string }
@@ -126,6 +128,7 @@ describe("the OpenAPI document", () => {
       [
         "/api/custom-domain",
         "/api/heartbeat/{token}",
+        "/api/heartbeat/{token}/fail",
         "/api/openapi.json",
         "/api/pages/{id}/history",
         "/api/pages/{id}/history/{month}",
@@ -151,24 +154,67 @@ describe("the OpenAPI document", () => {
     );
   });
 
-  test("heartbeat ingest takes GET, HEAD and POST with the token in the path, as the shared token schema describes it", () => {
-    for (const method of ["get", "head", "post"]) {
-      const ingest = operation("/api/heartbeat/{token}", method);
-      expect(ingest.parameters).toEqual([
-        {
-          description: expect.any(String),
-          in: "path",
-          name: "token",
-          required: true,
-          schema: schemaOf(heartbeatTokenSchema),
-        },
-      ]);
-      expect(Object.keys(ingest.responses).toSorted(byName)).toEqual([
-        "200",
-        "404",
-        "503",
-      ]);
+  test("heartbeat ingest takes GET, HEAD and POST with the token in the path, as the shared token schema describes it, and what the job says of itself in the query", () => {
+    for (const path of [
+      "/api/heartbeat/{token}",
+      "/api/heartbeat/{token}/fail",
+    ]) {
+      for (const method of ["get", "head", "post"]) {
+        const ingest = operation(path, method);
+        expect(ingest.parameters).toEqual([
+          {
+            description: expect.any(String),
+            in: "path",
+            name: "token",
+            required: true,
+            schema: schemaOf(heartbeatTokenSchema),
+          },
+          {
+            description: expect.any(String),
+            in: "query",
+            name: "status",
+            required: false,
+            schema: { type: "string" },
+          },
+          {
+            description: expect.any(String),
+            in: "query",
+            name: "exit",
+            required: false,
+            schema: { maximum: 255, minimum: 0, type: "integer" },
+          },
+          {
+            description: expect.any(String),
+            in: "query",
+            name: "message",
+            required: false,
+            schema: { type: "string" },
+          },
+        ]);
+        expect(Object.keys(ingest.responses).toSorted(byName)).toEqual([
+          "200",
+          "404",
+          "503",
+        ]);
+        // Only a POST has a body, which is the failure's message.
+        expect(method === "post" ? ingest.requestBody : undefined).toEqual(
+          method === "post"
+            ? {
+                content: { "text/plain": { schema: { type: "string" } } },
+                description: expect.any(String),
+                required: false,
+              }
+            : undefined
+        );
+      }
     }
+  });
+
+  test("the fail address says a monitor goes down at the next tick when it is not down already, and at the window's end when it is", () => {
+    const { description } = operation("/api/heartbeat/{token}/fail", "get");
+    expect(description).toContain("next tick");
+    expect(description).toContain("window");
+    expect(description).not.toContain("at once");
   });
 
   test("the custom domain question is a GET or HEAD with the domain in the query, answering 200, 404 or 503", () => {

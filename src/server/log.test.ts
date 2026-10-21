@@ -63,6 +63,14 @@ describe("a request's path in a line", () => {
     ).toBe("/api/heartbeat/<token>");
   });
 
+  test("a failing heartbeat's address is masked the same, its message in the query never logged", () => {
+    expect(
+      loggedPath(
+        "http://127.0.0.1:3000/api/heartbeat/hb_live_secret/fail?message=boom"
+      )
+    ).toBe("/api/heartbeat/<token>/fail");
+  });
+
   test("a subscription's token is masked on its page, confirm and unsubscribe", () => {
     expect(loggedPath("http://h/subscriptions/sub_secret")).toBe(
       "/subscriptions/<token>"

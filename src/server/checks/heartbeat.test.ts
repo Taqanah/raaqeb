@@ -217,3 +217,61 @@ describe("the gap limit of observed time", () => {
     ).toBe(2 * minute);
   });
 });
+
+describe("a window whose latest heartbeat said the job failed", () => {
+  const window = {
+    graceMs: minute,
+    monitorId: "m",
+    now: t0 + 5 * minute,
+    since: t0,
+  };
+
+  test("is down with heartbeat failed, the exit code in the reason and the message as the failure detail's error, and no response time", () => {
+    const outcome = evaluateHeartbeat({
+      ...window,
+      lastArrivedAt: t0 + minute,
+      lastFailure: { exitCode: 2, message: "disk full" },
+    });
+    expect(outcome.check).toMatchObject({
+      reason: reasons.heartbeat_failed,
+      responseMs: undefined,
+      result: "down",
+    });
+    expect(outcome.detail).toEqual({
+      assertion: undefined,
+      error: "disk full",
+      monitorId: "m",
+      params: { exitCode: 2, reason: "heartbeat_failed" },
+      startedAt: window.now,
+    });
+  });
+
+  test("a failure with neither exit code nor message is still down with heartbeat failed", () => {
+    const outcome = evaluateHeartbeat({
+      ...window,
+      lastArrivedAt: t0 + minute,
+      lastFailure: { exitCode: undefined, message: undefined },
+    });
+    expect(outcome.check.reason).toBe(reasons.heartbeat_failed);
+    expect(outcome.detail?.error).toBeUndefined();
+    expect(outcome.detail?.params).toEqual({ reason: "heartbeat_failed" });
+  });
+
+  test("a failure that arrived before the window opened is not this window's: it is late", () => {
+    const outcome = evaluateHeartbeat({
+      ...window,
+      lastArrivedAt: t0 - minute,
+      lastFailure: { exitCode: 1, message: "old" },
+    });
+    expect(outcome.check.reason).toBe(reasons.heartbeat_late);
+  });
+
+  test("a heartbeat that said the job ran, after the failure, is up", () => {
+    const outcome = evaluateHeartbeat({
+      ...window,
+      lastArrivedAt: t0 + 2 * minute,
+      lastFailure: undefined,
+    });
+    expect(outcome.check.result).toBe("up");
+  });
+});

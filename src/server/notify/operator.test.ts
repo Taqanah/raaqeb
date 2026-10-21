@@ -106,6 +106,39 @@ describe("what a monitor event sends", () => {
     });
   });
 
+  test("down for a job that reported failure sends its exit code and message with the reason", () => {
+    const failed: MonitorEvent = {
+      ...down,
+      failure: { exitCode: 28, message: "no space left on device" },
+      reason: reasons.heartbeat_failed,
+    };
+    expect(notificationOf(failed, monitor(), address)).toEqual({
+      data: {
+        failure: { exitCode: 28, message: "no space left on device" },
+        incidentUrl:
+          "https://status.example.test/admin/incidents/new?monitor=0199",
+        monitor: sampleMonitorData,
+        reason: "heartbeat_failed",
+      },
+      timestamp: "2026-09-26T09:00:00.000Z",
+      type: "monitor.down",
+    });
+  });
+
+  test("a failure with neither exit code nor message sends none, and a down with no failure sends no field", () => {
+    const bare: MonitorEvent = {
+      ...down,
+      failure: { exitCode: undefined, message: undefined },
+      reason: reasons.heartbeat_failed,
+    };
+    expect(notificationOf(bare, monitor(), address)?.data).not.toHaveProperty(
+      "failure"
+    );
+    expect(notificationOf(down, monitor(), address)?.data).not.toHaveProperty(
+      "failure"
+    );
+  });
+
   test("recovered sends the downtime of the outage it closed", () => {
     expect(notificationOf(recovered, monitor(), address)).toEqual({
       data: { downtimeMs: 90 * minute, monitor: sampleMonitorData },

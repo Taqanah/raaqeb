@@ -1,9 +1,11 @@
 /**
  * A heartbeat monitor's part of the form: the schedule, "every N" or a cron expression, and the grace period,
  * each amount typed with its unit; and in place of "test now", the panel
- * with the monitor's unique URL, the line a job runs, the last heartbeat
- * and the switch that gives the monitor a new URL on save. The URL and the
- * source address are machine tokens, isolated LTR.
+ * with the monitor's unique URL, the lines a job runs when it succeeds and
+ * when it fails, its latest heartbeats with what each reported, and the
+ * switch that gives the monitor a new URL on save. The URL, the source
+ * address and the exit code are machine tokens, isolated LTR; a failure's
+ * message is the job's own words, text that follows its own direction.
  */
 import { type ReactNode, useCallback, useRef } from "react";
 import {
@@ -12,7 +14,12 @@ import {
 } from "@/shared/i18n/format.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
-import type { HeartbeatView } from "@/shared/schemas/heartbeat.ts";
+import {
+  type Heartbeat,
+  type HeartbeatView,
+  heartbeatFailSuffix,
+} from "@/shared/schemas/heartbeat.ts";
+import { Badge } from "@/shared/ui/badge.tsx";
 import {
   Card,
   CardContent,
@@ -164,7 +171,54 @@ export function HeartbeatSection({
   );
 }
 
-/** The panel beside a heartbeat monitor's form and on its detail page: its URL once saved, the line a job runs, the last heartbeat, and on the form the switch for a new URL. */
+/** One heartbeat of the list: when it arrived, whether the job succeeded or failed, and for a failure its exit code and message; the source address under them. */
+function HeartbeatRow({
+  clock,
+  heartbeat,
+  slot,
+}: {
+  readonly clock: TimeOptions;
+  readonly heartbeat: Heartbeat;
+  readonly slot?: string;
+}): ReactNode {
+  const { locale, t } = useMessages();
+  const { failure } = heartbeat;
+  return (
+    <li
+      className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0"
+      data-failed={failure ? "" : undefined}
+      data-slot={slot}
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span>
+          {formatDateTimeWithZone(locale, heartbeat.arrivedAt, clock)}
+        </span>
+        <Badge variant={failure ? "down" : "up"}>
+          {failure
+            ? t("monitor_heartbeat_status_failed")
+            : t("monitor_heartbeat_status_ok")}
+        </Badge>
+        {failure?.exitCode === undefined ? null : (
+          <span className="flex items-center gap-1 text-muted-foreground">
+            {t("monitor_heartbeat_exit_code")}
+            <Token>{String(failure.exitCode)}</Token>
+          </span>
+        )}
+        {heartbeat.sourceIp ? (
+          <Token className="text-muted-foreground">{heartbeat.sourceIp}</Token>
+        ) : null}
+      </div>
+      {failure?.message ? (
+        // The job's own words, in whichever language it wrote them: the direction follows the text, not the page.
+        <p className="wrap-anywhere" dir="auto">
+          {failure.message}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+/** The panel beside a heartbeat monitor's form and on its detail page: its URL once saved, the lines a job runs, the latest heartbeats, and on the form the switch for a new URL. */
 export function HeartbeatPanel({
   clock,
   heartbeat,
@@ -177,7 +231,7 @@ export function HeartbeatPanel({
   readonly onFlag?: FlagChange;
   readonly renew?: boolean;
 }): ReactNode {
-  const { locale, t } = useMessages();
+  const { t } = useMessages();
   return (
     <Card className="lg:sticky lg:top-20" data-slot="heartbeat-panel">
       <CardHeader divided>
@@ -199,32 +253,29 @@ export function HeartbeatPanel({
                 text={curlLine(heartbeat.url)}
               />
             </div>
-            {heartbeat.last && clock ? (
-              <dl
-                className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm"
-                data-slot="last-heartbeat"
-              >
-                <dt className="text-muted-foreground">
-                  {t("monitor_heartbeat_last")}
-                </dt>
-                <dd>
-                  {formatDateTimeWithZone(
-                    locale,
-                    heartbeat.last.arrivedAt,
-                    clock
-                  )}
-                </dd>
-                {heartbeat.last.sourceIp ? (
-                  <>
-                    <dt className="text-muted-foreground">
-                      {t("monitor_heartbeat_source")}
-                    </dt>
-                    <dd>
-                      <Token>{heartbeat.last.sourceIp}</Token>
-                    </dd>
-                  </>
-                ) : null}
-              </dl>
+            <div className="flex flex-col gap-1.5 text-muted-foreground text-sm">
+              <span>{t("monitor_heartbeat_fail_command")}</span>
+              <Copyable
+                copy="heartbeat-fail-command"
+                text={curlLine(`${heartbeat.url}${heartbeatFailSuffix}`)}
+              />
+            </div>
+            {heartbeat.recent.length > 0 && clock ? (
+              <div className="flex flex-col gap-2 text-sm">
+                <span className="text-muted-foreground">
+                  {t("monitor_heartbeat_recent")}
+                </span>
+                <ul className="flex flex-col divide-y" data-slot="heartbeats">
+                  {heartbeat.recent.map((each, index) => (
+                    <HeartbeatRow
+                      clock={clock}
+                      heartbeat={each}
+                      key={each.arrivedAt}
+                      slot={index === 0 ? "last-heartbeat" : undefined}
+                    />
+                  ))}
+                </ul>
+              </div>
             ) : (
               <p className="text-muted-foreground text-sm">
                 {t("monitor_heartbeat_none")}

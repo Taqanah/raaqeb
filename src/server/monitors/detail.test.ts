@@ -715,7 +715,18 @@ describe("the monitor detail's read", () => {
     }
     expect(result.detail.chart).toBeUndefined();
     expect(result.detail.heartbeat).toEqual({
-      last: { arrivedAt: monitor.updatedAt + 5, sourceIp: "10.0.0.7" },
+      last: {
+        arrivedAt: monitor.updatedAt + 5,
+        failure: undefined,
+        sourceIp: "10.0.0.7",
+      },
+      recent: [
+        {
+          arrivedAt: monitor.updatedAt + 5,
+          failure: undefined,
+          sourceIp: "10.0.0.7",
+        },
+      ],
       url: `https://raaqeb.example.test/api/heartbeat/${token}`,
     });
   });

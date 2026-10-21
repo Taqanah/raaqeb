@@ -827,6 +827,8 @@ describe("who answers an address no page resolves", () => {
       "/api/v2/summary",
       "/api/pages",
       "/api/heartbeat",
+      "/api/heartbeat/token/failed",
+      "/api/heartbeat/token/fail/more",
     ]) {
       expect(unresolvedAt(path), path).toBe("api");
     }
@@ -851,6 +853,8 @@ describe("who answers an address no page resolves", () => {
       "/_serverFn/routes.__root--readDocument",
       "/api/auth/get-session",
       "/api/heartbeat/token",
+      "/api/heartbeat/token/fail",
+      "/API/Heartbeat/token/FAIL/",
       "/api/pages/id/overview",
       "/api/pages/id/logo",
       "/api/v2/summary.json",

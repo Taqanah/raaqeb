@@ -86,7 +86,9 @@ describe("the heartbeats repository", () => {
     const { id } = await monitors.create(beat);
     expect(await heartbeats.record(tokenNumber(1), t0, "203.0.113.7")).toBe(id);
     expect(await heartbeats.latest([id])).toEqual(
-      new Map([[id, { arrivedAt: t0, sourceIp: "203.0.113.7" }]])
+      new Map([
+        [id, { arrivedAt: t0, failure: undefined, sourceIp: "203.0.113.7" }],
+      ])
     );
   });
 
@@ -105,6 +107,7 @@ describe("the heartbeats repository", () => {
     await heartbeats.record(tokenNumber(1), t0, undefined);
     expect((await heartbeats.latest([id])).get(id)).toEqual({
       arrivedAt: t0,
+      failure: undefined,
       sourceIp: undefined,
     });
   });
@@ -134,7 +137,9 @@ describe("the heartbeats repository", () => {
     await heartbeats.record(tokenNumber(1), t0 + 1, "a1");
     await heartbeats.record(tokenNumber(2), t0 + 5, "b");
     expect(await heartbeats.latest([a.id, c.id])).toEqual(
-      new Map([[a.id, { arrivedAt: t0 + 2, sourceIp: "a2" }]])
+      new Map([
+        [a.id, { arrivedAt: t0 + 2, failure: undefined, sourceIp: "a2" }],
+      ])
     );
     expect(await heartbeats.latest([])).toEqual(new Map());
     expect((await heartbeats.latest([b.id])).get(b.id)?.arrivedAt).toBe(t0 + 5);
@@ -193,5 +198,125 @@ describe("the heartbeats repository", () => {
       await heartbeats.record(tokenNumber(1), t0, undefined)
     ).toBeUndefined();
     expect(await heartbeats.record(tokenNumber(2), t0, undefined)).toBe(a.id);
+  });
+});
+
+describe("a heartbeat that reports failure", () => {
+  test("keeps its exit code and message, and the latest and the recent list answer them", async () => {
+    const { heartbeats, monitors } = await repositories();
+    const { id } = await monitors.create(beat);
+    await heartbeats.record(tokenNumber(1), t0, "203.0.113.7", {
+      exitCode: 2,
+      message: "disk full",
+    });
+    const failure = { exitCode: 2, message: "disk full" };
+    expect((await heartbeats.latest([id])).get(id)).toEqual({
+      arrivedAt: t0,
+      failure,
+      sourceIp: "203.0.113.7",
+    });
+    expect(await heartbeats.recent(id, 5)).toEqual([
+      { arrivedAt: t0, failure, sourceIp: "203.0.113.7" },
+    ]);
+  });
+
+  test("a failure with no exit code and no message is still a failure", async () => {
+    const { heartbeats, monitors } = await repositories();
+    const { id } = await monitors.create(beat);
+    await heartbeats.record(tokenNumber(1), t0, undefined, {
+      exitCode: undefined,
+      message: undefined,
+    });
+    expect((await heartbeats.latest([id])).get(id)?.failure).toEqual({
+      exitCode: undefined,
+      message: undefined,
+    });
+  });
+
+  test("an exit code of zero on a failure is kept as zero", async () => {
+    const { heartbeats, monitors } = await repositories();
+    const { id } = await monitors.create(beat);
+    await heartbeats.record(tokenNumber(1), t0, undefined, {
+      exitCode: 0,
+      message: undefined,
+    });
+    expect((await heartbeats.latest([id])).get(id)?.failure?.exitCode).toBe(0);
+  });
+
+  test("a second heartbeat in the same millisecond replaces the failure, so the last word stands", async () => {
+    const { heartbeats, monitors } = await repositories();
+    const { id } = await monitors.create(beat);
+    await heartbeats.record(tokenNumber(1), t0, undefined, {
+      exitCode: 1,
+      message: "x",
+    });
+    await heartbeats.record(tokenNumber(1), t0, undefined);
+    expect((await heartbeats.latest([id])).get(id)?.failure).toBeUndefined();
+  });
+});
+
+describe("the latest failures", () => {
+  test("are the newest failing heartbeat of each monitor, even when a heartbeat that says the job ran came after", async () => {
+    const { heartbeats, monitors } = await repositories();
+    const a = await monitors.create(beat);
+    const b = await monitors.create(beat);
+    const c = await monitors.create(beat);
+    await heartbeats.record(tokenNumber(1), t0, "a1", {
+      exitCode: 1,
+      message: "first",
+    });
+    await heartbeats.record(tokenNumber(1), t0 + 1, "a2", {
+      exitCode: 2,
+      message: "second",
+    });
+    await heartbeats.record(tokenNumber(1), t0 + 2, "a3");
+    await heartbeats.record(tokenNumber(2), t0 + 5, "b");
+    const failures = await heartbeats.lastFailures([a.id, b.id, c.id]);
+    expect([...failures.keys()]).toEqual([a.id]);
+    expect(failures.get(a.id)).toEqual({
+      arrivedAt: t0 + 1,
+      failure: { exitCode: 2, message: "second" },
+      sourceIp: "a2",
+    });
+  });
+
+  test("leave out what arrived at or after the time given, and answer nothing for no monitors", async () => {
+    const { heartbeats, monitors } = await repositories();
+    const a = await monitors.create(beat);
+    await heartbeats.record(tokenNumber(1), t0, undefined, {
+      exitCode: 1,
+      message: undefined,
+    });
+    await heartbeats.record(tokenNumber(1), t0 + 10, undefined, {
+      exitCode: 2,
+      message: undefined,
+    });
+    expect(
+      (await heartbeats.lastFailures([a.id], t0 + 10)).get(a.id)?.arrivedAt
+    ).toBe(t0);
+    expect((await heartbeats.lastFailures([a.id], t0)).size).toBe(0);
+    expect((await heartbeats.lastFailures([])).size).toBe(0);
+  });
+});
+
+describe("the recent heartbeats of a monitor", () => {
+  test("are its newest, newest first, up to the limit, and none for a monitor that has none", async () => {
+    const { heartbeats, monitors } = await repositories();
+    const a = await monitors.create(beat);
+    const b = await monitors.create(beat);
+    for (let i = 0; i < 5; i += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: arrivals in order
+      await heartbeats.record(tokenNumber(1), t0 + i, `a${i}`);
+    }
+    await heartbeats.record(tokenNumber(2), t0 + 99, "b");
+    expect(
+      (await heartbeats.recent(a.id, 3)).map((each) => each.sourceIp)
+    ).toEqual(["a4", "a3", "a2"]);
+    expect(await heartbeats.recent(a.id, 0)).toEqual([]);
+    expect(
+      (await heartbeats.recent(b.id, 3)).map((each) => each.arrivedAt)
+    ).toEqual([t0 + 99]);
+    const c = await monitors.create(beat);
+    expect(await heartbeats.recent(c.id, 3)).toEqual([]);
   });
 });

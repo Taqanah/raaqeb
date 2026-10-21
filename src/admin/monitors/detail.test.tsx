@@ -147,7 +147,18 @@ describe("the detail's state", () => {
         detail={{
           ...base,
           heartbeat: {
-            last: { arrivedAt: now - minute, sourceIp: undefined },
+            last: {
+              arrivedAt: now - minute,
+              failure: undefined,
+              sourceIp: undefined,
+            },
+            recent: [
+              {
+                arrivedAt: now - minute,
+                failure: undefined,
+                sourceIp: undefined,
+              },
+            ],
             url: "https://status.example.test/api/heartbeat/abc",
           },
           monitor: {

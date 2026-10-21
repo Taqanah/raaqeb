@@ -14,6 +14,7 @@ import {
   bringForward,
   dueMonitors,
   eventsOf,
+  failedWhileUp,
   movesCounter,
   reconcileSchedule,
   type Schedule,
@@ -569,5 +570,88 @@ describe("which closed days the sealing job may seal", () => {
     expect(sealingCutoff(today + sealingDelayMs - 1)).toBe(today - dayMs);
     expect(sealingCutoff(today + sealingDelayMs)).toBe(today);
     expect(sealingCutoff(today + dayMs - 1)).toBe(today);
+  });
+});
+
+describe("the window after a failure", () => {
+  test("opens just after the failing heartbeat, not at the evaluation, so a heartbeat that says the job ran in between counts for it", () => {
+    const beats = spreadFirstRuns(
+      [monitor("h", { config: heartbeat })],
+      t0,
+      "UTC"
+    );
+    const evaluatedAt = t0 + 5000;
+    const next = afterCheck(beats, "h", evaluatedAt, "UTC", t0 + 3001).get("h");
+    expect(next?.since).toBe(t0 + 3001);
+    expect(next?.nextDueAt).toBeGreaterThan(evaluatedAt);
+  });
+
+  test("is the evaluation's when no failure opens it", () => {
+    const beats = spreadFirstRuns(
+      [monitor("h", { config: heartbeat })],
+      t0,
+      "UTC"
+    );
+    expect(afterCheck(beats, "h", t0 + 5000, "UTC").get("h")?.since).toBe(
+      t0 + 5000
+    );
+  });
+});
+
+describe("failedWhileUp", () => {
+  const schedule = spreadFirstRuns(
+    [
+      monitor("h", { config: heartbeat }),
+      monitor("k", { config: heartbeat }),
+      monitor("a"),
+    ],
+    t0,
+    "UTC"
+  );
+  const up = new Map<string, CheckResult>([
+    ["h", "up"],
+    ["k", "up"],
+    ["a", "up"],
+  ]);
+
+  test("a heartbeat monitor that is not down and heard a failure after its window opened is evaluated at once", () => {
+    const failed = new Map([
+      ["h", t0],
+      ["k", t0 - 10],
+    ]);
+    expect(
+      failedWhileUp(schedule, up, failed, new Set()).map((m) => m.id)
+    ).toEqual(["h"]);
+  });
+
+  test("a monitor with no check yet is not down either", () => {
+    expect(
+      failedWhileUp(
+        schedule,
+        new Map(),
+        new Map([["h", t0 + 5]]),
+        new Set()
+      ).map((m) => m.id)
+    ).toEqual(["h"]);
+  });
+
+  test("a down monitor, one with an evaluation in flight, and a check monitor are left to their schedule", () => {
+    const failed = new Map([
+      ["h", t0 + 10],
+      ["k", t0 + 10],
+      ["a", t0 + 10],
+    ]);
+    expect(
+      failedWhileUp(
+        schedule,
+        new Map<string, CheckResult>([
+          ["h", "down"],
+          ["k", "up"],
+          ["a", "up"],
+        ]),
+        failed,
+        new Set(["k"])
+      )
+    ).toEqual([]);
   });
 });

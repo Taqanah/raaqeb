@@ -10,12 +10,13 @@
  * parameters.
  */
 import type { CheckOutcome } from "@/shared/schemas/check.ts";
+import type { HeartbeatFailure } from "@/shared/schemas/heartbeat.ts";
 import type {
   HeartbeatConfig,
   HeartbeatSchedule,
   Monitor,
 } from "@/shared/schemas/monitor.ts";
-import { reasons } from "@/shared/schemas/reason.ts";
+import { type ReasonCode, reasons } from "@/shared/schemas/reason.ts";
 
 /** A monitor without its own grace period waits this fraction of the period. */
 export const defaultGraceFraction = 0.2;
@@ -142,16 +143,19 @@ export interface HeartbeatEvaluation {
   readonly graceMs: number;
   /** The latest heartbeat's arrival, or nothing when the monitor has none. */
   readonly lastArrivedAt: number | undefined;
+  /** What the latest heartbeat reported when it said the job failed; nothing for one that said it ran. */
+  readonly lastFailure?: HeartbeatFailure;
   readonly monitorId: string;
   readonly now: number;
   /** When the window opened: the last evaluation, or when the monitor was created, edited or resumed, or the boot. */
   readonly since: number;
 }
 
-/** The one check of a window: up when a heartbeat arrived from its opening to the evaluation, otherwise down with "heartbeat late", its grace period and no response time. */
+/** The one check of a window: up when a heartbeat arrived from its opening to the evaluation, down with "heartbeat failed", the job's exit code and its message as the failure detail's error when the latest one said the job failed, otherwise down with "heartbeat late", its grace period and no response time. */
 export function evaluateHeartbeat({
   graceMs,
   lastArrivedAt,
+  lastFailure,
   monitorId,
   now,
   since,
@@ -161,25 +165,40 @@ export function evaluateHeartbeat({
     lastArrivedAt !== undefined &&
     lastArrivedAt >= since &&
     lastArrivedAt < now;
+  const failed = heard && lastFailure !== undefined;
+  const up = heard && !failed;
+  let reason: ReasonCode = reasons.heartbeat_late;
+  if (up) {
+    reason = reasons.ok;
+  } else if (failed) {
+    reason = reasons.heartbeat_failed;
+  }
   return {
     capture: undefined,
     check: {
       attempts: 1,
       bytes: 0,
       monitorId,
-      reason: heard ? reasons.ok : reasons.heartbeat_late,
+      reason,
       responseMs: undefined,
-      result: heard ? "up" : "down",
+      result: up ? "up" : "down",
       startedAt: now,
       statusCode: undefined,
     },
-    detail: heard
+    detail: up
       ? undefined
       : {
           assertion: undefined,
-          error: undefined,
+          error: lastFailure?.message,
           monitorId,
-          params: { graceMs, reason: "heartbeat_late" },
+          params: failed
+            ? {
+                ...(lastFailure.exitCode !== undefined && {
+                  exitCode: lastFailure.exitCode,
+                }),
+                reason: "heartbeat_failed",
+              }
+            : { graceMs, reason: "heartbeat_late" },
           startedAt: now,
         },
   };

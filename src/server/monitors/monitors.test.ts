@@ -1630,6 +1630,7 @@ describe("a heartbeat monitor in the form", () => {
     const form = await readMonitorForm(store, key, id, "http://10.0.0.5:3000");
     expect(form.ok && form.heartbeat).toEqual({
       last: undefined,
+      recent: [],
       url: `https://status.example.test/api/heartbeat/${token}`,
     });
   });
@@ -1660,6 +1661,7 @@ describe("a heartbeat monitor in the form", () => {
     const form = await readMonitorForm(store, key, id, undefined);
     expect(form.ok && form.heartbeat?.last).toEqual({
       arrivedAt: 1_700_000_060_000,
+      failure: undefined,
       sourceIp: "203.0.113.8",
     });
   });
@@ -2657,5 +2659,31 @@ describe("an HTTP monitor's own proxy", () => {
       restore();
       seen.stop();
     }
+  });
+});
+
+describe("the heartbeat view's recent heartbeats", () => {
+  test("lists the newest ten, newest first, each with what it reported", async () => {
+    const store = await storage();
+    const id = await createdId(store, backup);
+    const token = await tokenOf(store, id);
+    for (let i = 0; i < 12; i += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: arrivals in order
+      await store.heartbeats.record(token, 1_700_000_000_000 + i, undefined);
+    }
+    await store.heartbeats.record(token, 1_700_000_000_100, "203.0.113.9", {
+      exitCode: 3,
+      message: "dump failed",
+    });
+    const form = await readMonitorForm(store, key, id, undefined);
+    const recent = form.ok ? form.heartbeat?.recent : undefined;
+    expect(recent).toHaveLength(10);
+    expect(recent?.[0]).toEqual({
+      arrivedAt: 1_700_000_000_100,
+      failure: { exitCode: 3, message: "dump failed" },
+      sourceIp: "203.0.113.9",
+    });
+    expect(recent?.[1]?.arrivedAt).toBe(1_700_000_000_011);
+    expect(form.ok && form.heartbeat?.last).toEqual(recent?.[0]);
   });
 });

@@ -55,7 +55,6 @@ import { Route as AdminSettingsSetupCheckRouteImport } from "./routes/admin/sett
 import { Route as AdminSettingsSignInRouteImport } from "./routes/admin/settings/sign-in.tsx";
 import { Route as AdminSettingsStorageRouteImport } from "./routes/admin/settings/storage.tsx";
 import { Route as ApiAuthSplatRouteImport } from "./routes/api/auth/$.ts";
-import { Route as ApiHeartbeatTokenRouteImport } from "./routes/api/heartbeat/$token.ts";
 import { Route as ApiV2SummaryDotjsonRouteImport } from "./routes/api/v2/summary[.]json.ts";
 import { Route as SubscriptionsTokenIndexRouteImport } from "./routes/subscriptions/$token/index.tsx";
 import { Route as SubscriptionsTokenConfirmRouteImport } from "./routes/subscriptions/$token/confirm.ts";
@@ -70,6 +69,8 @@ import { Route as AdminMonitorsIdEditRouteImport } from "./routes/admin/monitors
 import { Route as AdminMonitorsIdHistoryDotjsonlDotzstRouteImport } from "./routes/admin/monitors/$id/history[.]jsonl[.]zst.ts";
 import { Route as AdminPagesIdIndexRouteImport } from "./routes/admin/pages/$id/index.tsx";
 import { Route as AdminPagesIdSubscribersRouteImport } from "./routes/admin/pages/$id/subscribers.tsx";
+import { Route as ApiHeartbeatTokenIndexRouteImport } from "./routes/api/heartbeat/$token/index.ts";
+import { Route as ApiHeartbeatTokenFailRouteImport } from "./routes/api/heartbeat/$token/fail.ts";
 import { Route as ApiPagesIdKindRouteImport } from "./routes/api/pages/$id/$kind.ts";
 import { Route as ApiPagesIdOverviewRouteImport } from "./routes/api/pages/$id/overview.ts";
 import { Route as Char123LocaleChar125StatusSlugIndexRouteImport } from "./routes/{-$locale}/status/$slug/index.tsx";
@@ -318,11 +319,6 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: "/api/auth/$",
   getParentRoute: () => rootRouteImport,
 } as any);
-const ApiHeartbeatTokenRoute = ApiHeartbeatTokenRouteImport.update({
-  id: "/api/heartbeat/$token",
-  path: "/api/heartbeat/$token",
-  getParentRoute: () => rootRouteImport,
-} as any);
 const ApiV2SummaryDotjsonRoute = ApiV2SummaryDotjsonRouteImport.update({
   id: "/api/v2/summary.json",
   path: "/api/v2/summary.json",
@@ -400,6 +396,16 @@ const AdminPagesIdSubscribersRoute = AdminPagesIdSubscribersRouteImport.update({
   id: "/pages/$id/subscribers",
   path: "/pages/$id/subscribers",
   getParentRoute: () => AdminRoute,
+} as any);
+const ApiHeartbeatTokenIndexRoute = ApiHeartbeatTokenIndexRouteImport.update({
+  id: "/api/heartbeat/$token/",
+  path: "/api/heartbeat/$token/",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiHeartbeatTokenFailRoute = ApiHeartbeatTokenFailRouteImport.update({
+  id: "/api/heartbeat/$token/fail",
+  path: "/api/heartbeat/$token/fail",
+  getParentRoute: () => rootRouteImport,
 } as any);
 const ApiPagesIdKindRoute = ApiPagesIdKindRouteImport.update({
   id: "/api/pages/$id/$kind",
@@ -522,7 +528,6 @@ export interface FileRoutesByFullPath {
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
   "/api/auth/$": typeof ApiAuthSplatRoute;
-  "/api/heartbeat/$token": typeof ApiHeartbeatTokenRoute;
   "/api/v2/summary.json": typeof ApiV2SummaryDotjsonRoute;
   "/subscriptions/$token/confirm": typeof SubscriptionsTokenConfirmRoute;
   "/subscriptions/$token/unsubscribe": typeof SubscriptionsTokenUnsubscribeRoute;
@@ -542,12 +547,14 @@ export interface FileRoutesByFullPath {
   "/admin/monitors/$id/edit": typeof AdminMonitorsIdEditRoute;
   "/admin/monitors/$id/history.jsonl.zst": typeof AdminMonitorsIdHistoryDotjsonlDotzstRoute;
   "/admin/pages/$id/subscribers": typeof AdminPagesIdSubscribersRoute;
+  "/api/heartbeat/$token/fail": typeof ApiHeartbeatTokenFailRoute;
   "/api/pages/$id/$kind": typeof ApiPagesIdKindRoute;
   "/api/pages/$id/overview": typeof ApiPagesIdOverviewRoute;
   "/{-$locale}/status/$slug/badge.svg": typeof Char123LocaleChar125StatusSlugBadgeDotsvgRoute;
   "/{-$locale}/status/$slug/feed.atom": typeof Char123LocaleChar125StatusSlugFeedDotatomRoute;
   "/admin/monitors/$id/": typeof AdminMonitorsIdIndexRoute;
   "/admin/pages/$id/": typeof AdminPagesIdIndexRoute;
+  "/api/heartbeat/$token/": typeof ApiHeartbeatTokenIndexRoute;
   "/{-$locale}/status/$slug/": typeof Char123LocaleChar125StatusSlugIndexRoute;
   "/api/pages/$id/history/$month": typeof ApiPagesIdHistoryMonthRoute;
   "/api/pages/$id/incidents/$incidentId": typeof ApiPagesIdIncidentsIncidentIdRoute;
@@ -596,7 +603,6 @@ export interface FileRoutesByTo {
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
   "/api/auth/$": typeof ApiAuthSplatRoute;
-  "/api/heartbeat/$token": typeof ApiHeartbeatTokenRoute;
   "/api/v2/summary.json": typeof ApiV2SummaryDotjsonRoute;
   "/subscriptions/$token/confirm": typeof SubscriptionsTokenConfirmRoute;
   "/subscriptions/$token/unsubscribe": typeof SubscriptionsTokenUnsubscribeRoute;
@@ -616,12 +622,14 @@ export interface FileRoutesByTo {
   "/admin/monitors/$id/edit": typeof AdminMonitorsIdEditRoute;
   "/admin/monitors/$id/history.jsonl.zst": typeof AdminMonitorsIdHistoryDotjsonlDotzstRoute;
   "/admin/pages/$id/subscribers": typeof AdminPagesIdSubscribersRoute;
+  "/api/heartbeat/$token/fail": typeof ApiHeartbeatTokenFailRoute;
   "/api/pages/$id/$kind": typeof ApiPagesIdKindRoute;
   "/api/pages/$id/overview": typeof ApiPagesIdOverviewRoute;
   "/{-$locale}/status/$slug/badge.svg": typeof Char123LocaleChar125StatusSlugBadgeDotsvgRoute;
   "/{-$locale}/status/$slug/feed.atom": typeof Char123LocaleChar125StatusSlugFeedDotatomRoute;
   "/admin/monitors/$id": typeof AdminMonitorsIdIndexRoute;
   "/admin/pages/$id": typeof AdminPagesIdIndexRoute;
+  "/api/heartbeat/$token": typeof ApiHeartbeatTokenIndexRoute;
   "/{-$locale}/status/$slug": typeof Char123LocaleChar125StatusSlugIndexRoute;
   "/api/pages/$id/history/$month": typeof ApiPagesIdHistoryMonthRoute;
   "/api/pages/$id/incidents/$incidentId": typeof ApiPagesIdIncidentsIncidentIdRoute;
@@ -674,7 +682,6 @@ export interface FileRoutesById {
   "/admin/settings/sign-in": typeof AdminSettingsSignInRoute;
   "/admin/settings/storage": typeof AdminSettingsStorageRoute;
   "/api/auth/$": typeof ApiAuthSplatRoute;
-  "/api/heartbeat/$token": typeof ApiHeartbeatTokenRoute;
   "/api/v2/summary.json": typeof ApiV2SummaryDotjsonRoute;
   "/subscriptions/$token/confirm": typeof SubscriptionsTokenConfirmRoute;
   "/subscriptions/$token/unsubscribe": typeof SubscriptionsTokenUnsubscribeRoute;
@@ -694,12 +701,14 @@ export interface FileRoutesById {
   "/admin/monitors/$id/edit": typeof AdminMonitorsIdEditRoute;
   "/admin/monitors/$id/history.jsonl.zst": typeof AdminMonitorsIdHistoryDotjsonlDotzstRoute;
   "/admin/pages/$id/subscribers": typeof AdminPagesIdSubscribersRoute;
+  "/api/heartbeat/$token/fail": typeof ApiHeartbeatTokenFailRoute;
   "/api/pages/$id/$kind": typeof ApiPagesIdKindRoute;
   "/api/pages/$id/overview": typeof ApiPagesIdOverviewRoute;
   "/{-$locale}/status/$slug/badge.svg": typeof Char123LocaleChar125StatusSlugBadgeDotsvgRoute;
   "/{-$locale}/status/$slug/feed.atom": typeof Char123LocaleChar125StatusSlugFeedDotatomRoute;
   "/admin/monitors/$id/": typeof AdminMonitorsIdIndexRoute;
   "/admin/pages/$id/": typeof AdminPagesIdIndexRoute;
+  "/api/heartbeat/$token/": typeof ApiHeartbeatTokenIndexRoute;
   "/{-$locale}/status/$slug/": typeof Char123LocaleChar125StatusSlugIndexRoute;
   "/api/pages/$id/history/$month": typeof ApiPagesIdHistoryMonthRoute;
   "/api/pages/$id/incidents/$incidentId": typeof ApiPagesIdIncidentsIncidentIdRoute;
@@ -753,7 +762,6 @@ export interface FileRouteTypes {
     | "/admin/settings/sign-in"
     | "/admin/settings/storage"
     | "/api/auth/$"
-    | "/api/heartbeat/$token"
     | "/api/v2/summary.json"
     | "/subscriptions/$token/confirm"
     | "/subscriptions/$token/unsubscribe"
@@ -773,12 +781,14 @@ export interface FileRouteTypes {
     | "/admin/monitors/$id/edit"
     | "/admin/monitors/$id/history.jsonl.zst"
     | "/admin/pages/$id/subscribers"
+    | "/api/heartbeat/$token/fail"
     | "/api/pages/$id/$kind"
     | "/api/pages/$id/overview"
     | "/{-$locale}/status/$slug/badge.svg"
     | "/{-$locale}/status/$slug/feed.atom"
     | "/admin/monitors/$id/"
     | "/admin/pages/$id/"
+    | "/api/heartbeat/$token/"
     | "/{-$locale}/status/$slug/"
     | "/api/pages/$id/history/$month"
     | "/api/pages/$id/incidents/$incidentId"
@@ -827,7 +837,6 @@ export interface FileRouteTypes {
     | "/admin/settings/sign-in"
     | "/admin/settings/storage"
     | "/api/auth/$"
-    | "/api/heartbeat/$token"
     | "/api/v2/summary.json"
     | "/subscriptions/$token/confirm"
     | "/subscriptions/$token/unsubscribe"
@@ -847,12 +856,14 @@ export interface FileRouteTypes {
     | "/admin/monitors/$id/edit"
     | "/admin/monitors/$id/history.jsonl.zst"
     | "/admin/pages/$id/subscribers"
+    | "/api/heartbeat/$token/fail"
     | "/api/pages/$id/$kind"
     | "/api/pages/$id/overview"
     | "/{-$locale}/status/$slug/badge.svg"
     | "/{-$locale}/status/$slug/feed.atom"
     | "/admin/monitors/$id"
     | "/admin/pages/$id"
+    | "/api/heartbeat/$token"
     | "/{-$locale}/status/$slug"
     | "/api/pages/$id/history/$month"
     | "/api/pages/$id/incidents/$incidentId"
@@ -904,7 +915,6 @@ export interface FileRouteTypes {
     | "/admin/settings/sign-in"
     | "/admin/settings/storage"
     | "/api/auth/$"
-    | "/api/heartbeat/$token"
     | "/api/v2/summary.json"
     | "/subscriptions/$token/confirm"
     | "/subscriptions/$token/unsubscribe"
@@ -924,12 +934,14 @@ export interface FileRouteTypes {
     | "/admin/monitors/$id/edit"
     | "/admin/monitors/$id/history.jsonl.zst"
     | "/admin/pages/$id/subscribers"
+    | "/api/heartbeat/$token/fail"
     | "/api/pages/$id/$kind"
     | "/api/pages/$id/overview"
     | "/{-$locale}/status/$slug/badge.svg"
     | "/{-$locale}/status/$slug/feed.atom"
     | "/admin/monitors/$id/"
     | "/admin/pages/$id/"
+    | "/api/heartbeat/$token/"
     | "/{-$locale}/status/$slug/"
     | "/api/pages/$id/history/$month"
     | "/api/pages/$id/incidents/$incidentId"
@@ -958,7 +970,6 @@ export interface RootRouteChildren {
   Char123LocaleChar125FeedDotatomRoute: typeof Char123LocaleChar125FeedDotatomRoute;
   Char123LocaleChar125IndexRoute: typeof Char123LocaleChar125IndexRoute;
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute;
-  ApiHeartbeatTokenRoute: typeof ApiHeartbeatTokenRoute;
   ApiV2SummaryDotjsonRoute: typeof ApiV2SummaryDotjsonRoute;
   SubscriptionsTokenConfirmRoute: typeof SubscriptionsTokenConfirmRoute;
   SubscriptionsTokenUnsubscribeRoute: typeof SubscriptionsTokenUnsubscribeRoute;
@@ -967,10 +978,12 @@ export interface RootRouteChildren {
   Char123LocaleChar125MaintenanceIdRoute: typeof Char123LocaleChar125MaintenanceIdRoute;
   SubscriptionsTokenIndexRoute: typeof SubscriptionsTokenIndexRoute;
   Char123LocaleChar125HistoryIndexRoute: typeof Char123LocaleChar125HistoryIndexRoute;
+  ApiHeartbeatTokenFailRoute: typeof ApiHeartbeatTokenFailRoute;
   ApiPagesIdKindRoute: typeof ApiPagesIdKindRoute;
   ApiPagesIdOverviewRoute: typeof ApiPagesIdOverviewRoute;
   Char123LocaleChar125StatusSlugBadgeDotsvgRoute: typeof Char123LocaleChar125StatusSlugBadgeDotsvgRoute;
   Char123LocaleChar125StatusSlugFeedDotatomRoute: typeof Char123LocaleChar125StatusSlugFeedDotatomRoute;
+  ApiHeartbeatTokenIndexRoute: typeof ApiHeartbeatTokenIndexRoute;
   Char123LocaleChar125StatusSlugIndexRoute: typeof Char123LocaleChar125StatusSlugIndexRoute;
   ApiPagesIdHistoryMonthRoute: typeof ApiPagesIdHistoryMonthRoute;
   ApiPagesIdIncidentsIncidentIdRoute: typeof ApiPagesIdIncidentsIncidentIdRoute;
@@ -1307,13 +1320,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ApiAuthSplatRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    "/api/heartbeat/$token": {
-      id: "/api/heartbeat/$token";
-      path: "/api/heartbeat/$token";
-      fullPath: "/api/heartbeat/$token";
-      preLoaderRoute: typeof ApiHeartbeatTokenRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     "/api/v2/summary.json": {
       id: "/api/v2/summary.json";
       path: "/api/v2/summary.json";
@@ -1411,6 +1417,20 @@ declare module "@tanstack/react-router" {
       fullPath: "/admin/pages/$id/subscribers";
       preLoaderRoute: typeof AdminPagesIdSubscribersRouteImport;
       parentRoute: typeof AdminRoute;
+    };
+    "/api/heartbeat/$token/": {
+      id: "/api/heartbeat/$token/";
+      path: "/api/heartbeat/$token";
+      fullPath: "/api/heartbeat/$token/";
+      preLoaderRoute: typeof ApiHeartbeatTokenIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/heartbeat/$token/fail": {
+      id: "/api/heartbeat/$token/fail";
+      path: "/api/heartbeat/$token/fail";
+      fullPath: "/api/heartbeat/$token/fail";
+      preLoaderRoute: typeof ApiHeartbeatTokenFailRouteImport;
+      parentRoute: typeof rootRouteImport;
     };
     "/api/pages/$id/$kind": {
       id: "/api/pages/$id/$kind";
@@ -1632,7 +1652,6 @@ const rootRouteChildren: RootRouteChildren = {
   Char123LocaleChar125FeedDotatomRoute: Char123LocaleChar125FeedDotatomRoute,
   Char123LocaleChar125IndexRoute: Char123LocaleChar125IndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiHeartbeatTokenRoute: ApiHeartbeatTokenRoute,
   ApiV2SummaryDotjsonRoute: ApiV2SummaryDotjsonRoute,
   SubscriptionsTokenConfirmRoute: SubscriptionsTokenConfirmRoute,
   SubscriptionsTokenUnsubscribeRoute: SubscriptionsTokenUnsubscribeRoute,
@@ -1642,12 +1661,14 @@ const rootRouteChildren: RootRouteChildren = {
     Char123LocaleChar125MaintenanceIdRoute,
   SubscriptionsTokenIndexRoute: SubscriptionsTokenIndexRoute,
   Char123LocaleChar125HistoryIndexRoute: Char123LocaleChar125HistoryIndexRoute,
+  ApiHeartbeatTokenFailRoute: ApiHeartbeatTokenFailRoute,
   ApiPagesIdKindRoute: ApiPagesIdKindRoute,
   ApiPagesIdOverviewRoute: ApiPagesIdOverviewRoute,
   Char123LocaleChar125StatusSlugBadgeDotsvgRoute:
     Char123LocaleChar125StatusSlugBadgeDotsvgRoute,
   Char123LocaleChar125StatusSlugFeedDotatomRoute:
     Char123LocaleChar125StatusSlugFeedDotatomRoute,
+  ApiHeartbeatTokenIndexRoute: ApiHeartbeatTokenIndexRoute,
   Char123LocaleChar125StatusSlugIndexRoute:
     Char123LocaleChar125StatusSlugIndexRoute,
   ApiPagesIdHistoryMonthRoute: ApiPagesIdHistoryMonthRoute,

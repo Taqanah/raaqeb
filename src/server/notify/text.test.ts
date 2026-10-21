@@ -56,6 +56,51 @@ describe("a notification as text", () => {
     });
   });
 
+  test("a failure's exit code and message are lines after the reason, in each language", async () => {
+    const failed: NotificationPayload = {
+      data: {
+        failure: { exitCode: 28, message: "no space left on device" },
+        monitor,
+        reason: "heartbeat_failed",
+      },
+      timestamp,
+      type: "monitor.down",
+    };
+    const english = await notificationText(sent(failed, "en", utc));
+    expect(english.lines).toEqual([
+      "Monitor: API",
+      "Target: https://api.example.test/health",
+      "Reason: The job reported a failure",
+      "Exit code: 28",
+      "Message: no space left on device",
+      "Time: Sep 25, 2026, 18:49 (UTC)",
+    ]);
+    const arabic = await notificationText(sent(failed, "ar", utc));
+    expect(arabic.lines).toContain("رمز الخروج: 28");
+    expect(arabic.lines).toContain("الرسالة: no space left on device");
+  });
+
+  test("a failure with only an exit code, or only a message, has only that line", async () => {
+    const lines = async (failure: { exitCode?: number; message?: string }) =>
+      (
+        await notificationText(
+          sent(
+            {
+              data: { failure, monitor, reason: "heartbeat_failed" },
+              timestamp,
+              type: "monitor.down",
+            },
+            "en",
+            utc
+          )
+        )
+      ).lines.filter(
+        (each) => each.startsWith("Exit") || each.startsWith("Message")
+      );
+    expect(await lines({ exitCode: 2 })).toEqual(["Exit code: 2"]);
+    expect(await lines({ message: "x" })).toEqual(["Message: x"]);
+  });
+
   test("the time is written in the install's calendar, so an install can run in Hijri alone", async () => {
     const both = await notificationText(
       sent(down, "en", { ...utc, calendar: "hijri_gregorian" })

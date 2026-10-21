@@ -307,7 +307,7 @@ export type Unresolved = "api" | "page" | "route";
 const apiRoutes: readonly RegExp[] = [
   /^\/api\/auth\/./,
   /^\/api\/(custom-domain|openapi\.json|v2\/summary\.json)$/,
-  /^\/api\/heartbeat\/[^/]+$/,
+  /^\/api\/heartbeat\/[^/]+(\/fail)?$/,
   /^\/api\/pages\/[^/]+\/[^/]+$/,
   /^\/api\/pages\/[^/]+\/(history|incidents|maintenance)\/[^/]+$/,
 ];

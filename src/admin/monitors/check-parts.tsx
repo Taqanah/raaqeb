@@ -87,10 +87,16 @@ export function FailureDetail({
           <span className="text-muted-foreground text-xs">
             {t("monitor_test_error")}
           </span>
-          {/* Words break at spaces first; only a word longer than the line breaks inside. */}
-          <Token className="wrap-anywhere block whitespace-pre-wrap">
-            {failure.error}
-          </Token>
+          {/* A failing heartbeat's error is its job's message: its own words, text that follows its own direction. Any other is a driver's text, a machine token. Words break at spaces first; only a word longer than the line breaks inside. */}
+          {failure.params.reason === "heartbeat_failed" ? (
+            <p className="wrap-anywhere" dir="auto">
+              {failure.error}
+            </p>
+          ) : (
+            <Token className="wrap-anywhere block whitespace-pre-wrap">
+              {failure.error}
+            </Token>
+          )}
         </div>
       ) : null}
     </>
@@ -134,6 +140,11 @@ function detailOf(
           </Token>
         ),
       };
+    // The job's own exit code, as a shell says it.
+    case "heartbeat_failed":
+      return params.exitCode === undefined
+        ? {}
+        : { observed: <Token>{`exit ${params.exitCode}`}</Token> };
     case "container_restarting":
       return { observed: <Token>{`restarting (${params.exitCode})`}</Token> };
     case "slow":

@@ -26,6 +26,7 @@ import {
   type Storage,
 } from "@/server/storage/storage.ts";
 import { askedCheckLanded } from "@/shared/domain/checks.ts";
+import type { HeartbeatFailure } from "@/shared/schemas/heartbeat.ts";
 import type { MaintenanceWindow } from "@/shared/schemas/maintenance.ts";
 import type { HttpConfig, MonitorInput } from "@/shared/schemas/monitor.ts";
 import { monitorEventKinds } from "@/shared/schemas/monitor.ts";
@@ -1102,6 +1103,8 @@ describe("heartbeat monitors", () => {
     }
     return {
       id: monitor.id,
+      fail: (failure: HeartbeatFailure, at = h.io.now()) =>
+        h.storage.heartbeats.record(token, at, "203.0.113.7", failure),
       send: (at = h.io.now()) =>
         h.storage.heartbeats.record(token, at, "203.0.113.7"),
     };
@@ -1211,6 +1214,222 @@ describe("heartbeat monitors", () => {
     await s.tick();
     await s.idle();
     expect(await h.count(b.id)).toBe(0);
+  });
+
+  test("a heartbeat that says the job failed, while up, is evaluated at the next tick: one down check with heartbeat failed, the message as its detail, an outage and a down event", async () => {
+    const h = await harness();
+    const b = await beat(h);
+    const s = scheduler(h);
+    await s.tick();
+    await s.idle();
+    const c0 = await h.storage.changeCounter();
+    await b.fail({ exitCode: 2, message: "disk full" }, h.io.now() + 500);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    const [check] = await h.storage.checks.range(
+      b.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(check?.result).toBe("down");
+    expect(check?.reason).toBe(reasons.heartbeat_failed);
+    const detail = await h.storage.checks.detail(b.id, check?.startedAt ?? 0);
+    expect(detail?.params).toEqual({ exitCode: 2, reason: "heartbeat_failed" });
+    expect(detail?.error).toBe("disk full");
+    expect((await h.storage.outages.ongoing()).map((o) => o.monitorId)).toEqual(
+      [b.id]
+    );
+    expect(h.events.map((event) => event.kind)).toEqual(["down"]);
+    expect(await h.storage.changeCounter()).toBeGreaterThan(c0);
+  });
+
+  test("the failing heartbeat is not the next window's, so the monitor is not judged on it twice", async () => {
+    const h = await harness();
+    const b = await beat(h);
+    const s = scheduler(h);
+    await s.tick();
+    await b.fail({ exitCode: 1, message: undefined }, h.io.now() + 500);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    expect(await h.count(b.id)).toBe(1);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    expect(await h.count(b.id)).toBe(1);
+  });
+
+  test("the next ok heartbeat recovers a monitor a failure took down, at the next tick", async () => {
+    const h = await harness();
+    const b = await beat(h);
+    const s = scheduler(h);
+    await s.tick();
+    await b.fail({ exitCode: 1, message: "x" }, h.io.now() + 500);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    await b.send(h.io.now() + 500);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    const checks = await h.storage.checks.range(
+      b.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(checks.map((check) => check.result)).toEqual(["down", "up"]);
+    expect(await h.storage.outages.ongoing()).toEqual([]);
+    expect(h.events.map((event) => event.kind)).toEqual(["down", "recovered"]);
+  });
+
+  test("another failure while down waits for the window's end: no check before it, then one down check with heartbeat failed", async () => {
+    const h = await harness();
+    const b = await beat(h);
+    const s = scheduler(h);
+    await s.tick();
+    await b.fail({ exitCode: 1, message: "first" }, h.io.now() + 500);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    expect(await h.count(b.id)).toBe(1);
+    await b.fail({ exitCode: 3, message: "second" }, h.io.now() + 500);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    expect(await h.count(b.id)).toBe(1);
+    h.advance(window);
+    await s.tick();
+    await s.idle();
+    const checks = await h.storage.checks.range(
+      b.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(checks.map((check) => [check.result, check.reason])).toEqual([
+      ["down", reasons.heartbeat_failed],
+      ["down", reasons.heartbeat_failed],
+    ]);
+    expect(
+      (await h.storage.checks.detail(b.id, checks[1]?.startedAt ?? 0))?.error
+    ).toBe("second");
+    expect(h.events.map((event) => event.kind)).toEqual(["down"]);
+  });
+
+  test("a failure then an ok heartbeat before the tick still opens the outage, with the failure's message, and the ok heartbeat recovers it at the next tick", async () => {
+    const h = await harness();
+    const b = await beat(h);
+    const s = scheduler(h);
+    await s.tick();
+    await b.fail({ exitCode: 1, message: "x" }, h.io.now() + 400);
+    await b.send(h.io.now() + 500);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    const [down] = await h.storage.checks.range(
+      b.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(down?.reason).toBe(reasons.heartbeat_failed);
+    expect(
+      (await h.storage.checks.detail(b.id, down?.startedAt ?? 0))?.error
+    ).toBe("x");
+    expect(h.events.map((event) => event.kind)).toEqual(["down"]);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    const checks = await h.storage.checks.range(
+      b.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(checks.map((check) => check.result)).toEqual(["down", "up"]);
+    expect(await h.storage.outages.ongoing()).toEqual([]);
+    expect(h.events.map((event) => event.kind)).toEqual(["down", "recovered"]);
+  });
+
+  test("the down event carries the failure's exit code and message for the notification", async () => {
+    const h = await harness();
+    const b = await beat(h);
+    const s = scheduler(h);
+    await s.tick();
+    await b.fail({ exitCode: 28, message: "disk full" }, h.io.now() + 500);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    const [event] = h.events;
+    expect(event).toMatchObject({
+      failure: { exitCode: 28, message: "disk full" },
+      kind: "down",
+    });
+  });
+
+  test("a failure and then an ok heartbeat inside the tick that closes the window still open the outage, then the ok heartbeat recovers it", async () => {
+    const h = await harness();
+    const b = await beat(h);
+    const s = scheduler(h);
+    await s.tick();
+    // No tick between the two heartbeats and the window's end: the due evaluation is the first to read them.
+    await b.fail({ exitCode: 3, message: "late failure" }, h.io.now() + 30_000);
+    await b.send(h.io.now() + 31_000);
+    h.advance(window);
+    await s.tick();
+    await s.idle();
+    const [down] = await h.storage.checks.range(
+      b.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(down?.reason).toBe(reasons.heartbeat_failed);
+    expect(
+      (await h.storage.checks.detail(b.id, down?.startedAt ?? 0))?.error
+    ).toBe("late failure");
+    expect(h.events.map((event) => event.kind)).toEqual(["down"]);
+    h.advance(1000);
+    await s.tick();
+    await s.idle();
+    const checks = await h.storage.checks.range(
+      b.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(checks.map((check) => check.result)).toEqual(["down", "up"]);
+    expect(h.events.map((event) => event.kind)).toEqual(["down", "recovered"]);
+  });
+
+  test("a failure that nothing follows, in a window that closes with it as the latest heartbeat, is down with heartbeat failed", async () => {
+    const h = await harness();
+    const b = await beat(h);
+    const s = scheduler(h);
+    await s.tick();
+    // No tick runs between the failure and the window's end, so only the window's own evaluation reads it.
+    await b.fail({ exitCode: 9, message: "late news" }, h.io.now() + 500);
+    h.advance(window);
+    await s.tick();
+    await s.idle();
+    const checks = await h.storage.checks.range(
+      b.id,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+    expect(checks.map((check) => check.reason)).toEqual([
+      reasons.heartbeat_failed,
+    ]);
+  });
+
+  test("a paused heartbeat monitor that was sent a failure is not evaluated for it", async () => {
+    const h = await harness();
+    const b = await beat(h);
+    const s = scheduler(h);
+    await s.tick();
+    await pauseMonitors(h.storage, [b.id]);
+    await b.fail({ exitCode: 1, message: "x" }, h.io.now() + 500);
+    h.advance(2000);
+    await s.tick();
+    await s.idle();
+    expect(await h.count(b.id)).toBe(0);
+    expect(h.events).toEqual([]);
   });
 
   test("a paused heartbeat monitor is never evaluated, and its heartbeats are kept", async () => {
@@ -1343,13 +1562,20 @@ describe("heartbeat monitors", () => {
     const b = await beat(h);
     const token = await h.storage.monitors.heartbeatTokenOf(b.id);
     let injected = false;
+    // The tick reads the latest heartbeats every second; only the evaluation's read, once the window is due, is the one the heartbeat races.
+    const race: { due: boolean } = { due: false };
     // The heartbeat lands after the tick took its time and before the evaluation reads.
     const racing: Storage = {
       ...h.storage,
       heartbeats: {
         ...h.storage.heartbeats,
         latest: async (ids, before) => {
-          if (!injected && token !== undefined && ids.length === 1) {
+          if (
+            race.due &&
+            !injected &&
+            token !== undefined &&
+            ids.length === 1
+          ) {
             injected = true;
             await h.storage.heartbeats.record(token, h.io.now() + 2, undefined);
           }
@@ -1362,6 +1588,7 @@ describe("heartbeat monitors", () => {
       onEvent: (event) => h.events.push(event),
     });
     await s.tick();
+    race.due = true;
     h.advance(window);
     await s.tick();
     await s.idle();

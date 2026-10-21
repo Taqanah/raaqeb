@@ -66,6 +66,26 @@ export const notificationPayloadSchema = z.discriminatedUnion("type", [
         "The admin area's new-incident page for this monitor; absent when the install stores no public address."
       ),
     reason: reasonNameSchema.describe("Why the check failed."),
+    failure: z
+      .object({
+        exitCode: z
+          .int()
+          .min(0)
+          .max(255)
+          .optional()
+          .describe("The exit code the job gave, when it gave one."),
+        message: z
+          .string()
+          .max(256)
+          .optional()
+          .describe(
+            "The short message the job sent, on one line and cut to 256 characters, when it sent one."
+          ),
+      })
+      .optional()
+      .describe(
+        "What a job that reported its own failure carried; absent for any other reason."
+      ),
   }),
   event("monitor.recovered", {
     downtimeMs: z

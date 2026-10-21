@@ -37,6 +37,7 @@ export const reasons = {
   tls_required: 22,
   smtp_no_greeting: 23,
   smtp_stalled: 24,
+  heartbeat_failed: 25,
 } as const;
 
 export type ReasonName = keyof typeof reasons;
@@ -129,5 +130,10 @@ export const reasonParamsSchema = z.discriminatedUnion("reason", [
   z.object({ reason: z.literal("smtp_no_greeting") }),
   /** The SMTP server greeted and then went quiet for the whole wait, mid-send. */
   z.object({ reason: z.literal("smtp_stalled") }),
+  /** The job called its heartbeat monitor's fail address; `exitCode` is the one it gave, when it gave one. Its message is the failure detail's error. */
+  z.object({
+    exitCode: z.int().min(0).max(255).optional(),
+    reason: z.literal("heartbeat_failed"),
+  }),
 ]);
 export type ReasonParams = z.infer<typeof reasonParamsSchema>;

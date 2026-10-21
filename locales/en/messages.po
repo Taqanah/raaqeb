@@ -1415,6 +1415,10 @@ msgid "reason_smtp_stalled"
 msgstr "The SMTP server stopped answering during the send"
 
 #. js-lingui-explicit-id
+msgid "reason_heartbeat_failed"
+msgstr "The job reported a failure"
+
+#. js-lingui-explicit-id
 msgid "monitor_status_up"
 msgstr "Up"
 
@@ -2039,16 +2043,28 @@ msgid "monitor_heartbeat_command"
 msgstr "For example, at the end of the job:"
 
 #. js-lingui-explicit-id
-msgid "monitor_heartbeat_last"
-msgstr "Last heartbeat"
-
-#. js-lingui-explicit-id
-msgid "monitor_heartbeat_source"
-msgstr "Source address"
+msgid "monitor_heartbeat_fail_command"
+msgstr "And when it fails, the fail address:"
 
 #. js-lingui-explicit-id
 msgid "monitor_heartbeat_none"
 msgstr "No heartbeat has arrived yet."
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_recent"
+msgstr "Latest heartbeats"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_status_ok"
+msgstr "Succeeded"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_status_failed"
+msgstr "Failed"
+
+#. js-lingui-explicit-id
+msgid "monitor_heartbeat_exit_code"
+msgstr "Exit code"
 
 #. js-lingui-explicit-id
 msgid "monitor_heartbeat_renew"
@@ -2565,6 +2581,14 @@ msgstr "Domain: {value}"
 #. js-lingui-explicit-id
 msgid "channel_line_reason"
 msgstr "Reason: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_exit_code"
+msgstr "Exit code: {value}"
+
+#. js-lingui-explicit-id
+msgid "channel_line_message"
+msgstr "Message: {value}"
 
 #. js-lingui-explicit-id
 msgid "channel_line_downtime"

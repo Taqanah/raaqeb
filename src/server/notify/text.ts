@@ -103,6 +103,15 @@ export async function notificationText(
       )
     );
   }
+  if ("failure" in notification.data && notification.data.failure) {
+    const { exitCode, message } = notification.data.failure;
+    if (exitCode !== undefined) {
+      lines.push(line("channel_line_exit_code", String(exitCode)));
+    }
+    if (message !== undefined) {
+      lines.push(line("channel_line_message", message));
+    }
+  }
   if ("downForMs" in notification.data) {
     lines.push(
       line(

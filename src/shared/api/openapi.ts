@@ -19,7 +19,11 @@
 import { z } from "zod";
 import { localeSchema } from "@/shared/i18n/locale.ts";
 import { healthReportSchema } from "@/shared/schemas/health.ts";
-import { heartbeatTokenSchema } from "@/shared/schemas/heartbeat.ts";
+import {
+  heartbeatExitCodeMax,
+  heartbeatMessageMaxLength,
+  heartbeatTokenSchema,
+} from "@/shared/schemas/heartbeat.ts";
 import {
   type NotificationType,
   notificationPayloadSchema,
@@ -197,20 +201,69 @@ const plainText = (text: string, description: string) => ({
   description,
 });
 
+const queryParameter = (
+  name: string,
+  description: string,
+  schema: Record<string, unknown>
+) => ({ description, in: "query", name, required: false, schema });
+
+/** What a heartbeat call may say of the job, in its query; the fail address says it failed without any of them. */
+const heartbeatQuery = [
+  queryParameter(
+    "status",
+    "What the job reports: `fail` or `down`, in any case, says it failed. Any other value says nothing, as a call without a status does: the job ran. `up` and `down` are the words Uptime Kuma's push URLs use.",
+    { type: "string" }
+  ),
+  queryParameter(
+    "exit",
+    "The job's exit code, a whole number from 0 to 255. A nonzero one says the job failed; zero says nothing on its own, and a value that is not one is ignored.",
+    { maximum: heartbeatExitCodeMax, minimum: 0, type: "integer" }
+  ),
+  queryParameter(
+    "message",
+    `A short message for a failure, shown with it: control characters and runs of whitespace become one space and it is cut to ${heartbeatMessageMaxLength} characters. A POST may carry it as its body instead, of which the first kilobyte is read. \`msg\` is the same, for Uptime Kuma's push URLs. A call that says the job ran drops it.`,
+    { type: "string" }
+  ),
+];
+
+const ingestResponses = {
+  200: plainText("OK", "The heartbeat was recorded. A HEAD gets no body."),
+  404: plainText("Not Found", "No heartbeat monitor has this token."),
+  503: plainText(
+    "Service Unavailable",
+    "The database is not open or did not answer."
+  ),
+};
+
+/** A POST's body: the failure's message, when the query has none. */
+const messageBody = {
+  content: { "text/plain": { schema: { type: "string" } } },
+  description: `The failure's message, when the query has none; only its first kilobyte is read, and it is cleaned and cut like \`message\`. Ignored by a call that says the job ran.`,
+  required: false,
+};
+
 // One operation for each method the job may use: curl's default GET, a HEAD from a probe, a POST from a webhook.
 const ingest = {
   description:
-    "Records a heartbeat for the heartbeat monitor with this token, by whichever method the job finds easiest.",
-  parameters: [pathParameter("token", schemaOf(heartbeatTokenSchema))],
-  responses: {
-    200: plainText("OK", "The heartbeat was recorded. A HEAD gets no body."),
-    404: plainText("Not Found", "No heartbeat monitor has this token."),
-    503: plainText(
-      "Service Unavailable",
-      "The database is not open or did not answer."
-    ),
-  },
+    "Records a heartbeat for the heartbeat monitor with this token, by whichever method the job finds easiest. It says the job ran unless its query says it failed.",
+  parameters: [
+    pathParameter("token", schemaOf(heartbeatTokenSchema)),
+    ...heartbeatQuery,
+  ],
+  responses: ingestResponses,
   summary: "Record a heartbeat",
+};
+
+/** The same call at the address that says the job failed: the monitor goes down at the next tick, with the exit code and message, until a heartbeat that says the job ran. */
+const ingestFailure = {
+  description:
+    'Records a heartbeat that says the job failed, for the heartbeat monitor with this token. A monitor that is not down goes down at the next tick, about a second later, with the reason "The job reported a failure", the exit code and the message; one that is already down is judged again at the end of its window. The next heartbeat that says the job ran recovers it.',
+  parameters: [
+    pathParameter("token", schemaOf(heartbeatTokenSchema)),
+    ...heartbeatQuery,
+  ],
+  responses: ingestResponses,
+  summary: "Record a failed heartbeat",
 };
 
 /** The reverse proxy's question before it issues a certificate on demand, as Caddy's `on_demand_tls { ask … }` asks it. */
@@ -770,8 +823,17 @@ export function openApiDocument(): OpenApiDocument {
       "/api/heartbeat/{token}": pathItem("Heartbeat", "Heartbeats", {
         get: ingest,
         head: ingest,
-        post: ingest,
+        post: { ...ingest, requestBody: messageBody },
       }),
+      "/api/heartbeat/{token}/fail": pathItem(
+        "HeartbeatFailure",
+        "Heartbeats",
+        {
+          get: ingestFailure,
+          head: ingestFailure,
+          post: { ...ingestFailure, requestBody: messageBody },
+        }
+      ),
       "/subscriptions/{token}/confirm": subscriptionAction("confirm"),
       "/subscriptions/{token}/unsubscribe": subscriptionAction("unsubscribe"),
       "/metrics": pathItem("Metrics", "Meta", { get: metrics }),

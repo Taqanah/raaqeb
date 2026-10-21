@@ -80,8 +80,22 @@ export function notificationOf(
         return;
       }
       const { publicAddress } = context;
+      const { failure } = event;
       return {
         data: {
+          // What a job that reported its own failure carried; nothing for a failure with neither part.
+          ...(failure &&
+            (failure.exitCode !== undefined ||
+              failure.message !== undefined) && {
+              failure: {
+                ...(failure.exitCode !== undefined && {
+                  exitCode: failure.exitCode,
+                }),
+                ...(failure.message !== undefined && {
+                  message: failure.message,
+                }),
+              },
+            }),
           ...(publicAddress !== undefined && {
             incidentUrl: `${publicAddress}/admin/incidents/new?monitor=${encodeURIComponent(monitor.id)}`,
           }),
