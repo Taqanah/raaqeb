@@ -2,7 +2,7 @@
  * Content in the admin (CONTEXT.md "Content"): what the operator
  * reads of it, in the operator language, else the install language, else
  * the locale it is written in; and the field that writes it, one input per
- * locale, the required one first and the others marked optional. The
+ * locale, the required one first and marked required, the others marked optional. The
  * install language, which install-wide content requires, comes from the
  * admin layout.
  */
@@ -91,6 +91,11 @@ export function ContentList({
   );
 }
 
+const markWords = {
+  optional: "app_optional",
+  required: "app_required",
+} as const;
+
 /** What every content input shares: the content as typed, the rule it is held to and the change it reports. */
 interface ContentInputProps {
   /** The inputs' ids and names are this with each locale after a dash. */
@@ -107,7 +112,7 @@ interface ContentInputProps {
   readonly value: ContentDraft;
 }
 
-/** The locales in the order a form shows them, the required one first, each with whether its input breaks the rule and whether it is marked optional. */
+/** The locales in the order a form shows them, the required one first, each with whether its input breaks the rule and how it is marked: required where the field itself must be filled, optional where the locale stands aside. */
 function inputsOf({
   independent = false,
   max,
@@ -117,7 +122,7 @@ function inputsOf({
 }: ContentInputProps): {
   readonly breaks: boolean;
   readonly locale: Locale;
-  readonly optional: boolean;
+  readonly mark: "optional" | "required" | undefined;
 }[] {
   const written = locales.some((each) => value[each].trim() !== "");
   return [required, ...locales.filter((each) => each !== required)].map(
@@ -125,11 +130,13 @@ function inputsOf({
       const text = value[locale].trim();
       const needed = locale === required && !independent;
       const missing = needed && text === "" && (written || !optional);
-      return {
-        breaks: text.length > max || missing,
-        locale,
-        optional: !needed,
-      };
+      let mark: "optional" | "required" | undefined;
+      if (!needed) {
+        mark = "optional";
+      } else if (!optional) {
+        mark = "required";
+      }
+      return { breaks: text.length > max || missing, locale, mark };
     }
   );
 }
@@ -163,15 +170,14 @@ export function ContentInputs(
   const { className, id, invalid, label, value } = props;
   return (
     <div className={cn("flex min-w-0 flex-col gap-1", className)}>
-      {inputsOf(props).map(({ breaks, locale, optional }) => {
+      {inputsOf(props).map(({ breaks, locale, mark }) => {
         const language = `${label} · ${localeNames[locale]}`;
-        const named = optional
-          ? `${language} · ${t("app_optional")}`
-          : language;
+        const named = mark ? `${language} · ${t(markWords[mark])}` : language;
         return (
           <Input
             aria-invalid={invalid && breaks ? true : undefined}
             aria-label={named}
+            aria-required={mark === "required" ? true : undefined}
             dir={directionOf(locale)}
             key={locale}
             lang={locale}
@@ -210,11 +216,12 @@ export function ContentField(
   return (
     <fieldset className="flex min-w-0 flex-col gap-3" data-slot="content-field">
       <legend className="mb-2 font-medium text-sm leading-snug">{label}</legend>
-      {inputsOf(props).map(({ breaks, locale, optional }) => {
+      {inputsOf(props).map(({ breaks, locale, mark }) => {
         const inputId = `${id}-${locale}`;
         const input = {
           "aria-describedby": describedBy,
           "aria-invalid": error && breaks ? true : undefined,
+          "aria-required": mark === "required" ? true : undefined,
           dir: directionOf(locale),
           id: inputId,
           lang: locale,
@@ -232,7 +239,7 @@ export function ContentField(
               <span dir={directionOf(locale)} lang={locale}>
                 {localeNames[locale]}
               </span>
-              {optional ? <span>· {t("app_optional")}</span> : null}
+              {mark ? <span>· {t(markWords[mark])}</span> : null}
             </Label>
             {multiline ? (
               <Textarea {...input} rows={multiline} />

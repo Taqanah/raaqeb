@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createMessages } from "@/shared/i18n/messages.ts";
 import { MessagesProvider } from "@/shared/i18n/react.tsx";
 import { messages as en } from "../../../locales/en/messages.ts";
-import { ContentField } from "./content.tsx";
+import { ContentField, ContentInputs } from "./content.tsx";
 
 const noop = () => undefined;
 const describedBy = /aria-describedby="([^"]*)"/g;
@@ -48,5 +49,77 @@ describe("a content field's description of its inputs", () => {
       hint,
       hint,
     ]);
+  });
+});
+
+function render(node: ReactNode): string {
+  return renderToStaticMarkup(
+    <MessagesProvider i18n={createMessages("en", en)}>{node}</MessagesProvider>
+  );
+}
+
+describe("a content field's marks on its inputs", () => {
+  test("the install language's input is marked required and the other locale's optional", () => {
+    const html = render(
+      <ContentField
+        id="name"
+        label="Name"
+        max={100}
+        onChange={noop}
+        required="ar"
+        value={{ ar: "", en: "" }}
+      />
+    );
+    expect(html).toContain("Required");
+    expect(html.match(/Optional/g)).toHaveLength(1);
+    expect(html.indexOf("Required")).toBeLessThan(html.indexOf("Optional"));
+  });
+
+  test("optional content, empty in every locale, marks no input required", () => {
+    const html = render(
+      <ContentField
+        id="description"
+        label="Description"
+        max={100}
+        onChange={noop}
+        optional
+        required="ar"
+        value={{ ar: "", en: "" }}
+      />
+    );
+    expect(html).not.toContain("Required");
+  });
+
+  test("a name either locale may hold alone marks both inputs optional and none required", () => {
+    const html = render(
+      <ContentField
+        id="name"
+        independent
+        label="Name"
+        max={100}
+        onChange={noop}
+        required="ar"
+        value={{ ar: "", en: "" }}
+      />
+    );
+    expect(html).not.toContain("Required");
+    expect(html.match(/Optional/g)).toHaveLength(2);
+  });
+
+  test("compact inputs name the install language's input required in its label and placeholder", () => {
+    const html = render(
+      <ContentInputs
+        id="row"
+        invalid={false}
+        label="Name"
+        max={100}
+        onChange={noop}
+        required="en"
+        value={{ ar: "", en: "" }}
+      />
+    );
+    expect(html).toContain('aria-label="Name · English · Required"');
+    expect(html).toContain('placeholder="Name · English · Required"');
+    expect(html).toContain('aria-label="Name · العربية · Optional"');
   });
 });
