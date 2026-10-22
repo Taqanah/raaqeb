@@ -504,7 +504,13 @@ export const monitorFieldsSchema = z.object({
     )
     .default([...monitorEventKinds]),
   group: label(groupNameMaxLength).optional(),
-  intervalMs: z.int().min(intervalMinMs).max(intervalMaxMs),
+  intervalMs: z
+    .int()
+    .min(intervalMinMs)
+    .max(intervalMaxMs)
+    .describe(
+      "How often the check runs, in milliseconds. A heartbeat monitor is judged by its schedule's windows instead: send the default, 60000."
+    ),
   name: label(nameMaxLength),
   /** Absent follows the install default. */
   retentionDays: z.int().min(retentionDaysMin).max(retentionDaysMax).optional(),
@@ -517,11 +523,23 @@ export const monitorFieldsSchema = z.object({
     .optional(),
   /** How often a reminder repeats "still down" while the monitor stays down; absent means off. */
   reminderMs: z.int().min(reminderMinMs).max(reminderMaxMs).optional(),
-  retries: z.int().min(0).max(retriesMax),
+  retries: z
+    .int()
+    .min(0)
+    .max(retriesMax)
+    .describe(
+      "How many times one check tries again before it is down. A heartbeat monitor has no check to repeat: send the default, 2."
+    ),
   /** Whether its sealed credentials travel to its probes; absent never. */
   shareCredentials: z.boolean().optional(),
   tags: z.array(label(tagMaxLength)).max(tagsMax).default([]),
-  timeoutMs: z.int().min(timeoutMinMs).max(timeoutMaxMs),
+  timeoutMs: z
+    .int()
+    .min(timeoutMinMs)
+    .max(timeoutMaxMs)
+    .describe(
+      "How long one attempt may take, in milliseconds. A heartbeat monitor has no check to time out: send the default, 10000."
+    ),
 });
 export type MonitorFields = z.infer<typeof monitorFieldsSchema>;
 
