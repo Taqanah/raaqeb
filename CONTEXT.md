@@ -345,6 +345,11 @@ Arabic: إشعار المشترك
 A message sent to a status page's subscribers on one of seven events affecting a component the page shows: incident published, incident updated (every update, including the resolving one), maintenance scheduled, maintenance rescheduled (an edit moved its start or end), maintenance started, maintenance completed, maintenance cancelled. All seven are always on. Distinct from operator notifications.
 _Avoid_: alert, broadcast
 
+**Notification hold**:
+Arabic: إيقاف الإشعارات
+A state an import may leave the install in, so a copy of another install does not speak for it: the operator chooses it on the import, where it is on by default. While it lasts no operator notification and no subscriber notification is sent, and none is kept to send later. Checks, outages, status pages and their history run as usual, and a channel's test message, sign-in mail and a subscription's confirmation still go, since a person on this install asked for each. It lasts until an owner or admin ends it, with no time limit, and every admin page says so meanwhile. It belongs to the install and never travels in an export.
+_Avoid_: mute, quiet mode, silence, pause (that is a monitor's)
+
 ### Status page
 
 **Status page**:
@@ -551,7 +556,7 @@ _Avoid_: backup (a backup is a copy of the database itself), dump
 
 **Import**:
 Arabic: استيراد
-Loading an export into an install that has no monitors, status pages, components, incidents or maintenance windows; any other install refuses it. Credentials are encrypted again with the importing install's key, and the file's settings replace the install's own, except the public address. Each operator account the install lacks, by id and by email, is created with its role, name and preferences and no password, so it signs in once a reset link sets one; an account the install has keeps its own.
+Loading an export into an install that has no monitors, status pages, components, incidents or maintenance windows; any other install refuses it. Credentials are encrypted again with the importing install's key, and the file's settings replace the install's own, except the public address. Each operator account the install lacks, by id and by email, is created with its role, name and preferences and no password, so it signs in once a reset link sets one; an account the install has keeps its own. It starts a notification hold unless the operator turns that off.
 _Avoid_: restore, merge, sync
 
 ### Language

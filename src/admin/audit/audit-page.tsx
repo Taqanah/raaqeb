@@ -57,6 +57,7 @@ const targetWords: Readonly<Record<AuditTarget, MessageId>> = {
   member: "audit_target_member",
   metrics: "audit_target_metrics",
   monitor: "audit_target_monitor",
+  notifications: "audit_target_notifications",
   outage: "audit_target_outage",
   ownership: "audit_target_ownership",
   page: "audit_target_page",

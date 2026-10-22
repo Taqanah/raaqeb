@@ -1,6 +1,7 @@
 /**
  * The admin shell: the floating sidebar with the
- * palette button and the grouped navigation, the release banner, and the
+ * palette button and the grouped navigation, the release banner, the
+ * notification hold's banner, and the
  * page below, whose own row holds the sidebar trigger. It owns the keyboard
  * map's handlers, the command palette and the shortcut sheet.
  */
@@ -50,6 +51,8 @@ const signOutPath = "/sign-out";
 
 export interface AdminShellProps {
   readonly children: ReactNode;
+  /** The notification hold's banner while one lasts, else nothing. */
+  readonly hold: ReactNode;
   readonly operatorEmail: string;
   /** The palette's read of every monitor's name and target; nothing when the session check redirected. */
   readonly readMonitors: () => Promise<MonitorChoicesResult | undefined>;
@@ -60,6 +63,7 @@ export interface AdminShellProps {
 
 export function AdminShell({
   children,
+  hold,
   operatorEmail,
   readMonitors,
   release,
@@ -69,6 +73,7 @@ export function AdminShell({
     <Toasts>
       <SidebarProvider defaultOpen={sidebarOpen}>
         <ShellInner
+          hold={hold}
           operatorEmail={operatorEmail}
           readMonitors={readMonitors}
           release={release}
@@ -82,6 +87,7 @@ export function AdminShell({
 
 function ShellInner({
   children,
+  hold,
   operatorEmail,
   readMonitors,
   release,
@@ -287,6 +293,7 @@ function ShellInner({
       {/* A container, so a page's width steps follow the space beside the sidebar, not the screen. */}
       <SidebarInset className="@container">
         {release ? <ReleaseBanner release={release} /> : null}
+        {hold}
         {children}
       </SidebarInset>
       <Palette

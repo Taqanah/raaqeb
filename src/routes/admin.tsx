@@ -10,13 +10,21 @@ import {
   useServerFn,
 } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { Suspense, useEffect } from "react";
+import {
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { OperatorCalendarProvider } from "@/admin/shell/calendar.tsx";
 import { InstallLanguageProvider } from "@/admin/shell/content.tsx";
-import { FormGate, RoleProvider } from "@/admin/shell/role.tsx";
+import { HoldBanner } from "@/admin/shell/hold-banner.tsx";
+import { FormGate, RoleProvider, useCan } from "@/admin/shell/role.tsx";
 import { AdminShell } from "@/admin/shell/shell.tsx";
 import { type Operator, refusalOf } from "@/server/auth/session.ts";
 import { readNewerRelease, refreshRelease } from "@/server/release/release.ts";
+import { readNotificationHold } from "@/server/settings/hold.ts";
 import { readInstallLanguage } from "@/server/settings/language.ts";
 import { readOperatorClock } from "@/server/settings/operator.ts";
 import type { Locale } from "@/shared/i18n/locale.ts";
@@ -24,6 +32,7 @@ import type { Calendar } from "@/shared/schemas/clock.ts";
 import type { Release } from "@/shared/schemas/release.ts";
 import { sidebarOpenFromCookie } from "@/shared/ui/sidebar.tsx";
 import { permitted, readSession } from "./-admin.ts";
+import { endHoldFn } from "./-hold.ts";
 import { readMonitorChoicesFn } from "./-monitors.ts";
 import { requireOnboardingDone } from "./-onboarding.ts";
 
@@ -55,6 +64,8 @@ const guard = createIsomorphicFn()
 interface ShellData {
   /** The calendar the operator reads dates in, for the pages that load no clock. */
   readonly calendar: Calendar;
+  /** Whether an import's notification hold lasts. */
+  readonly held: boolean;
   /** Whose text install-wide content requires. */
   readonly installLanguage: Locale;
   readonly operator: Operator;
@@ -82,6 +93,7 @@ const readShell = createServerFn({ method: "GET" })
       calendar: (
         await readOperatorClock(context.storage, context.operator.preferences)
       ).calendar,
+      held: (await readNotificationHold(context.storage)) !== undefined,
       installLanguage: await readInstallLanguage(context.storage),
       operator: context.operator,
       pending:
@@ -98,9 +110,43 @@ export const Route = createFileRoute("/admin")({
   loader: ({ abortController: { signal } }) => readShell({ signal }),
 });
 
+/** The hold's banner, with its button for a role that may end it; the shell reads again once it ended. */
+function Hold(): ReactNode {
+  const allowed = useCan("channels");
+  const end = useServerFn(endHoldFn);
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const onEnd = useCallback(() => {
+    setPending(true);
+    setFailed(false);
+    end()
+      .then((result) => {
+        setFailed(!result.ok);
+        return result.ok ? router.invalidate() : undefined;
+      })
+      .catch(() => setFailed(true))
+      .finally(() => setPending(false));
+  }, [end, router]);
+  return (
+    <HoldBanner
+      failed={failed}
+      onEnd={allowed ? onEnd : undefined}
+      pending={pending}
+    />
+  );
+}
+
 function AdminLayout() {
-  const { calendar, installLanguage, operator, pending, release, sidebarOpen } =
-    Route.useLoaderData();
+  const {
+    calendar,
+    held,
+    installLanguage,
+    operator,
+    pending,
+    release,
+    sidebarOpen,
+  } = Route.useLoaderData();
   // Through useServerFn, a redirect the session check throws navigates (an expired session goes to sign-in).
   const readMonitors = useServerFn(readMonitorChoicesFn);
   const router = useRouter();
@@ -114,6 +160,7 @@ function AdminLayout() {
   return (
     <RoleProvider pending={pending} role={operator.role}>
       <AdminShell
+        hold={held ? <Hold /> : null}
         operatorEmail={operator.email}
         readMonitors={readMonitors}
         release={release}

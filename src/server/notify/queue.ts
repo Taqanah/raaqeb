@@ -9,7 +9,9 @@
  * deliveries run at once, one per lane, oldest queued first, so a lane's
  * notifications arrive in order; a lane is a channel, or a subscriber's
  * subscription, whose notification its subscription may no
- * longer take by the time it goes, which drops it. Delivery is at least once: a
+ * longer take by the time it goes, which drops it. Under a notification
+ * hold nothing is queued but a subscription's confirmation, and nothing is
+ * kept to send once the hold ends. Delivery is at least once: a
  * delivery still in flight when the scheduler stops is not settled and is
  * sent again at the next boot, with the same `webhook-id`. A read of the
  * queue that fails is tried again a minute later.
@@ -18,6 +20,7 @@
 import type { InstallKey } from "@/server/boot/installkey.ts";
 import { error as logError, reasonOf } from "@/server/log.ts";
 import { readClock } from "@/server/settings/clock.ts";
+import { readNotificationHold } from "@/server/settings/hold.ts";
 import { readInstallLanguage } from "@/server/settings/language.ts";
 import {
   laneOf,
@@ -265,8 +268,19 @@ export function createNotificationQueue(
       });
   }
 
+  /** Whether a notification hold drops what would be queued now: everything but a subscription's confirmation, which a person on this install asked for. */
+  async function held(payload: { readonly type: string }): Promise<boolean> {
+    return (
+      payload.type !== "subscription.confirmation" &&
+      (await readNotificationHold(storage)) !== undefined
+    );
+  }
+
   return {
     enqueue: async (channelIds, payload, now) => {
+      if (await held(payload)) {
+        return;
+      }
       const queued = await storage.notifications.enqueue(
         channelIds,
         "operator",
@@ -278,6 +292,9 @@ export function createNotificationQueue(
       }
     },
     enqueueSubscribers: async (subscriptionIds, payload, now) => {
+      if (await held(payload)) {
+        return;
+      }
       const queued = await storage.notifications.enqueueSubscribers(
         subscriptionIds,
         payload,

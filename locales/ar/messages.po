@@ -879,6 +879,18 @@ msgid "app_release_notes"
 msgstr "ملاحظات الإصدار"
 
 #. js-lingui-explicit-id
+msgid "app_hold_banner"
+msgstr "الإشعارات موقوفة منذ الاستيراد: لا يصل شيء إلى قنوات الإشعار ولا إلى المشتركين."
+
+#. js-lingui-explicit-id
+msgid "app_hold_end"
+msgstr "استئناف الإشعارات"
+
+#. js-lingui-explicit-id
+msgid "app_hold_end_failed"
+msgstr "تعذّر استئناف الإشعارات. حاول مرة أخرى."
+
+#. js-lingui-explicit-id
 msgid "app_saved"
 msgstr "محفوظ"
 
@@ -5033,6 +5045,14 @@ msgid "setting_import_hint"
 msgstr "الملف الذي نزّله التصدير، من هذا التثبيت أو من غيره."
 
 #. js-lingui-explicit-id
+msgid "setting_import_hold"
+msgstr "إيقاف الإشعارات"
+
+#. js-lingui-explicit-id
+msgid "setting_import_hold_hint"
+msgstr "لا يُرسل بعد الاستيراد أي إشعار إلى القنوات ولا إلى المشتركين حتى يستأنفها مالك أو مدير، فلا تنبّه النسخة باسم الأصل."
+
+#. js-lingui-explicit-id
 msgid "setting_import_submit"
 msgstr "استيراد الملف"
 
@@ -6449,6 +6469,10 @@ msgstr "المقاييس"
 #. js-lingui-explicit-id
 msgid "audit_target_monitor"
 msgstr "مراقبة"
+
+#. js-lingui-explicit-id
+msgid "audit_target_notifications"
+msgstr "الإشعارات"
 
 #. js-lingui-explicit-id
 msgid "audit_target_outage"

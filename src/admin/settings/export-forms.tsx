@@ -2,7 +2,8 @@
  * The export and import page. The export
  * is a plain GET form, so the browser saves the file as it streams; the page
  * says the file holds every credential in clear. The import sends the chosen
- * file as the request's body and words what came back.
+ * file as the request's body, with whether to hold notifications, and words
+ * what came back.
  */
 import {
   type ChangeEvent,
@@ -54,6 +55,7 @@ import {
   OptionCardBody,
   OptionCards,
 } from "@/shared/ui/option-card.tsx";
+import { Switch } from "@/shared/ui/switch.tsx";
 import { Token } from "@/shared/ui/token.tsx";
 
 const modeLabels: Readonly<Record<(typeof exportModes)[number], MessageId>> = {
@@ -186,8 +188,8 @@ type ImportState =
     };
 
 /** What the upload's answer says, or why it has none. */
-async function upload(file: File): Promise<ImportState> {
-  const response = await fetch(importPath, {
+async function upload(file: File, hold: boolean): Promise<ImportState> {
+  const response = await fetch(`${importPath}?hold=${hold}`, {
     body: file,
     headers: { "content-type": "application/zstd" },
     method: "POST",
@@ -223,31 +225,36 @@ export function ImportCard(): ReactNode {
   const [state, setState] = useState<ImportState>({ kind: "idle" });
   const picker = useRef<HTMLInputElement>(null);
   const [chosen, setChosen] = useState<string>();
+  // On by default: a copy of another install should not alert for it until the operator says so.
+  const [hold, setHold] = useState(true);
   const choose = useCallback(() => picker.current?.click(), []);
   const onFile = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setChosen(event.currentTarget.files?.[0]?.name);
   }, []);
-  const onSubmit = useCallback((event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const file = new FormData(event.currentTarget).get("file");
-    if (!(file instanceof File) || file.name === "") {
-      setState({ kind: "failed", reason: "no_file" });
-      return;
-    }
-    if (file.size === 0) {
-      setState({ kind: "failed", reason: "empty_file" });
-      return;
-    }
-    setState({ kind: "importing" });
-    upload(file)
-      .then(setState)
-      .catch(() =>
-        setState({
-          answer: { ok: false, reason: "unavailable" },
-          kind: "done",
-        })
-      );
-  }, []);
+  const onSubmit = useCallback(
+    (event: SubmitEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const file = new FormData(event.currentTarget).get("file");
+      if (!(file instanceof File) || file.name === "") {
+        setState({ kind: "failed", reason: "no_file" });
+        return;
+      }
+      if (file.size === 0) {
+        setState({ kind: "failed", reason: "empty_file" });
+        return;
+      }
+      setState({ kind: "importing" });
+      upload(file, hold)
+        .then(setState)
+        .catch(() =>
+          setState({
+            answer: { ok: false, reason: "unavailable" },
+            kind: "done",
+          })
+        );
+    },
+    [hold]
+  );
   const answer = state.kind === "done" ? state.answer : undefined;
   return (
     <Card data-slot="import-card">
@@ -289,6 +296,23 @@ export function ImportCard(): ReactNode {
                 )}
               </div>
               <FieldDescription>{t("setting_import_hint")}</FieldDescription>
+            </Field>
+            <Field orientation="horizontal">
+              <Switch
+                checked={hold}
+                data-slot="import-hold"
+                id="import-hold"
+                name="hold"
+                onCheckedChange={setHold}
+              />
+              <div className="flex flex-col gap-0.5">
+                <FieldLabel htmlFor="import-hold">
+                  {t("setting_import_hold")}
+                </FieldLabel>
+                <FieldDescription>
+                  {t("setting_import_hold_hint")}
+                </FieldDescription>
+              </div>
             </Field>
             <div className="flex flex-col items-start gap-3">
               <Button

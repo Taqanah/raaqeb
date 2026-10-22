@@ -6,8 +6,8 @@ import { importInstall } from "@/server/export/import.ts";
 const answerWithinSeconds = 255;
 
 // The import's upload: the file streams in as the request's body,
-// under the session check and the origin check, and the
-// answer is the import's result as JSON.
+// under the session check and the origin check, `?hold=true` asking for a
+// notification hold, and the answer is the import's result as JSON.
 export const Route = createFileRoute("/admin/import")({
   server: {
     middleware: [originChecked],
@@ -22,7 +22,8 @@ export const Route = createFileRoute("/admin/import")({
           context.storage,
           context.boot.installKey,
           request.body ?? new Blob([]).stream(),
-          Date.now()
+          Date.now(),
+          new URL(request.url).searchParams.get("hold") === "true"
         );
         const headers = new Headers({ "cache-control": "no-store" });
         if (operator.setCookie) {

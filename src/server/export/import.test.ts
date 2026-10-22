@@ -8,6 +8,7 @@ import {
 import { imagePolicy, pageImageResponse } from "@/server/pages/images.ts";
 import { publicAddress } from "@/server/settings/address.ts";
 import { calendar, timeZone } from "@/server/settings/clock.ts";
+import { readNotificationHold } from "@/server/settings/hold.ts";
 import { installLanguage } from "@/server/settings/language.ts";
 import { runSql } from "@/server/storage/fixture.ts";
 import {
@@ -418,6 +419,68 @@ describe("an import", () => {
     expect(await into.storage.settings.get(publicAddress)).toBe(
       "https://target.example.test"
     );
+  });
+
+  test("with the hold asked for, leaves the install under a notification hold since the import; without it, under none", async () => {
+    const from = await source();
+    const held = await target();
+    expect(
+      await importInstall(
+        held.storage,
+        held.key,
+        fileOf(await exportLines(from)),
+        now,
+        true
+      )
+    ).toMatchObject({ ok: true });
+    expect(await readNotificationHold(held.storage)).toBe(now);
+    const free = await target();
+    await importInstall(
+      free.storage,
+      free.key,
+      fileOf(await exportLines(from)),
+      now,
+      false
+    );
+    expect(await readNotificationHold(free.storage)).toBeUndefined();
+  });
+
+  test("with the hold asked for, refused or failing, leaves no hold behind", async () => {
+    const from = await source();
+    const into = await target();
+    const lines = await exportLines(from);
+    const broken = [...lines.slice(0, 40), "{not json", ...lines.slice(40)];
+    await importInstall(into.storage, into.key, fileOf(broken), now, true);
+    expect(await readNotificationHold(into.storage)).toBeUndefined();
+    await importInstall(into.storage, into.key, fileOf(lines), now, false);
+    expect(
+      await importInstall(into.storage, into.key, fileOf(lines), now, true)
+    ).toMatchObject({ ok: false, reason: "not_empty" });
+    expect(await readNotificationHold(into.storage)).toBeUndefined();
+  });
+
+  test("a held install's own export carries no hold, so an import of it holds only when asked", async () => {
+    const from = await source();
+    const held = await target();
+    await importInstall(
+      held.storage,
+      held.key,
+      fileOf(await exportLines(from)),
+      now,
+      true
+    );
+    expect(await readNotificationHold(held.storage)).toBe(now);
+    const into = await target();
+    expect(
+      await importInstall(
+        into.storage,
+        into.key,
+        fileOf(await exportLines(held)),
+        now,
+        false
+      )
+    ).toMatchObject({ ok: true });
+    expect(await readNotificationHold(into.storage)).toBeUndefined();
   });
 
   test("creates each operator account the install lacks, with its role, name, deactivation and preferences, and no password, session or second step", async () => {

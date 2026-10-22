@@ -164,6 +164,19 @@ test.describe("the full export, downloaded and then imported into the empty inst
     ).toContainText(publicPage.title);
   });
 
+  test("the import held notifications, as its switch is on by default, until the owner resumes them from the banner", async ({
+    page,
+  }) => {
+    await signIn(page, emptyOrigin);
+    await page.goto(`${emptyOrigin}/admin/monitors`);
+    const banner = page.locator("[data-slot=hold-banner]");
+    await expect(banner).toBeVisible();
+    await page.click("[data-slot=end-hold]");
+    await expect(banner).toHaveCount(0);
+    await page.reload();
+    await expect(banner).toHaveCount(0);
+  });
+
   test("an install that is no longer empty refuses a second import and says why", async ({
     page,
   }) => {

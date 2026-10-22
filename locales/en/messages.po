@@ -879,6 +879,18 @@ msgid "app_release_notes"
 msgstr "Release notes"
 
 #. js-lingui-explicit-id
+msgid "app_hold_banner"
+msgstr "Notifications are held since the import: nothing goes to the notification channels or to subscribers."
+
+#. js-lingui-explicit-id
+msgid "app_hold_end"
+msgstr "Resume notifications"
+
+#. js-lingui-explicit-id
+msgid "app_hold_end_failed"
+msgstr "Notifications could not be resumed. Try again."
+
+#. js-lingui-explicit-id
 msgid "app_saved"
 msgstr "Saved"
 
@@ -5033,6 +5045,14 @@ msgid "setting_import_hint"
 msgstr "The file an export downloaded, from this install or another."
 
 #. js-lingui-explicit-id
+msgid "setting_import_hold"
+msgstr "Hold notifications"
+
+#. js-lingui-explicit-id
+msgid "setting_import_hold_hint"
+msgstr "After the import, no notification goes to the channels or to subscribers until an owner or admin resumes them, so the copy does not alert in the original's name."
+
+#. js-lingui-explicit-id
 msgid "setting_import_submit"
 msgstr "Import the file"
 
@@ -6449,6 +6469,10 @@ msgstr "Metrics"
 #. js-lingui-explicit-id
 msgid "audit_target_monitor"
 msgstr "Monitor"
+
+#. js-lingui-explicit-id
+msgid "audit_target_notifications"
+msgstr "Notifications"
 
 #. js-lingui-explicit-id
 msgid "audit_target_outage"

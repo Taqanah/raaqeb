@@ -8,7 +8,9 @@
  * summed from them. The settings are written last, then the change counter
  * moves once. Anything that fails takes out what the import wrote, so the
  * install is as empty as before and the answer names the line. One import
- * runs at a time.
+ * runs at a time. Asked to, it starts a notification hold as soon as the
+ * configuration is written, before the scheduler can read it, and a failure
+ * takes the hold out with the rest.
  */
 import { z } from "zod";
 import { encrypt, type InstallKey } from "@/server/boot/installkey.ts";
@@ -33,6 +35,7 @@ import {
   readClock,
   timeZone,
 } from "@/server/settings/clock.ts";
+import { notificationHold } from "@/server/settings/hold.ts";
 import { installLanguage } from "@/server/settings/language.ts";
 import { retentionDays, sizeBudgetBytes } from "@/server/settings/retention.ts";
 import type { Setting } from "@/server/storage/settings.ts";
@@ -81,19 +84,20 @@ function withDomainExpiring(
   });
 }
 
-/** Reads a whole export into this install, or refuses it. */
+/** Reads a whole export into this install, or refuses it; with `hold`, the install it fills starts a notification hold at `now`. */
 export function importInstall(
   storage: Storage | undefined,
   key: InstallKey,
   file: ReadableStream<Uint8Array>,
-  now: number
+  now: number,
+  hold = false
 ): Promise<ImportAnswer> {
   if (!storage) {
     file.cancel().catch(() => undefined);
     return Promise.resolve({ ok: false, reason: "unavailable" });
   }
   const turn = (chains.get(storage) ?? Promise.resolve()).then(async () => {
-    const answer = await importOnce(storage, key, file, now);
+    const answer = await importOnce(storage, key, file, now, hold);
     if (answer.ok) {
       // The export page's size estimate would show the empty install's for five minutes.
       forgetExportSizes(storage);
@@ -235,7 +239,8 @@ async function importOnce(
   storage: Storage,
   key: InstallKey,
   file: ReadableStream<Uint8Array>,
-  now: number
+  now: number,
+  hold: boolean
 ): Promise<ImportAnswer> {
   const lines = readLines(file);
   let line = 0;
@@ -289,6 +294,9 @@ async function importOnce(
     if (!restored) {
       return { ok: false, reason: "not_empty" };
     }
+    if (hold) {
+      await storage.settings.set(notificationHold, now);
+    }
     const monitors = new Set(configuration.monitors.map((row) => row.id));
     const history = historyWriter(storage, {
       monitors: await storage.monitors.list(),
@@ -318,6 +326,9 @@ async function importOnce(
       records,
     };
   } catch (error) {
+    if (restored && hold) {
+      await storage.settings.remove(notificationHold).catch(() => undefined);
+    }
     return await refused(storage, restored, error, line);
   } finally {
     await lines.return(undefined);

@@ -105,6 +105,8 @@ const expected: Readonly<Record<string, string>> = {
   "-channels.ts editChannelFn": "OA...",
   "-channels.ts deleteChannelFn": "OA...",
   "-channels.ts sendTestFn": "OA...",
+  // Ending an import's notification hold sends to the channels again.
+  "-hold.ts endHoldFn": "OA...",
   "admin/settings/index.tsx readGeneral": "OA...",
   "admin/settings/index.tsx saveGeneral": "OA...",
   "admin/settings/appearance.tsx read": "OA...",

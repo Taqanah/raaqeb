@@ -18,6 +18,10 @@ import { newSigningSecret } from "@/server/notify/webhook.ts";
 import { readComponentStatuses } from "@/server/pages/components.ts";
 import { publicAddress } from "@/server/settings/address.ts";
 import { timeZone } from "@/server/settings/clock.ts";
+import {
+  endNotificationHold,
+  notificationHold,
+} from "@/server/settings/hold.ts";
 import { retentionDays, sizeBudgetBytes } from "@/server/settings/retention.ts";
 import { runSql, scratchDatabase } from "@/server/storage/fixture.ts";
 import {
@@ -2083,6 +2087,45 @@ describe("the scheduler hands monitor events to the operator notifications", () 
     await s.stop();
   });
 
+  test("under a notification hold a monitor's down, reminder and recovered queue nothing, and once the hold ends its next event is queued", async () => {
+    const h = await harness();
+    await h.storage.settings.set(notificationHold, h.io.now());
+    const channel = await webhookChannel(h);
+    await h.storage.monitors.create(
+      input("Site", http(h.port), {
+        channels: [channel],
+        reminderMs: 5 * 60_000,
+        retries: 0,
+      })
+    );
+    const s = scheduler(h);
+    const quiet = spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      h.setMode("error");
+      await s.tick();
+      await s.idle();
+      h.advance(5 * 60_000 + 1000);
+      await s.tick();
+      await s.idle();
+      h.setMode("ok");
+      h.advance(20_000);
+      await s.tick();
+      await s.idle();
+      expect(await queuedFor(h, channel)).toEqual([]);
+      await endNotificationHold(h.storage);
+      h.setMode("error");
+      h.advance(20_000);
+      await s.tick();
+      await s.idle();
+    } finally {
+      quiet.mockRestore();
+    }
+    expect(
+      (await queuedFor(h, channel)).map((each) => each.payload.type)
+    ).toEqual(["monitor.down"]);
+    await s.stop();
+  });
+
   test('a reminder repeats "still down" at its interval while the monitor stays down', async () => {
     const h = await harness();
     const channel = await webhookChannel(h);
@@ -3259,6 +3302,51 @@ describe("subscriber notifications on the scheduler", () => {
     expect(net.hooked("https://hooks.example.com/confirmed")).toEqual(every);
     expect(mailed("reader@example.test")).toHaveLength(every.length);
     expect(net.hooked("https://hooks.example.com/pending")).toEqual([]);
+    await s.stop();
+  });
+
+  test("under a notification hold a window's events reach no subscriber, while a new subscription's confirmation still goes", async () => {
+    const h = await harness();
+    const { web } = await subscribed(h);
+    await h.storage.settings.set(notificationHold, h.io.now());
+    const net = receiver();
+    const io = { ...h.io, fetch: net.fetch, lookup: internet };
+    const s = createScheduler(h.storage, io, {
+      installKey: key,
+      refreshPeriodMs: Number.POSITIVE_INFINITY,
+    });
+    await s.tick();
+    await s.idle();
+    const created = await createWindow(
+      h.storage,
+      {
+        componentIds: [web],
+        endsAt: io.now() + 3 * 60_000,
+        message: { ar: "Moving the database." },
+        startsAt: io.now() + 60_000,
+        title: { ar: "Database move" },
+      },
+      io.now(),
+      (event) => s.subscribers.announce(event, io.now())
+    );
+    expect(created.ok).toBe(true);
+    const [page] = await h.storage.pages.list();
+    const late = await h.storage.subscriptions.request({
+      address: "hash-of-late",
+      channel: "webhook",
+      credentials: await encrypt(key, "https://hooks.example.com/late"),
+      locale: "en",
+      pageId: page?.id ?? "",
+      quietSince: io.now() - 1,
+      requestedAt: io.now(),
+    });
+    expect(await s.subscribers.confirm(late?.id ?? "", io.now())).toBe(true);
+    await run(h, s, 5 * 60_000);
+    expect(net.hooked("https://hooks.example.com/confirmed")).toEqual([]);
+    expect(mailed("reader@example.test")).toEqual([]);
+    expect(net.hooked("https://hooks.example.com/late")).toEqual([
+      "subscription.confirmation",
+    ]);
     await s.stop();
   });
 
