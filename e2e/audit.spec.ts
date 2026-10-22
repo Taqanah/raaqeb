@@ -59,3 +59,52 @@ test.describe("the audit log", () => {
     await expect(entries).toHaveCount(2);
   });
 });
+
+test.describe("the audit log with a bulk change", () => {
+  let install: Install | undefined;
+  test.beforeAll(async () => {
+    install = await spawnInstall({
+      account: true,
+      language: "en",
+      records: async (storage) => {
+        await storage.audit.append({
+          action: "monitor.pause",
+          actorEmail: operatorEmail,
+          actorId: null,
+          address: "203.0.113.7",
+          at: Date.now(),
+          detail: {},
+          id: "01a160c1-0000-7000-8000-000000000001",
+          targetId: Array.from(
+            { length: 6 },
+            (_, index) => `01a160c1-6b8e-757c-89dd-223cb29cae4${index}`
+          ).join(","),
+        });
+      },
+    });
+  });
+  test.afterAll(async () => {
+    await install?.stop();
+  });
+
+  test("a bulk change's target ids wrap, so the address and time columns stay inside the table at 1280 px", async ({
+    page,
+  }) => {
+    const origin = install?.origin ?? "";
+    await page.goto(`${origin}/sign-in`);
+    await page.fill("input[name=email]", operatorEmail);
+    await page.fill("input[name=password]", operatorPassword);
+    await page.click("form button[type=submit]");
+    await expectPath(page, "/admin/monitors");
+    await page.goto(`${origin}/admin/audit`);
+    await expect(page.locator("[data-slot=audit-entry]")).toHaveCount(2);
+    expect(
+      await page
+        .locator("[data-slot=audit-entries]")
+        .evaluate(
+          (table) =>
+            table.scrollWidth <= (table.parentElement?.clientWidth ?? 0)
+        )
+    ).toBe(true);
+  });
+});

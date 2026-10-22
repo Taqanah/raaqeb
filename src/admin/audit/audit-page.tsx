@@ -250,8 +250,12 @@ function EntryRow({
         )}
       </TableCell>
       <TableCell>
+        {/* A bulk change names many ids; they wrap rather than pushing the address and time past the frame. */}
         {entry.targetId ? (
-          <Token className="wrap-anywhere" dir="ltr">
+          <Token
+            className="wrap-anywhere inline-block max-w-64 whitespace-normal"
+            dir="ltr"
+          >
             {entry.targetId}
           </Token>
         ) : null}
