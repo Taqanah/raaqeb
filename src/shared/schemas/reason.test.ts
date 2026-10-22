@@ -40,6 +40,7 @@ describe("the reason dictionary", () => {
       client_certificate_refused: 27,
       oauth2_token_failed: 28,
       tls_proxy_unsupported: 29,
+      proxy_failed: 30,
     });
   });
 

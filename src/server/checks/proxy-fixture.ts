@@ -68,6 +68,18 @@ export function startProxy(
   };
 }
 
+/** The address of a proxy that is down: a loopback port that was free a moment ago and has nothing listening now. */
+export function deadProxyUrl(): string {
+  const listener = Bun.listen({
+    hostname: "127.0.0.1",
+    port: 0,
+    socket: { data: () => undefined },
+  });
+  const { port } = listener;
+  listener.stop(true);
+  return `http://127.0.0.1:${port}`;
+}
+
 const names = [
   "ALL_PROXY",
   "all_proxy",

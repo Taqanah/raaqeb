@@ -504,3 +504,73 @@ describe("the reason of a fetch error on a request that carried a client certifi
     }
   });
 });
+
+describe("the reason of a fetch error on a request that went through a proxy", () => {
+  /** Bun 1.4.3's error for a CONNECT the proxy answered with anything but 200. */
+  function tunnelRefused(status: number, text: string): Error {
+    return Object.assign(
+      new Error(`Proxy refused to open a tunnel: ${status} ${text}`),
+      { code: "ERR_PROXY_TUNNEL", status, statusText: text }
+    );
+  }
+
+  test("a tunnel the proxy would not open is the proxy's failure with the status it answered, never unknown", () => {
+    expect(
+      reasonForError(tunnelRefused(502, "Bad Gateway"), target, [], {
+        proxied: true,
+      })
+    ).toEqual({
+      error: "Proxy refused to open a tunnel: 502 Bad Gateway",
+      params: { reason: "proxy_failed", status: 502 },
+      reason: "proxy_failed",
+    });
+  });
+
+  test("a tunnel refusal is the proxy's even when the proxy in use was not known, since only a proxy opens one", () => {
+    expect(
+      reasonForError(
+        tunnelRefused(407, "Proxy Authentication Required"),
+        target
+      )
+    ).toMatchObject({
+      params: { reason: "proxy_failed", status: 407 },
+      reason: "proxy_failed",
+    });
+  });
+
+  test("a tunnel refusal without a usable status names none", () => {
+    for (const status of [undefined, 0, 600, "502"]) {
+      const error = Object.assign(new Error("Proxy refused"), {
+        code: "ERR_PROXY_TUNNEL",
+        status,
+      });
+      expect(reasonForError(error, target).params).toEqual({
+        reason: "proxy_failed",
+      });
+    }
+  });
+
+  test("a refused connection or a name that does not resolve is the proxy's, the only peer the request connected to, and names no status", () => {
+    for (const code of ["ECONNREFUSED", "ConnectionRefused", "ENOTFOUND"]) {
+      expect(
+        reasonForError(coded(code), target, [], { proxied: true })
+      ).toEqual({
+        error: code,
+        params: { reason: "proxy_failed" },
+        reason: "proxy_failed",
+      });
+    }
+  });
+
+  test("a timeout, a reset and a certificate problem keep their reasons, since through a tunnel they may be the target's", () => {
+    for (const [error, reason] of [
+      [new DOMException("timed out", "TimeoutError"), "timeout"],
+      [coded("ECONNRESET"), "connection_failed"],
+      [coded("CERT_HAS_EXPIRED"), "certificate_expired"],
+    ] as const) {
+      expect(
+        reasonForError(error, target, [], { proxied: true })
+      ).toMatchObject({ reason });
+    }
+  });
+});

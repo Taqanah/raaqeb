@@ -1455,6 +1455,10 @@ msgid "reason_tls_proxy_unsupported"
 msgstr "A custom CA or client certificate cannot be used through an https proxy"
 
 #. js-lingui-explicit-id
+msgid "reason_proxy_failed"
+msgstr "The proxy refused the request or could not be reached"
+
+#. js-lingui-explicit-id
 msgid "monitor_status_up"
 msgstr "Up"
 

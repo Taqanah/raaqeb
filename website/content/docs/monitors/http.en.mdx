@@ -122,6 +122,7 @@ The reasons a failed check reports:
 | Certificate expired | The certificate's validity has ended. |
 | Token request failed | The token endpoint did not give a token: it answered with an error status, or an answer with no usable access token, or did not answer. Shows its HTTP status and the `error` it named, such as `invalid_client`. The target is not called. |
 | Custom CA or client certificate through an https proxy | The monitor has a custom CA or a client certificate and its requests go through an `https` proxy, which the runtime cannot do safely. No request is sent. |
+| The proxy refused the request or could not be reached | The request went through a proxy, the monitor's own or the install's, and the proxy would not open the tunnel, asked for a sign-in it did not get (`407`), or could not be reached. Shows the status the proxy answered with, when it answered. See [the outbound proxy](/en/docs/operate/outbound-proxy). |
 | Client certificate expired | The client certificate is past its end date, or before its start date. No request is sent. |
 | Client certificate refused | The server closed the connection while a request that carried a client certificate was setting it up, which is how a server that requires one and does not accept this one answers. The runtime reports a plain reset, so a network reset gives the same reason; the code is kept. |
 | Certificate invalid | The certificate did not verify: self-signed, issued for another name, or from an unknown issuer. The code is kept. |

@@ -1455,6 +1455,10 @@ msgid "reason_tls_proxy_unsupported"
 msgstr "لا يمكن استخدام سلطة شهادات مخصصة أو شهادة عميل عبر وكيل https"
 
 #. js-lingui-explicit-id
+msgid "reason_proxy_failed"
+msgstr "رفض الوكيل الطلب أو تعذّر الوصول إليه"
+
+#. js-lingui-explicit-id
 msgid "monitor_status_up"
 msgstr "يعمل"
 

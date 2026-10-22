@@ -3,7 +3,8 @@
  * (ADR-0004): a timeout, a DNS failure, a refused or failed
  * connection (a TLS handshake that ended before any certificate among them),
  * an expired or invalid certificate, too many redirects (thrown by the HTTP
- * check's own redirect loop with Bun's code and text). An unmapped error
+ * check's own redirect loop with Bun's code and text), a proxy that refused
+ * the request or could not be reached. An unmapped error
  * becomes "unknown" with its raw text beside it. The codes were read from
  * Bun 1.4.3.
  */
@@ -45,7 +46,7 @@ const closedCodes = new Set(["ECONNRESET", "ConnectionClosed"]);
 const certificateCodeShape =
   /CERT|SELF_SIGNED|UNABLE_TO_(GET|VERIFY)|HOSTNAME_MISMATCH/;
 
-/** The reason a thrown fetch error stands for; `target` supplies the host and port the reason names. The credentials sent are masked in the raw text before its cut, so one straddling the cut leaves no prefix. `clientCertificate` says the request presented one, which makes a connection the server closed its refusal of it. */
+/** The reason a thrown fetch error stands for; `target` supplies the host and port the reason names. The credentials sent are masked in the raw text before its cut, so one straddling the cut leaves no prefix. `clientCertificate` says the request presented one, which makes a connection the server closed its refusal of it. `proxied` says the request went through a proxy, the only peer it connected to, which makes a refused connection or a name that did not resolve the proxy's. */
 export function reasonForError(
   error: unknown,
   target: {
@@ -54,7 +55,10 @@ export function reasonForError(
     readonly timeoutMs: number;
   },
   credentials: CredentialPatterns = [],
-  options: { readonly clientCertificate?: boolean } = {}
+  options: {
+    readonly clientCertificate?: boolean;
+    readonly proxied?: boolean;
+  } = {}
 ): MappedError {
   const text = maskCredentialText(messageOf(error), credentials).slice(
     0,
@@ -74,6 +78,17 @@ export function reasonForError(
   }
   if (code === undefined) {
     return mapped("unknown", { reason: "unknown" });
+  }
+  // Bun's error for a CONNECT the proxy answered with anything but 200, carrying that status.
+  if (code === "ERR_PROXY_TUNNEL") {
+    const status = statusOf(error);
+    return mapped("proxy_failed", {
+      reason: "proxy_failed",
+      ...(status !== undefined && { status }),
+    });
+  }
+  if (options.proxied && (dnsCodes.has(code) || refusedCodes.has(code))) {
+    return mapped("proxy_failed", { reason: "proxy_failed" });
   }
   if (dnsCodes.has(code)) {
     return mapped("dns_failed", { host: target.host, reason: "dns_failed" });
@@ -132,6 +147,19 @@ export function codeOf(error: unknown): string | undefined {
   if (typeof error === "object" && error !== null && "code" in error) {
     const { code } = error;
     return typeof code === "string" ? code : undefined;
+  }
+}
+
+/** The HTTP status an error carries, when it is one. */
+function statusOf(error: unknown): number | undefined {
+  if (typeof error === "object" && error !== null && "status" in error) {
+    const { status } = error;
+    return typeof status === "number" &&
+      Number.isInteger(status) &&
+      status >= 100 &&
+      status <= 599
+      ? status
+      : undefined;
   }
 }
 

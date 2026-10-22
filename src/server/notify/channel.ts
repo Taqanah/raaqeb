@@ -10,6 +10,7 @@
  */
 
 import { reasonForError } from "@/server/checks/errors.ts";
+import { proxyFor } from "@/server/checks/http.ts";
 import type { TimeOptions } from "@/shared/i18n/format.ts";
 import type { Locale } from "@/shared/i18n/locale.ts";
 import type {
@@ -189,12 +190,18 @@ export async function attempt(
   secrets: readonly string[],
   send: (transport: Transport) => Promise<void>
 ): Promise<SendOutcome> {
-  let target = { host: "", port: 0, timeoutMs: sendTimeoutMs };
+  let target = { host: "", port: 0, proxied: false, timeoutMs: sendTimeoutMs };
   const transport: Transport = {
     now: io.now,
     post: async (url, request) => {
-      target = { ...targetOf(url), timeoutMs: sendTimeoutMs };
       const pin = pinnedTo(url, request.address);
+      target = {
+        ...targetOf(url),
+        // The platform's fetch reads the proxy environment for the address it is handed, the pinned one.
+        proxied:
+          proxyFor(new URL(pin.url), undefined, process.env) !== undefined,
+        timeoutMs: sendTimeoutMs,
+      };
       const response = await io.fetch(pin.url, {
         body: request.body,
         headers: { ...request.headers, ...pin.headers },
@@ -216,6 +223,7 @@ export async function attempt(
       target = {
         host: server.host,
         port: server.port,
+        proxied: false,
         timeoutMs: smtpTimeoutMs,
       };
       return sendSmtp(server, message, smtpTimeoutMs, smtpWaitMs);
@@ -246,6 +254,7 @@ function failureOf(
   target: {
     readonly host: string;
     readonly port: number;
+    readonly proxied: boolean;
     readonly timeoutMs: number;
   },
   secrets: readonly string[]
@@ -255,6 +264,14 @@ function failureOf(
     const text = (
       error.body.cut ? withoutSecretStart(whole, secrets) : whole
     ).slice(0, errorMaxLength);
+    // Only a proxy asks for its own sign-in; through one, that answer is the proxy's.
+    if (error.status === 407 && target.proxied) {
+      return {
+        error: text === "" ? undefined : text,
+        params: { reason: "proxy_failed", status: error.status },
+        reason: "proxy_failed",
+      };
+    }
     return {
       error: text === "" ? undefined : text,
       params: {
@@ -287,7 +304,9 @@ function failureOf(
       reason,
     };
   }
-  const mapped = reasonForError(error, target);
+  const mapped = reasonForError(error, target, [], {
+    proxied: target.proxied,
+  });
   const text = withoutSecrets(mapped.error, secrets);
   // A failure is stored and read back through the dictionary; what it cannot hold is unknown, never a row that breaks the reads.
   if (!reasonParamsSchema.safeParse(mapped.params).success) {

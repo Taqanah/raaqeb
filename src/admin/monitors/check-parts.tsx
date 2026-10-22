@@ -154,6 +154,11 @@ function detailOf(
         ? {}
         : { observed: <Token>{said.join(" ")}</Token> };
     }
+    // The status the proxy refused with, when it answered at all.
+    case "proxy_failed":
+      return params.status === undefined
+        ? {}
+        : { observed: <Token>{String(params.status)}</Token> };
     case "container_restarting":
       return { observed: <Token>{`restarting (${params.exitCode})`}</Token> };
     case "slow":

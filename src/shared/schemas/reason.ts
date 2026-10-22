@@ -42,6 +42,7 @@ export const reasons = {
   client_certificate_refused: 27,
   oauth2_token_failed: 28,
   tls_proxy_unsupported: 29,
+  proxy_failed: 30,
 } as const;
 
 export type ReasonName = keyof typeof reasons;
@@ -157,5 +158,10 @@ export const reasonParamsSchema = z.discriminatedUnion("reason", [
   }),
   /** The monitor has a custom CA or a client certificate and its proxy is an https one: Bun would verify the proxy with that CA and hand it the certificate, so no request is sent. */
   z.object({ reason: z.literal("tls_proxy_unsupported") }),
+  /** The request went through a proxy that refused it or could not be reached: `status` is the proxy's own refusal (a tunnel it would not open, or `407` for its sign-in) when it answered, nothing when it did not. */
+  z.object({
+    reason: z.literal("proxy_failed"),
+    status: z.int().min(100).max(599).optional(),
+  }),
 ]);
 export type ReasonParams = z.infer<typeof reasonParamsSchema>;

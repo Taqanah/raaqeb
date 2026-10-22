@@ -7,6 +7,7 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import {
+  deadProxyUrl,
   setProxyEnvironment,
   startProxy,
   type TestProxy,
@@ -129,6 +130,8 @@ describe("a channel's send under the install's proxy environment", () => {
     const direct = await post();
     expect(direct.ok).toBe(false);
     expect(byName.requests).toHaveLength(1);
+    // Sent direct, its refusal is the destination's, not the proxy's.
+    expect(!direct.ok && direct.failure.reason).toBe("connection_refused");
   });
 
   test("a proxy that refuses the tunnel fails the send with the proxy's refusal as its error", async () => {
@@ -140,5 +143,69 @@ describe("a channel's send under the install's proxy environment", () => {
       live
     );
     expect(outcome.ok).toBe(false);
+  });
+});
+
+describe("a channel's send the install's proxy fails", () => {
+  const send = () =>
+    deliver(
+      notificationChannels.telegram,
+      { botToken: "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef", chatId: "42" },
+      sampleSend(sampleDown, "en"),
+      live
+    );
+
+  test("a tunnel the proxy refuses is the proxy's failure with its status, never unknown", async () => {
+    through("HTTPS_PROXY");
+    const outcome = await send();
+    expect(outcome.ok || outcome.failure).toMatchObject({
+      error: "Proxy refused to open a tunnel: 502 X",
+      params: { reason: "proxy_failed", status: 502 },
+      reason: "proxy_failed",
+    });
+  });
+
+  test("a proxy that is down is the proxy's failure, never the destination refusing the connection", async () => {
+    restore = setProxyEnvironment({ HTTPS_PROXY: deadProxyUrl() });
+    const outcome = await send();
+    expect(outcome.ok || outcome.failure).toMatchObject({
+      params: { reason: "proxy_failed" },
+      reason: "proxy_failed",
+    });
+  });
+
+  test("a plain http webhook the proxy answers with 407 is the proxy asking for its sign-in", async () => {
+    seen = startProxy(() => ({ status: 407 }));
+    restore = setProxyEnvironment({ HTTP_PROXY: seen.url });
+    const outcome = await deliver(
+      notificationChannels.webhook,
+      { secret, url: "http://hook.example.test:9000/hook" },
+      sampleSend(sampleDown, "en"),
+      live
+    );
+    expect(outcome.ok || outcome.failure).toMatchObject({
+      params: { reason: "proxy_failed", status: 407 },
+      reason: "proxy_failed",
+    });
+  });
+
+  test("a 407 from a destination reached with no proxy between is the destination's own status", async () => {
+    const server = Bun.serve({
+      fetch: () => new Response("", { status: 407 }),
+      hostname: "127.0.0.1",
+      port: 0,
+    });
+    restore = setProxyEnvironment({});
+    const outcome = await attempt(live, [], (transport) =>
+      transport.post(`http://127.0.0.1:${server.port}/hook`, {
+        body: "{}",
+        headers: {},
+      })
+    );
+    server.stop(true);
+    expect(outcome.ok || outcome.failure).toMatchObject({
+      params: { observed: 407, reason: "unexpected_status" },
+      reason: "unexpected_status",
+    });
   });
 });

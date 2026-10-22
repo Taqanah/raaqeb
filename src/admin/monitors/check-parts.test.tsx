@@ -240,6 +240,26 @@ describe("the failure detail of a container that is not running", () => {
     );
     expect(silent).not.toContain('data-slot="token"');
   });
+
+  test("shows the status a proxy refused with, and nothing for a proxy that never answered", () => {
+    const refused = render(
+      "en",
+      <FailureDetail
+        failure={{
+          error: undefined,
+          params: { reason: "proxy_failed", status: 407 },
+        }}
+      />
+    );
+    expect(refused).toContain('data-slot="token" dir="ltr">407</bdi>');
+    const silent = render(
+      "en",
+      <FailureDetail
+        failure={{ error: undefined, params: { reason: "proxy_failed" } }}
+      />
+    );
+    expect(silent).not.toContain('data-slot="token"');
+  });
 });
 
 describe("a check's response time", () => {

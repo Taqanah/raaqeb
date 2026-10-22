@@ -8,10 +8,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Credentials } from "@/shared/schemas/credentials.ts";
 import type { HttpConfig } from "@/shared/schemas/monitor.ts";
+import { reasons } from "@/shared/schemas/reason.ts";
 import { requestDocker } from "./docker-io.ts";
-import { proxyOf } from "./http.ts";
+import { proxyFor, proxyOf } from "./http.ts";
 import { liveIo } from "./io.ts";
 import {
+  deadProxyUrl,
   setProxyEnvironment,
   startProxy,
   type TestProxy,
@@ -202,6 +204,195 @@ describe("an HTTP monitor's own proxy", () => {
     );
     expect(outcome?.check.result).toBe("down");
     expect(outcome?.detail?.error).toContain("Proxy refused");
+  });
+});
+
+describe("a proxy that fails the check", () => {
+  test("a monitor's own proxy that is down is the proxy's failure, never the target refusing the connection", async () => {
+    restore = setProxyEnvironment({});
+    const outcomes = await Promise.all(
+      [config.url, "https://secure.example.test/"].map((url) =>
+        runCheck(http({ proxy: deadProxyUrl(), url }), liveIo())
+      )
+    );
+    for (const outcome of outcomes) {
+      expect(outcome?.check.reason).toBe(reasons.proxy_failed);
+      expect(outcome?.detail?.params).toEqual({ reason: "proxy_failed" });
+    }
+  });
+
+  test("the install's proxy that is down is the proxy's failure too", async () => {
+    restore = setProxyEnvironment({
+      HTTP_PROXY: deadProxyUrl(),
+      HTTPS_PROXY: deadProxyUrl(),
+    });
+    const outcomes = await Promise.all(
+      [config.url, "https://secure.example.test/"].map((url) =>
+        runCheck(http({ url }), liveIo())
+      )
+    );
+    for (const outcome of outcomes) {
+      expect(outcome?.detail?.params).toEqual({ reason: "proxy_failed" });
+    }
+  });
+
+  test("a proxy whose name does not resolve is the proxy's failure, not the target's DNS", async () => {
+    restore = setProxyEnvironment({});
+    const outcome = await runCheck(
+      http({ proxy: "http://proxy.example.invalid:3128" }),
+      liveIo()
+    );
+    expect(outcome?.detail?.params).toEqual({ reason: "proxy_failed" });
+  });
+
+  test("a tunnel the proxy refuses is the proxy's failure with its status, never unknown", async () => {
+    const own = proxy();
+    restore = setProxyEnvironment({});
+    const outcome = await runCheck(
+      http({ proxy: own.url, url: "https://secure.example.test/" }),
+      liveIo()
+    );
+    expect(outcome?.check.reason).toBe(reasons.proxy_failed);
+    expect(outcome?.detail?.params).toEqual({
+      reason: "proxy_failed",
+      status: 502,
+    });
+  });
+
+  test("a plain http request the proxy answers with 407 is the proxy asking for its sign-in, not the target's status", async () => {
+    const own = proxy(() => ({ status: 407 }));
+    restore = setProxyEnvironment({});
+    const outcome = await runCheck(http({ proxy: own.url }), liveIo());
+    expect(outcome?.check.result).toBe("down");
+    expect(outcome?.check.statusCode).toBe(407);
+    expect(outcome?.detail?.params).toEqual({
+      reason: "proxy_failed",
+      status: 407,
+    });
+  });
+
+  test("a 407 from a target reached with no proxy between is the target's own status", async () => {
+    const server = Bun.serve({
+      fetch: () => new Response("sign in", { status: 407 }),
+      hostname: "127.0.0.1",
+      port: 0,
+    });
+    servers.push(server);
+    restore = setProxyEnvironment({});
+    const outcome = await runCheck(
+      http({ url: `http://127.0.0.1:${server.port}/` }),
+      liveIo()
+    );
+    expect(outcome?.detail?.params).toMatchObject({
+      observed: 407,
+      reason: "unexpected_status",
+    });
+  });
+
+  test("a plain http request the proxy answers with another error status is that status, since a proxy relays the target's own", async () => {
+    const own = proxy(() => ({ status: 502 }));
+    restore = setProxyEnvironment({});
+    const outcome = await runCheck(http({ proxy: own.url }), liveIo());
+    expect(outcome?.detail?.params).toMatchObject({
+      observed: 502,
+      reason: "unexpected_status",
+    });
+  });
+
+  test("a target NO_PROXY sends direct that refuses the connection is still the target's refusal, the install's proxy down or not", async () => {
+    const closed = new URL(deadProxyUrl());
+    restore = setProxyEnvironment({
+      HTTP_PROXY: deadProxyUrl(),
+      NO_PROXY: "127.0.0.1",
+    });
+    const outcome = await runCheck(
+      http({ url: `http://127.0.0.1:${closed.port}/` }),
+      liveIo()
+    );
+    expect(outcome?.detail?.params).toEqual({
+      host: "127.0.0.1",
+      port: Number(closed.port),
+      reason: "connection_refused",
+    });
+  });
+
+  test("a redirect to a host NO_PROXY sends direct is judged by that hop: its refusal is the target's", async () => {
+    const closed = new URL(deadProxyUrl());
+    const own = proxy(() => ({
+      headers: { location: `http://127.0.0.1:${closed.port}/` },
+      status: 302,
+    }));
+    restore = setProxyEnvironment({
+      HTTP_PROXY: own.url,
+      NO_PROXY: "127.0.0.1",
+    });
+    const outcome = await runCheck(http(), liveIo());
+    expect(outcome?.detail?.params).toMatchObject({
+      reason: "connection_refused",
+    });
+  });
+});
+
+describe("the proxy a request goes through", () => {
+  const url = new URL("https://web.example.test/health");
+  const plain = new URL("http://web.example.test/health");
+
+  test("is the monitor's own when it has one, whatever the environment and NO_PROXY say", () => {
+    expect(
+      proxyFor(url, "http://own.example.test:3128", {
+        HTTPS_PROXY: "http://install.example.test:3128",
+        NO_PROXY: "*",
+      })
+    ).toBe("http://own.example.test:3128");
+  });
+
+  test("is the environment's for the URL's scheme, either case, then ALL_PROXY", () => {
+    const env = {
+      HTTP_PROXY: "http://plain.example.test",
+      https_proxy: "http://secure.example.test",
+    };
+    expect(proxyFor(url, undefined, env)).toBe("http://secure.example.test");
+    expect(proxyFor(plain, undefined, env)).toBe("http://plain.example.test");
+    expect(
+      proxyFor(url, undefined, { all_proxy: "http://all.example.test" })
+    ).toBe("http://all.example.test");
+    expect(
+      proxyFor(plain, undefined, { ALL_PROXY: "http://all.example.test" })
+    ).toBe("http://all.example.test");
+  });
+
+  test("is nothing for a host NO_PROXY exempts, or with no proxy set", () => {
+    const env = {
+      HTTPS_PROXY: "http://secure.example.test",
+      no_proxy: ".example.test",
+    };
+    expect(proxyFor(url, undefined, env)).toBeUndefined();
+    expect(proxyFor(url, undefined, {})).toBeUndefined();
+    expect(proxyFor(url, undefined, { HTTPS_PROXY: "" })).toBeUndefined();
+  });
+
+  test("reads NO_PROXY as the runtime does: any case, a leading `*.`, a port that must match, an address range", () => {
+    const through = (noProxy: string, address: string) =>
+      proxyFor(new URL(address), undefined, {
+        HTTP_PROXY: "http://install.example.test",
+        HTTPS_PROXY: "http://install.example.test",
+        NO_PROXY: noProxy,
+      }) !== undefined;
+    expect(through("EXAMPLE.test", "http://web.example.test/")).toBe(false);
+    expect(through("*.example.test", "http://example.test/")).toBe(false);
+    expect(through("xample.test", "http://example.test/")).toBe(true);
+    expect(through("example.test:8080", "http://example.test:8080/")).toBe(
+      false
+    );
+    expect(through("example.test:8080", "http://example.test/")).toBe(true);
+    expect(through("example.test:443", "https://example.test/")).toBe(false);
+    expect(through("10.0.0.0/8", "http://10.1.2.3/")).toBe(false);
+    expect(through("10.0.0.0/8", "http://11.1.2.3/")).toBe(true);
+    expect(through("::1", "http://[::1]:8080/")).toBe(false);
+    expect(through("[::1]:8080", "http://[::1]:8080/")).toBe(false);
+    expect(through("fd00::/8", "http://[fd12::1]/")).toBe(false);
+    expect(through("a.test example.test", "http://example.test/")).toBe(false);
+    expect(through("*", "http://anything.test/")).toBe(false);
   });
 });
 

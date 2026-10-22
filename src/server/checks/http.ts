@@ -8,6 +8,7 @@
  * bounded memory and bandwidth. Redirects are followed here,
  * not by fetch, up to the cap.
  */
+import { inRanges } from "@/server/boot/proxies.ts";
 import { userAgent } from "@/server/release/release.ts";
 import type { CheckOutcome } from "@/shared/schemas/check.ts";
 import type { Credentials } from "@/shared/schemas/credentials.ts";
@@ -132,7 +133,10 @@ async function attemptOnce(
   ) {
     return tlsProxyAttempt();
   }
-  const hop = { carriedCertificate: false };
+  const hop = { carriedCertificate: false, url: new URL(config.url) };
+  // Whether the request in flight went through a proxy, judged by its own hop's URL.
+  const proxied = () =>
+    proxyFor(hop.url, config.proxy, process.env) !== undefined;
   // One signal for the attempt: the token request and the target's answer share its time.
   const signal = AbortSignal.timeout(timeoutMs);
   const grant =
@@ -173,6 +177,20 @@ async function attemptOnce(
     }
     const body = await readBody(response, progress);
     const responseMs = elapsed();
+    // Only a proxy asks for its own sign-in; through one, that answer is the proxy's, whatever the assertions say.
+    if (statusCode === 407 && proxied()) {
+      return {
+        assertion: undefined,
+        bytes: body.byteLength,
+        error: undefined,
+        params: { reason: "proxy_failed", status: statusCode },
+        reason: "proxy_failed",
+        response: { body, credentials, headers: response.headers },
+        responseMs,
+        statusCode,
+        succeeded: false,
+      };
+    }
     const observed = {
       body,
       headers: response.headers,
@@ -200,7 +218,7 @@ async function attemptOnce(
       error,
       urlTarget(config.url, timeoutMs),
       credentials,
-      { clientCertificate: hop.carriedCertificate }
+      { clientCertificate: hop.carriedCertificate, proxied: proxied() }
     );
     return {
       assertion: undefined,
@@ -232,21 +250,52 @@ function tlsProxyAttempt(): Attempt {
 }
 
 const noProxySeparator = /[\s,]+/;
-const leadingDot = /^\./;
-const trailingPort = /:\d+$/;
+const wildcardPrefix = /^\*?\./;
+/** An entry's host and port: `example.test:8080`, `[::1]:8080`; a bare IPv6 address has no port. */
+const entryPort = /^(.*[^:]):(\d+)$/;
+const brackets = /^\[|\]$/g;
 
-/** Whether the host is one `NO_PROXY` exempts: `*`, the host, or a domain it is under (a leading dot optional), a port ignored. */
-function exempt(host: string, noProxy: string | undefined): boolean {
+/** Whether `NO_PROXY` exempts the URL as Bun 1.4.3 reads it: `*`; an address range; or the host, or a domain it is under (a leading `.` or `*.` optional), in any case, at the entry's port when it names one. */
+function exempt(url: URL, noProxy: string | undefined): boolean {
+  const host = url.hostname.replace(brackets, "");
+  const port = url.port || (url.protocol === "https:" ? "443" : "80");
   return (noProxy ?? "")
+    .toLowerCase()
     .split(noProxySeparator)
     .filter((entry) => entry !== "")
     .some((entry) => {
       if (entry === "*") {
         return true;
       }
-      const domain = entry.replace(leadingDot, "").replace(trailingPort, "");
-      return host === domain || host.endsWith(`.${domain}`);
+      if (entry.includes("/")) {
+        return inRanges([entry])(host);
+      }
+      const [, named = entry, onPort] = entry.match(entryPort) ?? [];
+      const domain = named.replace(brackets, "").replace(wildcardPrefix, "");
+      return (
+        (onPort === undefined || onPort === port) &&
+        (host === domain || host.endsWith(`.${domain}`))
+      );
     });
+}
+
+/** The proxy a request to the URL goes through: the monitor's own, or else the install's from the environment for the URL's scheme, unless `NO_PROXY` exempts it. Nothing when the request goes direct. */
+export function proxyFor(
+  url: URL,
+  own: string | undefined,
+  env: Readonly<Record<string, string | undefined>>
+): string | undefined {
+  if (own !== undefined) {
+    return own;
+  }
+  const names =
+    url.protocol === "https:"
+      ? ["HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"]
+      : ["HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"];
+  const proxy = names.map((name) => env[name]).find((value) => value);
+  return proxy && !exempt(url, env.NO_PROXY ?? env.no_proxy)
+    ? proxy
+    : undefined;
 }
 
 /** Whether the monitor's requests go through an https proxy: its own, or the install's from the environment when the target is one the proxy applies to. */
@@ -254,18 +303,10 @@ export function viaHttpsProxy(
   config: HttpConfig,
   env: Readonly<Record<string, string | undefined>>
 ): boolean {
-  if (config.proxy !== undefined) {
-    return new URL(config.proxy).protocol === "https:";
-  }
-  const target = new URL(config.url);
-  const names =
-    target.protocol === "https:"
-      ? ["HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"]
-      : ["HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"];
-  const proxy = names.map((name) => env[name]).find((value) => value);
   return (
-    proxy?.toLowerCase().startsWith("https:") === true &&
-    !exempt(target.hostname, env.NO_PROXY ?? env.no_proxy)
+    proxyFor(new URL(config.url), config.proxy, env)
+      ?.toLowerCase()
+      .startsWith("https:") === true
   );
 }
 
@@ -361,11 +402,12 @@ async function send(
   init: BunFetchRequestInit,
   followRedirects: boolean,
   fetchHop: typeof fetch,
-  hop: { carriedCertificate: boolean },
+  hop: { carriedCertificate: boolean; url: URL },
   redirects = 0
 ): Promise<Response> {
-  // Whether the request in flight presents the client certificate, for the reading of how it failed.
+  // Whether the request in flight presents the client certificate, and where it goes, for the reading of how it failed.
   hop.carriedCertificate = init.tls?.cert !== undefined;
+  hop.url = url;
   const response = await fetchHop(url.href, init);
   const location = response.headers.get("location");
   if (
