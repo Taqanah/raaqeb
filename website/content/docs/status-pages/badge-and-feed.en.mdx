@@ -47,7 +47,7 @@ The badge is served with a sandbox `Content-Security-Policy`, so it works as an 
 
 ## Feed
 
-The feed is Atom. It holds one entry for each incident and each maintenance window on the page's components, the 50 changed last, newest first. A visitor adds the feed's address to any feed reader; there is no subscription record and nothing to confirm.
+The feed is Atom. It holds one entry for each incident and each maintenance window on the page's components, the 50 changed last, newest first. Of a [maintenance series](/en/docs/status-pages/maintenance#repeat), only its next occurrence is there before it runs; each completed one stays. A visitor adds the feed's address to any feed reader; there is no subscription record and nothing to confirm.
 
 Each entry has:
 
@@ -69,7 +69,7 @@ The summary describes the page in the shape of Statuspage's `/api/v2/summary.jso
 | `page` | The page's id, title, plain address, the install's time zone, and the time of the last edit to the page, its components, its open incidents or the listed windows. |
 | `components` | The page's components in its order. A group comes before its members, with `group` set to `true` and its members' ids in `components`; a member carries the group's id in `group_id`. |
 | `incidents` | The open incidents on the page's components, each with its updates newest first. |
-| `scheduled_maintenances` | The maintenance windows in progress, then the scheduled ones, on the page's components. |
+| `scheduled_maintenances` | The maintenance windows in progress, then the scheduled ones, on the page's components; of a series, its next occurrence alone. |
 | `status` | The page's `indicator` and its `description`. |
 
 The indicator is the worse of two values: the page's status level, mapped through this table, and the highest impact level among the page's open incidents, mapped the same way. The indicators run from `none` to `critical` in the table's order.

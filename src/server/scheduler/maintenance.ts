@@ -11,8 +11,8 @@
  * tick that moved windows bumps the counter once and hands each on (a log
  * line, and maintenance started or completed to its subscribers). It
  * schedules each series' occurrences a week before they start, through the
- * repository's write guarded on how far the series was scheduled, and hands
- * each on as scheduled. The pass answers which monitors
+ * repository's write guarded on how far the series was scheduled, with no
+ * notice: a series announces itself when it is created. The pass answers which monitors
  * are covered now, and hands on the monitors a completed window left
  * uncovered, for the down notification sent then.
  */
@@ -58,8 +58,6 @@ export interface MaintenancePassOptions {
   readonly isStopped: () => boolean;
   /** Called with each window the pass moved, in its new stage. */
   readonly onMoved?: (window: MaintenanceWindow) => void;
-  /** Called with each occurrence the pass scheduled for a series, after the counter moved. */
-  readonly onScheduled?: (window: MaintenanceWindow) => void;
   /** Called with the monitors that windows completing left uncovered, after the counter moved. */
   readonly onUncovered: (
     monitorIds: readonly string[],
@@ -131,10 +129,10 @@ export function createMaintenancePass(
     }
   }
 
-  /** Schedules the occurrences a week away of each series due, reads again, then moves the counter and hands each on. */
+  /** Schedules the occurrences a week away of each series due, reads again, then moves the counter. */
   async function schedule(now: number): Promise<void> {
     const until = scheduledUntilAt(now);
-    const scheduled: MaintenanceWindow[] = [];
+    let scheduled = 0;
     try {
       for (const each of series.filter((one) => dueAt(one) <= now)) {
         // An occurrence that started while Raaqeb was stopped is past; it is not scheduled.
@@ -146,7 +144,7 @@ export function createMaintenancePass(
           occurrencesBetween(each.recurrence, from, until),
           until
         );
-        scheduled.push(...(added ?? []));
+        scheduled += added?.length ?? 0;
       }
     } catch (error) {
       logError(
@@ -155,11 +153,8 @@ export function createMaintenancePass(
     }
     // What the pass knew moved on, or was stale: read it now, not every tick.
     await read();
-    if (scheduled.length > 0) {
+    if (scheduled > 0) {
       await options.bump();
-      for (const window of scheduled) {
-        options.onScheduled?.(window);
-      }
     }
   }
 

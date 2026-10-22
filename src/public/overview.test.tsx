@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type {
   OverviewComponent,
   OverviewIncident,
+  OverviewMaintenance,
   OverviewPage,
 } from "@/shared/schemas/overview.ts";
 import { plainPage, render, viewIn } from "./fixture.tsx";
@@ -281,6 +282,55 @@ describe("the status card, the page's level with its open incidents", () => {
     const card = statusCard([]);
     expect(card).toContain('data-slot="page-banner"');
     expect(card).not.toContain('data-slot="incident-card"');
+  });
+});
+
+describe("a maintenance card", () => {
+  const backup: OverviewMaintenance = {
+    components: ["api"],
+    endsAt: "2026-10-09T13:30:00.000Z",
+    id: "w-1",
+    message: { en: "Nightly backup." },
+    stage: "scheduled",
+    startsAt: "2026-10-09T13:00:00.000Z",
+    title: { en: "Backup" },
+  };
+  function card(window: OverviewMaintenance): string {
+    const html = render(
+      "en",
+      <Overview
+        document={{
+          calendar: "gregorian",
+          clock: "24h",
+          incidents: [],
+          items: [{ component: shown("api"), kind: "component" }],
+          level: "operational",
+          maintenance: [window],
+          page: plainPage,
+          subscribe: [],
+          timeZone: "UTC",
+        }}
+        subscribe={noSubscribe}
+        view={viewIn("en")}
+      />
+    );
+    return (
+      html.split('data-slot="maintenance-card"')[1]?.split("</article>")[0] ??
+      ""
+    );
+  }
+
+  test("of a series' occurrence says the days the series repeats on", () => {
+    const repeating = card({
+      ...backup,
+      repeats: { repeat: "weekly", weekdays: [1, 4] },
+    });
+    expect(repeating).toContain("Repeats");
+    expect(repeating).toContain("Every Monday and Thursday");
+  });
+
+  test("of a window scheduled on its own says nothing of repeating", () => {
+    expect(card(backup)).not.toContain("Repeats");
   });
 });
 

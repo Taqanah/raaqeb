@@ -342,7 +342,7 @@ _Avoid_: dry run, mock notification, template
 
 **Subscriber notification**:
 Arabic: إشعار المشترك
-A message sent to a status page's subscribers on one of seven events affecting a component the page shows: incident published, incident updated (every update, including the resolving one), maintenance scheduled, maintenance rescheduled (an edit moved its start or end), maintenance started, maintenance completed, maintenance cancelled. All seven are always on. Distinct from operator notifications.
+A message sent to a status page's subscribers on one of seven events affecting a component the page shows: incident published, incident updated (every update, including the resolving one), maintenance scheduled, maintenance rescheduled (an edit moved its start or end), maintenance started, maintenance completed, maintenance cancelled. All seven are always on; a maintenance series is scheduled, rescheduled and cancelled once for all its occurrences (see "Occurrence"). Distinct from operator notifications.
 _Avoid_: alert, broadcast
 
 **Notification hold**:
@@ -464,12 +464,12 @@ _Avoid_: scheduled incident, downtime, planned outage
 
 **Maintenance series**:
 Arabic: وقت صيانة متكرر. Its recurrence: التكرار (أسبوعيًا، شهريًا).
-A maintenance window that repeats, by a recurrence: weekly on one or more days, or monthly on a day of the month or on an nth weekday (the second Tuesday, the last Friday); at a start time on the clock of its time zone, for a duration. Each occurrence starts at that wall-clock time whatever the daylight-saving offset that day; a start time the clock skips that day starts when the clock reaches it after the change, one it repeats starts the first time. Day 29, 30 or 31 falls on the last day of a shorter month. The series schedules each occurrence a week before it starts, or at once when it is created or edited. Editing the series replaces its scheduled occurrences with the new recurrence's, one changed on its own included; one cancelled on its own stays cancelled, and one in progress and the completed ones stay as they are. Ending the series cancels its scheduled occurrences; one in progress runs to its end. Deleting the last of its components ends it.
+A maintenance window that repeats, by a recurrence: weekly on one or more days, or monthly on a day of the month or on an nth weekday (the second Tuesday, the last Friday); at a start time on the clock of its time zone, for a duration. Each occurrence starts at that wall-clock time whatever the daylight-saving offset that day; a start time the clock skips that day starts when the clock reaches it after the change, one it repeats starts the first time. Day 29, 30 or 31 falls on the last day of a shorter month. The series schedules each occurrence a week before it starts, or at once when it is created or edited, its next one then however far away. Editing the series replaces its scheduled occurrences with the new recurrence's, one changed on its own included; one cancelled on its own stays cancelled, and one in progress and the completed ones stay as they are. Ending the series cancels its scheduled occurrences; one in progress runs to its end. Deleting the last of its components ends it.
 _Avoid_: recurring incident, cron, schedule (that is a monitor's)
 
 **Occurrence**:
 Arabic: موعد
-One maintenance window a maintenance series scheduled. It is an ordinary window in every way: it is announced to subscribers when scheduled, shows on the status pages, covers its monitors while in progress, and may be changed or cancelled on its own, which leaves the series and its other occurrences as they are.
+One maintenance window a maintenance series scheduled. It covers its monitors while in progress, sends maintenance started and completed, has its own view and history entry, and may be changed or cancelled on its own, as any window, which leaves the series and its other occurrences as they are and is announced as for any window. Subscribers hear of the series once: its first occurrence is announced as scheduled when the series is created, the later ones are scheduled with no notice, an edit that changes the recurrence announces its next occurrence as rescheduled, and ending it announces its next occurrence as cancelled. The overview, `summary.json` and the feed show a series' next occurrence alone, the one in progress or else the soonest scheduled, and the overview card and every subscriber notification of an occurrence name the days the series repeats on; the feed keeps each completed occurrence.
 _Avoid_: instance, event, repetition
 
 ### Product shape

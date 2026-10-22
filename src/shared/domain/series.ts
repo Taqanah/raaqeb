@@ -9,6 +9,7 @@
  */
 import { fromWallTime, wallTime } from "@/shared/i18n/timezone.ts";
 import type {
+  MaintenanceWindow,
   Recurrence,
   RecurrenceDays,
 } from "@/shared/schemas/maintenance.ts";
@@ -22,6 +23,14 @@ export const seriesLeadMs = 7 * dayMs;
 /** Before when a series has scheduled its occurrences at `now`: every one starting a week from now or sooner. */
 export function scheduledUntilAt(now: number): number {
   return now + seriesLeadMs + 1;
+}
+
+/** Before when a create or an edit schedules a series at `now`: the coming week, and its next occurrence however far, so the series' one notice names it. */
+export function plannedUntilAt(recurrence: Recurrence, now: number): number {
+  return Math.max(
+    scheduledUntilAt(now),
+    nextOccurrenceStart(recurrence, now) + 1
+  );
 }
 
 /** The start and end of one occurrence. */
@@ -105,4 +114,26 @@ export function nextOccurrenceStart(
     throw new Error("a recurrence that never falls");
   }
   return value;
+}
+
+/** The windows a visitor sees: every window of no series and every completed one, and of each series' others only its next, the one in progress or else the soonest scheduled: the one that starts first, since one in progress started before any scheduled one starts. */
+export function nextOccurrencesOnly<
+  T extends Pick<MaintenanceWindow, "id" | "seriesId" | "stage" | "startsAt">,
+>(windows: readonly T[]): T[] {
+  const next = new Map<string, T>();
+  for (const window of windows) {
+    if (window.seriesId === undefined || window.stage === "completed") {
+      continue;
+    }
+    const kept = next.get(window.seriesId);
+    if (!kept || window.startsAt < kept.startsAt) {
+      next.set(window.seriesId, window);
+    }
+  }
+  return windows.filter(
+    (window) =>
+      window.seriesId === undefined ||
+      window.stage === "completed" ||
+      next.get(window.seriesId) === window
+  );
 }

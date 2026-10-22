@@ -2,8 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { createIncident, postUpdate } from "@/server/incidents/incidents.ts";
 import { createWindow } from "@/server/maintenance/maintenance.ts";
+import { createSeries } from "@/server/maintenance/series.ts";
 import { createMonitor } from "@/server/monitors/monitors.ts";
 import { calendar, clock, timeZone } from "@/server/settings/clock.ts";
+import type { RecurrenceDays } from "@/shared/schemas/maintenance.ts";
 import { overviewDocumentSchema } from "@/shared/schemas/overview.ts";
 import {
   defaultCustomization,
@@ -387,6 +389,86 @@ describe("the overview document", () => {
       title: { ar: "جارية" },
     });
     expect(document.level).toBe("under_maintenance");
+  });
+
+  test("a maintenance series is one card, its next occurrence, which says the days it repeats on; a window of no series says none", async () => {
+    const s = await opened();
+    const web = await component(s, "الموقع");
+    const pageId = await page(s, [{ componentId: web, kind: "component" }]);
+    const daily: RecurrenceDays = {
+      repeat: "weekly",
+      weekdays: [0, 1, 2, 3, 4, 5, 6],
+    };
+    const series = await createSeries(
+      s.storage,
+      {
+        componentIds: [web],
+        message: { ar: "نسخ احتياطي." },
+        recurrence: {
+          days: daily,
+          minutes: 30,
+          time: "13:00",
+          timeZone: "UTC",
+        },
+        title: { ar: "النسخ اليومي" },
+      },
+      now
+    );
+    expect(series.ok).toBe(true);
+    const single = await createWindow(
+      s.storage,
+      {
+        componentIds: [web],
+        endsAt: now + 3 * day + hour,
+        message: { ar: "نقل الخادم." },
+        startsAt: now + 3 * day,
+        title: { ar: "نقل" },
+      },
+      now
+    );
+    const today = (await s.storage.maintenance.list()).find(
+      (each) => each.startsAt === now + hour
+    );
+    expect(
+      (await overview(s, pageId)).maintenance.map((card) => [
+        card.id,
+        card.repeats,
+      ])
+    ).toEqual([
+      [today?.id, daily],
+      [single.ok ? single.window.id : "", undefined],
+    ]);
+  });
+
+  test("a series' next occurrence is the next that touches the page, when one was moved off the page's components on its own", async () => {
+    const s = await opened();
+    const web = await component(s, "الموقع");
+    const db = await component(s, "قاعدة البيانات");
+    const pageId = await page(s, [{ componentId: web, kind: "component" }]);
+    await createSeries(
+      s.storage,
+      {
+        componentIds: [web, db],
+        message: { ar: "نسخ احتياطي." },
+        recurrence: {
+          days: { repeat: "weekly", weekdays: [0, 1, 2, 3, 4, 5, 6] },
+          minutes: 30,
+          time: "13:00",
+          timeZone: "UTC",
+        },
+        title: { ar: "النسخ اليومي" },
+      },
+      now
+    );
+    const [today, tomorrow] = await s.storage.maintenance.list();
+    await s.storage.maintenance.edit(today?.id ?? "", "scheduled", {
+      componentIds: [db],
+      message: { ar: "نسخ احتياطي." },
+      title: { ar: "النسخ اليومي" },
+    });
+    expect(
+      (await overview(s, pageId)).maintenance.map((card) => card.id)
+    ).toEqual([tomorrow?.id ?? ""]);
   });
 
   test("carries the page's text, its images and what its customization shows, in both locales alike", async () => {

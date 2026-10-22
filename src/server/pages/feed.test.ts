@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createIncident, postUpdate } from "@/server/incidents/incidents.ts";
 import { createWindow } from "@/server/maintenance/maintenance.ts";
+import { createSeries } from "@/server/maintenance/series.ts";
 import { calendar } from "@/server/settings/clock.ts";
 import type { IncidentCreateInput } from "@/shared/schemas/incident.ts";
 import { type PagePaths, publicPolicy } from "@/shared/schemas/overview.ts";
@@ -280,6 +281,42 @@ describe('a status page\'s feed (CONTEXT.md "Feed")', () => {
     expect(ids).toEqual(
       [w.coming, w.open, w.done, w.resolved].map((id) => `urn:uuid:${id}`)
     );
+  });
+
+  test("holds a maintenance series' next occurrence alone of those to come, and each one completed", async () => {
+    const w = await world();
+    const created = await createSeries(
+      w.s.storage,
+      {
+        componentIds: [w.web],
+        message: { ar: "نسخ احتياطي." },
+        recurrence: {
+          days: { repeat: "weekly", weekdays: [0, 1, 2, 3, 4, 5, 6] },
+          minutes: 30,
+          time: "13:00",
+          timeZone: "UTC",
+        },
+        title: { ar: "النسخ اليومي" },
+      },
+      now
+    );
+    expect(created.ok).toBe(true);
+    const occurrences = (await w.s.storage.maintenance.list())
+      .filter((each) => each.seriesId !== undefined)
+      .map((each) => `urn:uuid:${each.id}`);
+    expect(occurrences).toHaveLength(7);
+    const ids = async () =>
+      entries(await feedOf(w)).map((entry) => textOf(entry, "id"));
+    expect(
+      (await ids()).filter((id) => occurrences.includes(id ?? ""))
+    ).toEqual([occurrences[0]]);
+    // Today's ends; tomorrow's is the next.
+    const ended = now + hour + 30 * minute;
+    w.s.at(ended);
+    await w.s.storage.maintenance.advance(ended);
+    expect(
+      (await ids()).filter((id) => occurrences.includes(id ?? ""))
+    ).toEqual([occurrences[0], occurrences[1]]);
   });
 
   test("the feed's updated time is its newest entry's", async () => {

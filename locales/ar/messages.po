@@ -4389,6 +4389,10 @@ msgid "public_maintenance_ends"
 msgstr "ينتهي"
 
 #. js-lingui-explicit-id
+msgid "public_maintenance_repeats"
+msgstr "يتكرر"
+
+#. js-lingui-explicit-id
 msgid "public_components"
 msgstr "المكوّنات"
 
@@ -4631,6 +4635,10 @@ msgstr "الوقت: {value}"
 #. js-lingui-explicit-id
 msgid "subscription_line_unsubscribe"
 msgstr "إلغاء الاشتراك: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_repeats"
+msgstr "التكرار: {value}"
 
 #. js-lingui-explicit-id
 msgid "subscription_footer"
@@ -5438,11 +5446,11 @@ msgstr "وقت صيانة واحد ببداية ونهاية."
 
 #. js-lingui-explicit-id
 msgid "maintenance_repeat_weekly_hint"
-msgstr "موعد في كل يوم تختاره من أيام الأسبوع. يُجدول كل موعد ويُعلَن للمشتركين قبل بدايته بأسبوع."
+msgstr "موعد في كل يوم تختاره من أيام الأسبوع، يُجدول كل موعد قبل بدايته بأسبوع. ويعلم المشتركون بوقت الصيانة المتكرر مرة واحدة، مع موعده الأول."
 
 #. js-lingui-explicit-id
 msgid "maintenance_repeat_monthly_hint"
-msgstr "موعد واحد كل شهر. يُجدول كل موعد ويُعلَن للمشتركين قبل بدايته بأسبوع."
+msgstr "موعد واحد كل شهر، يُجدول كل موعد قبل بدايته بأسبوع. ويعلم المشتركون بوقت الصيانة المتكرر مرة واحدة، مع موعده الأول."
 
 #. js-lingui-explicit-id
 msgid "maintenance_field_weekdays"
@@ -5527,6 +5535,22 @@ msgstr "يوم {day} من كل شهر، الساعة {time}"
 #. js-lingui-explicit-id
 msgid "maintenance_recurrence_monthly_weekday"
 msgstr "{week, select, first {أول} second {ثاني} third {ثالث} fourth {رابع} other {آخر}} {weekday} من كل شهر، الساعة {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeats_daily"
+msgstr "كل يوم"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeats_weekly"
+msgstr "كل {days}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeats_monthly_day"
+msgstr "يوم {day} من كل شهر"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeats_monthly_weekday"
+msgstr "{week, select, first {أول} second {ثاني} third {ثالث} fourth {رابع} other {آخر}} {weekday} من كل شهر"
 
 #. js-lingui-explicit-id
 msgid "maintenance_series_list_title"

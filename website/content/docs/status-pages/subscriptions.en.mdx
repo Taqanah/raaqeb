@@ -67,11 +67,11 @@ A subscriber notification goes to every confirmed subscription of every publishe
 | --- | --- |
 | `incident.published` | An incident is published. |
 | `incident.updated` | An update is posted on an incident, including the resolving one. |
-| `maintenance.scheduled` | A maintenance window is scheduled, unless it starts in the current minute. |
-| `maintenance.rescheduled` | An edit moves a window's start or end, unless it moves it to now. |
+| `maintenance.scheduled` | A maintenance window is scheduled, unless it starts in the current minute. A series sends it once, for its first occurrence. |
+| `maintenance.rescheduled` | An edit moves a window's start or end, unless it moves it to now. A series' edit that changes how it repeats sends it once, for its next occurrence. |
 | `maintenance.started` | A window starts. |
 | `maintenance.completed` | A window ends. |
-| `maintenance.cancelled` | A scheduled window is cancelled. |
+| `maintenance.cancelled` | A scheduled window is cancelled. Ending a series sends it once, for its next occurrence. |
 
 [Incidents](/en/docs/status-pages/incidents#what-subscribers-receive) and [Maintenance windows](/en/docs/status-pages/maintenance#what-subscribers-receive) give the details of each.
 
@@ -85,6 +85,7 @@ An email with a plain-text part and an HTML part. The subject is the impact leve
 
 - **Status**: the incident's or window's stage. A cancel has no stage line.
 - **Starts** and **Ends**: a window's times.
+- **Repeats**: the days its series repeats on, for an occurrence of a series that has not ended.
 - The update's text, or the window's description.
 - **Affected**: the page's components it touches.
 - **Details**: a link to the incident's or window's view. A cancel links the page.
@@ -196,6 +197,7 @@ Every event after it uses the body Statuspage sends its webhook subscribers, so 
 Some fields to know:
 
 - `meta.event` names the event. It is how a receiver tells `maintenance.cancelled` from `maintenance.completed`: a cancelled window arrives with `status` `completed`.
+- `meta.repeats` is in a window's body when the window is an occurrence of a series that has not ended: the days the series repeats on, in words in the subscription language, such as `Every Monday and Thursday`.
 - `incident_updates` is newest first. On the update that first names a component, `old_status` is the status the page showed for it just before.
 - A window has one entry in `incident_updates`: its description at its stage. At its start it lists each affected component with `new_status` `under_maintenance`; at its end, with `old_status` `under_maintenance`. On scheduled, rescheduled and cancelled it lists no component.
 - `page.status_indicator` is the [summary's indicator](/en/docs/status-pages/badge-and-feed#summary) when the event was queued.

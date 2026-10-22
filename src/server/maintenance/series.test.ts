@@ -103,7 +103,7 @@ async function occurrencesOf(storage: Storage, seriesId: string) {
 }
 
 describe("creating a maintenance series", () => {
-  test("it schedules the occurrences of the coming week as ordinary windows, announces each as scheduled and moves the change counter", async () => {
+  test("it schedules the occurrences of the coming week as ordinary windows, announces the first alone as scheduled and moves the change counter", async () => {
     const { storage } = await opened();
     const web = await component(storage, "الموقع");
     const before = await storage.changeCounter();
@@ -130,13 +130,36 @@ describe("creating a maintenance series", () => {
       },
       { endsAt: thursday + 2 * hour, startsAt: thursday },
     ]);
-    expect(events).toEqual(
-      windows.map((each) => ({
-        type: "maintenance.scheduled" as const,
-        windowId: each.id,
-      }))
-    );
+    expect(events).toEqual([
+      { type: "maintenance.scheduled", windowId: windows[0]?.id ?? "" },
+    ]);
     expect(await storage.changeCounter()).toBeGreaterThan(before);
+  });
+
+  test("a series whose first occurrence is more than a week away schedules it at once and announces it", async () => {
+    const { storage } = await opened();
+    const web = await component(storage, "الموقع");
+    const { announce, events } = recorder();
+    // The 25th at 14:00 UTC, 24 days after this Tuesday the 1st.
+    const monthly: Recurrence = {
+      ...twiceWeekly,
+      days: { day: 25, repeat: "monthly_day" },
+    };
+    const series = saved(
+      await createSeries(
+        storage,
+        planned([web], { recurrence: monthly }),
+        noon,
+        announce
+      )
+    );
+    const windows = await storage.maintenance.list();
+    expect(windows).toMatchObject([
+      { seriesId: series.id, startsAt: d0 + 24 * day + 14 * hour },
+    ]);
+    expect(events).toEqual([
+      { type: "maintenance.scheduled", windowId: windows[0]?.id ?? "" },
+    ]);
   });
 
   test("a series with no component that exists, or without the install language's text, is refused as invalid and nothing is written", async () => {
@@ -274,11 +297,10 @@ describe("one occurrence on its own", () => {
 });
 
 describe("editing a series", () => {
-  test("a new start time cancels the scheduled occurrences and schedules the new ones, each announced", async () => {
+  test("a new start time cancels the scheduled occurrences and schedules the new ones, announcing the next alone as rescheduled", async () => {
     const { storage } = await opened();
     const web = await component(storage, "الموقع");
     const series = saved(await createSeries(storage, planned([web]), noon));
-    const before = await storage.maintenance.list();
     const { announce, events } = recorder();
     saved(
       await editSeries(
@@ -297,19 +319,11 @@ describe("editing a series", () => {
       thursday + hour,
     ]);
     expect(events).toEqual([
-      ...before.map((window) => ({
-        at: noon,
-        type: "maintenance.cancelled" as const,
-        window,
-      })),
-      ...after.map((each) => ({
-        type: "maintenance.scheduled" as const,
-        windowId: each.id,
-      })),
+      { type: "maintenance.rescheduled", windowId: after[0]?.id ?? "" },
     ]);
   });
 
-  test("a new length keeps each scheduled occurrence and announces it rescheduled; new text alone announces nothing", async () => {
+  test("a new length keeps each scheduled occurrence and announces the next alone as rescheduled; new text alone announces nothing", async () => {
     const { storage } = await opened();
     const web = await component(storage, "الموقع");
     const series = saved(await createSeries(storage, planned([web]), noon));
@@ -324,12 +338,9 @@ describe("editing a series", () => {
         announce
       )
     );
-    expect(events).toEqual(
-      before.map((each) => ({
-        type: "maintenance.rescheduled" as const,
-        windowId: each.id,
-      }))
-    );
+    expect(events).toEqual([
+      { type: "maintenance.rescheduled", windowId: before[0]?.id ?? "" },
+    ]);
     expect(
       (await storage.maintenance.list()).map((each) => [
         each.id,
@@ -384,7 +395,7 @@ describe("editing a series", () => {
     expect(running?.title).toEqual({ ar: "صيانة الخوادم" });
   });
 
-  test("an edit in the second after an occurrence's start, before the tick moves it, leaves it and announces nothing of it", async () => {
+  test("an edit in the second after an occurrence's start, before the tick moves it, leaves it, and new text announces nothing", async () => {
     const { storage } = await opened();
     const web = await component(storage, "الموقع");
     const series = saved(await createSeries(storage, planned([web]), noon));
@@ -401,13 +412,45 @@ describe("editing a series", () => {
     expect(await occurrencesOf(storage, series.id)).toEqual([
       { stage: "scheduled", startsAt: tuesday },
       { stage: "scheduled", startsAt: thursday },
-      // A week from the edit reaches next Tuesday's start, the one event.
+      // A week from the edit reaches next Tuesday's start, scheduled with no notice.
       { stage: "scheduled", startsAt: tuesday + 7 * day },
     ]);
-    const next = (await storage.maintenance.list()).at(-1);
+    expect(events).toEqual([]);
+  });
+
+  test("with the same recurrence, an occurrence changed on its own is put back and announced rescheduled alone, as its own change was", async () => {
+    const { storage } = await opened();
+    const web = await component(storage, "الموقع");
+    const series = saved(await createSeries(storage, planned([web]), noon));
+    const [, second] = await storage.maintenance.list();
+    await editWindow(
+      storage,
+      second?.id ?? "",
+      {
+        componentIds: [web],
+        endsAt: thursday + 3 * hour,
+        message: { ar: "تطول هذه المرة ساعة." },
+        startsAt: thursday,
+        title: { ar: "صيانة أطول" },
+      },
+      noon
+    );
+    const { announce, events } = recorder();
+    saved(
+      await editSeries(
+        storage,
+        series.id,
+        planned([web], { title: { ar: "صيانة الخوادم الدورية" } }),
+        noon,
+        announce
+      )
+    );
     expect(events).toEqual([
-      { type: "maintenance.scheduled" as const, windowId: next?.id ?? "" },
+      { type: "maintenance.rescheduled", windowId: second?.id ?? "" },
     ]);
+    expect((await storage.maintenance.find(second?.id ?? ""))?.endsAt).toBe(
+      thursday + 2 * hour
+    );
   });
 
   test("an unknown series is not found, and a refused edit changes nothing", async () => {
@@ -425,7 +468,25 @@ describe("editing a series", () => {
 });
 
 describe("ending a series", () => {
-  test("cancels its scheduled occurrences, each announced, and the one in progress runs to its end", async () => {
+  test("cancels every scheduled occurrence and announces the next alone as cancelled", async () => {
+    const { storage } = await opened();
+    const web = await component(storage, "الموقع");
+    const series = saved(await createSeries(storage, planned([web]), noon));
+    const [next] = await storage.maintenance.list();
+    if (!next) {
+      throw new Error("the series scheduled no occurrence");
+    }
+    const { announce, events } = recorder();
+    expect(await endSeries(storage, series.id, noon, announce)).toEqual({
+      ok: true,
+    });
+    expect(await storage.maintenance.list()).toEqual([]);
+    expect(events).toEqual([
+      { at: noon, type: "maintenance.cancelled", window: next },
+    ]);
+  });
+
+  test("cancels its scheduled occurrences, and the one in progress runs to its end", async () => {
     const { storage } = await opened();
     const web = await component(storage, "الموقع");
     const series = saved(await createSeries(storage, planned([web]), noon));

@@ -11,6 +11,7 @@ import {
   affectedComponents,
   incidentStage,
 } from "@/shared/domain/incidents.ts";
+import { nextOccurrencesOnly } from "@/shared/domain/series.ts";
 import { worstStatus } from "@/shared/domain/status.ts";
 import type { Locale } from "@/shared/i18n/locale.ts";
 import type { Component } from "@/shared/schemas/component.ts";
@@ -298,39 +299,33 @@ export async function readSummary(
       url,
       windows,
     } = parts;
-    const running = windows
+    // Of a series, its next occurrence alone, as the overview shows it.
+    const shown = nextOccurrencesOnly(
+      windows.filter((window) => touching(window.componentIds).length > 0)
+    );
+    const running = shown
       .filter((window) => window.stage === "in_progress")
       .toSorted((a, b) => a.endsAt - b.endsAt);
-    const scheduled = windows
+    const scheduled = shown
       .filter((window) => window.stage === "scheduled")
       .toSorted((a, b) => a.startsAt - b.startsAt);
-    const maintenance = [...running, ...scheduled].flatMap((window) => {
-      const affected = touching(window.componentIds);
-      if (affected.length === 0) {
-        return [];
-      }
-      const stage =
-        window.stage === "in_progress" ? "in_progress" : "scheduled";
-      return [
-        windowOf(
-          window,
-          stage,
-          affected,
-          page.id,
-          address(`/maintenance/${encodeURIComponent(window.id)}`),
-          text
-        ),
-      ];
-    });
+    const maintenance = [...running, ...scheduled].map((window) =>
+      windowOf(
+        window,
+        window.stage === "in_progress" ? "in_progress" : "scheduled",
+        touching(window.componentIds),
+        page.id,
+        address(`/maintenance/${encodeURIComponent(window.id)}`),
+        text
+      )
+    );
     const changed = Math.max(
       page.updatedAt,
       ...list
         .filter((each) => !each.group)
         .map((each) => byId.get(each.id)?.updatedAt ?? 0),
       ...open.map(({ incident }) => incident.updatedAt),
-      ...[...running, ...scheduled]
-        .filter((window) => touching(window.componentIds).length > 0)
-        .map((window) => window.updatedAt)
+      ...[...running, ...scheduled].map((window) => window.updatedAt)
     );
     return {
       document: {

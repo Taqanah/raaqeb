@@ -1,7 +1,8 @@
 /**
  * The overview's JSON document (ADR-0006): one status page's
  * banner level, its open incidents and its maintenance windows in progress
- * or scheduled, and its components in its order with their status, their
+ * or scheduled (of a series, its next occurrence alone, with the days it
+ * repeats on), and its components in its order with their status, their
  * bar and their uptime. The route loader calls `readOverview` while the
  * server renders the page, and the document route answers the same value
  * as JSON, so the HTML and the API cannot disagree. Reads never throw.
@@ -16,6 +17,7 @@ import {
   affectedComponents,
   incidentStage,
 } from "@/shared/domain/incidents.ts";
+import { nextOccurrencesOnly } from "@/shared/domain/series.ts";
 import { worstStatus } from "@/shared/domain/status.ts";
 import { displayedUptime } from "@/shared/domain/uptime.ts";
 import type {
@@ -23,7 +25,10 @@ import type {
   IncidentStage,
   OpenStage,
 } from "@/shared/schemas/incident.ts";
-import type { MaintenanceWindow } from "@/shared/schemas/maintenance.ts";
+import type {
+  MaintenanceWindow,
+  RecurrenceDays,
+} from "@/shared/schemas/maintenance.ts";
 import type {
   OverviewComponent,
   OverviewDocument,
@@ -86,28 +91,35 @@ function incidentCards(
     });
 }
 
-/** The windows touching the page: in progress first, ending soonest, then scheduled, starting soonest. */
+/** The windows touching the page, of each series its next occurrence alone: in progress first, ending soonest, then scheduled, starting soonest. */
 function maintenanceCards(
   windows: readonly MaintenanceWindow[],
-  shown: readonly string[]
+  shown: readonly string[],
+  repeats: ReadonlyMap<string, RecurrenceDays>
 ): OverviewMaintenance[] {
   const cards: OverviewMaintenance[] = [];
-  const running = windows
+  const touching = nextOccurrencesOnly(
+    windows.filter((window) =>
+      shown.some((id) => window.componentIds.includes(id))
+    )
+  );
+  const running = touching
     .filter((window) => window.stage === "in_progress")
     .toSorted((a, b) => a.endsAt - b.endsAt);
-  const scheduled = windows
+  const scheduled = touching
     .filter((window) => window.stage === "scheduled")
     .toSorted((a, b) => a.startsAt - b.startsAt);
   for (const window of [...running, ...scheduled]) {
     const components = shown.filter((id) => window.componentIds.includes(id));
-    if (components.length === 0) {
-      continue;
-    }
     cards.push({
       components,
       endsAt: iso(window.endsAt),
       id: window.id,
       message: window.message,
+      repeats:
+        window.seriesId === undefined
+          ? undefined
+          : repeats.get(window.seriesId),
       // Only windows in progress and scheduled ones reach here.
       stage: window.stage === "in_progress" ? "in_progress" : "scheduled",
       startsAt: iso(window.startsAt),
@@ -135,6 +147,7 @@ export async function readOverview(
       { components, statuses },
       incidents,
       windows,
+      series,
       channels,
     ] = await Promise.all([
       storage.pages.layout(pageId),
@@ -142,6 +155,7 @@ export async function readOverview(
       readComponentStatuses(storage),
       storage.incidents.open(),
       storage.maintenance.unfinished(),
+      storage.maintenance.listSeries(),
       storage.channels.list(),
     ]);
     const byId = new Map(components.map((each) => [each.id, each]));
@@ -203,7 +217,11 @@ export async function readOverview(
         incidents: incidentCards(incidents, shown),
         items,
         level: worstStatus(shown.map(statusOf)),
-        maintenance: maintenanceCards(windows, shown),
+        maintenance: maintenanceCards(
+          windows,
+          shown,
+          new Map(series.map((each) => [each.id, each.recurrence.days]))
+        ),
         page: pageOf(page, images),
         subscribe: offeredChannels(
           page,

@@ -17,7 +17,10 @@ import { z } from "zod";
 import { type Locale, localeSchema } from "@/shared/i18n/locale.ts";
 import type { Content } from "./content.ts";
 import { incidentStageSchema } from "./incident.ts";
-import { maintenanceStageSchema } from "./maintenance.ts";
+import {
+  maintenanceStageSchema,
+  recurrenceDaysShapeSchema,
+} from "./maintenance.ts";
 import type { NotificationStatus, SendFailure } from "./notification.ts";
 import type { SubscriptionChannel } from "./page.ts";
 import {
@@ -263,6 +266,8 @@ export const subscriberPayloadSchema = z.discriminatedUnion("type", [
   z.object({
     incident: subscriberMaintenanceSchema,
     page: eventPageSchema,
+    /** The days its maintenance series repeats on, while the series lasts; absent for a window scheduled on its own. */
+    repeats: recurrenceDaysShapeSchema.optional(),
     /** When the event happened: the window's scheduling, new times, start, end or cancellation. */
     timestamp: instant,
     type: z.enum([
@@ -307,6 +312,12 @@ export const subscriberWebhookSchema = z.object({
         .string()
         .describe("The OpenAPI document that describes this body."),
       event: z.enum(subscriberEventTypes).describe("The event's name."),
+      repeats: z
+        .string()
+        .optional()
+        .describe(
+          "The days the window's maintenance series repeats on, in words in the subscription language; absent for an incident, a window scheduled on its own and the notice of a series that ended."
+        ),
       unsubscribe: z
         .string()
         .describe(

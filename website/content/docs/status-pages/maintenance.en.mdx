@@ -44,13 +44,13 @@ A maintenance series schedules a window at each of its occurrences: weekly on on
 | **Duration** | One minute to 168 hours. |
 | **Time zone** | Yours to begin with. |
 
-Each occurrence is scheduled a week before it starts, and the coming week's are scheduled as soon as the series is created. Every occurrence is an ordinary window in every way: subscribers hear of it when it is scheduled, it shows on the status pages, and it covers its monitors while it runs. An occurrence whose start passed while Raaqeb was stopped is not scheduled.
+Each occurrence is scheduled a week before it starts, and the coming week's are scheduled as soon as the series is created, with its next occurrence however far away. An occurrence covers its monitors while it runs, starts and completes, and has its own view, as any window. Visitors and subscribers see the series once rather than each occurrence: a status page shows its next occurrence alone, with the days it repeats on (see [What the page shows](#what-the-page-shows)), and subscribers hear of it when it is created, edited or ended (see [What subscribers receive](#what-subscribers-receive)). An occurrence whose start passed while Raaqeb was stopped is not scheduled.
 
 Each occurrence starts at its time on its time zone's clock, whatever the daylight-saving offset that day. When the clock jumps over the start time, the occurrence starts when the clock reaches it after the change: 02:30 on a day the clock jumps from 02:00 to 03:00 starts at 03:30. When the clock goes back over the start time, the occurrence starts the first time. The duration is elapsed time.
 
 | What you do | What happens |
 | --- | --- |
-| Change or cancel one occurrence on its own page | As with any window. The series and its other occurrences stay as they are, and a cancelled occurrence does not come back. |
+| Change or cancel one occurrence on its own page | As with any window, subscribers told of it too. The series and its other occurrences stay as they are, and a cancelled occurrence does not come back. |
 | Save the series after editing it | Its scheduled occurrences are replaced with the edited series'. One whose start stays is kept, with the new text, components and duration; the others are cancelled and the new ones scheduled. An occurrence you changed on its own follows the series again this way; one you cancelled on its own stays cancelled. One in progress and the completed ones stay as they are. |
 | Select **End series** | Its scheduled occurrences are cancelled, one in progress runs to its end, and the completed ones stay in the history. Ending cannot be undone. |
 | Delete the last component it names | The series ends. |
@@ -83,7 +83,7 @@ When the window ends, each covered monitor that is still down sends its down not
 
 A window reaches the monitors linked to its components as the links are now. Linking a monitor to a component later reaches back over a past window until that day is sealed.
 
-## What the page shows
+## What the page shows [#what-the-page-shows]
 
 On each status page that shows one of its affected components:
 
@@ -98,16 +98,18 @@ On each status page that shows one of its affected components:
 
 A cancelled window leaves every status page.
 
-## What subscribers receive
+Of a series, the overview, the feed and the summary show only its next occurrence: the one in progress, else the soonest scheduled. Its card says the days the series repeats on under **Repeats**. Each completed occurrence stays in the history, the day cards and the feed.
+
+## What subscribers receive [#what-subscribers-receive]
 
 Confirmed subscribers of every published page that shows an affected component receive:
 
 | Event | When |
 | --- | --- |
-| `maintenance.scheduled` | You schedule a window, or an occurrence of a series is scheduled. Not sent for a window that starts in the current minute, which sends `maintenance.started` alone. |
-| `maintenance.rescheduled` | An edit moves the start or the end, while scheduled or in progress, or a series' edit changes a scheduled occurrence's duration. Not sent when the new start or end is the current minute. |
+| `maintenance.scheduled` | You schedule a window, or create a series: for its first occurrence alone. The occurrences after it are scheduled with no notice. Not sent for a window that starts in the current minute, which sends `maintenance.started` alone. |
+| `maintenance.rescheduled` | An edit moves the start or the end, while scheduled or in progress. A series' edit that changes how it repeats sends one, for its next occurrence; one with the same recurrence sends one for each occurrence it puts back at the series' times. Not sent when the new start or end is the current minute. |
 | `maintenance.started` | The window starts. A window that went straight to completed sends `maintenance.completed` alone. |
 | `maintenance.completed` | The window ends: at its time, through **End now**, or by an edit that sets the end to now. |
-| `maintenance.cancelled` | You cancel a scheduled window, or a series' edit or end cancels a scheduled occurrence. |
+| `maintenance.cancelled` | You cancel a scheduled window. Ending a series sends one, for its next occurrence, whatever number it cancels. |
 
-Editing only the title or description sends nothing. An email's subject says what happened to the window, then the title: "Maintenance scheduled:", "Maintenance rescheduled:", "Maintenance started:", "Maintenance completed:" or "Maintenance cancelled:", so a reader tells one window's emails apart in a list. A webhook receives the window in Statuspage's body, as an incident with impact `maintenance`. See [What subscribers receive](/en/docs/status-pages/subscriptions#what-subscribers-receive).
+Editing only the title or description sends nothing. Every message about an occurrence names the days its series repeats on, but for the one that ends the series. An email's subject says what happened to the window, then the title: "Maintenance scheduled:", "Maintenance rescheduled:", "Maintenance started:", "Maintenance completed:" or "Maintenance cancelled:", so a reader tells one window's emails apart in a list. A webhook receives the window in Statuspage's body, as an incident with impact `maintenance`. See [What subscribers receive](/en/docs/status-pages/subscriptions#what-subscribers-receive).

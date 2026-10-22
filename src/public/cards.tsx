@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { intlLocale } from "@/shared/i18n/format.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
+import { repeatWords } from "@/shared/i18n/recurrence.ts";
 import type { Content } from "@/shared/schemas/content.ts";
 import type { ImpactLevel, OpenStage } from "@/shared/schemas/incident.ts";
 import type {
@@ -181,7 +182,8 @@ export function MaintenanceCard({
   readonly view: PublicView;
   readonly window: OverviewMaintenance;
 }): ReactNode {
-  const { t } = useMessages();
+  const messages = useMessages();
+  const { t } = messages;
   return (
     <Card
       as="article"
@@ -228,6 +230,16 @@ export function MaintenanceCard({
         <dd>
           <When at={window.endsAt} relative time={time} />
         </dd>
+        {window.repeats === undefined ? null : (
+          <>
+            <dt className="text-muted-foreground">
+              {t("public_maintenance_repeats")}
+            </dt>
+            <dd data-slot="window-repeats">
+              {repeatWords(messages, window.repeats)}
+            </dd>
+          </>
+        )}
       </dl>
       <Affected ids={window.components} names={names} />
     </Card>

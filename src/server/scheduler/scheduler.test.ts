@@ -3262,7 +3262,7 @@ describe("subscriber notifications on the scheduler", () => {
     await s.stop();
   });
 
-  test("an occurrence the tick schedules for a series reaches a subscriber as scheduled, started and completed, as any window does", async () => {
+  test("an occurrence the tick schedules for a series is scheduled with no notice, then reaches a subscriber as started and completed", async () => {
     const h = await harness();
     const { web } = await subscribed(h);
     const net = receiver();
@@ -3292,13 +3292,8 @@ describe("subscriber notifications on the scheduler", () => {
     );
     await h.storage.bump();
     await run(h, s, 5 * 60_000);
-    // As this one starts, next week's is a week away and is scheduled at that tick, before the start is handed on.
-    const every = [
-      "maintenance.scheduled",
-      "maintenance.scheduled",
-      "maintenance.started",
-      "maintenance.completed",
-    ];
+    // As this one starts, next week's is a week away and is scheduled at that tick, with no notice either.
+    const every = ["maintenance.started", "maintenance.completed"];
     expect(net.hooked("https://hooks.example.com/confirmed")).toEqual(every);
     expect(mailed("reader@example.test")).toHaveLength(every.length);
     expect(net.hooked("https://hooks.example.com/pending")).toEqual([]);

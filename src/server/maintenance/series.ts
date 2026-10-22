@@ -3,16 +3,22 @@
  * "Occurrence"): what the admin's server functions call to read, create,
  * edit and end a series. A series schedules each occurrence a week before it
  * starts (the scheduler's maintenance pass does from then on) and at once on
- * a create or an edit, as an ordinary window its subscribers hear of as
- * scheduled. An edit replaces the scheduled occurrences with the new
- * recurrence's: one at the same start is kept, rescheduled when its end
- * moved; the others are cancelled and the new ones scheduled, but for one
- * cancelled on its own, which stays cancelled. Ending a series
- * cancels its scheduled occurrences. Every write moves the change counter.
- * Every function answers a result and never throws.
+ * a create or an edit, its next one however far. An edit replaces the
+ * scheduled occurrences with the new recurrence's: one at the same start is
+ * kept, rescheduled when its end moved; the others are cancelled and the new
+ * ones scheduled, but for one cancelled on its own, which stays cancelled.
+ * Ending a series cancels its scheduled occurrences. Its subscribers hear of
+ * the series once for each: its next occurrence as scheduled on a create, as
+ * rescheduled on an edit that changes how it repeats, as cancelled on its
+ * end. Every write moves the change counter. Every function answers a result
+ * and never throws.
  */
 
-import { type Announce, announceNothing } from "@/server/notify/subscribers.ts";
+import {
+  type Announce,
+  announceNothing,
+  type SubscriberEvent,
+} from "@/server/notify/subscribers.ts";
 import { languageRefusal } from "@/server/settings/language.ts";
 import {
   NoWindowComponentError,
@@ -21,12 +27,14 @@ import {
 import {
   nextOccurrenceStart,
   occurrencesBetween,
-  scheduledUntilAt,
+  plannedUntilAt,
 } from "@/shared/domain/series.ts";
 import type {
   MaintenanceDeleteResult,
+  MaintenanceSeries,
   MaintenanceSeriesPageResult,
   MaintenanceSeriesSaveResult,
+  MaintenanceWindow,
   SeriesInput,
 } from "@/shared/schemas/maintenance.ts";
 import {
@@ -74,30 +82,43 @@ export async function readSeries(
   }
 }
 
-/** Moves the counter and tells subscribers what a series write did: the cancelled, the rescheduled, then the scheduled occurrences. */
-async function announced(
-  storage: MaintenanceStorage,
-  write: SeriesWrite,
-  now: number,
-  announce: Announce
-): Promise<MaintenanceSeriesSaveResult> {
-  await storage.bump();
-  for (const window of write.cancelled) {
-    // biome-ignore lint/performance/noAwaitInLoops: each event queues in order
-    await announce({ at: now, type: "maintenance.cancelled", window });
-  }
-  for (const window of write.rescheduled) {
-    // biome-ignore lint/performance/noAwaitInLoops: each event queues in order
-    await announce({ type: "maintenance.rescheduled", windowId: window.id });
-  }
-  for (const window of write.scheduled) {
-    // biome-ignore lint/performance/noAwaitInLoops: each event queues in order
-    await announce({ type: "maintenance.scheduled", windowId: window.id });
-  }
-  return { ok: true, series: write.series };
+/** The occurrence that starts soonest, or nothing. */
+function soonest(
+  windows: readonly MaintenanceWindow[]
+): MaintenanceWindow | undefined {
+  return windows.toSorted((a, b) => a.startsAt - b.startsAt)[0];
 }
 
-/** Creates a series and schedules its occurrences of the coming week; no component that exists, or text without the install language's, is refused as invalid. */
+/** What subscribers hear of a series edit: a new recurrence, its next occurrence alone as rescheduled; the same one, each occurrence the edit put back at the series' times or cancelled, as their own changes were announced, and nothing for new text or the week's later occurrences. */
+async function editEvents(
+  storage: MaintenanceStorage,
+  before: MaintenanceSeries,
+  input: SeriesInput,
+  write: SeriesWrite,
+  now: number
+): Promise<SubscriberEvent[]> {
+  if (Bun.deepEquals(before.recurrence, input.recurrence)) {
+    return [
+      ...write.cancelled.map((window) => ({
+        at: now,
+        type: "maintenance.cancelled" as const,
+        window,
+      })),
+      ...write.rescheduled.map((window) => ({
+        type: "maintenance.rescheduled" as const,
+        windowId: window.id,
+      })),
+    ];
+  }
+  const next = soonest(
+    (await storage.maintenance.unfinished()).filter(
+      (window) => window.seriesId === before.id && window.stage === "scheduled"
+    )
+  );
+  return next ? [{ type: "maintenance.rescheduled", windowId: next.id }] : [];
+}
+
+/** Creates a series, schedules its occurrences of the coming week and its next one however far, and announces that one alone; no component that exists, or text without the install language's, is refused as invalid. */
 export async function createSeries(
   storage: MaintenanceStorage,
   input: SeriesInput,
@@ -112,13 +133,18 @@ export async function createSeries(
     if (wrong) {
       return wrong;
     }
-    const until = scheduledUntilAt(now);
+    const until = plannedUntilAt(input.recurrence, now);
     const write = await storage.maintenance.createSeries(
       input,
       occurrencesBetween(input.recurrence, now, until),
       until
     );
-    return await announced(storage, write, now, announce);
+    await storage.bump();
+    const first = soonest(write.scheduled);
+    if (first) {
+      await announce({ type: "maintenance.scheduled", windowId: first.id });
+    }
+    return { ok: true, series: write.series };
   } catch (error) {
     return error instanceof NoWindowComponentError
       ? noComponentNamed
@@ -126,7 +152,7 @@ export async function createSeries(
   }
 }
 
-/** Replaces every field of a series and its scheduled occurrences with the new recurrence's of the coming week. */
+/** Replaces every field of a series and its scheduled occurrences with the new recurrence's of the coming week and its next one. A new recurrence announces the series' next occurrence alone as rescheduled; with the same one, an occurrence changed on its own and put back at the series' times is announced as rescheduled, as its own change was, and new text or a later occurrence of the week announces nothing. */
 export async function editSeries(
   storage: MaintenanceStorage,
   id: string,
@@ -142,15 +168,26 @@ export async function editSeries(
     if (wrong) {
       return wrong;
     }
-    const until = scheduledUntilAt(now);
-    const write = await storage.maintenance.editSeries(
-      id,
-      input,
-      occurrencesBetween(input.recurrence, now, until),
-      now,
-      until
-    );
-    return write ? await announced(storage, write, now, announce) : notFound;
+    const before = await storage.maintenance.findSeries(id);
+    const until = plannedUntilAt(input.recurrence, now);
+    const write =
+      before &&
+      (await storage.maintenance.editSeries(
+        id,
+        input,
+        occurrencesBetween(input.recurrence, now, until),
+        now,
+        until
+      ));
+    if (!write) {
+      return notFound;
+    }
+    await storage.bump();
+    for (const event of await editEvents(storage, before, input, write, now)) {
+      // biome-ignore lint/performance/noAwaitInLoops: each event queues in order
+      await announce(event);
+    }
+    return { ok: true, series: write.series };
   } catch (error) {
     return error instanceof NoWindowComponentError
       ? noComponentNamed
@@ -158,7 +195,7 @@ export async function editSeries(
   }
 }
 
-/** Ends a series: its scheduled occurrences are cancelled, one in progress runs to its end. */
+/** Ends a series: its scheduled occurrences are cancelled, the next one announced alone; one in progress runs to its end. */
 export async function endSeries(
   storage: MaintenanceStorage,
   id: string,
@@ -171,9 +208,9 @@ export async function endSeries(
       return notFound;
     }
     await storage.bump();
-    for (const window of cancelled) {
-      // biome-ignore lint/performance/noAwaitInLoops: each event queues in order
-      await announce({ at: now, type: "maintenance.cancelled", window });
+    const next = soonest(cancelled);
+    if (next) {
+      await announce({ at: now, type: "maintenance.cancelled", window: next });
     }
     return { ok: true };
   } catch {

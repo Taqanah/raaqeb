@@ -57,21 +57,51 @@ export const monthWeeks = [
 export const monthWeekSchema = z.enum(monthWeeks);
 export type MonthWeek = z.infer<typeof monthWeekSchema>;
 
-/** The days a recurrence falls on: weekly on one or more weekdays, monthly on a day of the month (29 to 31 fall on a shorter month's last day), or monthly on an nth weekday. */
+const weeklyDays = z.object({
+  repeat: z.literal("weekly").describe("Weekly on its weekdays."),
+  weekdays: z
+    .array(weekdaySchema)
+    .min(1)
+    .describe(
+      "Each day it falls on, 0 for Sunday to 6 for Saturday, in order."
+    ),
+});
+const monthlyDay = z.object({
+  day: z
+    .int()
+    .min(1)
+    .max(31)
+    .describe(
+      "The day of the month; 29 to 31 fall on a shorter month's last day."
+    ),
+  repeat: z.literal("monthly_day").describe("Monthly on a day of the month."),
+});
+const monthlyWeekday = z.object({
+  repeat: z
+    .literal("monthly_weekday")
+    .describe("Monthly on one weekday by its place in the month."),
+  week: monthWeekSchema.describe("Which of the month's weekdays of that name."),
+  weekday: weekdaySchema.describe(
+    "The weekday, 0 for Sunday to 6 for Saturday."
+  ),
+});
+
+/** The days a recurrence falls on, as stored and shown: weekly on one or more weekdays, monthly on a day of the month (29 to 31 fall on a shorter month's last day), or monthly on an nth weekday. */
+export const recurrenceDaysShapeSchema = z.discriminatedUnion("repeat", [
+  weeklyDays,
+  monthlyDay,
+  monthlyWeekday,
+]);
+
+/** The days as the operator gives them: each weekday once, in order. */
 export const recurrenceDaysSchema = z.discriminatedUnion("repeat", [
-  z.object({
-    repeat: z.literal("weekly"),
-    weekdays: z
-      .array(weekdaySchema)
-      .min(1)
-      .transform((days) => [...new Set(days)].toSorted((a, b) => a - b)),
+  weeklyDays.extend({
+    weekdays: weeklyDays.shape.weekdays.transform((days) =>
+      [...new Set(days)].toSorted((a, b) => a - b)
+    ),
   }),
-  z.object({ day: z.int().min(1).max(31), repeat: z.literal("monthly_day") }),
-  z.object({
-    repeat: z.literal("monthly_weekday"),
-    week: monthWeekSchema,
-    weekday: weekdaySchema,
-  }),
+  monthlyDay,
+  monthlyWeekday,
 ]);
 export type RecurrenceDays = z.output<typeof recurrenceDaysSchema>;
 

@@ -41,6 +41,7 @@ import {
 } from "@/shared/i18n/format.ts";
 import { type Locale, locales } from "@/shared/i18n/locale.ts";
 import { createMessages, type MessageId } from "@/shared/i18n/messages.ts";
+import { repeatWords } from "@/shared/i18n/recurrence.ts";
 import { type ChannelValues, senderOf } from "@/shared/schemas/channel.ts";
 import { contentIn } from "@/shared/schemas/content.ts";
 import type { ImpactLevel, IncidentStage } from "@/shared/schemas/incident.ts";
@@ -52,6 +53,7 @@ import type { SendFailure } from "@/shared/schemas/notification.ts";
 import { plainUrl } from "@/shared/schemas/overview.ts";
 import {
   type ConfirmationWebhook,
+  type SubscriberEventPayload,
   type SubscriberEventType,
   type SubscriberNotification,
   type SubscriberPayload,
@@ -283,6 +285,11 @@ export async function subscriberPayloads(
   if (!window) {
     return [];
   }
+  // A series that ended is gone by its notice, which then names no days.
+  const series =
+    window.seriesId === undefined
+      ? undefined
+      : await storage.maintenance.findSeries(window.seriesId);
   const at =
     event.type === "maintenance.cancelled"
       ? event.at
@@ -307,7 +314,12 @@ export async function subscriberPayloads(
     if (reached) {
       payloads.push({
         pageId: page.id,
-        payload: { ...reached, timestamp: iso(at), type: event.type },
+        payload: {
+          ...reached,
+          repeats: series?.recurrence.days,
+          timestamp: iso(at),
+          type: event.type,
+        },
       });
     }
   }
@@ -439,6 +451,8 @@ export async function subscriberMail(
           line("subscription_line_ends", when(incident.scheduled_until)),
         ]
       : [];
+  const days = await repeatsIn(payload, locale);
+  const repeats = days ? [line("subscription_line_repeats", days)] : [];
   const text = incident.incident_updates[0]?.body ?? "";
   const names = incident.components.map((each) => each.name);
   const components = line(
@@ -467,7 +481,7 @@ export async function subscriberMail(
         text: footer,
       },
       heading: incident.name,
-      lines: [...stage, ...times, components, at].map((each) => ({
+      lines: [...stage, ...times, ...repeats, components, at].map((each) => ({
         text: each,
       })),
       locale,
@@ -478,12 +492,27 @@ export async function subscriberMail(
     subject,
     text: body([
       [sentence],
-      [...stage, ...times],
+      [...stage, ...times, ...repeats],
       text === "" ? [] : [text],
       [components, line("subscription_line_link", incident.shortlink), at],
       [footer, line("subscription_line_unsubscribe", links.page)],
     ]),
   };
+}
+
+/** The days an occurrence's series repeats on, in words in `locale`; nothing for a window of no series or a series that ended. */
+async function repeatsIn(
+  payload: SubscriberEventPayload,
+  locale: Locale
+): Promise<string | undefined> {
+  if (!("repeats" in payload && payload.repeats)) {
+    return;
+  }
+  const messages = createMessages(locale, await loadCatalog(locale));
+  return repeatWords(
+    { locale, t: (id, values) => messages._(id, values) },
+    payload.repeats
+  );
 }
 
 /** A list of names in running text: the locale's comma, since Arabic's list format glues its "and" onto a Latin name. */
@@ -512,7 +541,12 @@ export async function subscriberWebhookBody(
   }
   const event: SubscriberWebhook = {
     incident: payload.incident,
-    meta: { documentation, event: payload.type, unsubscribe: links.page },
+    meta: {
+      documentation,
+      event: payload.type,
+      repeats: await repeatsIn(payload, locale),
+      unsubscribe: links.page,
+    },
     page: {
       id: payload.page.id,
       status_description: payload.page.status_description,

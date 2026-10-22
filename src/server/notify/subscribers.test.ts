@@ -3,6 +3,7 @@ import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { encrypt } from "@/server/boot/installkey.ts";
 import { createIncident, postUpdate } from "@/server/incidents/incidents.ts";
 import { createWindow } from "@/server/maintenance/maintenance.ts";
+import { createSeries } from "@/server/maintenance/series.ts";
 import { createComponent } from "@/server/pages/components.ts";
 import {
   d0,
@@ -2038,5 +2039,95 @@ describe("a subscriber notification's links", () => {
       `${testAddress}/en`,
       "https://status.far.example/en",
     ]);
+  });
+});
+
+describe("an occurrence of a maintenance series", () => {
+  async function seriesWorld() {
+    const w = await world();
+    const created = await createSeries(
+      w.s.storage,
+      {
+        componentIds: [w.web],
+        message: { ar: "نسخ احتياطي." },
+        recurrence: {
+          days: { repeat: "weekly", weekdays: [0, 1, 2, 3, 4, 5, 6] },
+          minutes: 30,
+          time: "13:00",
+          timeZone: "UTC",
+        },
+        title: { ar: "النسخ اليومي" },
+      },
+      now
+    );
+    if (!created.ok) {
+      throw new Error(created.reason);
+    }
+    const [next] = await w.s.storage.maintenance.list();
+    return { ...w, next: defined(next), series: created.series };
+  }
+
+  test("its event carries the days the series repeats on, which its email names on a line of their own", async () => {
+    const w = await seriesWorld();
+    const [only] = await subscriberPayloads(w.s.storage, {
+      type: "maintenance.scheduled",
+      windowId: w.next.id,
+    });
+    const { payload } = defined(only);
+    expect("repeats" in payload ? payload.repeats : undefined).toEqual(
+      w.series.recurrence.days
+    );
+    expect(subscriberPayloadSchema.parse(payload)).toEqual(payload);
+    const arabic = await subscriberMail(payload, "ar", time, links);
+    expect(arabic.text).toContain("التكرار: كل يوم");
+    expect(htmlText(arabic.html)).toContain("التكرار: كل يوم");
+    const english = await subscriberMail(payload, "en", time, links);
+    expect(english.text).toContain("Repeats: Every day");
+  });
+
+  test("its webhook names the days in meta, in the subscription language", async () => {
+    const w = await seriesWorld();
+    const [only] = await subscriberPayloads(w.s.storage, {
+      type: "maintenance.scheduled",
+      windowId: w.next.id,
+    });
+    const body = JSON.parse(
+      await subscriberWebhookBody(
+        defined(only).payload,
+        links,
+        "en",
+        `${testAddress}/api/openapi.json`
+      )
+    );
+    expect(subscriberWebhookSchema.parse(body)).toEqual(body);
+    expect(body.meta.repeats).toBe("Every day");
+  });
+
+  test("a window scheduled on its own, and the notice of a series that ended, name no days", async () => {
+    const w = await seriesWorld();
+    const single = await window(w.s, [w.web], now + day);
+    const [alone] = await subscriberPayloads(w.s.storage, {
+      type: "maintenance.scheduled",
+      windowId: single.id,
+    });
+    await w.s.storage.maintenance.endSeries(w.series.id);
+    const [ended] = await subscriberPayloads(w.s.storage, {
+      at: now,
+      type: "maintenance.cancelled",
+      window: w.next,
+    });
+    for (const each of [alone, ended]) {
+      const { payload } = defined(each);
+      expect(
+        "repeats" in payload ? payload.repeats : undefined
+      ).toBeUndefined();
+      // biome-ignore lint/performance/noAwaitInLoops: two cases, one after the other
+      const mail = await subscriberMail(payload, "en", time, links);
+      expect(mail.text).not.toContain("Repeats");
+      const body = JSON.parse(
+        await subscriberWebhookBody(payload, links, "en", "")
+      );
+      expect(body.meta.repeats).toBeUndefined();
+    }
   });
 });

@@ -1,9 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import type {
+  MaintenanceStage,
   Recurrence,
   RecurrenceDays,
 } from "@/shared/schemas/maintenance.ts";
-import { nextOccurrenceStart, occurrencesBetween } from "./series.ts";
+import {
+  nextOccurrenceStart,
+  nextOccurrencesOnly,
+  occurrencesBetween,
+  plannedUntilAt,
+} from "./series.ts";
 
 const minute = 60_000;
 const day = 86_400_000;
@@ -205,5 +211,64 @@ describe("a series' next occurrence", () => {
     const thursday = Date.UTC(2026, 9, 1, 2);
     expect(nextOccurrenceStart(weekly, thursday)).toBe(thursday);
     expect(nextOccurrenceStart(weekly, thursday + 1)).toBe(thursday + 7 * day);
+  });
+});
+
+describe("what a create or an edit schedules", () => {
+  test("is the coming week when the series' next occurrence falls in it", () => {
+    const weekly = recurrence({ repeat: "weekly", weekdays: [4] });
+    const now = Date.UTC(2026, 9, 1);
+    expect(plannedUntilAt(weekly, now)).toBe(now + 7 * day + 1);
+  });
+
+  test("reaches the series' next occurrence when it is more than a week away, so the series' notice has one to name", () => {
+    const monthly = recurrence({ day: 25, repeat: "monthly_day" });
+    const now = Date.UTC(2026, 9, 1);
+    const until = plannedUntilAt(monthly, now);
+    expect(starts(monthly, now, until)).toEqual([Date.UTC(2026, 9, 25, 2)]);
+  });
+});
+
+describe("the windows a visitor sees", () => {
+  const window = (
+    id: string,
+    stage: MaintenanceStage,
+    startsAt: number,
+    seriesId?: string
+  ) => ({ id, seriesId, stage, startsAt });
+
+  test("of a series are its next occurrence alone: the soonest scheduled", () => {
+    const shown = nextOccurrencesOnly([
+      window("thursday", "scheduled", 3 * day, "daily"),
+      window("tuesday", "scheduled", day, "daily"),
+      window("wednesday", "scheduled", 2 * day, "daily"),
+    ]);
+    expect(shown.map((each) => each.id)).toEqual(["tuesday"]);
+  });
+
+  test("of a series are the occurrence in progress alone while one runs", () => {
+    const shown = nextOccurrencesOnly([
+      window("today", "in_progress", 0, "daily"),
+      window("tomorrow", "scheduled", day, "daily"),
+    ]);
+    expect(shown.map((each) => each.id)).toEqual(["today"]);
+  });
+
+  test("keep every window of no series, every completed occurrence and each series' own next, in the order given", () => {
+    const shown = nextOccurrencesOnly([
+      window("done", "completed", -day, "daily"),
+      window("move", "scheduled", 5 * day),
+      window("daily-next", "scheduled", day, "daily"),
+      window("weekly-next", "scheduled", 2 * day, "weekly"),
+      window("daily-after", "scheduled", 2 * day, "daily"),
+      window("upgrade", "scheduled", 6 * day),
+    ]);
+    expect(shown.map((each) => each.id)).toEqual([
+      "done",
+      "move",
+      "daily-next",
+      "weekly-next",
+      "upgrade",
+    ]);
   });
 });

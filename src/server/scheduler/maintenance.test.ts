@@ -379,7 +379,6 @@ async function seriesWorld() {
     name: { ar: "الموقع" },
     status: "operational",
   });
-  const scheduled: MaintenanceWindow[] = [];
   let bumps = 0;
   const pass = createMaintenancePass(storage, {
     bump: () => {
@@ -387,9 +386,6 @@ async function seriesWorld() {
       return storage.bump().then(() => undefined);
     },
     isStopped: () => false,
-    onScheduled: (each) => {
-      scheduled.push(each);
-    },
     onUncovered: () => Promise.resolve(),
   });
   /** A Tuesday series at 14:00 UTC for two hours, scheduled until `until`. */
@@ -413,7 +409,6 @@ async function seriesWorld() {
     bumps: () => bumps,
     cleanup: opened.cleanup,
     pass,
-    scheduled,
     series,
     storage,
   };
@@ -424,7 +419,7 @@ const tuesday = d0 + 14 * hour;
 const nextTuesday = tuesday + 7 * day;
 
 describe("the pass and a maintenance series", () => {
-  test("an occurrence is scheduled a week before it starts, once, as an ordinary window handed on after the counter moved", async () => {
+  test("an occurrence is scheduled a week before it starts, once, as an ordinary window, and the counter moves", async () => {
     const w = await seriesWorld();
     try {
       // Scheduled until just past this Tuesday's start: next Tuesday's is the next to schedule.
@@ -444,9 +439,6 @@ describe("the pass and a maintenance series", () => {
           title: { ar: "صيانة الثلاثاء" },
         },
       ]);
-      expect(w.scheduled.map((each) => each.id)).toEqual(
-        windows.map((each) => each.id)
-      );
       expect(w.bumps()).toBe(1);
     } finally {
       await w.cleanup();

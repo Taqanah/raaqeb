@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createIncident, postUpdate } from "@/server/incidents/incidents.ts";
 import { createWindow } from "@/server/maintenance/maintenance.ts";
+import { createSeries } from "@/server/maintenance/series.ts";
 import { timeZone } from "@/server/settings/clock.ts";
 import type {
   IncidentCreateInput,
@@ -565,6 +566,35 @@ describe("the Statuspage-compatible summary", () => {
       scheduled_for: iso(now + day),
       status: "scheduled",
     });
+  });
+
+  test("lists a maintenance series once, as its next occurrence", async () => {
+    const w = await world();
+    const created = await createSeries(
+      w.s.storage,
+      {
+        componentIds: [w.web],
+        message: { ar: "نسخ احتياطي." },
+        recurrence: {
+          days: { repeat: "weekly", weekdays: [0, 1, 2, 3, 4, 5, 6] },
+          minutes: 30,
+          time: "13:00",
+          timeZone: "UTC",
+        },
+        title: { ar: "النسخ اليومي" },
+      },
+      now
+    );
+    expect(created.ok).toBe(true);
+    const next = (await w.s.storage.maintenance.list()).find(
+      (each) => each.startsAt === now + hour
+    );
+    const { scheduled_maintenances: windows } = await summaryOf(w);
+    expect(windows.map((each) => each.id)).toEqual([
+      w.running,
+      next?.id ?? "",
+      w.coming,
+    ]);
   });
 
   test("the indicator is the worse of the page level mapped and the open incidents' impact, with Statuspage's description", async () => {

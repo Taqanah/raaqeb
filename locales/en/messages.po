@@ -4389,6 +4389,10 @@ msgid "public_maintenance_ends"
 msgstr "Ends"
 
 #. js-lingui-explicit-id
+msgid "public_maintenance_repeats"
+msgstr "Repeats"
+
+#. js-lingui-explicit-id
 msgid "public_components"
 msgstr "Components"
 
@@ -4631,6 +4635,10 @@ msgstr "Time: {value}"
 #. js-lingui-explicit-id
 msgid "subscription_line_unsubscribe"
 msgstr "Unsubscribe: {value}"
+
+#. js-lingui-explicit-id
+msgid "subscription_line_repeats"
+msgstr "Repeats: {value}"
 
 #. js-lingui-explicit-id
 msgid "subscription_footer"
@@ -5438,11 +5446,11 @@ msgstr "One window with a start and an end."
 
 #. js-lingui-explicit-id
 msgid "maintenance_repeat_weekly_hint"
-msgstr "An occurrence on each day of the week you choose. Each one is scheduled, and announced to subscribers, a week before it starts."
+msgstr "An occurrence on each day of the week you choose, each scheduled a week before it starts. Subscribers hear of the series once, with its first occurrence."
 
 #. js-lingui-explicit-id
 msgid "maintenance_repeat_monthly_hint"
-msgstr "One occurrence a month. Each one is scheduled, and announced to subscribers, a week before it starts."
+msgstr "One occurrence a month, each scheduled a week before it starts. Subscribers hear of the series once, with its first occurrence."
 
 #. js-lingui-explicit-id
 msgid "maintenance_field_weekdays"
@@ -5527,6 +5535,22 @@ msgstr "Day {day} of every month at {time}"
 #. js-lingui-explicit-id
 msgid "maintenance_recurrence_monthly_weekday"
 msgstr "The {week, select, first {first} second {second} third {third} fourth {fourth} other {last}} {weekday} of every month at {time}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeats_daily"
+msgstr "Every day"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeats_weekly"
+msgstr "Every {days}"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeats_monthly_day"
+msgstr "Day {day} of every month"
+
+#. js-lingui-explicit-id
+msgid "maintenance_repeats_monthly_weekday"
+msgstr "The {week, select, first {first} second {second} third {third} fourth {fourth} other {last}} {weekday} of every month"
 
 #. js-lingui-explicit-id
 msgid "maintenance_series_list_title"

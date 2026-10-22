@@ -1,7 +1,8 @@
 /**
  * A status page's feed (CONTEXT.md "Feed"):
  * Atom, one entry for each incident and each maintenance window on the
- * page's components, the most recently changed first, each linking to its
+ * page's components (of a series' occurrences to come, its next alone),
+ * the most recently changed first, each linking to its
  * view and holding its updates. The words are the address's locale, and so
  * is the content where the operator wrote it, else the page language's, each paragraph in its
  * own direction. Anyone may read it; it keeps no record. Reads never throw.
@@ -10,6 +11,7 @@
 import { readClock } from "@/server/settings/clock.ts";
 import { loadCatalog } from "@/server/settings/language.ts";
 import { affectedComponents } from "@/shared/domain/incidents.ts";
+import { nextOccurrencesOnly } from "@/shared/domain/series.ts";
 import { formatDateTimeWithZone, intlLocale } from "@/shared/i18n/format.ts";
 import { directionOf, type Locale } from "@/shared/i18n/locale.ts";
 import { createMessages } from "@/shared/i18n/messages.ts";
@@ -155,7 +157,12 @@ export async function readFeed(
         })
       );
     }
-    for (const window of windows) {
+    const touching = nextOccurrencesOnly(
+      windows.filter((window) =>
+        shown.some((id) => window.componentIds.includes(id))
+      )
+    );
+    for (const window of touching) {
       const touched = affected(window.componentIds);
       if (!touched) {
         continue;

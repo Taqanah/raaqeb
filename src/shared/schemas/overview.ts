@@ -12,6 +12,7 @@ import { themeSchema } from "./appearance.ts";
 import { calendarSchema, clockSchema } from "./clock.ts";
 import { contentShapeSchema } from "./content.ts";
 import { impactLevelSchema, openStageSchema } from "./incident.ts";
+import { recurrenceDaysShapeSchema } from "./maintenance.ts";
 import {
   colourSchema,
   subscriptionChannels,
@@ -157,6 +158,11 @@ export const overviewMaintenanceSchema = z.object({
   endsAt: timestampSchema.describe("When the window ends, in UTC."),
   id: z.string().describe("The maintenance window's id."),
   message: contentShapeSchema.describe(`What the window is for, ${perLocale}.`),
+  repeats: recurrenceDaysShapeSchema
+    .optional()
+    .describe(
+      "The days its maintenance series repeats on; absent for a window scheduled on its own."
+    ),
   stage: z
     .enum(["scheduled", "in_progress"])
     .describe("Scheduled before it starts, in progress until it ends."),

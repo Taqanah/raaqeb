@@ -2,7 +2,7 @@
  * The messages a status page's document inlines: the visitor's chrome under
  * the `public` area and the shared words it shows (the status levels, the
  * impact levels, the incident and maintenance
- * stages), and nothing of the admin, so a visitor's first paint carries a
+ * stages, the days a maintenance series repeats on), and nothing of the admin, so a visitor's first paint carries a
  * small part of the catalog. `src/public` asks for no other id; a test
  * holds it to that.
  */
@@ -15,6 +15,8 @@ const publicPrefixes = [
   "incident_impact_",
   "incident_stage_",
   "maintenance_stage_",
+  "maintenance_repeats_",
+  "maintenance_weekday",
   "setting_theme",
 ];
 
