@@ -7,11 +7,13 @@
 import { type ReactNode, useCallback, useId, useRef, useState } from "react";
 import { formatResponseTime } from "@/admin/monitors/check-parts.tsx";
 import { FormFooter } from "@/admin/shell/page.tsx";
+import { type ProbeState, probeStateOf } from "@/shared/domain/probes.ts";
 import {
   formatDateTimeWithZone,
   formatWhen,
   type TimeOptions,
 } from "@/shared/i18n/format.ts";
+import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import { probesMax } from "@/shared/schemas/monitor.ts";
 import {
@@ -20,7 +22,6 @@ import {
   type ProbesView,
   type ProbeTokenResult,
   probeNameMaxLength,
-  probeSilentAfterMs,
 } from "@/shared/schemas/probe.ts";
 import {
   AlertDialog,
@@ -209,6 +210,20 @@ export function LocationsForm({
   );
 }
 
+/** The badge each state shows. */
+const stateBadges: Readonly<
+  Record<ProbeState, (t: (id: MessageId) => string) => ReactNode>
+> = {
+  never: (t) => <Badge variant="secondary">{t("setting_probe_never")}</Badge>,
+  reporting: (t) => <Badge variant="up">{t("setting_probe_reporting")}</Badge>,
+  refused: (t) => (
+    <Badge title={t("setting_probe_refused_note")} variant="down">
+      {t("setting_probe_refused")}
+    </Badge>
+  ),
+  silent: (t) => <Badge variant="degraded">{t("setting_probe_silent")}</Badge>,
+};
+
 function ProbeRow({
   clock,
   now,
@@ -267,23 +282,7 @@ function ProbeRow({
     [onChanged, probe.id, remove, settle]
   );
   const { lastSeenAt } = probe;
-  let state: ReactNode = (
-    <Badge variant="secondary">{t("setting_probe_never")}</Badge>
-  );
-  if (refused) {
-    state = (
-      <Badge title={t("setting_probe_refused_note")} variant="down">
-        {t("setting_probe_refused")}
-      </Badge>
-    );
-  } else if (lastSeenAt !== undefined) {
-    state =
-      now - lastSeenAt < probeSilentAfterMs ? (
-        <Badge variant="up">{t("setting_probe_reporting")}</Badge>
-      ) : (
-        <Badge variant="degraded">{t("setting_probe_silent")}</Badge>
-      );
-  }
+  const state = stateBadges[probeStateOf(probe, now, refused)](t);
   return (
     <li
       className="flex flex-col gap-3 py-3 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
@@ -315,6 +314,10 @@ function ProbeRow({
               })}
             </span>
           )}
+        </span>
+        <span className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+          {t("setting_probe_id")}
+          <Copyable copy="probe-id" text={probe.id} />
         </span>
         {unavailable ? (
           <FieldError>{t("setting_unavailable")}</FieldError>

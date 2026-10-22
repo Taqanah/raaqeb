@@ -5,7 +5,8 @@
  * schema the admin form posts, and the permission is the one the matching
  * server function's middleware names: `src/routes/-api.ts` answers each
  * operation by calling that server function, so the check runs once, in
- * the same code. The OpenAPI document and the website's reference are
+ * the same code (`listProbes` asks the same check directly: no admin page
+ * reads the probes under `read`). The OpenAPI document and the website's reference are
  * written from this table, and the end-to-end suite calls every operation
  * as every role.
  */
@@ -46,6 +47,7 @@ import {
   monitorRecordSchema,
   monitorTestRecordSchema,
   notificationRecordSchema,
+  probeRecordSchema,
   statusPageDetailSchema,
   statusPageItemSchema,
   statusPageRecordSchema,
@@ -67,6 +69,8 @@ export const managementTags = {
     "Maintenance windows, and the series that schedule one on each of their days.",
   Monitors:
     "The checks Raaqeb runs: create, change, pause, resume, delete, test a draft, and ask for a check now.",
+  Locations:
+    "The places a monitor can be checked from besides the install: each probe's id, which goes in a monitor's `locations`, and its state. Probes are made in the admin area, with their tokens.",
   "Page management":
     "Status pages: their address, language, customization and the components they show.",
 } as const;
@@ -623,6 +627,18 @@ export const managementOperations = {
     status: 204,
     summary: "End a maintenance series",
     tag: "Maintenance",
+  },
+  listProbes: {
+    answer: probeRecordSchema,
+    description:
+      "Every probe in creation order, with its id and state. A monitor is checked from a probe by naming the probe's id in `locations`, after `main` for the install itself.",
+    list: true,
+    method: "get",
+    path: "/api/v1/probes",
+    permission: "read",
+    status: 200,
+    summary: "List probes",
+    tag: "Locations",
   },
   listChannels: {
     answer: channelItemSchema,

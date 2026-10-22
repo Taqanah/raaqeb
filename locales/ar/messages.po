@@ -6651,6 +6651,10 @@ msgid "setting_probe_last_seen"
 msgstr "آخر اتصال {when}"
 
 #. js-lingui-explicit-id
+msgid "setting_probe_id"
+msgstr "المعرّف"
+
+#. js-lingui-explicit-id
 msgid "setting_probe_version"
 msgstr "الإصدار {value}"
 

@@ -28,7 +28,7 @@ docker run -d --name raaqeb-probe --restart unless-stopped --no-healthcheck \
 
 The probe is the same binary as the install, with no database, no data directory and no admin area. It opens every connection itself, so it works behind NAT and needs no open port. It refuses an `http` address other than a loopback one, since the token and any credentials you share would cross the network in clear.
 
-The locations page shows each probe as **Reporting**, **Silent** once the install has not heard from it for two minutes, or **Not connected yet**, with when it last called, its version and its last round trip to the install.
+The locations page shows each probe as **Reporting**, **Silent** once the install has not heard from it for two minutes, or **Not connected yet**, with when it last called, its version and its last round trip to the install. Each probe's **ID** shows with a button to copy it: a program that creates monitors through the [management API](/en/docs/api/management) names it in `locations`, after `main` for the install itself, and the same API lists the probes with their IDs and states.
 
 ## Check a monitor from a probe
 

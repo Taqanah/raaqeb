@@ -87,6 +87,9 @@ test("a probe made on the locations page reports with its token, and the monitor
   const row = page.locator("li[data-probe]:not([data-probe=main])");
   await expect(row).toHaveCount(1);
   const probeId = (await row.getAttribute("data-probe")) ?? "";
+  // The id is there to copy, as a machine token.
+  await expect(row.locator("[data-slot=probe-id]")).toHaveText(probeId);
+  await expect(row.locator("[data-copy=probe-id]")).toHaveCount(1);
   await page.reload();
   await expect(page.locator("body")).not.toContainText(token);
 

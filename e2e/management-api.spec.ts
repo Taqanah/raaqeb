@@ -13,6 +13,7 @@ import { expect, test } from "./support/fixtures.ts";
 import { type Install, seedAccount, spawnInstall } from "./support/spawn.ts";
 
 let install: Install;
+let probeId = "";
 
 const secretOf = (name: string) => `rqk_e2e-${name}-key-for-the-table`;
 
@@ -44,6 +45,7 @@ test.beforeAll(async () => {
           tokenHash: hashApiKey(secretOf(role)),
         });
       }
+      probeId = (await storage.probes.create("Edge", "hash-of-no-token")).id;
       const owner =
         await storage.operatorAccounts.findByEmail("owner@example.com");
       for (const [id, expiresAt] of [
@@ -191,6 +193,28 @@ test("a key creates, reads, lists, pauses, groups and deletes a monitor as the a
   // Deleting again is the same answer: the monitor is gone either way.
   expect((await call("DELETE", `/monitors/${monitor.id}`)).status).toBe(204);
   expect((await call("GET", `/monitors/${monitor.id}`)).status).toBe(404);
+});
+
+test("a key reads the probes with their ids and states, and a monitor is placed on one by its id", async () => {
+  const listed = await (
+    await call("GET", "/probes", undefined, "viewer")
+  ).json();
+  expect(listed).toMatchObject({
+    items: [{ id: probeId, name: "Edge", state: "never" }],
+    total: 1,
+  });
+  const created = await call("POST", "/monitors", {
+    config: { host: "127.0.0.1", port: 1, type: "tcp" },
+    intervalMs: 3_600_000,
+    locations: ["main", probeId],
+    name: "Placed",
+    retries: 0,
+    timeoutMs: 1000,
+  });
+  expect(created.status).toBe(201);
+  const monitor = await created.json();
+  expect(monitor.locations).toEqual(["main", probeId]);
+  expect((await call("DELETE", `/monitors/${monitor.id}`)).status).toBe(204);
 });
 
 test("a change answers the monitor as its read does, with the names of its stored credentials", async () => {

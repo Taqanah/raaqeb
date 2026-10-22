@@ -205,7 +205,7 @@ _Avoid_: local, home, primary, this server
 
 **Probe**:
 Arabic: مسبار (الجمع: مسابير)
-A Raaqeb process run elsewhere with `raaqeb probe`, with no database and no admin area, that pulls the monitors assigned to it from the install, checks them and pushes their results back; every connection starts at the probe. It can check HTTP, TCP, DNS and database monitors; a database monitor's credentials, and an HTTP monitor's, reach it only when the monitor shares them. Made in the admin area, where its last contact, its version and its round trip show. One not heard from for two minutes is silent: the channels of the monitors it checks are told once, and again when it reports.
+A Raaqeb process run elsewhere with `raaqeb probe`, with no database and no admin area, that pulls the monitors assigned to it from the install, checks them and pushes their results back; every connection starts at the probe. It can check HTTP, TCP, DNS and database monitors; a database monitor's credentials, and an HTTP monitor's, reach it only when the monitor shares them. Made in the admin area, where its id, its last contact, its version and its round trip show; the management API lists the probes with their ids and states, and a monitor's locations name a probe by its id. One not heard from for two minutes is silent: the channels of the monitors it checks are told once, and again when it reports.
 _Avoid_: agent, worker, node, remote monitor, check (that is one run)
 
 **Probe token**:

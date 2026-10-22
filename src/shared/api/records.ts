@@ -7,7 +7,9 @@
  * alone answered), and never what only a page of the admin draws (a day
  * bar, a preview).
  */
+
 import { z } from "zod";
+import { probeStates } from "@/shared/domain/probes.ts";
 import { localeSchema } from "@/shared/i18n/locale.ts";
 import { channelTypeSchema } from "@/shared/schemas/channel.ts";
 import { captureHeadersSchema, checkResults } from "@/shared/schemas/check.ts";
@@ -166,6 +168,32 @@ export const checkAskedSchema = z.object({
 export const groupRecordSchema = z.object({
   monitorIds: ids("Its monitors, in their creation order."),
   name: z.string(),
+});
+
+/** A probe: what a script needs to place a monitor on it, and how it is doing. Never its token. */
+export const probeRecordSchema = z.object({
+  createdAt,
+  id: id.describe(
+    "The probe's id, which never changes: the value to put in a monitor's `locations`."
+  ),
+  lastSeenAt: time("When the install last heard from it").optional(),
+  name: z.string(),
+  roundTripMs: z
+    .int()
+    .nonnegative()
+    .optional()
+    .describe(
+      "Its last request's round trip as it measured it, in milliseconds."
+    ),
+  state: z
+    .enum(probeStates)
+    .describe(
+      "`never`: not heard from yet; `reporting`: heard within the last two minutes; `silent`: not for longer; `refused`: the install refused its latest push whole."
+    ),
+  version: z
+    .string()
+    .optional()
+    .describe("The build it named at its last contact."),
 });
 
 /** A status page's own fields. */

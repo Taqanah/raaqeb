@@ -8,12 +8,15 @@
  */
 import type { RequestContext } from "@/handler.ts";
 import { matchOperation, pageOfList, refusal } from "@/server/api/answer.ts";
-import { callerOfRequest } from "@/server/api/caller.ts";
+import { callerOfRequest, permittedCaller } from "@/server/api/caller.ts";
+import { probeGate } from "@/server/probes/api.ts";
+import { readProbes } from "@/server/probes/probes.ts";
 import {
   type ManagementOperationName,
   managementOperations,
 } from "@/shared/api/management.ts";
 import { type ApiError, pageQuerySchema } from "@/shared/api/records.ts";
+import { probeStateOf } from "@/shared/domain/probes.ts";
 import type { Issue } from "@/shared/schemas/issue.ts";
 import {
   createChannelFn,
@@ -73,7 +76,9 @@ import {
 /** What an operation's call gets: its path's parameters and the request body as JSON. */
 interface Input {
   readonly body: unknown;
+  readonly context: RequestContext;
   readonly params: Readonly<Record<string, string>>;
+  readonly request: Request;
 }
 
 /** An operation's answer: its record, a page of its list, or a refusal's reason. */
@@ -431,6 +436,29 @@ const calls: {
     ),
   endSeries: async (input) =>
     gone(await endSeriesFn({ data: { id: param(input, "seriesId") } })),
+  // No admin page reads the probes under `read`, so this one has no server function: it asks the same permission check of the caller the route read.
+  listProbes: async ({ context, request }) => {
+    const permitted = await permittedCaller(
+      request,
+      context.storage,
+      context.boot,
+      "read"
+    );
+    if (permitted instanceof Response) {
+      throw permitted;
+    }
+    if (!permitted) {
+      return { error: { reason: "unavailable" }, ok: false };
+    }
+    return answered(
+      await readProbes(permitted.storage, Date.now(), probeGate.refusedPush),
+      ({ now, probes, refused: refusedIds }) =>
+        probes.map((probe) => ({
+          ...probe,
+          state: probeStateOf(probe, now, refusedIds.includes(probe.id)),
+        }))
+    );
+  },
   listChannels: async () =>
     answered(await readChannelListFn(), (done) =>
       done.channels.map((item) => ({ ...item.channel, summary: item.summary }))
@@ -606,7 +634,9 @@ export async function answerApi(
   }
   const outcome = await called(match.name, {
     body: read?.body,
+    context,
     params: match.params,
+    request,
   });
   if (outcome instanceof Response) {
     return outcome;
