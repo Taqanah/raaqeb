@@ -166,22 +166,27 @@ const secretName =
 const detailFields = 12;
 const detailLength = 200;
 
-/** What was asked, without secrets: the input's scalar fields by name, a long text cut short, nested values left out. */
+/** What was asked, without secrets: the input's scalar fields by name, a nested object's one level down as `parent.name` (a bulk change, an edit's input), a long text cut short. */
 export function detailOf(input: unknown): AuditDetail {
-  if (typeof input !== "object" || input === null || Array.isArray(input)) {
-    return {};
-  }
   const detail: Record<string, string | number | boolean> = {};
-  for (const [name, value] of Object.entries(input)) {
-    if (Object.keys(detail).length >= detailFields || secretName.test(name)) {
-      continue;
+  const add = (value: unknown, prefix: string, nested: boolean) => {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      return;
     }
-    if (typeof value === "string") {
-      detail[name] = value.slice(0, detailLength);
-    } else if (typeof value === "number" || typeof value === "boolean") {
-      detail[name] = value;
+    for (const [name, field] of Object.entries(value)) {
+      if (Object.keys(detail).length >= detailFields || secretName.test(name)) {
+        continue;
+      }
+      if (typeof field === "string") {
+        detail[prefix + name] = field.slice(0, detailLength);
+      } else if (typeof field === "number" || typeof field === "boolean") {
+        detail[prefix + name] = field;
+      } else if (nested) {
+        add(field, `${name}.`, false);
+      }
     }
-  }
+  };
+  add(input, "", true);
   return detail;
 }
 

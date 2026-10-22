@@ -2,14 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { actionParts, detailOf, targetOf } from "./audit.ts";
 
 describe("an audit entry's detail", () => {
-  test("keeps the scalar fields of what was asked and never a secret, a nested value or a long text", () => {
+  test("keeps the scalar fields of what was asked and never a secret, a value nested twice or a long text", () => {
     expect(
       detailOf({
         clientSecret: "s3cret",
         currentPassword: "pw",
         email: "ops@example.com",
         enabled: true,
-        input: { name: "nested" },
+        input: { auth: { user: "nested twice" } },
         name: "x".repeat(300),
         retentionDays: 30,
         token: "rqi_x",
@@ -23,6 +23,21 @@ describe("an audit entry's detail", () => {
     });
     expect(detailOf(undefined)).toEqual({});
     expect(detailOf(["a"])).toEqual({});
+  });
+
+  test("keeps what a bulk change set, under the change's name", () => {
+    expect(
+      detailOf({ change: { kind: "add_tag", tag: "prod" }, ids: ["m1", "m2"] })
+    ).toEqual({ "change.kind": "add_tag", "change.tag": "prod" });
+  });
+
+  test("keeps no secret one level down, nor anything under a name that may hold one", () => {
+    expect(
+      detailOf({
+        credentials: { user: "ops" },
+        input: { clientSecret: "s3cret", name: "API", password: "pw" },
+      })
+    ).toEqual({ "input.name": "API" });
   });
 
   test("keeps at most twelve fields", () => {

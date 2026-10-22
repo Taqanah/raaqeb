@@ -33,7 +33,7 @@ _Avoid_: invite code, sign-up link, magic link
 
 **Audit entry**:
 Arabic: مُدخل في سجل التدقيق; the page is سجل التدقيق
-One record of who did what to what, from which address and when: a change an operator made in the admin area, a sign-in, or a refused sign-in with the email typed. It keeps what was asked without secrets, never what a password or key was. Entries are only added, read by owners and admins, travel in the export, and are deleted once older than the install's retention.
+One record of who did what to what, from which address and when: a change an operator made in the admin area, a sign-in, or a refused sign-in with the email typed or the identity provider gave and why it was refused. It keeps what was asked without secrets, never what a password or key was. Entries are only added, read by owners and admins, travel in the export, and are deleted once older than the install's retention.
 _Avoid_: activity feed, history (that is a monitor's checks), event (that is a monitor's change of state), log (alone: that is the server's output)
 
 **Deactivated**:

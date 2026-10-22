@@ -329,13 +329,14 @@ function refused(returned: unknown): returned is APIError {
  * never the email: a password that needs the second step waits, a code
  * that passes signs in. A plugin, so it runs after the two-factor plugin's
  * hook has decided whether a code is due. A 429 never reaches here. Each
- * sign-in, and each refused one with the email typed, is also an audit
- * entry; a sign-in that waits for its second step is one once the code
- * passes.
+ * sign-in, and each refused one with the email typed or the provider gave
+ * and the code it was refused with, is also an audit entry; a sign-in that
+ * waits for its second step is one once the code passes.
  */
 function signInLog(
   log: (line: string) => void,
-  audit: AuthAudit | undefined
+  audit: AuthAudit | undefined,
+  providerEmails: WeakMap<Request, string>
 ): BetterAuthPlugin {
   return {
     hooks: {
@@ -356,16 +357,30 @@ function signInLog(
               return;
             }
             const method = methodOf(ctx.path);
-            const typed: unknown = ctx.body?.email;
+            if (user) {
+              await audit?.({
+                action: "sign_in.succeed",
+                actor: { email: user.email, id: user.id },
+                address: address ?? undefined,
+                input: { method },
+              });
+              return;
+            }
+            // A refused sign-in names the email typed or the provider gave, never the password, and the code it was refused with.
+            const typed: unknown =
+              ctx.body?.email ??
+              (ctx.request && providerEmails.get(ctx.request));
             await audit?.({
-              action: user ? "sign_in.succeed" : "sign_in.refuse",
-              actor: user && { email: user.email, id: user.id },
+              action: "sign_in.refuse",
+              actor: undefined,
               address: address ?? undefined,
-              // A refused sign-in names the email typed, never the password.
-              input:
-                user || typeof typed !== "string"
-                  ? { method }
-                  : { email: typed.toLowerCase(), method },
+              input: {
+                ...(typeof typed === "string" && {
+                  email: typed.toLowerCase(),
+                }),
+                method,
+                reason: refusalOf(returned),
+              },
             });
           }),
           matcher: (ctx) =>
@@ -379,6 +394,20 @@ function signInLog(
     },
     id: "raaqeb-sign-in-log",
   };
+}
+
+/** The code a sign-in was refused with: the answer's own, or the one the provider's callback redirects with. */
+function refusalOf(returned: unknown): string | undefined {
+  if (!isAPIError(returned)) {
+    return;
+  }
+  const code: unknown = returned.body?.code;
+  return typeof code === "string"
+    ? code
+    : (new URL(
+        new Headers(returned.headers).get("location") ?? "/",
+        "http://raaqeb.invalid"
+      ).searchParams.get("error") ?? undefined);
 }
 
 /** A sign-in attempt's log line, before its address. */
@@ -427,6 +456,8 @@ export function createAuth(input: CreateAuthInput) {
   const { sso } = input;
   // The role each address signing up through the provider was admitted with, from the admission check to the account's creation a moment later in the same callback.
   const admitted = new Map<string, Role>();
+  // The address the provider gave in a callback, for the audit entry of a sign-in it refuses.
+  const providerEmails = new WeakMap<Request, string>();
   return betterAuth({
     // An address that has an account is linked to the provider only when the provider says the address is verified: no provider is trusted without it.
     account: {
@@ -633,7 +664,7 @@ export function createAuth(input: CreateAuthInput) {
         // A trusted browser lasts Better Auth's default of 30 days, pinned by a test.
       }),
       invitationAccept(invitations, (role) => passwordRefused(sso, role)),
-      signInLog(log, input.audit),
+      signInLog(log, input.audit, providerEmails),
       ...(sso ? [ssoPlugin(sso)] : []),
     ],
     rateLimit: {
@@ -661,14 +692,19 @@ export function createAuth(input: CreateAuthInput) {
     // The account page changes the address on the server (server/auth/account.ts) without an email: the second step's codes go to the address in force.
     // Raaqeb's own fields ride on the user row (storage/schema), so the session read carries the role and the preferences with no second query; no request sets one.
     user: {
-      // Who may make an account through the provider (sso.ts), read from the raw claims before the account is made.
-      validateUserInfo: async ({ source, user }) => {
+      // Who may make an account through the provider (sso.ts), read from the raw claims before the account is made; the address is kept for the audit entry of a callback that refuses it.
+      validateUserInfo: async ({ source, user }, ctx) => {
         if (
           !sso ||
           source.method !== "oauth" ||
-          source.action !== "create-user" ||
           typeof user.email !== "string"
         ) {
+          return;
+        }
+        if (ctx?.request) {
+          providerEmails.set(ctx.request, user.email);
+        }
+        if (source.action !== "create-user") {
           return;
         }
         const decision = await signUpRole(

@@ -6,6 +6,7 @@ import {
   expect,
   test,
 } from "bun:test";
+import { readAuditLog, record } from "@/server/audit/audit.ts";
 import { decrypt } from "@/server/boot/installkey.ts";
 import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import { runSql } from "@/server/storage/fixture.ts";
@@ -93,6 +94,7 @@ function ssoOf(over: Partial<SsoProvider> = {}): SsoProvider {
 /** An instance with the operator (an owner) and single sign-on as given. */
 async function ssoAuth(s: Scratch, sso: SsoProvider = ssoOf()): Promise<Auth> {
   const auth = createAuth({
+    audit: (event) => record(s.storage, { ...event, now: Date.now() }),
     baseURL: testOrigin,
     database: s.storage.authDatabase,
     invitations: invitationGate(s.storage),
@@ -383,6 +385,47 @@ describe("signing in through the provider", () => {
     expect(new URL(location).searchParams.get("error")).toBe(
       "ACCOUNT_DEACTIVATED"
     );
+  });
+
+  test("that is refused is an audit entry naming the address the provider gave and why", async () => {
+    const s = await scratch();
+    const auth = await ssoAuth(s);
+    await ssoSignIn(auth, person({ email: "New@Example.com" }));
+    await ssoSignIn(
+      auth,
+      person({ email: "late@example.com", emailVerified: false, sub: "late" })
+    );
+    await runSql(s.location, "UPDATE auth_user SET deactivated_at = 1");
+    await ssoSignIn(auth, person({ email: testEmail, sub: "the-operator" }));
+    const view = await readAuditLog(s.storage, { kind: "sign_in" });
+    expect(
+      view?.entries.map((one) => ({ action: one.action, detail: one.detail }))
+    ).toEqual([
+      {
+        action: "sign_in.refuse",
+        detail: {
+          email: testEmail,
+          method: "provider",
+          reason: "ACCOUNT_DEACTIVATED",
+        },
+      },
+      {
+        action: "sign_in.refuse",
+        detail: {
+          email: "late@example.com",
+          method: "provider",
+          reason: "EMAIL_NOT_VERIFIED",
+        },
+      },
+      {
+        action: "sign_in.refuse",
+        detail: {
+          email: "new@example.com",
+          method: "provider",
+          reason: "NOT_INVITED",
+        },
+      },
+    ]);
   });
 
   test("never makes an owner, whatever the claims", async () => {

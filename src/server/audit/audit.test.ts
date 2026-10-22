@@ -190,7 +190,11 @@ describe("a sign-in over HTTP", () => {
     });
     expect(view?.entries[0]).toMatchObject({
       actorId: null,
-      detail: { email: "who@example.com", method: "password" },
+      detail: {
+        email: "who@example.com",
+        method: "password",
+        reason: "INVALID_EMAIL_OR_PASSWORD",
+      },
     });
     expect(JSON.stringify(view)).not.toContain("a wrong password");
   });
