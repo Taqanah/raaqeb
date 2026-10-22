@@ -197,6 +197,11 @@ export async function main(
     logError("no server build found; run `bun run build` first");
     return 1;
   }
+  // The port is known free before the database opens, so a second process on a busy port migrates nothing and starts no scheduler.
+  if (!portIsFree(booted.settings)) {
+    logError(cannotListen);
+    return 1;
+  }
   const routes = await preloadAssets(`${dir}/client`);
   const location = await locateDatabase(booted.settings);
   const holder: StorageHolder = { current: undefined, scheduler: undefined };
@@ -230,10 +235,8 @@ export async function main(
       options.pace
     );
   } catch {
-    // Bun's own message repeats the port; the rule is to name the settings only.
-    logError(
-      "cannot listen: RAAQEB_HOST and RAAQEB_PORT name an address that is not available"
-    );
+    // Another process took the port since the check above.
+    logError(cannotListen);
     await holder.scheduler?.stop();
     await holder.current?.close();
     return 1;
@@ -252,6 +255,25 @@ export async function main(
       return holder.current;
     },
   };
+}
+
+/** Bun's own message repeats the port; the rule is to name the settings only. */
+const cannotListen =
+  "cannot listen: RAAQEB_HOST and RAAQEB_PORT name an address that is not available";
+
+/** Whether the address can be listened on now: bound and let go at once, with `reusePort` off as `serve` has it, so it refuses what `serve` would. */
+function portIsFree(settings: BootSettings): boolean {
+  try {
+    Bun.serve({
+      fetch: () => new Response(),
+      hostname: settings.host,
+      port: settings.port,
+      reusePort: false,
+    }).stop(true);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** The commands that answer before the boot settings resolve: the version, the help and `health`, which needs only the address. Nothing for the rest. */
