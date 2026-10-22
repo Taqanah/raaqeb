@@ -670,6 +670,34 @@ describe("the not-found the memo answers", () => {
     expect(bodies[0]).not.toContain('type="module"');
   });
 
+  test("an address under a locale's prefix is that locale's own document, kept apart from the unprefixed one and rendered under the prefix", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    for (const path of ["/nope", "/en/nope", "/en/.env", "/wp-admin"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time, as a scanner sends them
+      await memo.notFound(request(path), s.storage, app.render);
+    }
+    expect(app.asked.map((each) => each.path)).toEqual([
+      "/history/0000-00",
+      "/en/history/0000-00",
+    ]);
+  });
+
+  test("with no page to frame it, a prefixed address is still rendered under its prefix", async () => {
+    scratch = await scratchPages(now);
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    for (const path of ["/nope", "/en/nope", "/en/.env"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      await memo.notFound(request(path), scratch.storage, app.render);
+    }
+    expect(app.asked.map((each) => each.path)).toEqual([
+      "/history/0000-00",
+      "/en/history/0000-00",
+    ]);
+  });
+
   test("a page's slug frames the not-found under its address, rendered under that address, apart from the default page's", async () => {
     const { s } = await withDefaultPage();
     const docs = await createPage(s.storage, {

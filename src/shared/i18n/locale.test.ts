@@ -5,6 +5,7 @@ import {
   isLocale,
   localeSchema,
   locales,
+  pathLocale,
 } from "./locale.ts";
 
 describe("the locales Raaqeb ships", () => {
@@ -31,5 +32,19 @@ describe("a locale in a URL or a setting", () => {
       expect(isLocale(value)).toBe(false);
     }
     expect(localeSchema.safeParse("ar-SA").success).toBe(false);
+  });
+});
+
+describe("the locale a path names", () => {
+  test("is its first segment when that is exactly a locale tag", () => {
+    expect(pathLocale("/en")).toBe("en");
+    expect(pathLocale("/en/nope")).toBe("en");
+    expect(pathLocale("/ar/status/docs")).toBe("ar");
+  });
+
+  test("is nothing for any other path", () => {
+    for (const path of ["/", "/nope", "/english", "/EN/nope", "/status/en"]) {
+      expect(pathLocale(path), path).toBeUndefined();
+    }
   });
 });

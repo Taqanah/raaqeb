@@ -692,14 +692,17 @@ describe("the page a not-found shows its frame in", () => {
     });
   });
 
-  test("a locale prefix names no language for the frame: it is the page language, and the not-found takes the document's", () => {
+  test("a locale prefix names the frame's language, so the not-found reads in the address's locale", () => {
     expect(missingView(index(), host, "/en/status/nope")).toMatchObject({
-      locale: "ar",
+      locale: "en",
       pageId: "p-main",
     });
     expect(
       missingView(index(), host, "/en/status/api/history/2026-13")
-    ).toMatchObject({ locale: "ar", pageId: "p-api" });
+    ).toMatchObject({ locale: "en", pageId: "p-api" });
+    expect(missingView(index(), host, "/nope")).toMatchObject({
+      locale: "ar",
+    });
     expect(missingView(index(), host, "/ar/history")).toMatchObject({
       locale: "ar",
       pageId: "p-main",
@@ -1022,6 +1025,17 @@ describe("the address a frame's not-found renders at", () => {
         },
       })
     ).toBe("/status/docs/history/0000-00");
+  });
+
+  test("under a locale prefix it is that locale's address, which names no view either", () => {
+    expect(missingAddress(undefined, "en")).toBe("/en/history/0000-00");
+    for (const path of ["/en/nope", "/en/status/api/nope"]) {
+      const frame = missingView(index(), host, path);
+      const at = missingAddress(frame, "en");
+      expect(at.startsWith("/en/"), path).toBe(true);
+      expect(publicTarget(index(), host, at), at).toBeUndefined();
+      expect(missingView(index(), host, at), at).toEqual(frame);
+    }
   });
 
   test("names no view, and the same page frames it", () => {

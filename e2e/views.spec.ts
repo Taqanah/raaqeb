@@ -290,14 +290,25 @@ test("a framed not-found keeps its frame when the live refresh would have run", 
   );
 });
 
-test("a framed not-found takes the document's locale: under the other locale's prefix the frame is the install language's", async ({
+test("a framed not-found takes the document's locale: under a locale's prefix the document and its frame are in that locale", async ({
   page,
 }) => {
   await page.goto(`${englishOrigin}/ar/status/nope`);
-  await expect(page.locator("html[lang=en][dir=ltr]")).toHaveCount(1);
+  await expect(page.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
   const switcher = page.locator("[data-slot=page-locale]");
-  await expect(switcher).toHaveAttribute("lang", "ar");
-  await expect(switcher).toHaveAttribute("href", "/ar");
+  await expect(switcher).toHaveAttribute("lang", "en");
+  await expect(switcher).toHaveAttribute("href", "/");
+});
+
+test("on an install with no status page a not-found under the English prefix is the plain not-found in English", async ({
+  page,
+}) => {
+  const response = await page.goto(`${arabicOrigin}/en/nope`);
+  expect(response?.status()).toBe(404);
+  await expect(page.locator("html[lang=en][dir=ltr]")).toHaveCount(1);
+  await expect(page.locator("[data-slot=view-missing]")).toBeVisible();
+  await page.goto(`${arabicOrigin}/nope`);
+  await expect(page.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
 });
 
 test("on an install with no status page an unknown slug is the plain not-found in the install language", async ({

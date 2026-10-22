@@ -129,6 +129,13 @@ describe("a document in the locale the request asked for", () => {
     expect(requestedLocale("/", { locale: "en" })).toBeUndefined();
   });
 
+  test("an address under a locale's prefix is asked in that locale, with or without a search", () => {
+    expect(requestedLocale("/en/nope", undefined)).toBe("en");
+    expect(requestedLocale("/ar/history/0000-00", {})).toBe("ar");
+    expect(requestedLocale("/en", {})).toBe("en");
+    expect(requestedLocale("/english/nope", {})).toBeUndefined();
+  });
+
   test("the general and account settings pages may preview the other locale through ?locale=, no other admin page", () => {
     expect(requestedLocale("/admin/settings", { locale: "en" })).toBe("en");
     expect(requestedLocale("/admin/settings/account", { locale: "ar" })).toBe(

@@ -15,7 +15,7 @@
  * operator alone. Pure: the entry builds the index from the pages
  * and hands every request through here.
  */
-import { type Locale, locales } from "@/shared/i18n/locale.ts";
+import { type Locale, locales, pathLocale } from "@/shared/i18n/locale.ts";
 import {
   type PagePaths,
   type PublicView,
@@ -288,7 +288,7 @@ export function missingView(
   pathname: string
 ): PublicView | undefined {
   const parts = pathname.split("/").slice(1);
-  const prefixed = locales.some((each) => each === parts[0]);
+  const prefixed = pathLocale(pathname);
   const [first, slug] = prefixed ? parts.slice(1) : parts;
   // Each a page's plain address: the slug's page, then the host's own.
   const tried = [
@@ -304,7 +304,7 @@ export function missingView(
       target.access.mode === "public"
     ) {
       return {
-        locale: target.locale,
+        locale: prefixed ?? target.locale,
         pageId: target.pageId,
         paths: target.paths,
       };
@@ -421,7 +421,13 @@ export function anonymousPageKey(
     : undefined;
 }
 
-/** The address a page's not-found is rendered at for the page that frames it, or for none: a month no history has, under the page's plain address, so the not-found every address of that frame shows is one document. */
-export function missingAddress(frame: PublicView | undefined): string {
-  return `${frame ? frame.paths.bases[frame.locale] : ""}/history/0000-00`;
+/** The address a page's not-found is rendered at for the page that frames it, or for none: a month no history has, under the page's plain address, so the not-found every address of that frame shows is one document. Under a locale's prefix (`locale`) it is that locale's address, so the document is that locale's own. */
+export function missingAddress(
+  frame: PublicView | undefined,
+  locale?: Locale
+): string {
+  if (frame) {
+    return `${frame.paths.bases[frame.locale]}/history/0000-00`;
+  }
+  return `${locale ? `/${locale}` : ""}/history/0000-00`;
 }

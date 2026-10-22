@@ -56,7 +56,7 @@ import { readPublicAddress } from "@/server/settings/address.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { historyMonth, monthOf } from "@/shared/domain/history.ts";
 import { utcDayStart } from "@/shared/domain/retention.ts";
-import { locales } from "@/shared/i18n/locale.ts";
+import { locales, pathLocale } from "@/shared/i18n/locale.ts";
 import { type PublicView, viewPath } from "@/shared/schemas/overview.ts";
 import type { PageAccess } from "@/shared/schemas/page.ts";
 import { type Month, monthSchema } from "@/shared/schemas/views.ts";
@@ -358,16 +358,17 @@ export function createPublicMemo(options: {
     counter: number | undefined,
     renderMissing: RenderMissing
   ): Promise<Response> => {
-    const frame = missingView(
-      index,
-      resolvedHost(request),
-      new URL(request.url).pathname
-    );
-    const key = frame
-      ? `missing ${frame.pageId} ${frame.paths.origin ?? ""}`
-      : "missing";
+    const { pathname } = new URL(request.url);
+    const frame = missingView(index, resolvedHost(request), pathname);
+    // A locale's prefix makes the document that locale's own.
+    const locale = pathLocale(pathname);
+    const key = `${frame ? `missing ${frame.pageId} ${frame.paths.origin ?? ""}` : "missing"} ${locale ?? ""}`;
     return kept(request, key, counter, (refresh) =>
-      renderMissing(bare(request, missingAddress(frame)), undefined, refresh)
+      renderMissing(
+        bare(request, missingAddress(frame, locale)),
+        undefined,
+        refresh
+      )
     );
   };
   /** A target with its page's access and publication as storage holds them now; closed to all but a session when the page cannot be read; nothing when the page is gone. */
