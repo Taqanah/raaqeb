@@ -170,9 +170,9 @@ export const managementOperations = {
     tag: "Monitors",
   },
   editMonitor: {
-    answer: monitorRecordSchema,
+    answer: monitorDetailSchema,
     body: monitorInputSchema,
-    description: `Replaces every field of the monitor with the body's. ${keptSecret}`,
+    description: `Replaces every field of the monitor with the body's, and answers the monitor as its read does. ${keptSecret}`,
     example: monitorExample,
     method: "put",
     path: "/api/v1/monitors/{monitorId}",

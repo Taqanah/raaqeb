@@ -178,6 +178,21 @@ function field(body: unknown, name: string): unknown {
 const param = (input: Input, name: string): string => input.params[name] ?? "";
 const ids = (input: Input, name: string) => [param(input, name)];
 
+/** One monitor as its read answers it: the record, the names of its stored credentials and, for a heartbeat monitor, its address. */
+async function monitorRead(id: string): Promise<Outcome> {
+  const result = await readMonitorFormFn({ data: { id } });
+  if (!result.ok) {
+    return refused(result);
+  }
+  return found(
+    result.monitor && {
+      ...result.monitor,
+      credentials: result.credentials,
+      heartbeat: result.heartbeat,
+    }
+  );
+}
+
 /** Each operation's call of the admin's server function, and what of its result it answers. */
 const calls: {
   readonly [Name in ManagementOperationName]: (
@@ -203,28 +218,14 @@ const calls: {
       await testMonitorFn({ data: { input: unparsed(body) } }),
       (done) => done.test
     ),
-  readMonitor: async (input) => {
-    const result = await readMonitorFormFn({
-      data: { id: param(input, "monitorId") },
+  readMonitor: async (input) => monitorRead(param(input, "monitorId")),
+  editMonitor: async (input) => {
+    const result = await editMonitorFn({
+      data: { id: param(input, "monitorId"), input: unparsed(input.body) },
     });
-    if (!result.ok) {
-      return refused(result);
-    }
-    return found(
-      result.monitor && {
-        ...result.monitor,
-        credentials: result.credentials,
-        heartbeat: result.heartbeat,
-      }
-    );
+    // A change answers the monitor as its read does, so the saved credentials' names come back too.
+    return result.ok ? monitorRead(result.monitor.id) : refused(result);
   },
-  editMonitor: async (input) =>
-    answered(
-      await editMonitorFn({
-        data: { id: param(input, "monitorId"), input: unparsed(input.body) },
-      }),
-      (done) => done.monitor
-    ),
   deleteMonitor: async (input) =>
     gone(await deleteMonitorsFn({ data: { ids: ids(input, "monitorId") } })),
   testStoredMonitor: async (input) =>

@@ -193,6 +193,37 @@ test("a key creates, reads, lists, pauses, groups and deletes a monitor as the a
   expect((await call("GET", `/monitors/${monitor.id}`)).status).toBe(404);
 });
 
+test("a change answers the monitor as its read does, with the names of its stored credentials", async () => {
+  const input = {
+    config: { type: "http", url: "http://127.0.0.1:1/" },
+    credentials: {
+      auth: { kind: "basic", password: "hunter2-secret", user: "ops" },
+      headers: [{ name: "X-Api-Key", value: "header-secret" }],
+    },
+    intervalMs: 3_600_000,
+    name: "Credentialed",
+    retries: 0,
+    timeoutMs: 1000,
+  };
+  const created = await (await call("POST", "/monitors", input)).json();
+  const changed = await call("PUT", `/monitors/${created.id}`, {
+    ...input,
+    credentials: { auth: { kind: "basic", user: "ops" }, headers: [] },
+    name: "Credentialed again",
+  });
+  expect(changed.status).toBe(200);
+  const text = await changed.text();
+  expect(text).not.toContain("hunter2-secret");
+  expect(text).not.toContain("header-secret");
+  const read = await (await call("GET", `/monitors/${created.id}`)).json();
+  expect(JSON.parse(text)).toEqual(read);
+  expect(read).toMatchObject({
+    credentials: { auth: { kind: "basic", user: "ops" }, headers: [] },
+    name: "Credentialed again",
+  });
+  expect((await call("DELETE", `/monitors/${created.id}`)).status).toBe(204);
+});
+
 test("a refusal as invalid names the parts of the input a rule refused, as the docs promise", async () => {
   const issuesOf = async (response: Response) => {
     expect(response.status).toBe(422);
