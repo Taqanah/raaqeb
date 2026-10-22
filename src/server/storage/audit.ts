@@ -17,6 +17,12 @@ export interface AuditQuery {
   /** Only actions with this target, the part before the dot. */
   readonly kind?: string;
   readonly limit: number;
+  /** Only refused attempts: actions whose verb is `refuse`. */
+  readonly refused?: boolean;
+  /** Entries at or after this time. */
+  readonly since?: number;
+  /** Entries strictly before this time. */
+  readonly until?: number;
 }
 
 export interface AuditRepository {
@@ -100,6 +106,15 @@ export function auditRepository(executor: Executor): AuditRepository {
       }
       if (query.kind !== undefined) {
         where.push(sql`${audit.action} LIKE ${`${query.kind}.%`}`);
+      }
+      if (query.refused) {
+        where.push(sql`${audit.action} LIKE ${"%.refuse"}`);
+      }
+      if (query.since !== undefined) {
+        where.push(sql`${audit.at} >= ${query.since}`);
+      }
+      if (query.until !== undefined) {
+        where.push(sql`${audit.at} < ${query.until}`);
       }
       const rows = await executor.rows<Row>(
         sql`SELECT ${audit.id} AS id, ${audit.at} AS at, ${audit.actorId} AS actor_id, ${audit.actorEmail} AS actor_email, ${audit.action} AS action, ${audit.targetId} AS target_id, ${audit.detail} AS detail, ${audit.address} AS address FROM ${audit} WHERE ${sql.join(where, sql` AND `)} ORDER BY ${audit.at} DESC, ${audit.id} DESC LIMIT ${query.limit}`

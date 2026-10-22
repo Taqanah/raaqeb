@@ -1,6 +1,8 @@
 // The audit log on an install of its own: the owner's sign-in and a change
 // made on a settings page are entries naming the owner, a refused sign-in is
 // one naming the email typed, and the kind filter keeps the sign-ins alone.
+// On a second install, the refused filter keeps the refused attempt alone and
+// a day range keeps the entries of those days.
 
 import { expect, expectPath, test } from "./support/fixtures.ts";
 import { operatorEmail, operatorPassword } from "./support/servers.ts";
@@ -56,6 +58,61 @@ test.describe("the audit log", () => {
     await expect(entries.nth(2)).not.toContainText("a wrong password");
 
     await page.selectOption("select[name=kind]", "sign_in");
+    await expect(entries).toHaveCount(2);
+  });
+});
+
+test.describe("the audit log's filters", () => {
+  let install: Install | undefined;
+  test.beforeAll(async () => {
+    install = await spawnInstall({ account: true, language: "en" });
+  });
+  test.afterAll(async () => {
+    await install?.stop();
+  });
+
+  test("keep refused attempts alone, and the entries of the days asked for", async ({
+    page,
+  }) => {
+    const origin = install?.origin ?? "";
+    await page.goto(`${origin}/sign-in`);
+    await page.fill("input[name=email]", "stranger@example.com");
+    await page.fill("input[name=password]", "a wrong password");
+    await page.click("form button[type=submit]");
+    await expect(
+      page.locator("[data-failure=invalid_credentials]")
+    ).toBeVisible();
+    await page.fill("input[name=email]", operatorEmail);
+    await page.fill("input[name=password]", operatorPassword);
+    await page.click("form button[type=submit]");
+    await expectPath(page, "/admin/monitors");
+
+    await page.goto(`${origin}/admin/audit`);
+    const entries = page.locator("[data-slot=audit-entry]");
+    const search = (name: string) => new URL(page.url()).searchParams.get(name);
+    await expect(entries).toHaveCount(2);
+    await page.click("label[for=audit-refused]");
+    await expect.poll(() => search("refused")).toBe("true");
+    await expect(entries).toHaveCount(1);
+    await expect(entries.first()).toHaveAttribute(
+      "data-action",
+      "sign_in.refuse"
+    );
+    await expect(entries.first()).toContainText("stranger@example.com");
+    await page.click("label[for=audit-refused]");
+    await expect.poll(() => search("refused")).toBeNull();
+    await expect(entries).toHaveCount(2);
+
+    // Between two dates starts at the last seven days, today included.
+    await page.click("label[for=audit-dates]");
+    await expect.poll(() => search("from")).not.toBeNull();
+    await expect(entries).toHaveCount(2);
+    await page.fill("input[name=to-date]", "2020-01-31");
+    await page.fill("input[name=from-date]", "2020-01-01");
+    await expect.poll(() => search("from")).toBe("2020-01-01");
+    await expect(page.locator("[data-slot=audit-empty]")).toBeVisible();
+    await page.click("label[for=audit-dates]");
+    await expect.poll(() => search("from")).toBeNull();
     await expect(entries).toHaveCount(2);
   });
 });

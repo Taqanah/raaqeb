@@ -397,7 +397,7 @@ describe("signing in through the provider", () => {
     );
     await runSql(s.location, "UPDATE auth_user SET deactivated_at = 1");
     await ssoSignIn(auth, person({ email: testEmail, sub: "the-operator" }));
-    const view = await readAuditLog(s.storage, { kind: "sign_in" });
+    const view = await readAuditLog(s.storage, { kind: "sign_in" }, "UTC");
     expect(
       view?.entries.map((one) => ({ action: one.action, detail: one.detail }))
     ).toEqual([

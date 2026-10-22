@@ -1,5 +1,28 @@
 import { describe, expect, test } from "bun:test";
-import { actionParts, detailOf, targetOf } from "./audit.ts";
+import { actionParts, auditSpan, detailOf, targetOf } from "./audit.ts";
+
+describe("a day range of the log", () => {
+  test("covers whole days in the operator's zone, the last one included", () => {
+    expect(auditSpan("2026-10-20", "2026-10-22", "Asia/Riyadh")).toEqual({
+      since: Date.UTC(2026, 9, 19, 21),
+      until: Date.UTC(2026, 9, 22, 21),
+    });
+    expect(auditSpan("2026-10-22", "2026-10-22", "UTC")).toEqual({
+      since: Date.UTC(2026, 9, 22),
+      until: Date.UTC(2026, 9, 23),
+    });
+  });
+
+  test("has no bound on a side with no day, and the last day of a month reaches the next month's first", () => {
+    expect(auditSpan(undefined, "2026-10-31", "UTC")).toEqual({
+      until: Date.UTC(2026, 10, 1),
+    });
+    expect(auditSpan("2026-10-01", undefined, "UTC")).toEqual({
+      since: Date.UTC(2026, 9, 1),
+    });
+    expect(auditSpan(undefined, undefined, "UTC")).toEqual({});
+  });
+});
 
 describe("an audit entry's detail", () => {
   test("keeps the scalar fields of what was asked and never a secret, a value nested twice or a long text", () => {

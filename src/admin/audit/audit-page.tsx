@@ -1,9 +1,11 @@
 /**
  * The audit log page (CONTEXT.md "Audit entry"), an owner's or admin's:
  * who did what to what, from where and when, newest first, filtered by
- * account and by kind, fifty at a time with the way to older ones.
+ * account, by kind, to refused attempts and to days between two dates,
+ * fifty at a time with the way to older ones.
  */
 import { type ChangeEvent, type ReactNode, useCallback } from "react";
+import { TimeField } from "@/admin/maintenance/time-field.tsx";
 import { Page } from "@/admin/shell/page.tsx";
 import {
   type AuditTarget,
@@ -11,12 +13,18 @@ import {
   actionParts,
   auditTargets,
 } from "@/shared/domain/audit.ts";
-import { formatDateTime, type TimeOptions } from "@/shared/i18n/format.ts";
+import {
+  dayMs,
+  formatDateTime,
+  type TimeOptions,
+} from "@/shared/i18n/format.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
+import { wallTime } from "@/shared/i18n/timezone.ts";
 import type { AuditEntry, AuditView } from "@/shared/schemas/audit.ts";
 import { Alert, AlertDescription } from "@/shared/ui/alert.tsx";
 import { Button } from "@/shared/ui/button.tsx";
+import { Checkbox } from "@/shared/ui/checkbox.tsx";
 import { Field, FieldLabel } from "@/shared/ui/field.tsx";
 import {
   NativeSelect,
@@ -32,15 +40,25 @@ import {
 } from "@/shared/ui/table.tsx";
 import { Token } from "@/shared/ui/token.tsx";
 
+/** What the address asks the log for (`/admin/audit?actor=&kind=&refused=&from=&to=&before=`); an absent one means no filter. */
+export interface AuditSearch {
+  readonly actor?: string;
+  readonly before?: number;
+  /** The first day, `yyyy-mm-dd` in the operator's zone. */
+  readonly from?: string;
+  readonly kind?: string;
+  readonly refused?: true;
+  /** The last day, inclusive. */
+  readonly to?: string;
+}
+
 export interface AuditPageProps {
-  readonly actor: string | undefined;
   readonly clock: TimeOptions;
-  readonly kind: string | undefined;
-  readonly onFilter: (filter: {
-    readonly actor?: string;
-    readonly before?: number;
-    readonly kind?: string;
-  }) => void;
+  /** The server's read time: the day fields start from its day. */
+  readonly now: number;
+  /** Changes the filters given and keeps the others; any change but `before` reads from the newest entry again. */
+  readonly onFilter: (change: AuditSearch) => void;
+  readonly search: AuditSearch;
   readonly view: AuditView | undefined;
 }
 
@@ -96,30 +114,59 @@ const verbWords: Readonly<Record<AuditVerb, MessageId>> = {
   upload: "audit_verb_upload",
 };
 
+const dayText = /^\d{4}-\d{2}-\d{2}$/;
+
 export function AuditPage({
-  actor,
   clock,
-  kind,
+  now,
   onFilter,
+  search,
   view,
 }: AuditPageProps): ReactNode {
   const { t } = useMessages();
   const onActor = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      onFilter({ actor: event.currentTarget.value || undefined, kind });
-    },
-    [kind, onFilter]
+    (event: ChangeEvent<HTMLSelectElement>) =>
+      onFilter({ actor: event.currentTarget.value || undefined }),
+    [onFilter]
   );
   const onKind = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      onFilter({ actor, kind: event.currentTarget.value || undefined });
+    (event: ChangeEvent<HTMLSelectElement>) =>
+      onFilter({ kind: event.currentTarget.value || undefined }),
+    [onFilter]
+  );
+  const onRefused = useCallback(
+    (checked: boolean) => onFilter({ refused: checked ? true : undefined }),
+    [onFilter]
+  );
+  const today = wallTime(now, clock.timeZone).slice(0, 10);
+  // Between two dates starts at the last seven days, today included.
+  const weekAgo = new Date(Date.parse(today) - 6 * dayMs)
+    .toISOString()
+    .slice(0, 10);
+  const onDates = useCallback(
+    (checked: boolean) =>
+      onFilter(
+        checked
+          ? { from: weekAgo, to: today }
+          : { from: undefined, to: undefined }
+      ),
+    [onFilter, today, weekAgo]
+  );
+  const onDay = useCallback(
+    (name: "from" | "to", value: string) => {
+      const day = value.slice(0, 10);
+      // A cleared date field keeps the day it had.
+      if (dayText.test(day)) {
+        onFilter({ [name]: day });
+      }
     },
-    [actor, onFilter]
+    [onFilter]
   );
   const last = view?.entries.at(-1);
   const older = useCallback(() => {
-    onFilter({ actor, before: last?.at, kind });
-  }, [actor, kind, last?.at, onFilter]);
+    onFilter({ before: last?.at });
+  }, [last?.at, onFilter]);
+  const dates = search.from !== undefined || search.to !== undefined;
   if (!view) {
     return (
       <Page title={t("audit_title")}>
@@ -141,7 +188,7 @@ export function AuditPage({
             id="audit-actor"
             name="actor"
             onChange={onActor}
-            value={actor ?? ""}
+            value={search.actor ?? ""}
           >
             <NativeSelectOption value="">
               {t("audit_filter_all")}
@@ -159,7 +206,7 @@ export function AuditPage({
             id="audit-kind"
             name="kind"
             onChange={onKind}
-            value={kind ?? ""}
+            value={search.kind ?? ""}
           >
             <NativeSelectOption value="">
               {t("audit_filter_all")}
@@ -172,6 +219,56 @@ export function AuditPage({
           </NativeSelect>
         </Field>
       </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
+        <Field className="w-auto" orientation="horizontal">
+          <Checkbox
+            checked={search.refused === true}
+            id="audit-refused"
+            name="refused"
+            onCheckedChange={onRefused}
+          />
+          <FieldLabel htmlFor="audit-refused">
+            {t("audit_filter_refused")}
+          </FieldLabel>
+        </Field>
+        <Field className="w-auto" orientation="horizontal">
+          <Checkbox
+            checked={dates}
+            id="audit-dates"
+            name="dates"
+            onCheckedChange={onDates}
+          />
+          <FieldLabel htmlFor="audit-dates">
+            {t("audit_filter_dates")}
+          </FieldLabel>
+        </Field>
+      </div>
+      {dates ? (
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="sm:min-w-64">
+            <TimeField
+              clock={clock}
+              label={t("audit_filter_from")}
+              name="from"
+              now={now}
+              onChange={onDay}
+              timeless
+              value={`${search.from ?? weekAgo}T00:00`}
+            />
+          </div>
+          <div className="sm:min-w-64">
+            <TimeField
+              clock={clock}
+              label={t("audit_filter_to")}
+              name="to"
+              now={now}
+              onChange={onDay}
+              timeless
+              value={`${search.to ?? today}T00:00`}
+            />
+          </div>
+        </div>
+      ) : null}
       {view.entries.length === 0 ? (
         <p className="text-muted-foreground text-sm" data-slot="audit-empty">
           {t("audit_empty")}

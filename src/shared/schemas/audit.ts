@@ -21,11 +21,14 @@ export interface AuditEntry {
   readonly targetId: string | null;
 }
 
-/** The log page's filters: an action's kind, an account, and the time the page reads back from. */
+/** The log page's filters: an action's kind, an account, refused attempts alone, the first and last day in the operator's zone (both inclusive), and the time the page reads back from. */
 export const auditFilterSchema = z.object({
   actorId: z.string().max(100).optional(),
   before: z.number().int().positive().optional(),
+  from: z.iso.date().optional(),
   kind: z.string().max(40).optional(),
+  refused: z.boolean().optional(),
+  to: z.iso.date().optional(),
 });
 export type AuditFilter = z.infer<typeof auditFilterSchema>;
 

@@ -1,9 +1,11 @@
 /**
  * The audit log's rules (CONTEXT.md "Audit entry"): which action each
  * admin server function that changes something records, the kinds the log
- * page filters by, and the small, secret-free detail of what was asked. No
- * I/O.
+ * page filters by, the span a day range covers, and the small, secret-free
+ * detail of what was asked. No I/O.
  */
+import { dayMs } from "@/shared/i18n/format.ts";
+import { fromWallTime } from "@/shared/i18n/timezone.ts";
 import type { AuditDetail } from "@/shared/schemas/audit.ts";
 
 /** What an entry was done to. */
@@ -207,4 +209,25 @@ export function targetOf(input: unknown): string | null {
   return "pageId" in input && typeof input.pageId === "string"
     ? input.pageId
     : null;
+}
+
+/** The span of time a day range covers in the zone: from the first day's midnight to the midnight after the last; no bound for a day not given. */
+export function auditSpan(
+  from: string | undefined,
+  to: string | undefined,
+  timeZone: string
+): { readonly since?: number; readonly until?: number } {
+  const midnight = (day: string | undefined, days: number) =>
+    day === undefined
+      ? undefined
+      : fromWallTime(
+          `${new Date(Date.parse(day) + days * dayMs).toISOString().slice(0, 10)}T00:00`,
+          timeZone
+        );
+  const since = midnight(from, 0);
+  const until = midnight(to, 1);
+  return {
+    ...(since !== undefined && { since }),
+    ...(until !== undefined && { until }),
+  };
 }

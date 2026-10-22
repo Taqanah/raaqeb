@@ -51,7 +51,7 @@ describe("an audit entry", () => {
       input: { id: "c1" },
       now: now + 1,
     });
-    const view = await readAuditLog(s.storage, {});
+    const view = await readAuditLog(s.storage, {}, "UTC");
     expect(view?.entries.map((one) => one.action)).toEqual([
       "channel.delete",
       "monitor.create",
@@ -85,7 +85,7 @@ describe("an audit entry", () => {
       input: { ids: ["m1"] },
       now: now + 1,
     });
-    const view = await readAuditLog(s.storage, {});
+    const view = await readAuditLog(s.storage, {}, "UTC");
     expect(view?.entries[1]?.detail).toEqual({ via: "deploy script" });
     expect(view?.entries[0]?.detail).toEqual({});
   });
@@ -102,20 +102,91 @@ describe("an audit entry", () => {
         now: now + index,
       });
     }
-    const first = await readAuditLog(s.storage, {});
+    const first = await readAuditLog(s.storage, {}, "UTC");
     expect(first?.entries).toHaveLength(auditPageSize);
     expect(first?.more).toBe(true);
-    const rest = await readAuditLog(s.storage, {
-      before: first?.entries.at(-1)?.at,
-    });
+    const rest = await readAuditLog(
+      s.storage,
+      { before: first?.entries.at(-1)?.at },
+      "UTC"
+    );
     expect(rest?.entries).toHaveLength(5);
     expect(rest?.more).toBe(false);
-    const pages = await readAuditLog(s.storage, { kind: "page" });
+    const pages = await readAuditLog(s.storage, { kind: "page" }, "UTC");
     expect(pages?.entries.every((one) => one.action === "page.change")).toBe(
       true
     );
-    const edits = await readAuditLog(s.storage, { actorId: "editor" });
+    const edits = await readAuditLog(s.storage, { actorId: "editor" }, "UTC");
     expect(edits?.entries.every((one) => one.actorId === "editor")).toBe(true);
+  });
+
+  test("is filtered to refused attempts alone, beside the other filters", async () => {
+    const s = await scratch();
+    const actions = ["sign_in.refuse", "sign_in.succeed", "monitor.change"];
+    for (const [index, action] of actions.entries()) {
+      // biome-ignore lint/performance/noAwaitInLoops: one entry after another, in time order
+      await record(s.storage, {
+        action,
+        actor: undefined,
+        address: undefined,
+        input: {},
+        now: now + index,
+      });
+    }
+    const refused = await readAuditLog(s.storage, { refused: true }, "UTC");
+    expect(refused?.entries.map((one) => one.action)).toEqual([
+      "sign_in.refuse",
+    ]);
+    const none = await readAuditLog(
+      s.storage,
+      { kind: "monitor", refused: true },
+      "UTC"
+    );
+    expect(none?.entries).toEqual([]);
+  });
+
+  test("is filtered to the days asked for in the operator's zone, the last day included", async () => {
+    const s = await scratch();
+    // 20:59, 21:00 and 23:00 UTC on 21 October: the first is still the 21st in Riyadh, the others the 22nd.
+    const times = [
+      Date.UTC(2026, 9, 21, 20, 59),
+      Date.UTC(2026, 9, 21, 21),
+      Date.UTC(2026, 9, 21, 23),
+      Date.UTC(2026, 9, 22, 21),
+    ];
+    for (const at of times) {
+      // biome-ignore lint/performance/noAwaitInLoops: one entry after another, in time order
+      await record(s.storage, {
+        action: "monitor.change",
+        actor: owner,
+        address: undefined,
+        input: {},
+        now: at,
+      });
+    }
+    const oneDay = await readAuditLog(
+      s.storage,
+      { from: "2026-10-22", to: "2026-10-22" },
+      "Asia/Riyadh"
+    );
+    expect(oneDay?.entries.map((one) => one.at)).toEqual([
+      Date.UTC(2026, 9, 21, 23),
+      Date.UTC(2026, 9, 21, 21),
+    ]);
+    const since = await readAuditLog(
+      s.storage,
+      { from: "2026-10-22" },
+      "Asia/Riyadh"
+    );
+    expect(since?.entries).toHaveLength(3);
+    const until = await readAuditLog(
+      s.storage,
+      { to: "2026-10-21" },
+      "Asia/Riyadh"
+    );
+    expect(until?.entries.map((one) => one.at)).toEqual([
+      Date.UTC(2026, 9, 21, 20, 59),
+    ]);
   });
 
   test("goes once it is older than the install's retention, and not before", async () => {
@@ -133,7 +204,7 @@ describe("an audit entry", () => {
     }
     expect(await purgeAudit(s.storage, now)).toBe(1);
     expect(
-      (await readAuditLog(s.storage, {}))?.entries.map((one) => one.at)
+      (await readAuditLog(s.storage, {}, "UTC"))?.entries.map((one) => one.at)
     ).toEqual([now - 29 * day]);
   });
 
@@ -147,7 +218,7 @@ describe("an audit entry", () => {
       input: {},
       now,
     });
-    expect(await readAuditLog(s.storage, {})).toBeUndefined();
+    expect(await readAuditLog(s.storage, {}, "UTC")).toBeUndefined();
   });
 });
 
@@ -178,7 +249,7 @@ describe("a sign-in over HTTP", () => {
     await call(auth, "/sign-in/email", {
       body: { email: "WHO@example.com", password: "a wrong password" },
     });
-    const view = await readAuditLog(s.storage, { kind: "sign_in" });
+    const view = await readAuditLog(s.storage, { kind: "sign_in" }, "UTC");
     expect(view?.entries.map((one) => one.action)).toEqual([
       "sign_in.refuse",
       "sign_in.succeed",

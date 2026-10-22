@@ -7,7 +7,7 @@
 import { error as logError, reasonOf } from "@/server/log.ts";
 import { readRetentionDays } from "@/server/settings/retention.ts";
 import type { Storage } from "@/server/storage/storage.ts";
-import { detailOf, targetOf } from "@/shared/domain/audit.ts";
+import { auditSpan, detailOf, targetOf } from "@/shared/domain/audit.ts";
 import {
   type AuditFilter,
   type AuditView,
@@ -60,14 +60,20 @@ export async function record(
   }
 }
 
-/** A page of the log, newest first, with the accounts to filter by; nothing when the database cannot answer. */
+/** A page of the log, newest first, with the accounts to filter by; the filter's days are read in the zone. Nothing when the database cannot answer. */
 export async function readAuditLog(
   storage: AuditStorage,
-  filter: AuditFilter
+  filter: AuditFilter,
+  timeZone: string
 ): Promise<AuditView | undefined> {
+  const { from, to, ...rest } = filter;
   try {
     const [entries, actors] = await Promise.all([
-      storage.audit.list({ ...filter, limit: auditPageSize + 1 }),
+      storage.audit.list({
+        ...rest,
+        ...auditSpan(from, to, timeZone),
+        limit: auditPageSize + 1,
+      }),
       storage.audit.actors(),
     ]);
     return {

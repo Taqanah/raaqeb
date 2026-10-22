@@ -6395,6 +6395,22 @@ msgid "audit_filter_all"
 msgstr "All"
 
 #. js-lingui-explicit-id
+msgid "audit_filter_refused"
+msgstr "Refused attempts only"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_dates"
+msgstr "Between two dates"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_from"
+msgstr "From"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_to"
+msgstr "To"
+
+#. js-lingui-explicit-id
 msgid "audit_column_action"
 msgstr "Action"
 

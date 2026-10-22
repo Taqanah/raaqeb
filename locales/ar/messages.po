@@ -6395,6 +6395,22 @@ msgid "audit_filter_all"
 msgstr "الكل"
 
 #. js-lingui-explicit-id
+msgid "audit_filter_refused"
+msgstr "المحاولات المرفوضة فقط"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_dates"
+msgstr "بين تاريخين"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_from"
+msgstr "من"
+
+#. js-lingui-explicit-id
+msgid "audit_filter_to"
+msgstr "إلى"
+
+#. js-lingui-explicit-id
 msgid "audit_column_action"
 msgstr "الإجراء"
 
