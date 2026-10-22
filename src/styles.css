@@ -82,6 +82,8 @@
 /* Base UI reports orientation as data-orientation; the copies read it as data-horizontal and data-vertical. */
 @custom-variant data-horizontal (&:where([data-orientation="horizontal"]));
 @custom-variant data-vertical (&:where([data-orientation="vertical"]));
+/* A short screen, such as a laptop's 720 px: the sidebar tightens so its whole navigation fits. */
+@custom-variant short (@media (max-height: 760px));
 
 /*
  * The appearance scales. Font size scales the type scale only;
@@ -362,6 +364,32 @@
     0 0 0 1px var(--rim),
     0 1px 2px var(--lift-near),
     0 12px 32px -20px var(--lift-far);
+}
+
+/* The sidebar's navigation, where it still overflows: a shadow at each edge with more beyond it, with no script. The covers scroll with the content and hide the shadow at the end. */
+@utility sidebar-scroll {
+  background:
+    linear-gradient(var(--sidebar) 30%, transparent) top,
+    linear-gradient(transparent, var(--sidebar) 70%) bottom,
+    radial-gradient(
+      farthest-side at 50% 0,
+      color-mix(in oklab, var(--foreground) 16%, transparent),
+      transparent
+    )
+    top,
+    radial-gradient(
+      farthest-side at 50% 100%,
+      color-mix(in oklab, var(--foreground) 16%, transparent),
+      transparent
+    )
+    bottom;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+  background-size:
+    100% 2rem,
+    100% 2rem,
+    100% 0.75rem,
+    100% 0.75rem;
 }
 
 /* A printed admin page is its content: light colours on white paper, no sidebar button, no sticky bar, and a card kept whole on one page when it fits. */

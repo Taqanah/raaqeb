@@ -248,7 +248,7 @@ function SidebarContent({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-0 overflow-auto",
+        "sidebar-scroll flex min-h-0 flex-1 flex-col gap-0 overflow-auto",
         className
       )}
       data-slot="sidebar-content"
@@ -260,7 +260,10 @@ function SidebarContent({ className, ...props }: ComponentProps<"div">) {
 function SidebarGroup({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={cn("relative flex w-full min-w-0 flex-col p-2", className)}
+      className={cn(
+        "relative flex w-full min-w-0 flex-col p-2 short:py-1",
+        className
+      )}
       data-slot="sidebar-group"
       {...props}
     />
@@ -271,7 +274,7 @@ function SidebarGroupLabel({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "flex h-8 shrink-0 items-center rounded-md px-2 font-medium text-sidebar-foreground/70 text-xs",
+        "flex h-8 short:h-6 shrink-0 items-center rounded-md px-2 font-medium text-sidebar-foreground/70 text-xs",
         className
       )}
       data-slot="sidebar-group-label"

@@ -50,7 +50,17 @@ test("the shell renders around an admin page: the grouped navigation, the header
   );
 });
 
-test("controls are named without their shortcut letters, the list's menu column is named, and the whole sidebar is navigation", async ({
+test("the owner's whole navigation fits a 720 px tall screen, Settings last in view", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 720, width: 1280 });
+  await signIn(page);
+  await expect(page.locator("a[data-nav=settings]")).toBeInViewport({
+    ratio: 1,
+  });
+});
+
+test("controls are named without their shortcut letters,the list's menu column is named, and the whole sidebar is navigation", async ({
   page,
 }) => {
   await signIn(page);
