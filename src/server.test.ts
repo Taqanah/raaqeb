@@ -101,6 +101,15 @@ describe("client asset preload", () => {
     );
   });
 
+  test("the files every browser and crawler asks for unprompted are served, not answered with the not-found page", async () => {
+    // The Vite build copies `public/` into the client build, so its files are the routes.
+    const routes = await preloadAssets(`${import.meta.dir}/../public`);
+    expect(routes["/favicon.ico"]?.headers.get("content-type")).toBe(
+      "image/x-icon"
+    );
+    expect(await routes["/robots.txt"]?.text()).toStartWith("User-agent: *");
+  });
+
   test("a missing client build directory yields no routes", async () => {
     const routes = await preloadAssets("/nonexistent/raaqeb-client-build");
     expect(routes).toEqual({});
