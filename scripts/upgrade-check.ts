@@ -199,6 +199,11 @@ async function onboard(
   }
   await page.click(continueButton);
   await expectPath(page, "/onboarding/account");
+  // The from-release may predate the account screen's name field.
+  const name = page.locator("input[name=name]");
+  if ((await name.count()) > 0) {
+    await name.fill("Operator");
+  }
   await page.fill("input[name=email]", email);
   await page.fill("input[name=password]", password);
   await page.click(continueButton);

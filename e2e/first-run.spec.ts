@@ -27,9 +27,11 @@ test("a new install is onboarded in Arabic on a phone, the account screen refusi
     await expect(page.locator(rtl)).toHaveCount(1);
 
     // The browser refuses these before the form posts (no `noValidate`), so the install stays in onboarding.
+    const name = page.locator("input[name=name]");
     const email = page.locator("input[name=email]");
     const password = page.locator("input[name=password]");
     await page.click(continueButton);
+    await expect(page.locator("input[name=name]:invalid")).toHaveCount(1);
     await expect(page.locator("input[name=email]:invalid")).toHaveCount(1);
     await expect(page.locator("input[name=password]:invalid")).toHaveCount(1);
     await email.fill("notanemail");
@@ -42,6 +44,7 @@ test("a new install is onboarded in Arabic on a phone, the account screen refusi
       (await page.request.get(`${install.origin}/onboarding`)).status()
     ).toBe(200);
 
+    await name.fill("نادية");
     await email.fill(operatorEmail);
     await password.fill(operatorPassword);
     await expect(page.locator("form :invalid")).toHaveCount(0);

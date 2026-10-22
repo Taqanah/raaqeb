@@ -1,5 +1,5 @@
 /**
- * The account screen: email, password and the public address
+ * The account screen: the owner's name, email, password and the public address
  * pre-filled with the browser's origin once mounted (the request's origin
  * before that), one editable field. An address the browser is not at is
  * stored only after the operator confirms it. The install language
@@ -99,6 +99,7 @@ export function AccountForm({
         addressConfirmed: confirmed,
         email: String(form.get("email") ?? ""),
         locale,
+        name: String(form.get("name") ?? ""),
         password: String(form.get("password") ?? ""),
         publicAddress: address.trim(),
       });
@@ -137,11 +138,27 @@ export function AccountForm({
         <FieldGroup>
           <FieldDescription>{t("onboarding_account_lead")}</FieldDescription>
           <Field>
+            <FieldLabel htmlFor="name">{t("team_name")}</FieldLabel>
+            <Input
+              aria-invalid={refused.has("name") ? true : undefined}
+              autoComplete="name"
+              autoFocus
+              id="name"
+              maxLength={100}
+              name="name"
+              required
+            />
+            {refused.has("name") ? (
+              <FieldError data-error-for="name">
+                {t("team_name_required")}
+              </FieldError>
+            ) : null}
+          </Field>
+          <Field>
             <FieldLabel htmlFor="email">{t("auth_email")}</FieldLabel>
             <Input
               aria-invalid={refused.has("email") ? true : undefined}
               autoComplete="email"
-              autoFocus
               dir="ltr"
               id="email"
               name="email"

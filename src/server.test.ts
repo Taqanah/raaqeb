@@ -594,6 +594,7 @@ describe("the raaqeb command", () => {
         {
           email: "operator@example.com",
           locale: "ar",
+          name: "Nadia",
           password: "correct horse battery",
           publicAddress: "http://raaqeb.test",
         },
@@ -1030,6 +1031,7 @@ describe("the raaqeb command", () => {
         {
           email: "operator@example.com",
           locale: "ar",
+          name: "Nadia",
           password: "correct horse battery",
           publicAddress: "http://raaqeb.test",
         },
@@ -1244,6 +1246,7 @@ describe("the raaqeb command", () => {
         {
           email: "operator@example.com",
           locale: "ar",
+          name: "Nadia",
           password: "correct horse battery",
           publicAddress: "http://raaqeb.test",
         },
@@ -2285,6 +2288,7 @@ describe("the security headers of an HTML response", () => {
         {
           email: "operator@example.com",
           locale: "ar",
+          name: "Nadia",
           password: "correct horse battery",
           publicAddress: "https://status.example.test",
         },
@@ -2475,6 +2479,7 @@ describe("the trusted proxies saved on the general page", () => {
         {
           email: "operator@example.com",
           locale: "ar",
+          name: "Nadia",
           password: "correct horse battery",
           publicAddress: origin,
         },

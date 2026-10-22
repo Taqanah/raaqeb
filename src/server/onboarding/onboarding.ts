@@ -9,7 +9,7 @@
  * never throws.
  */
 
-import { authFor, operatorName } from "@/server/auth/auth.ts";
+import { authFor } from "@/server/auth/auth.ts";
 import {
   type ConfigFile,
   readConfigFile,
@@ -289,7 +289,7 @@ async function createOnce(
     const signedUp = await auth.api.signUpEmail({
       body: {
         email: input.email,
-        name: operatorName,
+        name: input.name,
         password: input.password,
       },
       returnHeaders: true,

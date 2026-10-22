@@ -368,7 +368,7 @@ msgstr "Choose the database first."
 
 #. js-lingui-explicit-id
 msgid "onboarding_account_invalid"
-msgstr "Check the email, the password and the public address."
+msgstr "Check the name, the email, the password and the public address."
 
 #. js-lingui-explicit-id
 msgid "onboarding_address_elsewhere"

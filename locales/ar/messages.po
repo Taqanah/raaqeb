@@ -368,7 +368,7 @@ msgstr "اختر قاعدة البيانات أولًا."
 
 #. js-lingui-explicit-id
 msgid "onboarding_account_invalid"
-msgstr "تحقّق من البريد وكلمة المرور والعنوان العام."
+msgstr "تحقّق من الاسم والبريد وكلمة المرور والعنوان العام."
 
 #. js-lingui-explicit-id
 msgid "onboarding_address_elsewhere"

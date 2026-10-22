@@ -8,6 +8,7 @@ import { z } from "zod";
 import { localeSchema } from "@/shared/i18n/locale.ts";
 import { publicAddressSchema } from "./address.ts";
 import { passwordMaxLength, passwordMinLength } from "./auth.ts";
+import { accountNameSchema } from "./team.ts";
 
 /** A Postgres URL as text; whether it connects is the connection test's answer, not the schema's. */
 const postgresUrlSchema = z
@@ -27,6 +28,8 @@ export const operatorAccountSchema = z.object({
   addressConfirmed: z.boolean().optional(),
   email: z.email(),
   locale: localeSchema,
+  /** The owner's name, required as accepting an invitation requires one. */
+  name: accountNameSchema.pipe(z.string().min(1)),
   password: z.string().min(passwordMinLength).max(passwordMaxLength),
   publicAddress: publicAddressSchema,
 });

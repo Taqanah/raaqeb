@@ -118,14 +118,21 @@ test.describe("the fresh install, walked to the end and then used", () => {
     await page.unrouteAll();
     await expect(page.locator(publicAddressInput)).toHaveValue(tunnelOrigin);
 
-    // What the screen refuses is said beside each field, and nothing is created.
+    // What the screen refuses is said beside each field, and nothing is created; a name of spaces is none.
+    await page.fill("input[name=name]", "   ");
     await page.fill("input[name=email]", "not an email");
     await page.fill("input[name=password]", "short");
     await page.fill(publicAddressInput, `${tunnelOrigin}/path`);
     await page.click(continueButton);
-    await expectRefused(page, "form", ["email", "password", "publicAddress"]);
+    await expectRefused(page, "form", [
+      "name",
+      "email",
+      "password",
+      "publicAddress",
+    ]);
     await expectPath(page, "/onboarding/account");
 
+    await page.fill("input[name=name]", " Nadia ");
     await page.fill("input[name=email]", "operator@example.com");
     await page.fill("input[name=password]", "correct horse battery");
 
@@ -175,6 +182,12 @@ test.describe("the fresh install, walked to the end and then used", () => {
     await page.reload();
     await expect(page.locator("main [data-slot=empty]")).toHaveCount(1);
     await expect(checklist).toHaveCount(0);
+
+    // The owner has the name the account screen took, trimmed.
+    await page.goto(`${tunnelOrigin}/admin/settings/account`);
+    await expect(
+      page.locator("[data-slot=name-form] input[name=name]")
+    ).toHaveValue("Nadia");
   });
 
   test("after onboarding the operator sets the appearance, the operator language, the email and the password from the settings area", async ({

@@ -133,6 +133,7 @@ function at(origin: string): Headers {
 const account = {
   email: "operator@example.com",
   locale: "en",
+  name: "Nadia",
   password: "correct horse battery",
   publicAddress: "http://status.example.com",
 } as const;
@@ -511,6 +512,14 @@ describe("creating the operator account", () => {
       new Headers({ cookie: cookies[0]?.split(";")[0] ?? "" })
     );
     expect(session?.operator.email).toBe(account.email);
+  });
+
+  test("gives the owner the name typed on the account screen, so the email no longer stands for it", async () => {
+    const { context, storage } = await opened();
+    await createOperatorAccount(account, context, at(account.publicAddress));
+    expect(
+      await storage.operatorAccounts.findByEmail(account.email)
+    ).toMatchObject({ name: "Nadia", role: "owner" });
   });
 
   test("moves the change counter, so the memo reads the public address it stored", async () => {

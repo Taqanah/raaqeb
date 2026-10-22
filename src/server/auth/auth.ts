@@ -867,5 +867,5 @@ export async function handleAuth(
   return callback && !withSso.has(auth) ? notFound() : auth.handler(request);
 }
 
-/** The `name` onboarding gives the first account on sign-up: none, so its email stands for it until the account page sets one. */
+/** The `name` the tests, the e2e installs and the bench seed an account with: none, as an account from single sign-on or an import may have, so its email stands for it. Onboarding takes the owner's name from its account screen. */
 export const operatorName = "";

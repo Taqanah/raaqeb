@@ -68,6 +68,7 @@ try {
   await expectPath(page, "/onboarding/database");
   await page.click(continueButton);
   await expectPath(page, "/onboarding/account");
+  await page.fill("input[name=name]", "Operator");
   await page.fill("input[name=email]", "operator@example.com");
   await page.fill("input[name=password]", "correct horse battery");
   await page.click(continueButton);

@@ -10,7 +10,7 @@ import type { AccountSettingsInput } from "./settings.ts";
 
 export const roleSchema = z.enum(roles);
 
-/** An operator account's name: optional for the first one, which onboarding makes without one. */
+/** An operator account's name. Onboarding and accepting an invitation require one; the account page may clear it, and the email then stands for it. */
 export const accountNameSchema = z.string().trim().max(100);
 
 /** One operator account as storage holds it, without its credentials. */
