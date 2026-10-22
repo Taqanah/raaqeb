@@ -8,6 +8,7 @@
  * bounded memory and bandwidth. Redirects are followed here,
  * not by fetch, up to the cap.
  */
+import { userAgent } from "@/server/release/release.ts";
 import type { CheckOutcome } from "@/shared/schemas/check.ts";
 import type { Credentials } from "@/shared/schemas/credentials.ts";
 import type { HttpConfig, Monitor } from "@/shared/schemas/monitor.ts";
@@ -444,7 +445,12 @@ function requestHeaders(
   token?: string
 ): Headers {
   try {
-    return buildHeaders(credentials, token);
+    const headers = buildHeaders(credentials, token);
+    // Without this Bun sends its own, which many firewalls refuse; a custom header wins.
+    if (!headers.has("user-agent")) {
+      headers.set("user-agent", userAgent);
+    }
+    return headers;
   } catch {
     // biome-ignore lint/style/useErrorCause: the platform's error quotes the header's value, a credential that must not reach the failure detail
     throw new Error("the platform refused a request header's value");

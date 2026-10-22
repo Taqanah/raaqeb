@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { userAgent } from "@/server/release/release.ts";
 import { retryDelayMs } from "@/shared/domain/checks.ts";
 import { captureBodyBytes, errorMaxLength } from "@/shared/schemas/check.ts";
 import type { HttpConfig } from "@/shared/schemas/monitor.ts";
@@ -392,6 +393,8 @@ describe("one HTTP check", () => {
   });
 });
 
+const versioned = /^raaqeb\/\d+\.\d+\.\d+/;
+
 describe("an HTTP monitor's credentials on the request", () => {
   const headersOf = (init: SeenInit | undefined) => new Headers(init?.headers);
 
@@ -423,6 +426,26 @@ describe("an HTTP monitor's credentials on the request", () => {
     expect(headersOf(requests[0]?.init).get("authorization")).toBe(
       "Bearer tok-1"
     );
+  });
+
+  test("a check names Raaqeb and its version in the User-Agent, not the platform's default", async () => {
+    const { io: checkIo, requests } = io([ok(10)]);
+    await runHttpCheck(monitor(), checkIo);
+    expect(headersOf(requests[0]?.init).get("user-agent")).toBe(userAgent);
+    expect(userAgent).toMatch(versioned);
+  });
+
+  test("a custom User-Agent header replaces Raaqeb's, it is not joined to it", async () => {
+    const { io: checkIo, requests } = io([ok(10)]);
+    await runHttpCheck(
+      monitor({
+        credentials: {
+          headers: [{ name: "User-Agent", value: "my-probe/1" }],
+        },
+      }),
+      checkIo
+    );
+    expect(headersOf(requests[0]?.init).get("user-agent")).toBe("my-probe/1");
   });
 
   test("custom headers are sent on every attempt, retries included", async () => {
@@ -500,6 +523,8 @@ describe("a target that echoes the credentials it got", () => {
   const echoing: CheckIo = {
     fetch: ((_input: string | URL | Request, init?: RequestInit) => {
       const sent = new Headers(init?.headers);
+      // The User-Agent every check sends is no credential; the masks are pinned on the rest.
+      sent.delete("user-agent");
       return Promise.resolve(
         new Response(JSON.stringify(Object.fromEntries(sent)), {
           headers: { "x-echo": sent.get("authorization") ?? "" },
