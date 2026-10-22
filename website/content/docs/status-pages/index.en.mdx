@@ -5,7 +5,7 @@ description: What a status page is, how to create and publish one, its addresses
 
 A status page is a public page that shows a set of components you choose, their status now, a day bar of their daily uptime, and the incidents and maintenance windows that affect them. An install can have many status pages. Components, incidents and maintenance windows belong to the install, not to a page, so one component can appear on several pages and an incident shows on every page that shows a component it affects.
 
-This page covers the page itself. The other pages in this section cover [components](/en/docs/status-pages/components), [incidents](/en/docs/status-pages/incidents), [maintenance windows](/en/docs/status-pages/maintenance), [subscriptions](/en/docs/status-pages/subscriptions), [custom domains](/en/docs/status-pages/custom-domains), and the [badge, feed and summary](/en/docs/status-pages/badge-and-feed).
+This page covers the page itself. The other pages in this section cover [components](/en/docs/status-pages/components), [incidents](/en/docs/status-pages/incidents), [maintenance windows](/en/docs/status-pages/maintenance), [subscriptions](/en/docs/status-pages/subscriptions), [private pages](/en/docs/status-pages/private-pages), [custom domains](/en/docs/status-pages/custom-domains), and the [badge, feed and summary](/en/docs/status-pages/badge-and-feed).
 
 ## Create a status page
 
@@ -32,6 +32,7 @@ The editor is one form with one **Save**, except the images, which save as soon 
 | Section | Fields |
 | --- | --- |
 | **Page** | **Title**, **Slug**, **Page language**, **Published**, **Default page**, **Custom domain**. |
+| **Access** | Who sees the page: **Public**, **Password**, **Signed in** or **Allowed addresses**. See [Private pages](/en/docs/status-pages/private-pages). |
 | **Components** | The components the page shows, in order, in groups one level deep. **Page status now** shows the level the page would have. See [Components](/en/docs/status-pages/components#put-components-on-a-page). |
 | **Appearance** | **Logo**, **Favicon**, **Cover image** (shown when the page's link is shared), **Default theme**, **Brand colour**, **Status colours**, **Status names**. |
 | **Content** | **Description**, **Day bar**, **Bar length**, **Show percentages**, **Subscription channels**, **Footer links**, **Contact link**, **Hide from search engines**, **Show "Powered by Raaqeb"**. |
@@ -143,7 +144,7 @@ Dates follow the install's calendar setting, and times first render on the insta
 
 ## Who can see a page
 
-A page is public once **Published** is on, and anyone with its address can read it. There are no private pages.
+A page is public once **Published** is on, and anyone with its address can read it, unless you make it a [private page](/en/docs/status-pages/private-pages), which only the visitors its access lets in can read.
 
 An unpublished page is not found by visitors at any of its addresses, takes no subscription and sends its subscribers nothing. Its badge, feed and summary are not found by anyone. When you are signed in, you see its views at its own addresses with a line above them: "Not published: only you see this page, while signed in."
 
