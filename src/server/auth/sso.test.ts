@@ -405,6 +405,34 @@ describe("signing in through the provider", () => {
   });
 });
 
+describe("starting a sign-in through the provider", () => {
+  const start = (auth: Auth, address: string) =>
+    call(auth, "/sign-in/social", {
+      address,
+      body: { callbackURL: "/admin", provider: "oidc" },
+    });
+
+  test("is not held to the password sign-in's limit: a team behind one address starts eight in ten seconds", async () => {
+    const auth = await ssoAuth(await scratch());
+    const statuses: number[] = [];
+    for (let started = 0; started < 8; started += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: the limiter counts requests in order
+      statuses.push((await start(auth, "203.0.113.40")).status);
+    }
+    expect(statuses).toEqual(new Array(8).fill(200));
+  });
+
+  test("is still limited per address: past a hundred in ten seconds the next is a 429", async () => {
+    const auth = await ssoAuth(await scratch());
+    for (let started = 0; started < 100; started += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: the limiter counts requests in order
+      await start(auth, "203.0.113.41");
+    }
+    expect((await start(auth, "203.0.113.41")).status).toBe(429);
+    expect((await start(auth, "203.0.113.42")).status).toBe(200);
+  });
+});
+
 describe("the password under single sign-on", () => {
   test("is refused to an operator who is not an owner once single sign-on is required, after the password was checked", async () => {
     const s = await scratch();

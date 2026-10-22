@@ -638,10 +638,12 @@ export function createAuth(input: CreateAuthInput) {
     ],
     rateLimit: {
       // A reset request sends an email, so it keeps Better Auth's 3 a minute; the reset itself and accepting an invitation get sign-in's 3 in 10 seconds.
+      // Starting single sign-on checks no secret (the provider guards its own sign-in), so it gets Better Auth's general 100 in 10 seconds, not the password's 3: a team behind one NAT would meet those.
       customRules: {
         "/invitation/accept": { max: 3, window: 10 },
         "/request-password-reset": { max: 3, window: 60 },
         "/reset-password": { max: 3, window: 10 },
+        "/sign-in/social": { max: 100, window: 10 },
       },
       enabled: true,
       storage: "memory",
