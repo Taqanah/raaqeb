@@ -2939,8 +2939,8 @@ msgid "auth_forgot_sent"
 msgstr "If that is the operator account's email, a link valid for one hour was sent to it."
 
 #. js-lingui-explicit-id
-msgid "auth_forgot_no_mail"
-msgstr "If no email arrives within a few minutes, the email channel may not be working. Run this command on the server to print a link without email:"
+msgid "auth_forgot_docs"
+msgstr "No email? Read how to reset a password in the docs"
 
 #. js-lingui-explicit-id
 msgid "auth_no_email_title"

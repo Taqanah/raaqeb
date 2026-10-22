@@ -8,6 +8,11 @@ import type { Locale } from "@/shared/i18n/locale.ts";
 /** The website's origin. */
 export const website = "https://raaqeb.dev";
 
+/** A docs page of the website in `locale` (`operate/commands`): Arabic under /docs, English under /en/docs. */
+export function websiteDocs(locale: Locale, page: string): string {
+  return `${website}${locale === "ar" ? "" : `/${locale}`}/docs/${page}`;
+}
+
 /** The website's home page in `locale`: Arabic at the bare path, English under /en. */
 export function websiteHome(locale: Locale): string {
   return locale === "ar" ? `${website}/` : `${website}/${locale}`;

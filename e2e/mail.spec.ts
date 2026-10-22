@@ -282,6 +282,12 @@ test("a reset link from the mail sets a new password once, refuses a short one f
   await page.fill("input[name=email]", operatorEmail);
   await page.click(continueButton);
   await expect(page.locator("[data-slot=reset-sent]")).toBeVisible();
+  // The confirmation points at the docs for a mail that never comes, and never names the server command to a stranger.
+  await expect(page.locator("a[data-slot=reset-docs]")).toHaveAttribute(
+    "href",
+    "https://raaqeb.dev/docs/operate/commands"
+  );
+  await expect(page.locator("[data-slot=reset-command]")).toHaveCount(0);
   await expect.poll(() => smtp.messages.length).toBe(1);
   const link = resetLink.exec(lastMail(smtp))?.[0] ?? "";
   expect(new URL(link).origin).toBe(origin);
