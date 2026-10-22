@@ -4,6 +4,7 @@
  * its code; on a verdict that can continue, the DATABASE_URL line for the
  * compose file is shown. Continue is the confirmation.
  */
+import { useHydrated } from "@tanstack/react-router";
 import {
   type ChangeEvent,
   type ReactNode,
@@ -119,6 +120,8 @@ export function DatabaseForm({
   const [testing, setTesting] = useState(false);
   const [verdict, setVerdict] = useState<Verdict | undefined>();
   const [pending, setPending] = useState(false);
+  // Before hydration a press would post the form natively and come back empty, losing what was typed.
+  const hydrated = useHydrated();
   const [failure, setFailure] = useState<Failure | undefined>();
 
   const changeBackend = useCallback((value: unknown) => {
@@ -228,7 +231,7 @@ export function DatabaseForm({
           {failure ? (
             <FieldError>{t(refusalMessage[failure])}</FieldError>
           ) : null}
-          <Button disabled={pending || !canContinue} type="submit">
+          <Button disabled={pending || !hydrated || !canContinue} type="submit">
             {t("onboarding_continue")}
           </Button>
         </FieldGroup>

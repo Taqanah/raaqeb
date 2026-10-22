@@ -4,6 +4,7 @@
  * sends the browser there; the provider sends it back to the admin area,
  * or to the sign-in page with the reason it was refused.
  */
+import { useHydrated } from "@tanstack/react-router";
 import { type ReactNode, useCallback, useState } from "react";
 import { startProviderSignIn } from "@/shared/api/auth.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
@@ -18,6 +19,8 @@ export function ProviderButton({
 }): ReactNode {
   const { t } = useMessages();
   const [pending, setPending] = useState(false);
+  // Before hydration a press would do nothing and need a second one.
+  const hydrated = useHydrated();
   const [failure, setFailure] = useState<
     "rate_limited" | "unavailable" | undefined
   >(undefined);
@@ -43,7 +46,7 @@ export function ProviderButton({
     <div className="flex flex-col gap-2">
       <Button
         data-slot="sso-sign-in"
-        disabled={pending}
+        disabled={pending || !hydrated}
         onClick={start}
         type="button"
         variant="outline"

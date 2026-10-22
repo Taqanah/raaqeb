@@ -4,7 +4,7 @@
  * closed link (used, revoked, expired or never one) shows no form, only
  * what to do instead; the endpoint checks the link again.
  */
-import { Link } from "@tanstack/react-router";
+import { Link, useHydrated } from "@tanstack/react-router";
 import {
   type ReactNode,
   type SubmitEvent,
@@ -60,6 +60,8 @@ export function InvitationForm({
 }: InvitationFormProps): ReactNode {
   const { t } = useMessages();
   const [pending, setPending] = useState(false);
+  // Before hydration a press would post the form natively and come back empty, losing what was typed.
+  const hydrated = useHydrated();
   const [failure, setFailure] = useState<InvitationAcceptFailure | undefined>(
     view.ok ? undefined : "closed"
   );
@@ -208,7 +210,7 @@ export function InvitationForm({
           {failure ? <FieldError>{t(failures[failure])}</FieldError> : null}
           <Button
             data-slot="invitation-accept"
-            disabled={pending}
+            disabled={pending || !hydrated}
             type="submit"
           >
             {pending ? t("app_saving") : t("team_invitation_accept")}
