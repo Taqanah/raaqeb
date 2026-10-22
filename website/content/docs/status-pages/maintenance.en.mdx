@@ -110,4 +110,4 @@ Confirmed subscribers of every published page that shows an affected component r
 | `maintenance.completed` | The window ends: at its time, through **End now**, or by an edit that sets the end to now. |
 | `maintenance.cancelled` | You cancel a scheduled window, or a series' edit or end cancels a scheduled occurrence. |
 
-Editing only the title or description sends nothing. An email's subject is "Maintenance:" followed by the title. A webhook receives the window in Statuspage's body, as an incident with impact `maintenance`. See [What subscribers receive](/en/docs/status-pages/subscriptions#what-subscribers-receive).
+Editing only the title or description sends nothing. An email's subject says what happened to the window, then the title: "Maintenance scheduled:", "Maintenance rescheduled:", "Maintenance started:", "Maintenance completed:" or "Maintenance cancelled:", so a reader tells one window's emails apart in a list. A webhook receives the window in Statuspage's body, as an incident with impact `maintenance`. See [What subscribers receive](/en/docs/status-pages/subscriptions#what-subscribers-receive).
