@@ -1,6 +1,6 @@
 import { dayView, readMonitorHistories } from "@/server/monitors/days.ts";
 import { noRecentResult } from "@/server/scheduler/locations.ts";
-import { inInstallLanguage } from "@/server/settings/language.ts";
+import { languageRefusal } from "@/server/settings/language.ts";
 import {
   coveredSpans,
   maintenanceSpans,
@@ -67,7 +67,6 @@ const dayMs = 86_400_000;
 
 const unavailable = { ok: false, reason: "unavailable" } as const;
 const notFound = { ok: false, reason: "not_found" } as const;
-const invalid = { ok: false, reason: "invalid" } as const;
 
 /** The record a shape error names, so the page can name it; nothing for any other failure. */
 export function corruptRecord(error: unknown): string | undefined {
@@ -451,8 +450,12 @@ export async function createComponent(
   input: ComponentInput
 ): Promise<ComponentSaveResult> {
   try {
-    if (!(await inInstallLanguage(storage, input.name, input.description))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, {
+      description: input.description,
+      name: input.name,
+    });
+    if (wrong) {
+      return wrong;
     }
     const component = await storage.components.create(fieldsOf(input));
     await storage.bump();
@@ -469,8 +472,12 @@ export async function editComponent(
   input: ComponentInput
 ): Promise<ComponentSaveResult> {
   try {
-    if (!(await inInstallLanguage(storage, input.name, input.description))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, {
+      description: input.description,
+      name: input.name,
+    });
+    if (wrong) {
+      return wrong;
     }
     const component = await storage.components.update(id, fieldsOf(input));
     if (!component) {

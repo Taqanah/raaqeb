@@ -14,6 +14,7 @@ import {
   managementOperations,
 } from "@/shared/api/management.ts";
 import { type ApiError, pageQuerySchema } from "@/shared/api/records.ts";
+import type { Issue } from "@/shared/schemas/issue.ts";
 import {
   createChannelFn,
   deleteChannelFn,
@@ -80,19 +81,26 @@ type Outcome =
   | { readonly body?: unknown; readonly ok: true }
   | { readonly ok: false; readonly error: ApiError };
 
-/** A server function's refusal, as every result type spells it. */
+/** A server function's refusal, as every result type spells it; `invalid` may name the parts it refused. */
 interface Refused {
   readonly id?: string;
+  readonly issues?: readonly Issue[];
   readonly ok: false;
   readonly reason: string;
 }
 
 function refused(result: Refused): Outcome {
   return {
-    error:
-      result.id === undefined
-        ? { reason: result.reason }
-        : { id: result.id, reason: result.reason },
+    error: {
+      ...(result.id !== undefined && { id: result.id }),
+      ...(result.issues !== undefined && {
+        issues: result.issues.map(({ message, path }) => ({
+          message,
+          path: [...path],
+        })),
+      }),
+      reason: result.reason,
+    },
     ok: false,
   };
 }
@@ -472,12 +480,12 @@ const bodyAt: Partial<Record<ManagementOperationName, string>> = {
   testStoredMonitor: "input",
 };
 
-interface Issue {
+interface ThrownIssue {
   readonly message: string;
   readonly path: (string | number)[];
 }
 
-function isIssue(value: unknown): value is Issue {
+function isIssue(value: unknown): value is ThrownIssue {
   const path = field(value, "path");
   return typeof field(value, "message") === "string" && Array.isArray(path);
 }
@@ -490,7 +498,7 @@ function isIssue(value: unknown): value is Issue {
 function issuesOf(
   thrown: unknown,
   name: ManagementOperationName
-): Issue[] | undefined {
+): ThrownIssue[] | undefined {
   if (!(thrown instanceof Error)) {
     return;
   }

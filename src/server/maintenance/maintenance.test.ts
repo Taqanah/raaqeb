@@ -81,7 +81,12 @@ function saved(result: MaintenanceSaveResult) {
   return result.window;
 }
 
-const invalid = { ok: false, reason: "invalid" } as const;
+/** A refusal as invalid that names these parts of the input. */
+const refusedAt = (...paths: (string | number)[][]) => ({
+  issues: paths.map((path) => ({ message: expect.any(String), path })),
+  ok: false as const,
+  reason: "invalid" as const,
+});
 const changed = { ok: false, reason: "changed" } as const;
 const notFound = { ok: false, reason: "not_found" } as const;
 
@@ -126,17 +131,17 @@ describe("scheduling a maintenance window", () => {
         planned([web], { startsAt: d0 + 11 * hour }),
         noon
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["startsAt"]));
     expect(
       await createWindow(
         storage,
         planned([web], { endsAt: d0 + 14 * hour }),
         noon
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["endsAt"]));
     expect(
       await createWindow(storage, planned(["no-such-component"]), noon)
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["componentIds"]));
     expect(await storage.maintenance.list()).toEqual([]);
     expect(await storage.changeCounter()).toBe(before);
   });
@@ -378,7 +383,7 @@ describe("editing a window by its stage", () => {
         planned([api], { startsAt: d0 + 11 * hour }),
         noon
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["startsAt"]));
   });
 
   test("a window in progress takes its text and its end; an end in the current minute ends it now", async () => {
@@ -448,7 +453,7 @@ describe("editing a window by its stage", () => {
         },
         noon
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["endsAt"]));
     expect(
       await editWindow(
         storage,
@@ -710,7 +715,7 @@ describe("edges of the maintenance module", () => {
         },
         noon
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["endsAt"]));
   });
 
   test("ending a window whose end has already passed keeps its end", async () => {
@@ -734,7 +739,7 @@ describe("edges of the maintenance module", () => {
     const window = saved(await createWindow(storage, planned([web]), noon));
     expect(
       await editWindow(storage, window.id, planned(["no-such-component"]), noon)
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["componentIds"]));
     expect((await storage.maintenance.find(window.id))?.componentIds).toEqual([
       web,
     ]);
@@ -863,7 +868,7 @@ describe("a window's subscriber events", () => {
         noon,
         announce
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["startsAt"]));
     expect(events).toHaveLength(2);
   });
 
@@ -1033,7 +1038,7 @@ describe("a window's content in each locale", () => {
         planned([web], { title: { en: "Upgrade" } }),
         noon
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["title", "ar"]));
     expect(
       await editWindow(
         storage,
@@ -1041,7 +1046,7 @@ describe("a window's content in each locale", () => {
         planned([web], { message: { en: "We move the database." } }),
         noon
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["message", "ar"]));
     expect(await storage.changeCounter()).toBe(before);
     expect(await storage.maintenance.find(window.id)).toEqual(window);
   });

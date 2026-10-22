@@ -29,6 +29,7 @@ import {
   type ChannelType,
   channelDeclarations,
 } from "@/shared/schemas/channel.ts";
+import { invalidAt } from "@/shared/schemas/issue.ts";
 import type { NotificationPayload } from "@/shared/schemas/notification.ts";
 import { type DeliverIo, deliver } from "./channel.ts";
 import { previewNotifications } from "./preview.ts";
@@ -36,10 +37,10 @@ import { sendsKept } from "./queue.ts";
 import { notificationChannels } from "./registry.ts";
 import {
   channelValues,
-  mergeValues,
   sealSecrets,
   splitValues,
   unreadableSecrets,
+  valuesOrIssues,
 } from "./secrets.ts";
 
 export type ChannelStorage = Pick<
@@ -51,7 +52,6 @@ export type ChannelStorage = Pick<
 export const recentShown = 20;
 
 const unavailable = { ok: false, reason: "unavailable" } as const;
-const invalid = { ok: false, reason: "invalid" } as const;
 const notFound = { ok: false, reason: "not_found" } as const;
 
 export async function listChannels(
@@ -173,15 +173,15 @@ export async function createChannel(
   input: ChannelInput
 ): Promise<ChannelSaveResult> {
   const declaration = channelDeclarations[input.type];
-  const values = mergeValues(declaration, input.values, undefined, {
+  const merged = valuesOrIssues(declaration, input.values, undefined, {
     generate: notificationChannels[input.type].generate,
     renew: false,
   });
-  if (!values) {
-    return invalid;
+  if (!merged.ok) {
+    return merged;
   }
   try {
-    const { config, secrets } = splitValues(declaration, values);
+    const { config, secrets } = splitValues(declaration, merged.values);
     const channel = await storage.channels.create(
       fieldsOf(input, config),
       await sealSecrets(key, secrets)
@@ -213,21 +213,24 @@ export async function editChannel(
       return notFound;
     }
     if (existing.type !== input.type) {
-      return invalid;
+      return invalidAt({
+        message: "a channel's type cannot change",
+        path: ["type"],
+      });
     }
     const declaration = channelDeclarations[input.type];
     // Secrets this key cannot open read as none: typing them again replaces them.
     const stored = (await storedValues(storage, key, existing)) ?? {
       ...existing.config,
     };
-    const values = mergeValues(declaration, input.values, stored, {
+    const merged = valuesOrIssues(declaration, input.values, stored, {
       generate: notificationChannels[input.type].generate,
       renew: options.renewGenerated ?? false,
     });
-    if (!values) {
-      return invalid;
+    if (!merged.ok) {
+      return merged;
     }
-    const { config, secrets } = splitValues(declaration, values);
+    const { config, secrets } = splitValues(declaration, merged.values);
     const channel = await storage.channels.update(
       id,
       fieldsOf(input, config),

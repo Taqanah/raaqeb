@@ -193,6 +193,69 @@ test("a key creates, reads, lists, pauses, groups and deletes a monitor as the a
   expect((await call("GET", `/monitors/${monitor.id}`)).status).toBe(404);
 });
 
+test("a refusal as invalid names the parts of the input a rule refused, as the docs promise", async () => {
+  const issuesOf = async (response: Response) => {
+    expect(response.status).toBe(422);
+    const body = await response.json();
+    expect(body.reason).toBe("invalid");
+    return body.issues;
+  };
+  expect(
+    await issuesOf(
+      await call("POST", "/channels", {
+        appliesToNew: false,
+        name: "Alerts",
+        type: "ntfy",
+        values: { server: "https://ntfy.example.test/path", topic: "alerts" },
+      })
+    )
+  ).toEqual([expect.objectContaining({ path: ["values", "server"] })]);
+  expect(
+    await issuesOf(
+      await call("POST", "/channels", {
+        appliesToNew: false,
+        name: "Pager",
+        type: "pagerduty",
+        values: { routingKey: "0123456789abcdef0123456789abcdef0" },
+      })
+    )
+  ).toEqual([expect.objectContaining({ path: ["values", "routingKey"] })]);
+
+  const component = async (name: string) =>
+    (
+      await (
+        await call("POST", "/components", {
+          monitorIds: [],
+          name: { en: name },
+          status: "operational",
+        })
+      ).json()
+    ).id;
+  const web = await component("Web");
+  const api = await component("API");
+  const incident = await (
+    await call("POST", "/incidents", {
+      impact: "major",
+      message: { en: "We are looking." },
+      stage: "investigating",
+      statuses: [
+        { componentId: web, status: "major_outage" },
+        { componentId: api, status: "major_outage" },
+      ],
+      title: { en: "Slow checkout" },
+    })
+  ).json();
+  expect(
+    await issuesOf(
+      await call("POST", `/incidents/${incident.id}/updates`, {
+        message: { en: "Found it." },
+        stage: "identified",
+        statuses: [{ componentId: web, status: "operational" }],
+      })
+    )
+  ).toEqual([expect.objectContaining({ path: ["statuses"] })]);
+});
+
 test("a channel's secret is written through the API and never read back", async () => {
   const hook = "https://hooks.slack.com/services/T000/B000/secret-part";
   const created = await call(

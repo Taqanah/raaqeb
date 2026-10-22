@@ -49,8 +49,10 @@ import {
   heartbeatsShown,
   heartbeatUrl,
 } from "@/shared/schemas/heartbeat.ts";
+import { type Invalid, invalidAt } from "@/shared/schemas/issue.ts";
 import type { MaintenanceWindow } from "@/shared/schemas/maintenance.ts";
 import {
+  type CheckType,
   connectionUrlFits,
   type GettingStarted,
   isDatabaseCheckType,
@@ -97,7 +99,10 @@ type MonitorStorage = Pick<
 >;
 
 const unavailable = { ok: false, reason: "unavailable" } as const;
-const invalid = { ok: false, reason: "invalid" } as const;
+const neverFires = invalidAt({
+  message: "a schedule that never fires in the install's time zone",
+  path: ["config", "schedule"],
+});
 const nonePosted: CredentialsInput = { headers: [] };
 
 /**
@@ -123,6 +128,19 @@ function credentialsFor(
     type === "http" ? (input.credentials ?? nonePosted) : nonePosted,
     stored
   );
+}
+
+/** The refusal for credentials `credentialsFor` found none for: the connection URL a database monitor needs, or the secret an HTTP monitor left out with none stored to keep. */
+function credentialsRefusal(type: CheckType): Invalid {
+  return isDatabaseCheckType(type)
+    ? invalidAt({
+        message: "a connection URL this check type can read is needed",
+        path: ["credentials", "url"],
+      })
+    : invalidAt({
+        message: "a secret left out has none stored to keep",
+        path: ["credentials"],
+      });
 }
 
 /** The fields to store: a database monitor's address is written from its connection URL, whatever the form posted. */
@@ -310,7 +328,7 @@ export async function createMonitor(
   // A new monitor has nothing stored, so a left-out secret cannot be kept.
   const credentials = credentialsFor(input, undefined);
   if (!credentials) {
-    return invalid;
+    return credentialsRefusal(input.config.type);
   }
   const refused = tlsRefusal(input.config, credentials);
   if (refused) {
@@ -318,7 +336,7 @@ export async function createMonitor(
   }
   try {
     if (!(await fires(storage, input))) {
-      return invalid;
+      return neverFires;
     }
     const monitor = await storage.monitors.create(
       storedFields(input, credentials),
@@ -346,7 +364,7 @@ export async function editMonitor(
 ): Promise<MonitorSaveResult> {
   try {
     if (!(await fires(storage, input))) {
-      return invalid;
+      return neverFires;
     }
     const sealedBefore = await storage.monitors.credentialsOf(id);
     const stored =
@@ -355,7 +373,7 @@ export async function editMonitor(
         : await openCredentials(key, sealedBefore);
     const credentials = credentialsFor(input, stored);
     if (!credentials) {
-      return invalid;
+      return credentialsRefusal(input.config.type);
     }
     const refused = tlsRefusal(input.config, credentials);
     if (refused) {
@@ -561,7 +579,7 @@ export async function testMonitor(
     }
   }
   if (!credentials) {
-    return invalid;
+    return credentialsRefusal(input.config.type);
   }
   const refused = tlsRefusal(input.config, credentials);
   if (refused) {
@@ -605,7 +623,10 @@ export async function testMonitor(
     watched
   );
   if (!run) {
-    return invalid;
+    return invalidAt({
+      message: "a heartbeat monitor has no check to run",
+      path: ["config", "type"],
+    });
   }
   return { ok: true, test: { ...testOf(await run), ...seen } };
 }

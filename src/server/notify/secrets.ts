@@ -13,6 +13,7 @@ import {
   type ChannelField,
   fieldsFor,
 } from "@/shared/schemas/channel.ts";
+import { type Invalid, type Issue, invalidAt } from "@/shared/schemas/issue.ts";
 import type { SendFailure } from "@/shared/schemas/notification.ts";
 
 /** What an edit does beside the typed values. */
@@ -23,25 +24,41 @@ export interface MergeOptions {
   readonly renew: boolean;
 }
 
-/** Every value to store of the fields that apply to what was typed: typed ones as posted, a secret left out taken from the stored ones, a generated one kept or made, an optional one left out dropped; nothing when a required value is missing or a value does not fit its field. Names the type does not declare, and fields that do not apply, are dropped. */
+/** Every value to store of the fields that apply to what was typed: typed ones as posted, a secret left out taken from the stored ones, a generated one kept or made, an optional one left out dropped; else a refusal naming each field whose value is missing or does not fit it. Names the type does not declare, and fields that do not apply, are dropped. */
+export function valuesOrIssues(
+  declaration: ChannelDeclaration,
+  typed: Readonly<Record<string, string>>,
+  stored: Readonly<Record<string, string>> | undefined,
+  options: MergeOptions
+): { readonly ok: true; readonly values: Record<string, string> } | Invalid {
+  const values: Record<string, string> = {};
+  const issues: Issue[] = [];
+  for (const field of fieldsFor(declaration, typed)) {
+    const value = fieldValue(field, typed, stored, options);
+    if (value === undefined && field.optional) {
+      continue;
+    }
+    const path = ["values", field.name];
+    if (value === undefined) {
+      issues.push({ message: "a value is required", path });
+    } else if (field.value.safeParse(value).success) {
+      values[field.name] = value;
+    } else {
+      issues.push({ message: "a value this field cannot take", path });
+    }
+  }
+  return issues.length > 0 ? invalidAt(...issues) : { ok: true, values };
+}
+
+/** The values to store, or nothing when a required value is missing or a value does not fit its field; `valuesOrIssues` says which. */
 export function mergeValues(
   declaration: ChannelDeclaration,
   typed: Readonly<Record<string, string>>,
   stored: Readonly<Record<string, string>> | undefined,
   options: MergeOptions
 ): Record<string, string> | undefined {
-  const values: Record<string, string> = {};
-  for (const field of fieldsFor(declaration, typed)) {
-    const value = fieldValue(field, typed, stored, options);
-    if (value === undefined && field.optional) {
-      continue;
-    }
-    if (value === undefined || !field.value.safeParse(value).success) {
-      return;
-    }
-    values[field.name] = value;
-  }
-  return values;
+  const merged = valuesOrIssues(declaration, typed, stored, options);
+  return merged.ok ? merged.values : undefined;
 }
 
 /** One field's value to store, or nothing when it has none. */

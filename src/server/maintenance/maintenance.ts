@@ -19,15 +19,20 @@ import {
   corruptRecord,
   readComponentStatuses,
 } from "@/server/pages/components.ts";
-import { inInstallLanguage } from "@/server/settings/language.ts";
+import { languageRefusal } from "@/server/settings/language.ts";
 import {
   NoWindowComponentError,
   type WindowEdit,
 } from "@/server/storage/maintenance.ts";
 import type { Storage } from "@/server/storage/storage.ts";
-import { runningEnd, windowTimes } from "@/shared/domain/maintenance.ts";
+import {
+  runningEnd,
+  type TimesRefusal,
+  windowTimes,
+} from "@/shared/domain/maintenance.ts";
 import { nextOccurrenceStart } from "@/shared/domain/series.ts";
 import type { Content } from "@/shared/schemas/content.ts";
+import { type Invalid, invalidAt } from "@/shared/schemas/issue.ts";
 import type {
   MaintenanceComponent,
   MaintenanceDeleteResult,
@@ -57,7 +62,24 @@ export type MaintenanceStorage = Pick<
 
 const unavailable = { ok: false, reason: "unavailable" } as const;
 const notFound = { ok: false, reason: "not_found" } as const;
-const invalid = { ok: false, reason: "invalid" } as const;
+
+/** A window or series that names no component that exists. */
+export const noComponentNamed = invalidAt({
+  message: "name at least one component that exists",
+  path: ["componentIds"],
+});
+
+const timesIssues: Readonly<
+  Record<TimesRefusal, { message: string; path: string[] }>
+> = {
+  end_order: { message: "an end not after the start", path: ["endsAt"] },
+  end_past: { message: "an end in the past", path: ["endsAt"] },
+  start_past: { message: "a start in the past", path: ["startsAt"] },
+};
+
+/** The refusal naming the time a window's times were refused for. */
+const invalidTimes = (refusal: TimesRefusal): Invalid =>
+  invalidAt(timesIssues[refusal]);
 const changed = { ok: false, reason: "changed" } as const;
 
 /** A failed read's result: the record this version cannot read, or unavailable. */
@@ -226,11 +248,15 @@ export async function createWindow(
 ): Promise<MaintenanceSaveResult> {
   const times = windowTimes(input.startsAt, input.endsAt, now);
   if (!times.ok) {
-    return invalid;
+    return invalidTimes(times.refusal);
   }
   try {
-    if (!(await inInstallLanguage(storage, input.title, input.message))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, {
+      message: input.message,
+      title: input.title,
+    });
+    if (wrong) {
+      return wrong;
     }
     const window = await storage.maintenance.create({
       componentIds: input.componentIds,
@@ -246,7 +272,9 @@ export async function createWindow(
     }
     return { ok: true, window };
   } catch (error) {
-    return error instanceof NoWindowComponentError ? invalid : unavailable;
+    return error instanceof NoWindowComponentError
+      ? noComponentNamed
+      : unavailable;
   }
 }
 
@@ -255,15 +283,18 @@ function editOf(
   window: MaintenanceWindow,
   input: MaintenanceEditInput,
   now: number
-):
-  | { readonly ok: true; readonly edit: WindowEdit }
-  | { readonly ok: false; readonly reason: "changed" | "invalid" } {
+): { readonly ok: true; readonly edit: WindowEdit } | typeof changed | Invalid {
   const text = { message: input.message, title: input.title };
   const whole = "startsAt" in input;
   const withEnd = "endsAt" in input;
   if (window.stage === "scheduled") {
     if (!whole) {
-      return withEnd ? invalid : { edit: text, ok: true };
+      return withEnd
+        ? invalidAt({
+            message: "an end needs a start while the window is scheduled",
+            path: ["endsAt"],
+          })
+        : { edit: text, ok: true };
     }
     const times = windowTimes(input.startsAt, input.endsAt, now);
     return times.ok
@@ -276,7 +307,7 @@ function editOf(
           },
           ok: true,
         }
-      : invalid;
+      : invalidTimes(times.refusal);
   }
   if (whole || (withEnd && window.stage === "completed")) {
     return changed;
@@ -285,7 +316,9 @@ function editOf(
     return { edit: text, ok: true };
   }
   const end = runningEnd(input.endsAt, now);
-  return end.ok ? { edit: { ...text, endsAt: end.endsAt }, ok: true } : invalid;
+  return end.ok
+    ? { edit: { ...text, endsAt: end.endsAt }, ok: true }
+    : invalidTimes(end.refusal);
 }
 
 /** Writes an edit guarded on the stage the window was read at, and moves the counter; a window that moved on meanwhile is changed, one that went is not found. */
@@ -329,8 +362,12 @@ export async function editWindow(
     if (!window) {
       return notFound;
     }
-    if (!(await inInstallLanguage(storage, input.title, input.message))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, {
+      message: input.message,
+      title: input.title,
+    });
+    if (wrong) {
+      return wrong;
     }
     const edit = editOf(window, input, now);
     if (!edit.ok) {
@@ -342,7 +379,9 @@ export async function editWindow(
     }
     return result;
   } catch (error) {
-    return error instanceof NoWindowComponentError ? invalid : unavailable;
+    return error instanceof NoWindowComponentError
+      ? noComponentNamed
+      : unavailable;
   }
 }
 

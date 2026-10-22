@@ -40,6 +40,13 @@ const input = {
   status: "operational" as const,
 };
 
+/** A refusal as invalid that names these parts of the input. */
+const refusedAt = (...paths: (string | number)[][]) => ({
+  issues: paths.map((path) => ({ message: expect.any(String), path })),
+  ok: false as const,
+  reason: "invalid" as const,
+});
+
 describe("the component list", () => {
   test("an install with no component lists none", async () => {
     const { storage } = await opened();
@@ -955,10 +962,9 @@ describe("a component's content in each locale", () => {
     const { storage } = await opened();
     await storage.settings.set(installLanguage, "en");
     const before = await storage.changeCounter();
-    expect(await createComponent(storage, input)).toEqual({
-      ok: false,
-      reason: "invalid",
-    });
+    expect(await createComponent(storage, input)).toEqual(
+      refusedAt(["name", "en"])
+    );
     const created = await createComponent(storage, {
       ...input,
       name: { ar: "الموقع", en: "Website" },
@@ -972,7 +978,7 @@ describe("a component's content in each locale", () => {
         description: { ar: "المتجر" },
         name: { en: "Website" },
       })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["description", "en"]));
     expect(await storage.changeCounter()).toBe(before + 1);
     expect((await storage.components.find(created.component.id))?.name).toEqual(
       { ar: "الموقع", en: "Website" }
@@ -986,14 +992,14 @@ describe("a component's content in each locale", () => {
         ...input,
         description: { en: "The shop" },
       })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["description", "ar"]));
   });
 
   test("with no install language stored, Arabic is the one required", async () => {
     const { storage } = await opened();
     expect(
       await createComponent(storage, { ...input, name: { en: "Website" } })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["name", "ar"]));
     expect((await createComponent(storage, input)).ok).toBe(true);
   });
 });

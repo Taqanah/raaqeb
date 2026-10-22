@@ -101,6 +101,13 @@ async function secretsOf(store: Storage, id: string) {
   return openSecrets(key, (await store.channels.credentialsOf(id)) ?? "");
 }
 
+/** A refusal as invalid that names these parts of the input. */
+const refusedAt = (...paths: (string | number)[][]) => ({
+  issues: paths.map((path) => ({ message: expect.any(String), path })),
+  ok: false as const,
+  reason: "invalid" as const,
+});
+
 describe("a channel's credentials at rest", () => {
   test("credentials are unreadable in the database file and readable through the repository", async () => {
     const store = await storage();
@@ -189,12 +196,41 @@ describe("the channels module", () => {
     ];
     for (const values of refused) {
       // biome-ignore lint/performance/noAwaitInLoops: each refusal is checked alone
-      expect(await createChannel(store, key, { ...ops, values })).toEqual({
-        ok: false,
-        reason: "invalid",
-      });
+      expect(await createChannel(store, key, { ...ops, values })).toEqual(
+        refusedAt(["values", "url"])
+      );
     }
     expect(await store.channels.list()).toEqual([]);
+  });
+
+  test("an ntfy server with a path, and a PagerDuty key of 33 characters, are refused naming the field", async () => {
+    const store = await storage();
+    expect(
+      await createChannel(store, key, {
+        ...ops,
+        type: "ntfy",
+        values: { server: "https://ntfy.example.test/path", topic: "alerts" },
+      })
+    ).toEqual(refusedAt(["values", "server"]));
+    expect(
+      await createChannel(store, key, {
+        ...ops,
+        type: "pagerduty",
+        values: { routingKey: "0123456789abcdef0123456789abcdef0" },
+      })
+    ).toEqual(refusedAt(["values", "routingKey"]));
+    expect(await store.channels.list()).toEqual([]);
+  });
+
+  test("every field that is missing or out of shape is named, not the first alone", async () => {
+    const store = await storage();
+    expect(
+      await createChannel(store, key, {
+        ...ops,
+        type: "ntfy",
+        values: { server: "https://ntfy.example.test/path", topic: "a b" },
+      })
+    ).toEqual(refusedAt(["values", "server"], ["values", "topic"]));
   });
 
   test("an edit that leaves the URL empty keeps it, a typed URL replaces it, and the signing secret stays", async () => {
@@ -246,10 +282,9 @@ describe("the channels module", () => {
     const store = await storage();
     const channel = await created(store);
     const retyped: ChannelInput = { ...ops, type: "slack" };
-    expect(await editChannel(store, key, channel.id, retyped)).toEqual({
-      ok: false,
-      reason: "invalid",
-    });
+    expect(await editChannel(store, key, channel.id, retyped)).toEqual(
+      refusedAt(["type"])
+    );
     expect(await editChannel(store, key, "nope", ops)).toEqual({
       ok: false,
       reason: "not_found",
@@ -270,7 +305,7 @@ describe("the channels module", () => {
     );
     expect(
       await editChannel(store, key, channel.id, { ...ops, values: {} })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["values", "url"]));
     const typed = await editChannel(store, key, channel.id, ops);
     expect(typed.ok).toBe(true);
     expect((await secretsOf(store, channel.id))?.url).toBe(url);

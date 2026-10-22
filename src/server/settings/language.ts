@@ -21,6 +21,7 @@ import {
 import { type Catalog, createMessages } from "@/shared/i18n/messages.ts";
 import { publicCatalog } from "@/shared/i18n/public.ts";
 import { type Content, writtenIn } from "@/shared/schemas/content.ts";
+import { type Invalid, invalidAt } from "@/shared/schemas/issue.ts";
 
 export const installLanguage: Setting<Locale> = defineSetting(
   "install_language",
@@ -54,12 +55,19 @@ export async function readInstallLanguage(
   }
 }
 
-/** Whether each piece of install-wide content (a component's, an incident's, a maintenance window's) holds the install language's text, which a save requires. */
-export async function inInstallLanguage(
+/** Why a save is refused when a part of install-wide content (a component's, an incident's, a maintenance window's) lacks the install language's text, which it requires: each such part by name, none when all hold it. A part left out holds nothing to check. */
+export async function languageRefusal(
   storage: Pick<Storage, "settings">,
-  ...contents: readonly (Content | undefined)[]
-): Promise<boolean> {
-  return writtenIn(await readInstallLanguage(storage), ...contents);
+  parts: Readonly<Record<string, Content | undefined>>
+): Promise<Invalid | undefined> {
+  const locale = await readInstallLanguage(storage);
+  const issues = Object.entries(parts)
+    .filter(([, content]) => !writtenIn(locale, content))
+    .map(([name]) => ({
+      message: "text in the install language is required",
+      path: [name, locale],
+    }));
+  return issues.length > 0 ? invalidAt(...issues) : undefined;
 }
 
 // One dynamic import per locale: the module cache makes a catalog load once,

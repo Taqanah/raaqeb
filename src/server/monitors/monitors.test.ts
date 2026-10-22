@@ -70,6 +70,13 @@ import {
   ungroupMonitors,
 } from "./monitors.ts";
 
+/** A refusal as invalid that names these parts of the input. */
+const refusedAt = (...paths: (string | number)[][]) => ({
+  issues: paths.map((path) => ({ message: expect.any(String), path })),
+  ok: false as const,
+  reason: "invalid" as const,
+});
+
 const key = await scratchInstallKey();
 
 let open:
@@ -876,7 +883,7 @@ describe("a monitor's credentials through the module", () => {
         ...site,
         credentials: { auth: { kind: "bearer" }, headers: [] },
       })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["credentials"]));
     expect(
       (await listMonitors(store, Date.now())).ok &&
         (await store.monitors.list())
@@ -890,7 +897,7 @@ describe("a monitor's credentials through the module", () => {
         credentials: { headers: [{ name: "X-Api-Key" }] },
         name: "renamed",
       })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["credentials"]));
     expect((await store.monitors.find(id))?.name).toBe(site.name);
     expect(await store.changeCounter()).toBe(after);
   });
@@ -908,7 +915,7 @@ describe("a monitor's credentials through the module", () => {
         ...site,
         credentials: { auth: { kind: "basic", user: "ops" }, headers: [] },
       })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["credentials"]));
     expect((await editMonitor(store, key, id, secured)).ok).toBe(true);
     expect((await storedCredentials(store, id))?.auth).toEqual({
       kind: "basic",
@@ -1274,7 +1281,7 @@ describe("test now", () => {
           },
           undefined
         )
-      ).toEqual({ ok: false, reason: "invalid" });
+      ).toEqual(refusedAt(["credentials"]));
       expect(local.seen).toHaveLength(0);
     } finally {
       local.stop();
@@ -1322,7 +1329,7 @@ describe("test now", () => {
         },
         undefined
       )
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["config", "type"]));
   });
 
   test("a form that leaves no secret out runs without reading the database, and a left-out secret the database cannot answer for is unavailable", async () => {
@@ -1792,16 +1799,14 @@ describe("a heartbeat monitor in the form", () => {
         type: "heartbeat",
       },
     };
-    expect(await createMonitor(store, key, never)).toEqual({
-      ok: false,
-      reason: "invalid",
-    });
+    expect(await createMonitor(store, key, never)).toEqual(
+      refusedAt(["config", "schedule"])
+    );
     expect(await store.monitors.list()).toEqual([]);
     const id = await createdId(store, backup);
-    expect(await editMonitor(store, key, id, never)).toEqual({
-      ok: false,
-      reason: "invalid",
-    });
+    expect(await editMonitor(store, key, id, never)).toEqual(
+      refusedAt(["config", "schedule"])
+    );
     expect((await store.monitors.find(id))?.config).toEqual(backup.config);
   });
 
@@ -2317,10 +2322,9 @@ describe("a database monitor through the module", () => {
   test("a new database monitor without a connection URL is refused, and nothing is written", async () => {
     const store = await storage();
     const { credentials: _, ...bare } = database;
-    expect(await createMonitor(store, key, bare)).toEqual({
-      ok: false,
-      reason: "invalid",
-    });
+    expect(await createMonitor(store, key, bare)).toEqual(
+      refusedAt(["credentials", "url"])
+    );
     expect((await store.monitors.list()).length).toBe(0);
   });
 
@@ -2366,7 +2370,7 @@ describe("a database monitor through the module", () => {
         ...kept,
         config: { type: "mysql" },
       })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["credentials", "url"]));
     expect((await store.monitors.find(id))?.config.type).toBe("postgres");
   });
 
@@ -2413,10 +2417,9 @@ describe("a database monitor through the module", () => {
     const { asked, io } = answering(1);
     expect((await testMonitor(store, key, io, kept, id)).ok).toBe(true);
     expect(asked[0]?.url).toBe(url);
-    expect(await testMonitor(store, key, io, kept, undefined)).toEqual({
-      ok: false,
-      reason: "invalid",
-    });
+    expect(await testMonitor(store, key, io, kept, undefined)).toEqual(
+      refusedAt(["credentials", "url"])
+    );
   });
 
   test("test now masks the URL's password where the answer repeats it", async () => {
@@ -2737,7 +2740,7 @@ describe("an HTTP monitor's own proxy", () => {
         ...proxied,
         credentials: { headers: [], proxyAuth: { user: "ops" } },
       })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["credentials"]));
   });
 
   test("is the proxy test now goes through, with its credentials, whatever the install's environment holds", async () => {
@@ -3086,7 +3089,7 @@ describe("an HTTP monitor's OAuth 2.0 client credentials", () => {
         ),
         credentials: { auth: postable, headers: [] },
       })
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["credentials"]));
   });
 
   test("is what test now uses: the token endpoint is asked, and the api gets the token", async () => {

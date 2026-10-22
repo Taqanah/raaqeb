@@ -18,7 +18,7 @@ import {
   corruptRecord,
   readComponentStatuses,
 } from "@/server/pages/components.ts";
-import { inInstallLanguage } from "@/server/settings/language.ts";
+import { languageRefusal } from "@/server/settings/language.ts";
 import { NoAffectedComponentError } from "@/server/storage/incidents.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import {
@@ -41,6 +41,7 @@ import type {
   IncidentUpdateInput,
   NewIncidentResult,
 } from "@/shared/schemas/incident.ts";
+import { type Invalid, invalidAt } from "@/shared/schemas/issue.ts";
 import type { HandSetLevel, StatusLevel } from "@/shared/schemas/status.ts";
 
 export type IncidentStorage = Pick<
@@ -57,7 +58,10 @@ export type IncidentStorage = Pick<
 
 const unavailable = { ok: false, reason: "unavailable" } as const;
 const notFound = { ok: false, reason: "not_found" } as const;
-const invalid = { ok: false, reason: "invalid" } as const;
+const noComponentNamed = invalidAt({
+  message: "name at least one component that exists",
+  path: ["statuses"],
+});
 const resolved = { ok: false, reason: "resolved" } as const;
 const changed = { ok: false, reason: "changed" } as const;
 
@@ -206,8 +210,12 @@ export async function createIncident(
   announce: Announce = announceNothing
 ): Promise<IncidentSaveResult> {
   try {
-    if (!(await inInstallLanguage(storage, input.title, input.message))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, {
+      message: input.message,
+      title: input.title,
+    });
+    if (wrong) {
+      return wrong;
     }
     const incident = await storage.incidents.create(
       { impact: input.impact, title: input.title },
@@ -223,7 +231,9 @@ export async function createIncident(
     await announce({ incidentId: incident.id, type: "incident.published" });
     return { incident, ok: true };
   } catch (error) {
-    return error instanceof NoAffectedComponentError ? invalid : unavailable;
+    return error instanceof NoAffectedComponentError
+      ? noComponentNamed
+      : unavailable;
   }
 }
 
@@ -234,8 +244,9 @@ export async function editIncident(
   fields: IncidentFields
 ): Promise<IncidentSaveResult> {
   try {
-    if (!(await inInstallLanguage(storage, fields.title))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, { title: fields.title });
+    if (wrong) {
+      return wrong;
     }
     const incident = await storage.incidents.edit(id, fields);
     if (!incident) {
@@ -258,7 +269,7 @@ async function statusesShown(
   );
 }
 
-/** What an update writes: its statuses, the status before of each component it adds, and the hand-set statuses a resolving one leaves; nothing when it drops a component the incident affects. */
+/** What an update writes: its statuses, the status before of each component it adds, and the hand-set statuses a resolving one leaves; a refusal when it drops a component the incident affects or names none that exists. */
 async function writing(
   storage: IncidentStorage,
   incident: Incident,
@@ -269,7 +280,7 @@ async function writing(
       readonly handSet: readonly IncidentStatus[];
       readonly statuses: readonly IncidentStatus[];
     }
-  | undefined
+  | Invalid
 > {
   const current = latestStatuses(incident);
   if (input.stage === "resolved") {
@@ -289,12 +300,15 @@ async function writing(
   }
   const named = new Set(input.statuses.map((each) => each.componentId));
   if (current.some((each) => !named.has(each.componentId))) {
-    return;
+    return invalidAt({
+      message: "name every component the incident affects",
+      path: ["statuses"],
+    });
   }
   const known = await existing(storage);
   const statuses = input.statuses.filter((each) => known.has(each.componentId));
   if (statuses.length === 0) {
-    return;
+    return noComponentNamed;
   }
   const affected = new Set(affectedComponents(incident));
   const added = statuses.some((each) => !affected.has(each.componentId));
@@ -319,12 +333,13 @@ export async function postUpdate(
     if (incident.resolvedAt !== undefined) {
       return resolved;
     }
-    if (!(await inInstallLanguage(storage, input.message))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, { message: input.message });
+    if (wrong) {
+      return wrong;
     }
     const write = await writing(storage, incident, input);
-    if (!write) {
-      return invalid;
+    if ("issues" in write) {
+      return write;
     }
     const posted = await storage.incidents.post(
       id,
@@ -362,8 +377,9 @@ export async function fixUpdate(
   message: Content
 ): Promise<IncidentSaveResult> {
   try {
-    if (!(await inInstallLanguage(storage, message))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, { message });
+    if (wrong) {
+      return wrong;
     }
     const incident = await storage.incidents.fix(id, updateId, message);
     if (!incident) {

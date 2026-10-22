@@ -13,7 +13,7 @@
  */
 
 import { type Announce, announceNothing } from "@/server/notify/subscribers.ts";
-import { inInstallLanguage } from "@/server/settings/language.ts";
+import { languageRefusal } from "@/server/settings/language.ts";
 import {
   NoWindowComponentError,
   type SeriesWrite,
@@ -34,11 +34,11 @@ import {
   failedRead,
   listItemOf,
   type MaintenanceStorage,
+  noComponentNamed,
 } from "./maintenance.ts";
 
 const unavailable = { ok: false, reason: "unavailable" } as const;
 const notFound = { ok: false, reason: "not_found" } as const;
-const invalid = { ok: false, reason: "invalid" } as const;
 
 /** A series' page: the series, its occurrences in progress and scheduled, when the next one it has yet to schedule starts, and every component with its status now. */
 export async function readSeries(
@@ -105,8 +105,12 @@ export async function createSeries(
   announce: Announce = announceNothing
 ): Promise<MaintenanceSeriesSaveResult> {
   try {
-    if (!(await inInstallLanguage(storage, input.title, input.message))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, {
+      message: input.message,
+      title: input.title,
+    });
+    if (wrong) {
+      return wrong;
     }
     const until = scheduledUntilAt(now);
     const write = await storage.maintenance.createSeries(
@@ -116,7 +120,9 @@ export async function createSeries(
     );
     return await announced(storage, write, now, announce);
   } catch (error) {
-    return error instanceof NoWindowComponentError ? invalid : unavailable;
+    return error instanceof NoWindowComponentError
+      ? noComponentNamed
+      : unavailable;
   }
 }
 
@@ -129,8 +135,12 @@ export async function editSeries(
   announce: Announce = announceNothing
 ): Promise<MaintenanceSeriesSaveResult> {
   try {
-    if (!(await inInstallLanguage(storage, input.title, input.message))) {
-      return invalid;
+    const wrong = await languageRefusal(storage, {
+      message: input.message,
+      title: input.title,
+    });
+    if (wrong) {
+      return wrong;
     }
     const until = scheduledUntilAt(now);
     const write = await storage.maintenance.editSeries(
@@ -142,7 +152,9 @@ export async function editSeries(
     );
     return write ? await announced(storage, write, now, announce) : notFound;
   } catch (error) {
-    return error instanceof NoWindowComponentError ? invalid : unavailable;
+    return error instanceof NoWindowComponentError
+      ? noComponentNamed
+      : unavailable;
   }
 }
 

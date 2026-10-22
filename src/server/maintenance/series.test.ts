@@ -34,6 +34,13 @@ const noon = d0 + 12 * hour + 30_000;
 const tuesday = d0 + 14 * hour;
 const thursday = d0 + 2 * day + 14 * hour;
 
+/** A refusal as invalid that names these parts of the input. */
+const refusedAt = (...paths: (string | number)[][]) => ({
+  issues: paths.map((path) => ({ message: expect.any(String), path })),
+  ok: false as const,
+  reason: "invalid" as const,
+});
+
 async function opened(): Promise<PagesScratch> {
   scratch = await scratchPages();
   scratch.at(noon);
@@ -135,17 +142,16 @@ describe("creating a maintenance series", () => {
   test("a series with no component that exists, or without the install language's text, is refused as invalid and nothing is written", async () => {
     const { storage } = await opened();
     const web = await component(storage, "الموقع");
-    const invalid = { ok: false, reason: "invalid" } as const;
     expect(
       await createSeries(storage, planned(["no-such-component"]), noon)
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["componentIds"]));
     expect(
       await createSeries(
         storage,
         planned([web], { title: { en: "Server upkeep" } }),
         noon
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["title", "ar"]));
     expect(await storage.maintenance.listSeries()).toEqual([]);
     expect(await storage.maintenance.list()).toEqual([]);
   });
@@ -413,7 +419,7 @@ describe("editing a series", () => {
     ).toEqual({ ok: false, reason: "not_found" });
     expect(
       await editSeries(storage, series.id, planned(["no-such-component"]), noon)
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["componentIds"]));
     expect(await storage.maintenance.findSeries(series.id)).toEqual(series);
   });
 });

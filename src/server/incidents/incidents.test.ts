@@ -43,6 +43,13 @@ async function opened(): Promise<PagesScratch> {
 
 const author = "owner@example.com";
 
+/** A refusal as invalid that names these parts of the input. */
+const refusedAt = (...paths: (string | number)[][]) => ({
+  issues: paths.map((path) => ({ message: expect.any(String), path })),
+  ok: false as const,
+  reason: "invalid" as const,
+});
+
 async function component(
   storage: Storage,
   name: string,
@@ -117,7 +124,7 @@ describe("opening an incident", () => {
         opening([{ componentId: "gone", status: "major_outage" }]),
         author
       )
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["statuses"]));
     expect(await storage.incidents.list()).toEqual([]);
     expect(await storage.changeCounter()).toBe(before);
   });
@@ -143,7 +150,7 @@ describe("a component deleted while the incident is written", () => {
         opening([{ componentId: web, status: "major_outage" }]),
         author
       )
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["statuses"]));
     expect(await storage.incidents.list()).toEqual([]);
   });
 });
@@ -506,7 +513,7 @@ describe("an update of an open incident", () => {
         },
         author
       )
-    ).toEqual({ ok: false, reason: "invalid" });
+    ).toEqual(refusedAt(["statuses"]));
     expect((await storage.incidents.find(incident.id))?.updates).toHaveLength(
       1
     );
@@ -1338,7 +1345,6 @@ describe("an incident's content in each locale", () => {
     );
     const before = await storage.changeCounter();
     const english = { en: "English only" };
-    const invalid = { ok: false, reason: "invalid" } as const;
     expect(
       await createIncident(
         storage,
@@ -1347,7 +1353,7 @@ describe("an incident's content in each locale", () => {
         }),
         author
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["title", "ar"]));
     expect(
       await createIncident(
         storage,
@@ -1356,7 +1362,7 @@ describe("an incident's content in each locale", () => {
         }),
         author
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["message", "ar"]));
     expect(
       await postUpdate(
         storage,
@@ -1368,13 +1374,13 @@ describe("an incident's content in each locale", () => {
         },
         author
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["message", "ar"]));
     expect(
       await editIncident(storage, incident.id, {
         impact: "minor",
         title: english,
       })
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["title", "ar"]));
     expect(
       await fixUpdate(
         storage,
@@ -1382,7 +1388,7 @@ describe("an incident's content in each locale", () => {
         incident.updates[0]?.id ?? "",
         english
       )
-    ).toEqual(invalid);
+    ).toEqual(refusedAt(["message", "ar"]));
     expect(await storage.changeCounter()).toBe(before);
     expect(await storage.incidents.find(incident.id)).toEqual(incident);
   });
