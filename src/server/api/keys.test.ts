@@ -140,12 +140,12 @@ describe("the keys page", () => {
       throw new Error(seen.reason);
     }
     expect(seen.own.map((one) => one.account.id)).toEqual(["e"]);
-    expect(seen.all).toBeUndefined();
+    expect(seen.others).toBeUndefined();
     expect(seen.revocable).toEqual([]);
     expect(seen.roles).toEqual(["editor", "responder", "viewer"]);
   });
 
-  test("shows an operator who manages the team every key, those of accounts they manage revocable", async () => {
+  test("shows an operator who manages the team the keys of the other accounts, never their own twice, those of accounts they manage revocable", async () => {
     const { location, store } = await storage();
     const owner = await operator(location, "o", "owner");
     const admin = await operator(location, "a", "admin");
@@ -173,16 +173,19 @@ describe("the keys page", () => {
     if (!(seen.ok && ownerKey.ok && editorKey.ok && adminKey.ok)) {
       throw new Error("not made");
     }
-    expect(seen.all?.map((one) => one.id)).toEqual([
-      adminKey.key.id,
+    expect(seen.own.map((one) => one.id)).toEqual([adminKey.key.id]);
+    expect(seen.others?.map((one) => one.id)).toEqual([
       editorKey.key.id,
       ownerKey.key.id,
     ]);
-    expect(seen.revocable.toSorted()).toEqual(
+    expect(seen.revocable).toEqual([editorKey.key.id]);
+    const byOwner = await readApiKeys(store, owner);
+    expect(byOwner.ok && byOwner.own.map((one) => one.id)).toEqual([
+      ownerKey.key.id,
+    ]);
+    expect(byOwner.ok && byOwner.revocable.toSorted()).toEqual(
       [adminKey.key.id, editorKey.key.id].toSorted()
     );
-    const byOwner = await readApiKeys(store, owner);
-    expect(byOwner.ok && byOwner.revocable).toHaveLength(3);
   });
 
   test("shows no one else's keys to an admin who owes the second step an owner requires", async () => {
@@ -190,7 +193,7 @@ describe("the keys page", () => {
     const admin = await operator(location, "a", "admin");
     await store.settings.set(secondStepRequired, true);
     const seen = await readApiKeys(store, admin);
-    expect(seen.ok && seen.all).toBeUndefined();
+    expect(seen.ok && seen.others).toBeUndefined();
   });
 });
 

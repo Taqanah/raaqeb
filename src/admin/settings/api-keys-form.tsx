@@ -1,8 +1,8 @@
 /**
  * The API keys page (CONTEXT.md "API key"): the operator's own keys with
  * their role, expiry and last use, a form that makes one and shows it once,
- * and revoking one; to an operator who manages the team, every key of the
- * install with its account.
+ * and revoking one; to an operator who manages the team, the keys of the
+ * other accounts with their account.
  */
 import {
   type ChangeEvent,
@@ -127,17 +127,17 @@ export function ApiKeysPage({
         slot="own-keys"
         title={t("setting_api_key_own_title")}
       />
-      {view.all ? (
+      {view.others ? (
         <KeysCard
           accounts
           clock={clock}
-          description={t("setting_api_key_all_intro")}
-          keys={view.all}
+          description={t("setting_api_key_others_intro")}
+          keys={view.others}
           onRevoked={onChanged}
           revocable={view.revocable}
           revoke={revoke}
-          slot="all-keys"
-          title={t("setting_api_key_all_title")}
+          slot="others-keys"
+          title={t("setting_api_key_others_title")}
         />
       ) : null}
     </>

@@ -59,6 +59,11 @@ test("an operator makes a key, sees it once, calls the API with it, and revokes 
   const row = page.locator("[data-slot=own-keys] [data-slot=api-key]");
   await expect(row).toHaveCount(1);
   await expect(row).toContainText("Deploy job");
+  // The operator's own key is not listed again among the other accounts'.
+  await expect(page.locator("[data-slot=others-keys]")).toHaveCount(1);
+  await expect(
+    page.locator("[data-slot=others-keys] [data-slot=api-key]")
+  ).toHaveCount(0);
   await page.reload();
   await expect(page.locator("body")).not.toContainText(secret);
   // The call above is its last use, shown with the address it came from.

@@ -66,13 +66,13 @@ export type ApiKeysResult =
   | { readonly keys: readonly ApiKey[]; readonly ok: true }
   | { readonly ok: false; readonly reason: "unavailable" };
 
-/** What the keys page reads: the operator's own keys, and every key of the install to an operator who manages the team. */
+/** What the keys page reads: the operator's own keys, and the keys of the other accounts to an operator who manages the team. */
 export interface ApiKeysView {
-  /** Every key of the install, the newest first; nothing to an operator who does not manage the team. */
-  readonly all: readonly ApiKey[] | undefined;
+  /** The keys of the other accounts, the newest first; nothing to an operator who does not manage the team. */
+  readonly others: readonly ApiKey[] | undefined;
   /** The operator's own, the newest first. */
   readonly own: readonly ApiKey[];
-  /** The ids of the keys in `all` whose accounts the operator manages, so may revoke. */
+  /** The ids of the keys in `others` whose accounts the operator manages, so may revoke. */
   readonly revocable: readonly string[];
   /** The roles a new key of the operator's may carry. */
   readonly roles: readonly Role[];

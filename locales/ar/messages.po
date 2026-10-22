@@ -6107,12 +6107,12 @@ msgid "setting_api_key_none"
 msgstr "لا مفاتيح بعد."
 
 #. js-lingui-explicit-id
-msgid "setting_api_key_all_title"
-msgstr "كل مفاتيح الواجهة البرمجية"
+msgid "setting_api_key_others_title"
+msgstr "مفاتيح الحسابات الأخرى"
 
 #. js-lingui-explicit-id
-msgid "setting_api_key_all_intro"
-msgstr "مفاتيح كل الحسابات. تستطيع إبطال مفاتيح الحسابات التي تديرها، وتعطيل الحساب أو إزالته يُبطل مفاتيحه."
+msgid "setting_api_key_others_intro"
+msgstr "مفاتيح كل حساب آخر. تستطيع إبطال مفاتيح الحسابات التي تديرها، وتعطيل الحساب أو إزالته يُبطل مفاتيحه."
 
 #. js-lingui-explicit-id
 msgid "setting_api_key_account"

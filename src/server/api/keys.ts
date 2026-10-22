@@ -1,8 +1,8 @@
 /**
  * API keys (CONTEXT.md "API key"): an operator makes one for their own
  * account with a role no wider than the account's, sees it once, and
- * revokes it; an operator who manages the team sees every key and revokes
- * those of the accounts they manage. Only the secret's SHA-256 is kept: a
+ * revokes it; an operator who manages the team sees the keys of the other
+ * accounts and revokes those of the accounts they manage. Only the secret's SHA-256 is kept: a
  * secret of 256 random bits needs no slow hash, and the management API
  * finds a key by its hash (server/api/caller.ts).
  */
@@ -42,7 +42,7 @@ async function managesTeam(
   return (await refusalOf(storage, operator, "team")) === undefined;
 }
 
-/** The keys page: the operator's own keys and the roles a new one may carry, and every key to an operator who manages the team. */
+/** The keys page: the operator's own keys and the roles a new one may carry, and the other accounts' keys to an operator who manages the team. */
 export async function readApiKeys(
   storage: Storage,
   operator: Operator
@@ -51,13 +51,13 @@ export async function readApiKeys(
     const all = (await managesTeam(storage, operator))
       ? await storage.apiKeys.list()
       : undefined;
+    const own = (key: ApiKey) => key.account.id === operator.id;
+    const others = all?.filter((key) => !own(key));
     return {
-      all,
       ok: true,
-      own: all
-        ? all.filter((key) => key.account.id === operator.id)
-        : await storage.apiKeys.ofAccount(operator.id),
-      revocable: (all ?? [])
+      others,
+      own: all ? all.filter(own) : await storage.apiKeys.ofAccount(operator.id),
+      revocable: (others ?? [])
         .filter((key) => revocableBy(operator, key))
         .map((key) => key.id),
       roles: keyRoles(operator.role),

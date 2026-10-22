@@ -18,8 +18,8 @@ import {
 import { cn } from "@/shared/ui/cn.ts";
 
 // The API keys page: the operator's own keys, making one (shown once) and
-// revoking one; and every key of the install to an operator who manages
-// the team, who revokes those of the accounts they manage.
+// revoking one; and the keys of the other accounts to an operator who
+// manages the team, who revokes those of the accounts they manage.
 const read = createServerFn({ method: "GET" })
   .middleware([permitted("profile")])
   .handler(

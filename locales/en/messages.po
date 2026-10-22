@@ -6107,12 +6107,12 @@ msgid "setting_api_key_none"
 msgstr "No API keys yet."
 
 #. js-lingui-explicit-id
-msgid "setting_api_key_all_title"
-msgstr "Every API key"
+msgid "setting_api_key_others_title"
+msgstr "API keys of other accounts"
 
 #. js-lingui-explicit-id
-msgid "setting_api_key_all_intro"
-msgstr "The keys of every account. You can revoke those of the accounts you manage; deactivating or removing an account revokes its keys."
+msgid "setting_api_key_others_intro"
+msgstr "The keys of every other account. You can revoke those of the accounts you manage; deactivating or removing an account revokes its keys."
 
 #. js-lingui-explicit-id
 msgid "setting_api_key_account"
