@@ -1207,6 +1207,10 @@ msgid "monitor_select_one"
 msgstr "تحديد {name}"
 
 #. js-lingui-explicit-id
+msgid "monitor_tags_more"
+msgstr "+{count}"
+
+#. js-lingui-explicit-id
 msgid "monitor_selected"
 msgstr "المحدد: {count}"
 

@@ -112,11 +112,11 @@ function TableRows(): ReactNode {
             <TableCell className="w-full">
               <NameLines />
             </TableCell>
-            <TableCell className={`@4xl:pe-14 ${phoneState}`}>
+            <TableCell className={`@4xl:pe-8 @min-[60rem]:pe-14 ${phoneState}`}>
               <Bar className="h-5 w-14" />
             </TableCell>
             {/* The last 14 days at 8 px a day, after the state, as the row's bar is; under 56rem beside the sidebar there is none. */}
-            <TableCell className="ps-0 @4xl:pe-20 max-sm:hidden">
+            <TableCell className="ps-0 @4xl:pe-12 @min-[60rem]:pe-20 max-sm:hidden">
               <Bar className="@max-4xl:hidden h-8 w-34 rounded-none" />
             </TableCell>
             <TableCell className="max-sm:hidden">

@@ -124,7 +124,7 @@ export function MonitorTableRow(props: MonitorItemProps): ReactNode {
         <Name monitor={monitor} />
       </TableCell>
       {/* The state now in its own column, so every bar lines up whatever the badge says; room after it, so the state, its bar and the tags read apart. */}
-      <TableCell className={`@4xl:pe-14 ${phoneState}`}>
+      <TableCell className={`@4xl:pe-8 @min-[60rem]:pe-14 ${phoneState}`}>
         <Status
           covered={covered}
           heard={heard}
@@ -134,11 +134,11 @@ export function MonitorTableRow(props: MonitorItemProps): ReactNode {
         />
       </TableCell>
       {/* The last 14 days, right after the state badge. */}
-      <TableCell className="ps-0 @4xl:pe-20 max-sm:hidden">
+      <TableCell className="ps-0 @4xl:pe-12 @min-[60rem]:pe-20 max-sm:hidden">
         {days ? <MonitorBar days={days} /> : null}
       </TableCell>
-      {/* One line, capped so a long group or tag ends in an ellipsis rather than push the menu off the list: from 68rem the tags fit beside the caps; narrower, the type and the group, and under 40rem the type alone, the toolbar still filtering by group and tag. */}
-      <TableCell className="max-sm:hidden @min-[68rem]:[&>div]:max-w-80 [&>div]:max-w-30 [&>div]:flex-nowrap @max-[40rem]:[&_[data-slot=monitor-group]]:hidden @max-[68rem]:[&_[data-slot=monitor-tag]]:hidden">
+      {/* One line, capped so a long group or tag ends in an ellipsis rather than push the menu off the list: from 68rem every tag fits beside the caps; narrower, the type, the group, the first tag and how many more; under 40rem the type alone, the toolbar still filtering by group and tag. */}
+      <TableCell className="max-sm:hidden @min-[68rem]:[&>div]:max-w-80 [&>div]:max-w-48 [&>div]:flex-nowrap @max-[40rem]:[&_[data-slot^=monitor-]]:hidden">
         <Organization monitor={monitor} />
       </TableCell>
       <TableCell className="w-10">
@@ -198,9 +198,10 @@ function Organization({ monitor }: { readonly monitor: Monitor }): ReactNode {
           </span>
         </Badge>
       ) : null}
-      {monitor.tags.map((tag) => (
+      {monitor.tags.map((tag, index) => (
         <Badge
-          className="min-w-0 shrink"
+          // Under 68rem only the first tag shows; the rest stay for a screen reader, the count standing in for them on screen.
+          className={`min-w-0 shrink ${index > 0 ? "@max-[68rem]:sr-only" : ""}`}
           data-slot="monitor-tag"
           key={tag}
           variant="secondary"
@@ -210,6 +211,19 @@ function Organization({ monitor }: { readonly monitor: Monitor }): ReactNode {
           </span>
         </Badge>
       ))}
+      {monitor.tags.length > 1 ? (
+        <Badge
+          aria-hidden
+          className="@min-[68rem]:hidden"
+          data-slot="monitor-more-tags"
+          title={monitor.tags.slice(1).join(", ")}
+          variant="secondary"
+        >
+          <span dir="ltr">
+            {t("monitor_tags_more", { count: monitor.tags.length - 1 })}
+          </span>
+        </Badge>
+      ) : null}
     </div>
   );
 }

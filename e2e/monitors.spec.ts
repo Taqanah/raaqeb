@@ -161,6 +161,76 @@ for (const language of ["en", "ar"] as const) {
   });
 }
 
+// Beside the open sidebar under 68rem the row has room for one tag: the group, the first tag and how many more, on one line, the name keeping 150 px.
+for (const language of ["en", "ar"] as const) {
+  test(`beside the open sidebar a row shows its group, its first tag and how many more, the name keeping its room, in ${language}`, async ({
+    page,
+  }) => {
+    const install = await spawnInstall({
+      account: true,
+      language,
+      records: async (storage) => {
+        await storage.settings.set(gettingStartedClosed, true);
+        await seedMonitors(storage);
+        await seedLongMonitor(storage);
+      },
+    });
+    try {
+      await page.setViewportSize({ height: 800, width: 1280 });
+      await page.goto(`${install.origin}/sign-in`);
+      await page.fill("input[name=email]", operatorEmail);
+      await page.fill("input[name=password]", operatorPassword);
+      await page.click("form button[type=submit]");
+      await expectPath(page, "/admin/monitors");
+      const long = page.locator("[data-monitor]", {
+        hasText: "A very long monitor name",
+      });
+      const tags = long.locator("[data-slot=monitor-tag]");
+      const more = long.locator("[data-slot=monitor-more-tags]");
+      await expect(long.locator("[data-slot=monitor-group]")).toBeVisible();
+      await expect(tags.first()).toBeVisible();
+      await expect
+        .poll(async () => (await tags.nth(1).boundingBox())?.width)
+        .toBeLessThanOrEqual(1);
+      await expect(more).toHaveText("+1");
+      await expect(more).toHaveAttribute("title", "second");
+      // A monitor with one tag has no more to count.
+      const website = page.locator("[data-monitor]", { hasText: "Website" });
+      await expect(
+        website.locator("[data-slot=monitor-tag]").first()
+      ).toBeVisible();
+      await expect(
+        website.locator("[data-slot=monitor-more-tags]")
+      ).toHaveCount(0);
+      const nameCells = page.locator("[data-monitor] td:nth-child(2)");
+      // The narrowest rows: a tablet, and just past where the 14-day bar joins the row.
+      for (const width of [768, 1024, 1152, 1168, 1184, 1200, 1216, 1280]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one width at a time, each measured after its own layout
+        await page.setViewportSize({ height: 800, width });
+        await expect
+          .poll(
+            async () =>
+              Math.min(
+                ...(await nameCells.evaluateAll((cells) =>
+                  cells.map((cell) => cell.getBoundingClientRect().width)
+                ))
+              ),
+            { message: `${width} px` }
+          )
+          .toBeGreaterThanOrEqual(150);
+      }
+      // From 68rem beside the sidebar every tag shows and nothing is counted.
+      await page.setViewportSize({ height: 800, width: 1440 });
+      await expect(more).toBeHidden();
+      await expect
+        .poll(async () => (await tags.nth(1).boundingBox())?.width)
+        .toBeGreaterThan(1);
+    } finally {
+      await install.stop();
+    }
+  });
+}
+
 // In order: the counts read the seeded rows before and after the delete, and the later tests open the Health monitor the form saves and renames.
 test.describe("the seeded list and the Health monitor, changed in order", () => {
   test.describe.configure({ mode: "serial" });
