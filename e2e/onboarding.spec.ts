@@ -188,6 +188,10 @@ test.describe("the fresh install, walked to the end and then used", () => {
     await expect(
       page.locator("[data-slot=name-form] input[name=name]")
     ).toHaveValue("Nadia");
+    // The session onboarding signed it in with names the browser it was made in, not an unknown one.
+    await expect(
+      page.locator("[data-slot=session][data-current=true]")
+    ).toContainText("Chrome");
   });
 
   test("after onboarding the operator sets the appearance, the operator language, the email and the password from the settings area", async ({

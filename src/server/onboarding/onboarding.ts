@@ -260,7 +260,7 @@ export function createOperatorAccount(
     return Promise.resolve({ ok: false, reason: "no_database" });
   }
   const queued = (creations.get(storage) ?? Promise.resolve()).then(() =>
-    createOnce(input, storage, context.boot, headers.get("origin"))
+    createOnce(input, storage, context.boot, headers)
   );
   creations.set(storage, queued);
   return queued;
@@ -270,14 +270,17 @@ async function createOnce(
   input: OperatorAccountInput,
   storage: Storage,
   boot: BootSettings,
-  browserOrigin: string | null
+  headers: Headers
 ): Promise<CreateAccountResult> {
   try {
     if (await storage.operatorAccounts.exists()) {
       return { ok: false, reason: "already_exists" };
     }
     // Both are serialised origins, so text equality is origin equality; no Origin at all proves nothing.
-    if (input.publicAddress !== browserOrigin && !input.addressConfirmed) {
+    if (
+      input.publicAddress !== headers.get("origin") &&
+      !input.addressConfirmed
+    ) {
       return { ok: false, reason: "address_elsewhere" };
     }
     await storage.settings.set(installLanguage, input.locale);
@@ -292,6 +295,8 @@ async function createOnce(
         name: input.name,
         password: input.password,
       },
+      // The browser and address of the first session, which the account page names.
+      headers,
       returnHeaders: true,
     });
     logInfo("onboarding created the operator account");

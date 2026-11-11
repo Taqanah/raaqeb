@@ -3,6 +3,7 @@ import { authFor } from "@/server/auth/auth.ts";
 import { readOperator } from "@/server/auth/session.ts";
 import { readConfigFile } from "@/server/boot/datadir.ts";
 import { decrypt } from "@/server/boot/installkey.ts";
+import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import {
   type BootSettings,
   resolveBootSettings,
@@ -512,6 +513,28 @@ describe("creating the operator account", () => {
       new Headers({ cookie: cookies[0]?.split(";")[0] ?? "" })
     );
     expect(session?.operator.email).toBe(account.email);
+  });
+
+  test("records the browser and the address the account was made from on the first session, so the account page can say which browser it is", async () => {
+    const { context, storage } = await opened();
+    const headers = at(account.publicAddress);
+    headers.set(
+      "user-agent",
+      "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0"
+    );
+    headers.set(clientAddressHeader, "203.0.113.7");
+    await createOperatorAccount(account, context, headers);
+    const owner = await storage.operatorAccounts.findByEmail(account.email);
+    const [session] = await storage.operatorAccounts.sessions(
+      owner?.id ?? "",
+      Date.now(),
+      undefined
+    );
+    expect(session).toMatchObject({
+      ipAddress: "203.0.113.7",
+      userAgent:
+        "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0",
+    });
   });
 
   test("gives the owner the name typed on the account screen, so the email no longer stands for it", async () => {

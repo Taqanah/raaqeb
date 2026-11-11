@@ -6,6 +6,7 @@
  * second is not worth a line.
  */
 
+import { browserAgentOf } from "@/shared/domain/user-agent.ts";
 import { clientAddressHeader } from "./boot/proxies.ts";
 import { loggedPath } from "./log.ts";
 
@@ -81,27 +82,6 @@ const toolToken = /^([\w.-]{1,40})(?:\/(\d{1,5})(?:\.(\d{1,5}))?)?/;
 // A crawler inside a browser's string: `(compatible; Googlebot/2.1; ...)`.
 const botToken = /\(compatible; ([\w.-]{1,40}\/\d{1,5}(?:\.\d{1,5})?)/;
 
-// Order matters: Edge, Opera and Samsung Internet also say Chrome, and Chrome also says Safari.
-const browsers: readonly (readonly [RegExp, string])[] = [
-  [/Edg(?:e|A|iOS)?\/(\d{1,5})/, "Edge"],
-  [/OPR\/(\d{1,5})/, "Opera"],
-  [/SamsungBrowser\/(\d{1,5})/, "Samsung Internet"],
-  [/(?:Firefox|FxiOS)\/(\d{1,5})/, "Firefox"],
-  [/HeadlessChrome\/(\d{1,5})/, "Headless Chrome"],
-  [/(?:Chrome|CriOS)\/(\d{1,5})/, "Chrome"],
-  [/Version\/(\d{1,5})[^ ]* (?:Mobile\/[^ ]+ )?Safari\//, "Safari"],
-];
-
-// iOS before macOS, which an iPad's string also names; Android and ChromeOS before Linux.
-const systems: readonly (readonly [RegExp, string])[] = [
-  [/iPhone|iPad|iPod/, "iOS"],
-  [/Android/, "Android"],
-  [/CrOS/, "ChromeOS"],
-  [/Windows/, "Windows"],
-  [/Macintosh|Mac OS X/, "macOS"],
-  [/Linux/, "Linux"],
-];
-
 /** A tool's own name and version, the version cut to major and minor. */
 function toolName(userAgent: string): string {
   const [, name, major, minor] = toolToken.exec(userAgent) ?? [];
@@ -126,14 +106,11 @@ export function browserName(userAgent: string | null): string {
   if (bot !== undefined) {
     return bot;
   }
-  for (const [pattern, name] of browsers) {
-    const version = pattern.exec(userAgent)?.[1];
-    if (version !== undefined) {
-      const system = systems.find(([named]) => named.test(userAgent))?.[1];
-      return system === undefined
-        ? `${name} ${version}`
-        : `${name} ${version} on ${system}`;
-    }
+  const agent = browserAgentOf(userAgent);
+  if (agent) {
+    const { browser, system, version } = agent;
+    const named = version === undefined ? browser : `${browser} ${version}`;
+    return system === undefined ? named : `${named} on ${system}`;
   }
   return "unknown";
 }

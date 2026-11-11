@@ -12,6 +12,7 @@ import {
 } from "react";
 import { FormFooter } from "@/admin/shell/page.tsx";
 import { SaveFooter } from "@/admin/shell/save-footer.tsx";
+import { browserAgentOf } from "@/shared/domain/user-agent.ts";
 import { formatDateTime, type TimeOptions } from "@/shared/i18n/format.ts";
 import type { Locale } from "@/shared/i18n/locale.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
@@ -41,7 +42,6 @@ import {
 } from "@/shared/ui/field.tsx";
 import { Input } from "@/shared/ui/input.tsx";
 import { Token } from "@/shared/ui/token.tsx";
-import { browserOf } from "./browser.ts";
 import { type SaveCall, useDraftSave } from "./use-save.ts";
 
 const saveMessages: Readonly<Record<SaveRefusal, MessageId>> = {
@@ -197,7 +197,9 @@ function SessionRow({
   readonly session: AccountSession;
 }): ReactNode {
   const { t } = useMessages();
-  const browser = browserOf(session.userAgent);
+  const browser = session.userAgent
+    ? browserAgentOf(session.userAgent)
+    : undefined;
   const end = useCallback(() => onEnd({ id: session.id }), [onEnd, session]);
   return (
     <div
@@ -209,9 +211,12 @@ function SessionRow({
       <div className="flex min-w-0 flex-col gap-1 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium">
-            {browser
-              ? t("setting_session_browser_on", browser)
-              : t("setting_session_browser_unknown")}
+            {browser?.system
+              ? t("setting_session_browser_on", {
+                  browser: browser.browser,
+                  system: browser.system,
+                })
+              : (browser?.browser ?? t("setting_session_browser_unknown"))}
           </span>
           {session.current ? (
             <Badge variant="secondary">{t("setting_session_current")}</Badge>
