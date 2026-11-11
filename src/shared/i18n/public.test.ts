@@ -17,6 +17,12 @@ describe("the messages a status page's document inlines", () => {
     }
   });
 
+  test("the copy button's words are, since the subscribe dialog shows it beside the feed address", () => {
+    for (const id of ["app_copy", "app_copied"]) {
+      expect(isPublicMessage(id)).toBe(true);
+    }
+  });
+
   test("the days a maintenance series repeats on are, since its card names them", () => {
     for (const id of [
       "maintenance_repeats_daily",
@@ -71,15 +77,47 @@ describe("the messages a status page's document inlines", () => {
   });
 });
 
+/** The source files a status page's document is built from: `src/public`, the view routes, and every file of `shared/` they import, however deep. */
+async function publicSources(): Promise<string[]> {
+  const scan = async (cwd: string) =>
+    (await Array.fromAsync(new Bun.Glob("**/*.{ts,tsx}").scan({ cwd }))).map(
+      (file) => `${cwd}/${file}`
+    );
+  const queue = [
+    ...(await scan("src/public")),
+    ...(await scan("src/routes/{-$locale}")),
+    "src/routes/-public.ts",
+  ].filter((file) => !file.includes(".test."));
+  const seen = new Set<string>();
+  for (const file of queue) {
+    if (seen.has(file)) {
+      continue;
+    }
+    seen.add(file);
+    // biome-ignore lint/performance/noAwaitInLoops: each file names the next ones
+    const text = await Bun.file(file).text();
+    for (const [, path = ""] of text.matchAll(
+      /from "((?:@\/shared|\.)\/[^"]+\.tsx?)"/g
+    )) {
+      // The schemas drag in the admin's own words, and nothing a visitor reads.
+      if (path.startsWith("@/shared/schemas/")) {
+        continue;
+      }
+      queue.push(
+        path.startsWith("@/")
+          ? `src/${path.slice(2)}`
+          : `${file.slice(0, file.lastIndexOf("/"))}/${path.slice(2)}`
+      );
+    }
+  }
+  return [...seen];
+}
+
 describe("the public page asks for public messages only", () => {
-  test("every catalog id written in src/public and the view routes is one the document inlines", async () => {
+  test("every catalog id written in src/public, the view routes and the shared files they import is one the document inlines", async () => {
     const ids = new Set(Object.keys(arabic));
-    const files = [
-      ...(await Array.fromAsync(new Bun.Glob("src/public/**/*.tsx").scan("."))),
-      "src/routes/-public.ts",
-    ];
     const used: string[] = [];
-    for (const file of files) {
+    for (const file of await publicSources()) {
       // biome-ignore lint/performance/noAwaitInLoops: a handful of files, read in order
       const text = await Bun.file(file).text();
       for (const [, id = ""] of text.matchAll(/"([a-z]+_[a-z0-9_]+)"/g)) {

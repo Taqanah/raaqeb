@@ -71,6 +71,22 @@ test("the form refuses a webhook that is not https on the public internet, and s
   await expect(answer).not.toBeEmpty();
 });
 
+test("the feed's copy button speaks the catalog the status page loads, in both languages", async ({
+  page,
+}) => {
+  for (const path of ["/", "/ar"]) {
+    // biome-ignore lint/performance/noAwaitInLoops: one language after the other
+    await page.goto(`${englishOrigin}${path}`);
+    await page.click("[data-slot=subscribe-open]");
+    await page
+      .locator("[data-slot=subscribe-channel] [role=radio][data-value=feed]")
+      .click();
+    const copy = page.locator("[data-slot=subscribe-copy]");
+    await expect(copy).toBeVisible();
+    await expect(copy).not.toContainText("app_");
+  }
+});
+
 test.describe("the pending subscription, read and then confirmed", () => {
   test.describe.configure({ mode: "serial" });
 

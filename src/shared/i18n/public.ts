@@ -3,8 +3,8 @@
  * the `public` area and the shared words it shows (the status levels, the
  * impact levels, the incident and maintenance
  * stages, the days a maintenance series repeats on), and nothing of the admin, so a visitor's first paint carries a
- * small part of the catalog. `src/public` asks for no other id; a test
- * holds it to that.
+ * small part of the catalog. `src/public` and the shared components it
+ * imports ask for no other id; a test holds it to that.
  */
 import { type Catalog, errorNoticeIds } from "./messages.ts";
 
@@ -20,9 +20,11 @@ const publicPrefixes = [
   "setting_theme",
 ];
 
-/** Single ids the public page shares with the admin: the subscribe dialog's close, the language switch's label and the error notice's words. */
+/** Single ids the public page shares with the admin: the subscribe dialog's close and copy button, the language switch's label and the error notice's words. */
 const publicIds = new Set<string>([
   "app_close",
+  "app_copied",
+  "app_copy",
   "app_language",
   ...errorNoticeIds,
 ]);

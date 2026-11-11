@@ -53,6 +53,12 @@ describe("the feed as a way to follow a status page", () => {
     expect(html).toContain('data-value="feed"');
   });
 
+  test("the copy button beside the feed address says Copy, not its message id", () => {
+    const html = card([]);
+    expect(html).toContain(">Copy</span>");
+    expect(html).not.toContain("app_copy");
+  });
+
   test("without JavaScript a page that offers channels still links the feed", () => {
     const noscript = card(["email"]).match(noscriptPart)?.[1];
     expect(noscript).toContain(`href="${feed}"`);
