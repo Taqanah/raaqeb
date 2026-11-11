@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { notFound } from "@tanstack/react-router";
 import { plainPage, september, viewIn } from "@/public/fixture.tsx";
+import { getRouter } from "@/router.tsx";
 import type {
   OverviewDocument,
   OverviewPage,
 } from "@/shared/schemas/overview.ts";
+import { statusPageHeader } from "@/shared/schemas/page.ts";
 import { messages as arabic } from "../../locales/ar/messages.ts";
 import { messages as english } from "../../locales/en/messages.ts";
 import { historyHead, missingHead, overviewHead } from "./-public.ts";
@@ -176,5 +178,37 @@ describe("a status page's link preview", () => {
     expect(
       card({ ...plainPage, images: { cover: "/api/pages/p/cover?h=1" } })
     ).toEqual([{ content: "summary_large_image", name: "twitter:card" }]);
+  });
+});
+
+describe("the routes that draw a status page", () => {
+  test("every route says it drew a status page only if it is one of the status page's own, so a new route is held as an operator's page", async () => {
+    const statusPageRoutes = [
+      "/{-$locale}/",
+      "/{-$locale}/history/",
+      "/{-$locale}/history/$month",
+      "/{-$locale}/incidents/$id",
+      "/{-$locale}/maintenance/$id",
+      "/{-$locale}/status/$slug/",
+      "/{-$locale}/status/$slug/history/",
+      "/{-$locale}/status/$slug/history/$month",
+      "/{-$locale}/status/$slug/incidents/$id",
+      "/{-$locale}/status/$slug/maintenance/$id",
+      "/subscriptions/$token/",
+    ];
+    const routes = Object.values(getRouter().routesById);
+    const marked = await Promise.all(
+      routes.map(
+        async (route) =>
+          (await route.options.headers?.({}))?.[statusPageHeader] !== undefined
+      )
+    );
+    expect(routes.length).toBeGreaterThan(statusPageRoutes.length);
+    expect(
+      routes
+        .filter((_, at) => marked[at])
+        .map((route) => route.id)
+        .toSorted()
+    ).toEqual(statusPageRoutes.toSorted());
   });
 });

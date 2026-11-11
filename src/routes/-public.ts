@@ -38,7 +38,10 @@ import {
   publicViewSchema,
   viewPath,
 } from "@/shared/schemas/overview.ts";
-import type { PageAccessMode } from "@/shared/schemas/page.ts";
+import {
+  type PageAccessMode,
+  statusPageHeader,
+} from "@/shared/schemas/page.ts";
 import {
   type HistoryDocument,
   historyDocumentSchema,
@@ -347,9 +350,9 @@ export async function loadMaintenance(
   return { document: answer.document, view };
 }
 
-/** A view's response headers: public, so the memo keeps it, and revalidated on every visit. */
+/** A view's response headers: public, so the memo keeps it, and revalidated on every visit; and the status page it drew, so its custom CSS may load from https. */
 export function publicHeaders(): Record<string, string> {
-  return { "cache-control": publicPolicy };
+  return { "cache-control": publicPolicy, [statusPageHeader]: "1" };
 }
 
 const missingDataSchema = z.object({

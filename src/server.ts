@@ -89,6 +89,7 @@ import type {
   MaintenanceStage,
   MaintenanceWindow,
 } from "./shared/schemas/maintenance.ts";
+import { statusPageHeader } from "./shared/schemas/page.ts";
 import { reasonName } from "./shared/schemas/reason.ts";
 import { subscriptionTokenSchema } from "./shared/schemas/subscription.ts";
 
@@ -555,11 +556,30 @@ export function serve(
         }
         return new Response("Payload Too Large", { status: 413 });
       }
-      const context = (publicTarget: PublicTarget | undefined) => ({
+      // One render: a nonce of its own, named by its answer's policy, so a body the memo keeps is answered under the policy it was rendered for.
+      const render = async (
+        address: Request,
+        publicTarget: PublicTarget | undefined,
+        options: { readonly inlineCss?: false } = {}
+      ): Promise<Response> => {
+        const nonce = crypto.randomUUID();
+        return withPolicy(
+          await handler.fetch(address, {
+            ...options,
+            context: context(publicTarget, nonce),
+          }),
+          nonce
+        );
+      };
+      const context = (
+        publicTarget: PublicTarget | undefined,
+        nonce: string
+      ) => ({
         boot: settings,
         // The entry's own request: the one Bun's idle timer belongs to.
         holdOpen: (seconds: number) => server.timeout(request, seconds),
         missingView: () => memo.missing(resolved),
+        nonce,
         opener,
         // Read only by the page that asks (the setup checks), so a request pays nothing for it.
         peer: () => {
@@ -588,11 +608,7 @@ export function serve(
       const renderMissing: RenderMissing = (address, target, refresh) =>
         paced(
           visitorLane(refresh),
-          async () =>
-            await handler.fetch(address, {
-              context: context(target),
-              inlineCss: false,
-            })
+          async () => await render(address, target, { inlineCss: false })
         );
       try {
         // A try at a private page's password, posted to one of its views, is the memo's to judge.
@@ -604,9 +620,7 @@ export function serve(
             (target, refresh) =>
               paced(visitorLane(refresh), async () => {
                 rendered = true;
-                return await handler.fetch(viewRequest(resolved, refresh), {
-                  context: context(target),
-                });
+                return await render(viewRequest(resolved, refresh), target);
               }),
             counter,
             renderMissing,
@@ -626,18 +640,13 @@ export function serve(
             resolved,
             storage,
             (address) =>
-              paced(
-                "pages",
-                async () =>
-                  await handler.fetch(address, { context: context(undefined) })
-              ),
+              paced("pages", async () => await render(address, undefined)),
             counter
           )) ??
           (await documentFor(
             resolved,
             { checked, paced, settings, storage },
-            async () =>
-              await handler.fetch(resolved, { context: context(undefined) })
+            async () => await render(resolved, undefined)
           ));
       } catch (thrown) {
         if (logging) {
@@ -940,11 +949,58 @@ function quietSignal(signal: AbortSignal): AbortSignal {
 }
 
 /**
+ * The policy of a render: scripts and style elements from this origin or
+ * carrying the render's nonce, style attributes as React and Base UI write
+ * them, and nothing else from elsewhere. A render that drew a status page
+ * lets the page's custom CSS load fonts, images and stylesheets from any
+ * https origin or a data URL; every other render, a route added later
+ * included, loads them from its own origin alone.
+ */
+function contentSecurityPolicy(nonce: string, statusPage: boolean): string {
+  const loaded = statusPage ? " https: data:" : "";
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    `style-src 'self' 'nonce-${nonce}'${statusPage ? " https:" : ""}`,
+    "style-src-attr 'unsafe-inline'",
+    ...(statusPage
+      ? [`img-src 'self'${loaded}`, `font-src 'self'${loaded}`]
+      : []),
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+  ].join("; ");
+}
+
+/** A rendered HTML answer with the policy naming its nonce, without the header that said it drew a status page; any other answer, or one that carries a policy of its own, as it is. */
+function withPolicy(response: Response, nonce: string): Response {
+  const statusPage = response.headers.has(statusPageHeader);
+  const own =
+    !isHtml(response) || response.headers.has("content-security-policy");
+  if (own && !statusPage) {
+    return response;
+  }
+  const headers = new Headers(response.headers);
+  headers.delete(statusPageHeader);
+  if (!own) {
+    headers.set(
+      "content-security-policy",
+      contentSecurityPolicy(nonce, statusPage)
+    );
+  }
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  });
+}
+
+/**
  * The headers every HTML response carries:
  * nosniff and the referrer policy always; frame-ancestors 'none' and
  * X-Frame-Options DENY unless the response is a status page's view, which a
- * site may embed; HSTS only when the stored public address is https. No
- * full policy in v1: Start's inline scripts and the operator's custom CSS would break under one.
+ * site may embed, appended beside the render's own policy; HSTS only when
+ * the stored public address is https.
  */
 function withSecurityHeaders(
   response: Response,

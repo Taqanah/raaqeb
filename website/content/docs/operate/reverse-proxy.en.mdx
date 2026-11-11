@@ -1,6 +1,6 @@
 ---
 title: Reverse proxy and TLS
-description: What the proxy in front of Raaqeb must pass and allow, with tested snippets for Caddy, Nginx and Traefik.
+description: What the proxy in front of Raaqeb must pass and allow, with tested snippets for Caddy, Nginx and Traefik, and when to turn on HSTS.
 ---
 
 Raaqeb serves plain HTTP and leaves TLS to a reverse proxy. The proxy must pass the host the visitor asked for, and add `X-Forwarded-For` and `X-Forwarded-Proto`. Raaqeb believes those headers only from its trusted proxies, set on the general settings page or by `RAAQEB_TRUSTED_PROXIES`. A proxy on the same server connects from `127.0.0.1` or `::1`. Once the proxy is in place, open the setup check page under settings through it: it names the address the request came from when that address sent forwarded headers without being trusted, and says whether the public address is the address the browser is at.
@@ -94,3 +94,50 @@ http:
 ```
 
 Traefik reaches `127.0.0.1:3000` when it runs on the host. In a Docker network, the URL names Raaqeb's container and the trusted proxies name Traefik's address.
+
+## HSTS
+
+Once the public address on the general settings page starts with `https://`, Raaqeb sends `Strict-Transport-Security: max-age=31536000` on its pages: a browser that opened one over https goes straight to https at that host for a year. It adds nothing more, no `includeSubDomains` and no `preload`, and the API, the images, the feeds and the badges go without it.
+
+To cover every answer, set the header at the proxy. Before you do:
+
+- Turn it on once https works at every address the proxy serves for Raaqeb, [custom domains](/en/docs/operate/custom-domains) included. A browser that holds the header refuses plain http at that host until `max-age` runs out, and nothing the server sends later takes that back.
+- Start with a short `max-age`, such as `300` (five minutes), and raise it to `31536000` (a year) once nothing breaks.
+- `includeSubDomains` holds every subdomain of the host to https too, a site on plain http among them. Add it only when every subdomain serves https.
+- `preload` asks the browsers to build the host into their own list, and leaving that list takes months. Use it only for a domain whose every subdomain is yours and serves https, with `includeSubDomains` and a `max-age` of a year or more.
+
+Each snippet below replaces Raaqeb's own header rather than sending a second one, and was run in front of a stand-in that sends Raaqeb's header. Raise `max-age` when you are ready.
+
+```text title="Caddyfile"
+raaqeb.example.com {
+	header {
+		Strict-Transport-Security "max-age=300"
+		defer
+	}
+	reverse_proxy 127.0.0.1:3000
+}
+```
+
+`defer` sets the header after Raaqeb answers, so it replaces Raaqeb's.
+
+```nginx
+# Inside the location block above
+proxy_hide_header Strict-Transport-Security;
+add_header Strict-Transport-Security "max-age=300" always;
+```
+
+`add_header` alone would send Nginx's header beside Raaqeb's, and `always` sends it on an error answer too.
+
+```yaml
+# /etc/traefik/dynamic.yml, beside the router above
+http:
+  middlewares:
+    hsts:
+      headers:
+        stsSeconds: 300
+  routers:
+    raaqeb:
+      middlewares: [hsts]
+```
+
+Traefik sends the header on an https request only, which every request through the `websecure` entry point is.

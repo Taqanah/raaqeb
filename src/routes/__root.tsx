@@ -174,6 +174,8 @@ export const Route = createRootRoute({
       // A status page's view writes its own icon links.
       ...(loaderData?.view ? [] : raaqebIcons),
     ],
+    // Before any module runs: the policy refuses eval, and Zod's probe for it, made as its first object schema is built, would be reported as a violation; Zod reads this object as its config.
+    scripts: [{ children: "globalThis.__zod_globalConfig={jitless:true}" }],
     meta: [
       { charSet: "utf-8" },
       { content: "width=device-width, initial-scale=1", name: "viewport" },

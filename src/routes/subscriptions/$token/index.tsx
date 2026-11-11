@@ -12,6 +12,7 @@ import {
 import { contentIn } from "@/shared/schemas/content.ts";
 import type { PublicView } from "@/shared/schemas/overview.ts";
 import { viewPath } from "@/shared/schemas/overview.ts";
+import { statusPageHeader } from "@/shared/schemas/page.ts";
 import { faviconLinks } from "@/shared/ui/app-icons.ts";
 
 /** What the page renders: the subscription and the page's frame, and the page the root resolved. */
@@ -43,7 +44,8 @@ export const Route = createFileRoute("/subscriptions/$token/")({
           scripts: [{ children: themeScript(loaderData.frame.page.theme) }],
         }
       : {},
-  headers: () => ({ "cache-control": "no-store" }),
+  // Drawn in its status page's frame, so the page's custom CSS may load from https.
+  headers: () => ({ "cache-control": "no-store", [statusPageHeader]: "1" }),
   loader: async ({
     params,
     parentMatchPromise,

@@ -48,6 +48,8 @@ export interface RequestContext {
   readonly holdOpen: (seconds: number) => void;
   /** The page whose frame shows a not-found at this address, from the memo's pages index; nothing under `vite dev` or with no page. */
   readonly missingView?: () => PublicView | undefined;
+  /** This render's own nonce: its inline scripts and styles carry it, and its answer's content-security-policy names it. */
+  readonly nonce: string;
   readonly opener: DatabaseOpener;
   /** The socket peer and whether it is a trusted proxy, by the trusted proxies this request was resolved with; nothing on a unix socket or under `vite dev`. */
   readonly peer?: () => Peer | undefined;

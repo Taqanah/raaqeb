@@ -33,6 +33,7 @@ import {
   type StrangerPace,
   stopSignals,
 } from "./server.ts";
+import { statusPageHeader } from "./shared/schemas/page.ts";
 import { reasons } from "./shared/schemas/reason.ts";
 
 const tempDirs: string[] = [];
@@ -137,6 +138,7 @@ describe("loading the server build", () => {
       context: {
         boot: booted.settings,
         holdOpen: () => undefined,
+        nonce: "a-nonce",
         scheduler: undefined,
         opener: databaseOpener(() => undefined),
         publicTarget: undefined,
@@ -2145,14 +2147,15 @@ describe("a stop by signal", () => {
 });
 
 describe("the security headers of an HTML response", () => {
-  /** A handler answering HTML everywhere, public at a status page's view, a page image under its own sandbox policy, the cover as HTML under that policy, and the summary as JSON. */
+  /** A handler answering HTML everywhere, its body the nonce its render was handed, saying it drew a status page at the view and a subscription's page as those routes do, public at a status page's view, a page image under its own sandbox policy, the cover as HTML under that policy, and the summary as JSON. */
   const handler = [
-    "export default { fetch: (r) => {",
+    "export default { fetch: (r, o) => {",
     "const path = new URL(r.url).pathname;",
     "if (path.endsWith('.json')) return Response.json({}, { headers: { 'cache-control': 'public, max-age=0, must-revalidate' } });",
     "if (path === '/api/pages/some-id/cover') return new Response('<script></script>', { headers: { 'content-type': 'text/html', 'content-security-policy': \"default-src 'none'; style-src 'unsafe-inline'; sandbox\" } });",
     "if (path.startsWith('/api/pages/')) return new Response('png', { headers: { 'content-type': 'image/png', 'content-security-policy': \"default-src 'none'; style-src 'unsafe-inline'; sandbox\", 'x-content-type-options': 'nosniff' } });",
-    "return new Response('<!doctype html>', { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': path === '/' ? 'public, max-age=0, must-revalidate' : 'no-store' } });",
+    "const page = path === '/' || path.startsWith('/subscriptions/') ? { 'x-raaqeb-status-page': '1' } : {};",
+    "return new Response('<!doctype html>' + o.context.nonce, { headers: { ...page, 'content-type': 'text/html; charset=utf-8', 'cache-control': path === '/' ? 'public, max-age=0, must-revalidate' : 'no-store' } });",
     "} };",
   ].join("\n");
 
@@ -2205,16 +2208,166 @@ describe("the security headers of an HTML response", () => {
   ) =>
     Promise.all(paths.map(async (path) => (await at(path)).headers.get(name)));
 
-  test("an admin page refuses every frame by Content-Security-Policy frame-ancestors, and a status page's view sets no policy", async () => {
+  test("an admin page refuses every frame by Content-Security-Policy frame-ancestors, and a status page's view refuses none", async () => {
     await withPage(undefined, async (at) => {
-      expect(
-        await valuesOf(at, "content-security-policy", [...notViews, "/"])
-      ).toEqual([
-        "frame-ancestors 'none'",
-        "frame-ancestors 'none'",
-        "frame-ancestors 'none'",
-        null,
+      const policies = await valuesOf(at, "content-security-policy", [
+        ...notViews,
+        "/",
       ]);
+      expect(
+        policies.map((policy) => policy?.includes("frame-ancestors 'none'"))
+      ).toEqual([true, true, true, false]);
+      expect(policies[3]).not.toContain("frame-ancestors");
+    });
+  });
+
+  /** The directives of the answer's first policy, by name, and the nonce its body says the render was handed. */
+  async function policyOf(
+    response: Response
+  ): Promise<{ directives: Map<string, string>; nonce: string }> {
+    const [first = ""] = (
+      response.headers.get("content-security-policy") ?? ""
+    ).split(",");
+    const directives = new Map(
+      first
+        .split(";")
+        .map((each) => each.trim())
+        .filter((each) => each !== "")
+        .map((each) => {
+          const [name = "", ...values] = each.split(" ");
+          return [name, values.join(" ")] as const;
+        })
+    );
+    const nonce = (await response.text()).replace("<!doctype html>", "");
+    return { directives, nonce };
+  }
+
+  test("a rendered page runs scripts from its own origin and the inline ones its render wrote, named by that render's nonce, and never evaluates a string", async () => {
+    await withPage(undefined, async (at) => {
+      for (const path of [...notViews, "/"]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one page at a time
+        const { directives, nonce } = await policyOf(await at(path));
+        expect(nonce, path).not.toBe("");
+        expect(directives.get("script-src"), path).toBe(
+          `'self' 'nonce-${nonce}'`
+        );
+      }
+    });
+  });
+
+  test("a rendered page's style elements need its nonce, while a style attribute applies", async () => {
+    await withPage(undefined, async (at) => {
+      for (const path of [...notViews, "/"]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one page at a time
+        const { directives, nonce } = await policyOf(await at(path));
+        expect(
+          directives.get("style-src")?.split(" ").slice(0, 2),
+          path
+        ).toEqual(["'self'", `'nonce-${nonce}'`]);
+        expect(directives.get("style-src"), path).not.toContain(
+          "'unsafe-inline'"
+        );
+        expect(directives.get("style-src-attr"), path).toBe("'unsafe-inline'");
+      }
+    });
+  });
+
+  test("a rendered page loads everything else from its own origin, embeds no plugin, takes no base element and posts its forms to its own origin alone", async () => {
+    await withPage(undefined, async (at) => {
+      for (const path of [...notViews, "/"]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one page at a time
+        const { directives } = await policyOf(await at(path));
+        expect(
+          ["default-src", "object-src", "base-uri", "form-action"].map((name) =>
+            directives.get(name)
+          ),
+          path
+        ).toEqual(["'self'", "'none'", "'none'", "'self'"]);
+      }
+    });
+  });
+
+  test("each render of a page outside the memo has a nonce of its own", async () => {
+    await withPage(undefined, async (at) => {
+      const first = await policyOf(await at("/reset-password?token=t"));
+      const second = await policyOf(await at("/reset-password?token=t"));
+      expect(first.nonce).not.toBe(second.nonce);
+      expect(second.directives.get("script-src")).toBe(
+        `'self' 'nonce-${second.nonce}'`
+      );
+    });
+  });
+
+  test("a status page's view from the memo, and a held ETag's 304, carry the nonce of the render that wrote the body", async () => {
+    await withPage(undefined, async (at) => {
+      const first = await policyOf(await at("/"));
+      const stored = await at("/");
+      const held = await fetch(stored.url, {
+        headers: { "if-none-match": stored.headers.get("etag") ?? "" },
+      });
+      expect(held.status).toBe(304);
+      const kept = await policyOf(stored);
+      expect(kept.nonce).toBe(first.nonce);
+      for (const response of [stored, held]) {
+        expect(response.headers.get("content-security-policy")).toContain(
+          `'nonce-${first.nonce}'`
+        );
+      }
+    });
+  });
+
+  test("a render that says it drew a status page lets the page's custom CSS load fonts, images and stylesheets from any https origin or a data URL; every other render loads them from its own origin alone, whatever its address", async () => {
+    await withPage(undefined, async (at) => {
+      // A subscription's own page is drawn in its status page's frame too.
+      for (const path of ["/", "/subscriptions/some-token"]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one page at a time
+        const { directives, nonce } = await policyOf(await at(path));
+        expect(
+          ["img-src", "font-src", "style-src"].map((name) =>
+            directives.get(name)
+          ),
+          path
+        ).toEqual([
+          "'self' https: data:",
+          "'self' https: data:",
+          `'self' 'nonce-${nonce}' https:`,
+        ]);
+      }
+      // A route the app does not know yet, such as a second step's own page, says nothing and is held as an operator's page is.
+      for (const path of [
+        "/admin/monitors",
+        "/sign-in",
+        "/reset-password?token=t",
+        "/onboarding/language",
+        "/two-factor",
+      ]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one page at a time
+        const { directives, nonce } = await policyOf(await at(path));
+        expect(
+          ["img-src", "font-src", "style-src"].map((name) =>
+            directives.get(name)
+          ),
+          path
+        ).toEqual([undefined, undefined, `'self' 'nonce-${nonce}'`]);
+      }
+    });
+  });
+
+  test("the header a status page's render carries to the entry never reaches the browser", async () => {
+    await withPage(undefined, async (at) => {
+      const stored = await at("/");
+      const held = await fetch(stored.url, {
+        headers: { "if-none-match": stored.headers.get("etag") ?? "" },
+      });
+      const answers = [
+        await at("/"),
+        stored,
+        held,
+        await at("/subscriptions/some-token"),
+      ];
+      expect(
+        answers.map((response) => response.headers.has(statusPageHeader))
+      ).toEqual([false, false, false, false]);
     });
   });
 

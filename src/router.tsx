@@ -1,4 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
+import { getGlobalStartContext } from "@tanstack/react-start";
 import { RouteError } from "./routes/-error.tsx";
 import { ViewMissing } from "./routes/-missing.tsx";
 import { routeTree } from "./routeTree.gen.ts";
@@ -16,7 +17,19 @@ export function getRouter() {
     defaultPreload: "intent",
     routeTree,
     scrollRestoration: true,
+    // Every inline script and style element of the render carries the nonce its answer's policy names; the browser reads it back from the document.
+    ssr: { nonce: renderNonce() },
   });
+}
+
+/** The nonce the entry made for this render; nothing outside a request, as for the entry's own router that only matches paths, and nothing under `vite dev`, which sends no policy. */
+function renderNonce(): string | undefined {
+  try {
+    return getGlobalStartContext()?.nonce;
+  } catch {
+    // Start throws when no request is running.
+    return undefined;
+  }
 }
 
 declare module "@tanstack/react-router" {

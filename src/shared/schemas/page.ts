@@ -123,6 +123,9 @@ export const footerLinkSchema = z.object({
 });
 export type FooterLink = z.infer<typeof footerLinkSchema>;
 
+/** The header a render sets when it drew a status page, whose custom CSS may load fonts, images and stylesheets over https; the entry reads it to choose the page's policy and never sends it on. */
+export const statusPageHeader = "x-raaqeb-status-page";
+
 /** True when the custom CSS fits its cap and cannot end the style element it is written into. */
 export function isCustomCss(text: string): boolean {
   return (

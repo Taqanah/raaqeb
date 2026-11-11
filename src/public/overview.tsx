@@ -11,6 +11,7 @@
  * language; the page's status colours, brand colour and custom CSS come
  * last, so they win.
  */
+import { useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { barSpans, lastDaysUptime } from "@/shared/domain/bar.ts";
 import { type StatusNames, statusNamesIn } from "@/shared/domain/status.ts";
@@ -526,6 +527,8 @@ export function PageFrame({
   const { locale, t } = useMessages();
   useLiveRefresh(!still);
   const style = pageStyle(page);
+  // The render's nonce, which the answer's policy names; the browser hides it once parsed, so it differs in hydration alone.
+  const nonce = useRouter().options.ssr?.nonce;
   return (
     <div
       className="min-h-dvh bg-background text-foreground"
@@ -557,8 +560,12 @@ export function PageFrame({
         </PageProse>
       </main>
       {style === "" ? null : (
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: the page's own CSS, refused on save when it holds `</`
-        <style dangerouslySetInnerHTML={{ __html: style }} />
+        <style
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: the page's own CSS, refused on save when it holds `</`
+          dangerouslySetInnerHTML={{ __html: style }}
+          nonce={nonce}
+          suppressHydrationWarning
+        />
       )}
     </div>
   );

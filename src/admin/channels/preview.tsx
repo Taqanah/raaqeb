@@ -141,7 +141,15 @@ export function EmailFrame({
     element.addEventListener("load", measure);
     resized.observe(element);
     const theme = themeSchema.safeParse(document.documentElement.dataset.theme);
-    element.srcdoc = emailInTheme(html, theme.success ? theme.data : "system");
+    // The frame inherits the document's policy, so the email's style element carries the nonce the document publishes.
+    const nonce =
+      document
+        .querySelector('meta[property="csp-nonce"]')
+        ?.getAttribute("content") ?? "";
+    element.srcdoc = emailInTheme(
+      html,
+      theme.success ? theme.data : "system"
+    ).replace("<style>", `<style nonce="${nonce}">`);
     return () => {
       element.removeEventListener("load", measure);
       resized.disconnect();
