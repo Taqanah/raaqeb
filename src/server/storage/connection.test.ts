@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { SQL as BunSql } from "bun";
 import { getTableName, is, sql } from "drizzle-orm";
 import { PgTable } from "drizzle-orm/pg-core";
 import { SQLiteTable } from "drizzle-orm/sqlite-core";
@@ -7,10 +8,12 @@ import {
   closeConnection,
   executor,
   type PostgresPool,
+  poolRunner,
   postgresExecutor,
   tables,
 } from "./connection.ts";
-import { connectTo, scratchDatabase } from "./fixture.ts";
+import { NoAnswerError } from "./deadline.ts";
+import { connectTo, fixtureUrl, scratchDatabase } from "./fixture.ts";
 import { migrateDatabase } from "./migrate.ts";
 // biome-ignore lint/performance/noNamespaceImport: the test must see every table the schema file exports
 import * as postgresSchema from "./schema/postgres.ts";
@@ -200,7 +203,90 @@ describe("a statement the Postgres database does not answer", () => {
     const run = postgresExecutor(poolOf(quick), poolOf(quick), 30);
     expect(await run.rows(sql`SELECT 1`)).toEqual([]);
   });
+
+  test("a statement past the limit is cancelled, and one answered in time is not", async () => {
+    let cancelled = 0;
+    const cancellable = (rows: Promise<Iterable<never>>) =>
+      Object.assign(rows, {
+        cancel: () => {
+          cancelled += 1;
+        },
+      });
+    const database: { answers: boolean } = { answers: true };
+    const answers = () =>
+      cancellable(database.answers ? Promise.resolve([]) : silent());
+    const run = postgresExecutor(poolOf(answers), poolOf(answers), 30);
+    await run.rows(sql`SELECT 1`);
+    await run.run(sql`DELETE FROM x`);
+    expect(cancelled).toBe(0);
+    database.answers = false;
+    await expect(run.rows(sql`SELECT 1`)).rejects.toThrow("did not answer");
+    expect(cancelled).toBe(1);
+  });
 });
+
+const postgresUrl = fixtureUrl();
+
+describe.if(postgresUrl !== undefined)(
+  "statements stuck on a Postgres lock past the limit",
+  () => {
+    test("leave the server and the pool, so other reads answer, and the table reads again once the lock is gone", async () => {
+      const connection = await migrated();
+      if (connection.backend !== "postgres") {
+        throw new Error("the Postgres run opens Postgres");
+      }
+      const run = postgresExecutor(connection.db, poolRunner(connection), 300);
+      await run.run(sql`CREATE TABLE held (id integer)`);
+      // One client holds the lock on a reserved connection; the other watches the server.
+      const holder = new BunSql({ max: 2, url: postgresUrl ?? "" });
+      const lock = await holder.reserve();
+      const waiting = async () => {
+        const [row] = await holder<{ n: number }[]>`
+          SELECT count(*)::int AS n FROM pg_stat_activity
+          WHERE wait_event_type = 'Lock' AND query LIKE '%FROM "held"%'`;
+        return row?.n;
+      };
+      try {
+        await lock`BEGIN`;
+        await lock`LOCK TABLE held IN ACCESS EXCLUSIVE MODE`;
+        // Every connection of the pool of 4, and more, waits on the lock.
+        const stuck = Array.from({ length: 6 }, () =>
+          run.rows(sql`SELECT count(*) AS n FROM ${sql.identifier("held")}`)
+        );
+        const failures = await Promise.allSettled(stuck);
+        expect(
+          failures.map((failure) =>
+            failure.status === "rejected" &&
+            failure.reason instanceof NoAnswerError
+              ? "no answer"
+              : failure.status
+          )
+        ).toEqual(Array.from({ length: 6 }, () => "no answer"));
+        // A cancel reaches the server on a connection of its own, within milliseconds; a second covers a loaded machine.
+        const deadline = Date.now() + 1000;
+        let left = await waiting();
+        while (left !== 0 && Date.now() < deadline) {
+          // biome-ignore lint/performance/noAwaitInLoops: each read waits for the one before
+          await Bun.sleep(50);
+          left = await waiting();
+        }
+        expect(left).toBe(0);
+        // Past the silent window, a read that needs no lock gets a connection and answers.
+        await Bun.sleep(320);
+        expect(await run.rows(sql`SELECT 1 AS one`)).toEqual([{ one: 1 }]);
+        await lock`ROLLBACK`;
+        expect(
+          await run.rows(
+            sql`SELECT count(*)::int AS n FROM ${sql.identifier("held")}`
+          )
+        ).toEqual([{ n: 0 }]);
+      } finally {
+        lock.release();
+        await holder.close();
+      }
+    });
+  }
+);
 
 /** Each export of a module by its name, sorted by name. */
 const exportsOf = (module: object) =>

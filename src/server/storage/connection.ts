@@ -58,11 +58,14 @@ export interface Executor {
   transaction: <T>(work: (tx: Executor) => Promise<T>) => Promise<T>;
 }
 
+/** A statement sent to Postgres: its rows, and on the pool a way to stop it on the server. */
+export type PendingRows<T> = PromiseLike<Iterable<T>> & {
+  cancel?: () => unknown;
+};
+
 /** What a Postgres query runs on: the pool or a transaction inside it. */
 export interface PostgresRunner {
-  execute: <T extends Record<string, unknown>>(
-    query: SQL
-  ) => Promise<Iterable<T>>;
+  execute: <T extends Record<string, unknown>>(query: SQL) => PendingRows<T>;
 }
 
 /** The pool as the executor uses it: a runner that also opens a transaction. */
@@ -74,7 +77,17 @@ export function executor(connection: Connection): Executor {
   if (connection.backend === "sqlite") {
     return sqliteExecutor(connection.db);
   }
-  return postgresExecutor(connection.db, connection.db, answerLimitMs);
+  return postgresExecutor(connection.db, poolRunner(connection), answerLimitMs);
+}
+
+/** The runner for statements on the pool, outside a transaction: Drizzle compiles each one and Bun's client runs it, so the query object that can stop it on the server stays in hand. Drizzle's own `execute` hides it behind a promise of its own. */
+export function poolRunner({ client, db }: PostgresConnection): PostgresRunner {
+  return {
+    execute: (query) => {
+      const { params, sql: text } = db.execute(query).getQuery();
+      return client.unsafe(text, params);
+    },
+  };
 }
 
 /**
@@ -128,17 +141,22 @@ export function postgresExecutor(
 ): Executor {
   // A database that missed one answer is treated as down for one more limit, so a request fails at once instead of waiting again for each of its reads; the first statement after it asks again.
   let silentUntil = 0;
-  const answered = async <T>(start: () => Promise<T>): Promise<T> => {
+  const answered = async <T>(
+    start: () => PendingRows<T>
+  ): Promise<Iterable<T>> => {
     if (limitMs === undefined) {
       return await start();
     }
     if (Date.now() < silentUntil) {
       throw new NoAnswerError(limitMs);
     }
+    const pending = start();
     try {
-      return await withinLimit(start(), limitMs);
+      return await withinLimit(pending, limitMs);
     } catch (thrown) {
       if (thrown instanceof NoAnswerError) {
+        // A statement left waiting (on a lock, a slow plan) would hold its pool connection, and the reads Bun queues behind it, until the server answers.
+        pending.cancel?.();
         silentUntil = Date.now() + limitMs;
       }
       throw thrown;
