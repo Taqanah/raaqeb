@@ -135,6 +135,8 @@ export function compileArgs(target: Target, outfile: string): string[] {
     `--target=${target.bun}`,
     "--root=.",
     "--no-compile-autoload-bunfig",
+    // Runs only the code inside the binary: no eval, no new Function, no written file, no BUN_OPTIONS preload. Zod falls back from its compiled parsers.
+    "--compile-exec-argv=--disallow-code-generation-from-strings=strict",
     // Bun compiles for development unless told, which bundles React's development build.
     '--define=process.env.NODE_ENV="production"',
     // Minified, the binary measured 4 to 7 MB less RSS in one run each.

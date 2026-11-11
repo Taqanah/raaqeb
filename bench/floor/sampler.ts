@@ -1,6 +1,7 @@
 /**
  * The inside view: loaded with `--preload` when the harness
- * starts the container, never part of the product tree. With
+ * starts a stand-in, never part of the product tree. A shipped binary runs
+ * only its own code and refuses the preload, so its runs have no inside view. With
  * `RAAQEB_BENCH_SAMPLE_MS` set it writes one JSON line to standard output
  * at that interval, carrying the process's RSS and JavaScriptCore's heap
  * size; RSS minus the heap tells native memory from a JavaScript leak.

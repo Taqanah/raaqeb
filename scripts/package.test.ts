@@ -78,6 +78,16 @@ describe("a minified binary", () => {
   });
 });
 
+describe("a binary that runs only its own code", () => {
+  test("every binary refuses code generated from strings and files outside it", () => {
+    for (const target of targets) {
+      expect(compileArgs(target, "out")).toContain(
+        "--compile-exec-argv=--disallow-code-generation-from-strings=strict"
+      );
+    }
+  });
+});
+
 describe("the checksums file", () => {
   test("one line per file in name order, as sha256sum -c reads it", () => {
     expect(

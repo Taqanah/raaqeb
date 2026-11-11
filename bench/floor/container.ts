@@ -1,6 +1,6 @@
 /**
  * The containers of one run, as `docker` arguments: the install
- * at `--memory=240m --cpus=1` with the sampler preloaded, the synthetic
+ * at `--memory=240m --cpus=1` (the stand-in with the sampler preloaded), the synthetic
  * target, and `oha` holding one arrival rate against the install, all on a
  * network of their own. With `--stand-in` the install runs in a stand-in:
  * the pinned Bun image running this checkout's built entry over its build,
@@ -133,6 +133,16 @@ export function appArgs(options: AppOptions): string[] {
           "/app",
         ]
       : [];
+  // A shipped binary runs only its own code and refuses a preload, so only the stand-in can carry the sampler.
+  const sampler =
+    image === undefined
+      ? [
+          "-e",
+          `RAAQEB_BENCH_SAMPLE_MS=${sampleEveryMs}`,
+          "-e",
+          `BUN_OPTIONS=--preload ${benchMount}/sampler.ts`,
+        ]
+      : [];
   const entry =
     image === undefined
       ? [standInImage, "bun", "dist/server/server.js", "serve"]
@@ -159,10 +169,7 @@ export function appArgs(options: AppOptions): string[] {
     "RAAQEB_HOST=0.0.0.0",
     "-e",
     `RAAQEB_PORT=${appPort}`,
-    "-e",
-    `RAAQEB_BENCH_SAMPLE_MS=${sampleEveryMs}`,
-    "-e",
-    `BUN_OPTIONS=--preload ${benchMount}/sampler.ts`,
+    ...sampler,
     ...Object.entries(options.env).flatMap(([name, value]) => [
       "-e",
       `${name}=${value}`,

@@ -192,13 +192,21 @@ describe("the install's container", () => {
     expect(env).toContain(`RAAQEB_SECRET_KEY=${"k".repeat(43)}`);
   });
 
-  test("a shipped image keeps the 240 MB and one CPU limits and the sampler", () => {
+  test("a shipped image keeps the 240 MB and one CPU limits", () => {
     const args = appArgs({ ...standIn, image: "ghcr.io/example/raaqeb:1.0.0" });
     expect(args).toContain("--memory=240m");
     expect(args).toContain("--cpus=1");
-    expect(valuesOf(args, "-e")).toContain(
-      "BUN_OPTIONS=--preload /bench/sampler.ts"
+  });
+
+  test("a shipped image runs without the sampler, since its binary refuses a preload and would not start", () => {
+    const env = valuesOf(
+      appArgs({ ...standIn, image: "ghcr.io/example/raaqeb:1.0.0" }),
+      "-e"
     );
+    expect(env.filter((value) => value.startsWith("BUN_OPTIONS="))).toEqual([]);
+    expect(
+      env.filter((value) => value.startsWith("RAAQEB_BENCH_SAMPLE_MS="))
+    ).toEqual([]);
   });
 });
 
