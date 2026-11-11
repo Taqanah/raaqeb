@@ -253,7 +253,7 @@ export function reasonForDatabaseError(
       reason: "connection_failed",
     });
   }
-  // MySQL 8 asks for its RSA key to sign in over a plain connection and Bun refuses, so the password was never tried.
+  // MySQL 8 asks for its RSA key to check a password it has not cached, or any sha256_password one, over a plain connection; Bun refuses, so the password was never tried and a wrong one reads the same.
   if (code === "ERR_MYSQL_PUBLIC_KEY_RETRIEVAL_NOT_ALLOWED") {
     return mapped("tls_required", { reason: "tls_required" });
   }

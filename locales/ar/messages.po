@@ -1424,7 +1424,7 @@ msgstr "يقول Docker إنّ الحاوية معتلّة"
 
 #. js-lingui-explicit-id
 msgid "reason_tls_required"
-msgstr "لا يقبل الخادوم تسجيل الدخول إلا عبر اتصال معمّى، فأضف ⁦?sslmode=require⁩ إلى رابط الاتصال"
+msgstr "طلب الخادوم اتصالًا معمّى ليتحقق من كلمة المرور، فأضف ⁦?sslmode=require⁩ إلى رابط الاتصال"
 
 #. js-lingui-explicit-id
 msgid "reason_smtp_no_greeting"
@@ -1644,7 +1644,7 @@ msgstr "يضم كلمة المرور، فيحفظه راقب معمّى ولا �
 
 #. js-lingui-explicit-id
 msgid "monitor_field_connection_url_mysql_hint"
-msgstr "مع طريقة تسجيل الدخول الافتراضية في MySQL 8 لا يسجّل راقب الدخول إلا عبر اتصال معمّى، فأضف ⁦?sslmode=require⁩ إلى الرابط."
+msgstr "قد يرفض MySQL 8 الاتصال غير المعمّى بحسب تذكّره كلمة المرور من تسجيل دخول سابق معمّى، فأضف ⁦?sslmode=require⁩ إلى الرابط."
 
 #. js-lingui-explicit-id
 msgid "monitor_field_query"

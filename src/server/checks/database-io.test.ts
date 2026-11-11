@@ -369,13 +369,151 @@ describe.if(servers.mysql !== undefined)("a MySQL 8 server", () => {
     );
     expect(outcome.check.reason).toBe(reasons.certificate_invalid);
   });
-
-  test("signs in over a plain connection once a sign-in over TLS has left the password in the server's cache", async () => {
-    expect((await check("mysql", servers.mysql ?? "")).check.result).toBe("up");
-    const outcome = await check("mysql", withOptions(servers.mysql ?? "", ""));
-    expect(outcome.check.result).toBe("up");
-  });
 });
+
+/**
+ * MySQL 8's `caching_sha2_password` signs in without the RSA key only when
+ * the server holds the user's password in its cache, which a full sign-in
+ * fills and a restart empties; `sha256_password` never has a cache. A user
+ * created here is cold until a test signs in as it, which stands for a
+ * server just restarted. The compose server's own user stays warm: its
+ * healthcheck signs in over TLS every two seconds.
+ */
+describe.if(servers.mysql !== undefined)(
+  "a MySQL 8 server and a connection URL that asks for no TLS",
+  () => {
+    const created: string[] = [];
+    const rootUrl = (() => {
+      const parsed = new URL(servers.mysql ?? "mysql://x@y");
+      parsed.username = "root";
+      parsed.password = "raaqeb";
+      return parsed.toString();
+    })();
+
+    /** Runs one statement as the server's root over TLS. */
+    async function asRoot(statement: string): Promise<void> {
+      const root = liveDrivers.sql({
+        connectionTimeout: 5,
+        idleTimeout: 0,
+        max: 1,
+        maxLifetime: 0,
+        password: () => "raaqeb",
+        url: rootUrl,
+      });
+      try {
+        await root.unsafe(statement);
+      } finally {
+        await root.close({ timeout: 1 });
+      }
+    }
+
+    /** A user nothing has signed in as since the server started, with its URL. */
+    async function freshUser(
+      plugin: "caching_sha2_password" | "sha256_password",
+      password: string,
+      options = ""
+    ): Promise<string> {
+      const user = `r747_${crypto.randomUUID().slice(0, 8)}`;
+      await asRoot(
+        `CREATE USER '${user}'@'%' IDENTIFIED WITH ${plugin} BY '${password}'`
+      );
+      created.push(user);
+      await asRoot(`GRANT SELECT ON *.* TO '${user}'@'%'`);
+      const parsed = new URL(servers.mysql ?? "");
+      parsed.username = user;
+      parsed.password = password;
+      parsed.search = options;
+      return parsed.toString();
+    }
+
+    const tls = "sslmode=require";
+
+    afterAll(async () => {
+      await Promise.all(
+        created.map((user) => asRoot(`DROP USER '${user}'@'%'`))
+      );
+    });
+
+    test("refuses a password the server has not cached as TLS required, the password never tried", async () => {
+      const url = await freshUser("caching_sha2_password", "cold-password");
+      const outcome = await check("mysql", url);
+      expect(outcome.check).toMatchObject({
+        reason: reasons.tls_required,
+        result: "down",
+      });
+      expect(outcome.detail?.params).toEqual({ reason: "tls_required" });
+    });
+
+    test("is TLS required again on every check while the server's cache stays empty", async () => {
+      const url = await freshUser("caching_sha2_password", "cold-password");
+      const first = await check("mysql", url);
+      const second = await check("mysql", url);
+      expect([first.check.reason, second.check.reason]).toEqual([
+        reasons.tls_required,
+        reasons.tls_required,
+      ]);
+    });
+
+    test("signs in once a sign-in over TLS has left the password in the server's cache", async () => {
+      const url = await freshUser("caching_sha2_password", "warm-password");
+      expect((await check("mysql", withOptions(url, tls))).check.result).toBe(
+        "up"
+      );
+      expect((await check("mysql", url)).check.result).toBe("up");
+    });
+
+    test("reads a wrong password as TLS required, since the server asks for the key before it says no", async () => {
+      const url = await freshUser("caching_sha2_password", "right-password");
+      const wrong = new URL(url);
+      wrong.password = "wrong-password";
+      expect((await check("mysql", wrong.toString())).check.reason).toBe(
+        reasons.tls_required
+      );
+      await check("mysql", withOptions(url, tls));
+      expect((await check("mysql", wrong.toString())).check.reason).toBe(
+        reasons.tls_required
+      );
+    });
+
+    test("treats a password of 20 bytes or more like a short one, cold and warm", async () => {
+      const long = "a-password-of-more-than-twenty-bytes";
+      expect(long.length).toBeGreaterThan(20);
+      const url = await freshUser("caching_sha2_password", long);
+      expect((await check("mysql", url)).check.reason).toBe(
+        reasons.tls_required
+      );
+      expect((await check("mysql", withOptions(url, tls))).check.result).toBe(
+        "up"
+      );
+      expect((await check("mysql", url)).check.result).toBe("up");
+    });
+
+    test("refuses a sha256_password user as TLS required on every check, even after a sign-in over TLS", async () => {
+      const url = await freshUser("sha256_password", "sha-password");
+      expect((await check("mysql", url)).check.reason).toBe(
+        reasons.tls_required
+      );
+      expect((await check("mysql", withOptions(url, tls))).check.result).toBe(
+        "up"
+      );
+      expect((await check("mysql", url)).check.reason).toBe(
+        reasons.tls_required
+      );
+    });
+
+    test("signs a cold caching_sha2_password user in over TLS, and names a wrong password as auth failed", async () => {
+      const url = await freshUser("caching_sha2_password", "tls-password");
+      const wrong = new URL(withOptions(url, tls));
+      wrong.password = "wrong-password";
+      expect((await check("mysql", wrong.toString())).check.reason).toBe(
+        reasons.auth_failed
+      );
+      expect((await check("mysql", withOptions(url, tls))).check.result).toBe(
+        "up"
+      );
+    });
+  }
+);
 
 describe.if(servers.postgres !== undefined)(
   "a Postgres URL without a password",

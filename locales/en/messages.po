@@ -1424,7 +1424,7 @@ msgstr "The container's health check reports it unhealthy"
 
 #. js-lingui-explicit-id
 msgid "reason_tls_required"
-msgstr "The server signs in only over an encrypted connection; add ?sslmode=require to the URL"
+msgstr "The server asked for an encrypted connection to verify the password; add ?sslmode=require to the URL"
 
 #. js-lingui-explicit-id
 msgid "reason_smtp_no_greeting"
@@ -1644,7 +1644,7 @@ msgstr "It holds the password, so Raaqeb stores it encrypted and never shows it 
 
 #. js-lingui-explicit-id
 msgid "monitor_field_connection_url_mysql_hint"
-msgstr "With MySQL 8's default sign-in, Raaqeb signs in only over an encrypted connection, so add ?sslmode=require to the URL."
+msgstr "MySQL 8 may refuse a plain connection, depending on whether it remembers the password from an earlier encrypted sign-in, so add ?sslmode=require to the URL."
 
 #. js-lingui-explicit-id
 msgid "monitor_field_query"
