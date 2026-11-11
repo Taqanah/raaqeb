@@ -1,3 +1,9 @@
+<p align="center">
+  <b>العربية</b>
+  &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+  <a href="README_EN.md">English</a>
+</p>
+
 <div dir="rtl">
 
 # راقب
@@ -28,7 +34,7 @@ docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data
 
 ## ما يراقبه
 
-مواقع HTTP ومنافذ TCP وسجلات DNS وقواعد بيانات Postgres وMySQL وRedis وحاويات Docker ونبضات المهام المجدولة وانتهاء صلاحية شهادات TLS.
+مواقع HTTP ومنافذ TCP وسجلات DNS وقواعد بيانات Postgres وMySQL وRedis وحاويات Docker ونبضات المهام المجدولة وانتهاء صلاحية شهادات TLS وانتهاء تسجيل النطاق. ويستطيع Prometheus وGrafana قراءة حالة كل مراقبة من العنوان `/metrics`، وهو مطفأ حتى تفعّله. وتُطبع تقارير التوفّر خلال شهر أو ربع سنة أو نطاق من الأيام قياسًا إلى هدف توفّر، أو تُنزَّل بصيغة CSV.
 
 ويمكن فحص المراقبة من أكثر من مكان بتشغيل راقب نفسه مسبارًا على خادم آخر، فلا يُفتح الانقطاع إلا حين يتفق عليه العدد الذي تختاره من المواقع.
 
@@ -44,48 +50,3 @@ docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data
 - [الرخصة](LICENSE.md)
 
 </div>
-
----
-
-# Raaqeb
-
-Raaqeb (راقب, "keep watch") watches your sites, servers and databases and publishes a status page for your visitors. A monitoring tool that runs on your own server, Arabic first.
-
-<img src=".github/status-page-en.png" alt="A status page in Raaqeb" width="480">
-
-## Install
-
-On a Linux server, or a Mac with Apple Silicon, as root:
-
-```sh
-curl -fsSL https://raaqeb.dev/install.sh | sudo sh
-```
-
-On Windows, in PowerShell as Administrator:
-
-```powershell
-irm https://raaqeb.dev/install.ps1 | iex
-```
-
-Or with Docker:
-
-```sh
-docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0
-```
-
-## What it watches
-
-HTTP sites, TCP ports, DNS records, Postgres, MySQL and Redis databases, Docker containers, the heartbeats of scheduled jobs, TLS certificate expiry and domain registration expiry. Prometheus and Grafana can read the state of every monitor from an opt-in `/metrics` endpoint. Uptime reports over a month, a quarter or any range of days, against an uptime target, print or download as CSV.
-
-A monitor can be checked from more than one place by running Raaqeb itself as a probe on another server, so an outage opens only when as many locations as you choose agree.
-
-## Size
-
-It runs on 1 vCPU and 240 MB of RAM as one binary, with no outside service. In the last benchmark it held 800 monitors checked every 20 seconds at a memory peak of 107 MB, and the Linux binary is about 96 MB.
-
-## More
-
-- [Docs](https://raaqeb.dev/en/docs)
-- [Security policy](SECURITY.md)
-- [Contributing](CONTRIBUTING.md)
-- [License](LICENSE.md)
