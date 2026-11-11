@@ -38,7 +38,7 @@ These are not Raaqeb's own settings: the runtime reads them at each request, so 
 
 A proxy for HTTP is no help to a check that does not speak HTTP, and the install does not tunnel them:
 
-- TCP, DNS and database monitors (Postgres, MySQL and Redis) connect directly, as does the DNS resolver they name.
+- TCP, DNS and database monitors (Postgres, MySQL, Redis and MongoDB) connect directly, as does the DNS resolver they name.
 - A Docker monitor asks the daemon directly: it is on your own host or network, so its address is never sent to the proxy.
 - Email, the email channel and the sign-in mail, is sent over SMTP straight to the server you chose.
 - The certificate expiry option reads the certificate over its own TLS connection. On a network with no way out but the proxy it cannot read one, and the monitor's own checks still run.

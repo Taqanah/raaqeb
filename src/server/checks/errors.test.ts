@@ -391,6 +391,86 @@ describe("the reason of a database driver's error", () => {
     }
   });
 
+  test("a MongoDB sign-in the server refused, or one the client could not trust, is auth failed with its code", () => {
+    const cases: [Error, string][] = [
+      [driver("ERR_MONGODB_AUTHENTICATION_FAILED", "18"), "18"],
+      [driver("ERR_MONGODB_AUTHENTICATION_FAILED", "334"), "334"],
+      [
+        driver("ERR_MONGODB_SASL_SIGNATURE_MISMATCH"),
+        "ERR_MONGODB_SASL_SIGNATURE_MISMATCH",
+      ],
+      [
+        driver("ERR_MONGODB_SASL_NONCE_MISMATCH"),
+        "ERR_MONGODB_SASL_NONCE_MISMATCH",
+      ],
+      [
+        driver("ERR_MONGODB_SASL_ITERATIONS_TOO_FEW"),
+        "ERR_MONGODB_SASL_ITERATIONS_TOO_FEW",
+      ],
+      [
+        driver("ERR_MONGODB_SASL_ITERATIONS_TOO_MANY"),
+        "ERR_MONGODB_SASL_ITERATIONS_TOO_MANY",
+      ],
+      [
+        driver("ERR_MONGODB_SASL_INVALID_MESSAGE"),
+        "ERR_MONGODB_SASL_INVALID_MESSAGE",
+      ],
+      [
+        driver("ERR_MONGODB_SASL_SERVER_ERROR"),
+        "ERR_MONGODB_SASL_SERVER_ERROR",
+      ],
+      [
+        driver("ERR_MONGODB_SASLPREP_PROHIBITED"),
+        "ERR_MONGODB_SASLPREP_PROHIBITED",
+      ],
+    ];
+    for (const [error, code] of cases) {
+      expect(reasonForDatabaseError(error, server)).toMatchObject({
+        params: { code, reason: "auth_failed" },
+        reason: "auth_failed",
+      });
+    }
+  });
+
+  test("a MongoDB command the server refused, or one off the read-only list, is query failed with its code", () => {
+    expect(
+      reasonForDatabaseError(driver("ERR_MONGODB_SERVER_ERROR", "13"), server)
+    ).toMatchObject({ params: { code: "13", reason: "query_failed" } });
+    expect(
+      reasonForDatabaseError(driver("ERR_MONGODB_INVALID_COMMAND"), server)
+    ).toMatchObject({
+      params: { code: "ERR_MONGODB_INVALID_COMMAND", reason: "query_failed" },
+    });
+    expect(
+      reasonForDatabaseError(driver("ERR_MONGODB_COMMAND_NOT_ALLOWED"), server)
+    ).toMatchObject({
+      params: {
+        code: "ERR_MONGODB_COMMAND_NOT_ALLOWED",
+        reason: "query_failed",
+      },
+    });
+  });
+
+  test("an SRV name with no record is DNS failed with the name", () => {
+    expect(reasonForDatabaseError(driver("ENODATA"), server)).toMatchObject({
+      params: { host: "db.example.test", reason: "dns_failed" },
+    });
+  });
+
+  test("a MongoDB server that closed a plain connection before its hello is TLS required", () => {
+    expect(
+      reasonForDatabaseError(driver("ERR_MONGODB_TLS_REQUIRED"), server)
+    ).toMatchObject({ params: { reason: "tls_required" } });
+  });
+
+  test("an SRV answer the client refused is connection failed with its code, a reply it could not read too", () => {
+    for (const code of ["ERR_MONGODB_SRV_INVALID", "ERR_MONGODB_PROTOCOL"]) {
+      expect(reasonForDatabaseError(driver(code), server)).toMatchObject({
+        params: { code, reason: "connection_failed" },
+      });
+    }
+  });
+
   test("a certificate that names another host is an invalid certificate with the driver's code", () => {
     expect(
       reasonForDatabaseError(

@@ -11,6 +11,12 @@
 import { z } from "zod";
 import { isCronExpression } from "@/shared/domain/cron.ts";
 import { parseJsonPath } from "@/shared/domain/jsonpath.ts";
+import {
+  defaultMongoCommand,
+  mongoPort,
+  mongoUrlFits,
+  readOnlyCommandOf,
+} from "@/shared/domain/mongodb.ts";
 import type { ChannelChoice } from "./channel.ts";
 import type { CaptureHeader, CheckResult } from "./check.ts";
 import {
@@ -33,6 +39,7 @@ export const checkTypes = [
   "postgres",
   "mysql",
   "redis",
+  "mongodb",
   "docker",
   "heartbeat",
 ] as const;
@@ -40,7 +47,12 @@ export const checkTypeSchema = z.enum(checkTypes);
 export type CheckType = z.infer<typeof checkTypeSchema>;
 
 /** The check types of a database monitor (CONTEXT.md "Database monitor"). */
-export const databaseCheckTypes = ["postgres", "mysql", "redis"] as const;
+export const databaseCheckTypes = [
+  "postgres",
+  "mysql",
+  "redis",
+  "mongodb",
+] as const;
 export type DatabaseCheckType = (typeof databaseCheckTypes)[number];
 
 /** Whether the check type is a database monitor's. */
@@ -323,6 +335,7 @@ export const connectionUrlSchemes: Readonly<
   mysql: ["mysql:", "mariadb:"],
   postgres: ["postgres:", "postgresql:"],
   redis: ["redis:", "rediss:"],
+  mongodb: ["mongodb:", "mongodb+srv:"],
 };
 
 /** The port a connection URL without one reaches, by check type. */
@@ -330,6 +343,7 @@ export const databasePorts: Readonly<Record<DatabaseCheckType, number>> = {
   mysql: 3306,
   postgres: 5432,
   redis: 6379,
+  mongodb: mongoPort,
 };
 
 export const queryMaxLength = 4000;
@@ -339,6 +353,7 @@ export const defaultQueries: Readonly<Record<DatabaseCheckType, string>> = {
   mysql: "SELECT 1",
   postgres: "SELECT 1",
   redis: "PING",
+  mongodb: defaultMongoCommand,
 };
 
 /** Whether a connection URL fits the check type: one of its schemes, and a host to reach. */
@@ -346,6 +361,9 @@ export function connectionUrlFits(
   type: DatabaseCheckType,
   url: string
 ): boolean {
+  if (type === "mongodb") {
+    return mongoUrlFits(url);
+  }
   if (!URL.canParse(url)) {
     return false;
   }
@@ -372,7 +390,7 @@ const databaseConfigShape = {
   address: z.string().min(1).max(connectionUrlMaxLength).optional(),
   /** The first value the query answers must equal this text; absent accepts any answer. */
   expected: z.string().trim().min(1).max(observedMaxLength).optional(),
-  /** SQL, or a Redis command and its arguments; absent runs `SELECT 1` or `PING`. */
+  /** SQL, a Redis command and its arguments, or a MongoDB command as JSON; absent runs `SELECT 1`, `PING` or `{"ping": 1}`. */
   query: z.string().trim().min(1).max(queryMaxLength).optional(),
 };
 export const postgresConfigSchema = z.object({
@@ -387,10 +405,20 @@ export const redisConfigSchema = z.object({
   ...databaseConfigShape,
   type: z.literal("redis"),
 });
+/** A MongoDB monitor's command is one that only reads, wherever the config comes from: the form, the API or an import. */
+export const mongodbConfigSchema = z.object({
+  ...databaseConfigShape,
+  query: databaseConfigShape.query.refine(
+    (query) => query === undefined || readOnlyCommandOf(query) !== undefined,
+    "a MongoDB command that only reads"
+  ),
+  type: z.literal("mongodb"),
+});
 export type DatabaseConfig =
   | z.infer<typeof postgresConfigSchema>
   | z.infer<typeof mysqlConfigSchema>
-  | z.infer<typeof redisConfigSchema>;
+  | z.infer<typeof redisConfigSchema>
+  | z.infer<typeof mongodbConfigSchema>;
 
 /** Where a Docker monitor reaches the daemon when the form says nothing else. */
 export const dockerSocketPath = "/var/run/docker.sock";
@@ -453,6 +481,7 @@ export const monitorConfigSchema = z.discriminatedUnion("type", [
   postgresConfigSchema,
   mysqlConfigSchema,
   redisConfigSchema,
+  mongodbConfigSchema,
   dockerConfigSchema,
   heartbeatConfigSchema,
 ]);
@@ -480,6 +509,7 @@ export const probeCheckTypes = [
   "postgres",
   "mysql",
   "redis",
+  "mongodb",
 ] as const satisfies readonly CheckType[];
 
 export function checkableByProbe(type: CheckType): boolean {

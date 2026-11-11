@@ -1299,6 +1299,10 @@ msgid "monitor_type_redis"
 msgstr "Redis"
 
 #. js-lingui-explicit-id
+msgid "monitor_type_mongodb"
+msgstr "MongoDB"
+
+#. js-lingui-explicit-id
 msgid "monitor_type_database"
 msgstr "قاعدة بيانات"
 
@@ -1427,6 +1431,10 @@ msgid "reason_tls_required"
 msgstr "طلب الخادوم اتصالًا معمّى ليتحقق من كلمة المرور، فأضف ⁦?sslmode=require⁩ إلى رابط الاتصال"
 
 #. js-lingui-explicit-id
+msgid "reason_tls_required_mongodb"
+msgstr "لا يقبل الخادوم إلا اتصالًا معمّى، فأضف ⁦?tls=true⁩ إلى رابط الاتصال"
+
+#. js-lingui-explicit-id
 msgid "reason_smtp_no_greeting"
 msgstr "لم يرسل خادوم SMTP تحيته خلال المهلة"
 
@@ -1513,6 +1521,14 @@ msgstr "أدخل رابطًا كاملًا يبدأ بـ mysql أو mariadb وي
 #. js-lingui-explicit-id
 msgid "monitor_error_connection_url_redis"
 msgstr "أدخل رابطًا كاملًا يبدأ بـ redis أو rediss ويسمّي المضيف."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_connection_url_mongodb"
+msgstr "أدخل رابطًا كاملًا يبدأ بـ mongodb أو mongodb+srv ويسمّي مضيفيه، ولا يسجّل الدخول إلا بـ SCRAM إن سجّله، ولا يسمّي ملف شهادة ولا وكيلًا."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_command_mongodb"
+msgstr "أدخل مستند JSON واحدًا مفتاحه الأول أمر للقراءة فقط، مثل ⁦{\"dbStats\": 1}⁩."
 
 #. js-lingui-explicit-id
 msgid "monitor_error_docker_endpoint"
@@ -1659,8 +1675,12 @@ msgid "monitor_field_query_hint"
 msgstr "اختياري. يشغّله راقب كما كتبته، فاجعله للقراءة فقط وسجّل الدخول بمستخدم لا يملك إلا القراءة."
 
 #. js-lingui-explicit-id
+msgid "monitor_field_command_mongodb_hint"
+msgstr "اختياري. مستند JSON واحد مفتاحه الأول أمر للقراءة فقط: ping أو hello أو buildInfo أو serverStatus أو hostInfo أو connectionStatus أو dbStats أو collStats أو count أو distinct أو listDatabases أو replSetGetStatus."
+
+#. js-lingui-explicit-id
 msgid "monitor_field_answer_expected_hint"
-msgstr "اختيارية. ينجح الفحص حين تساوي أول قيمة في الإجابة هذا النص: أول عمود من أول صف، أو ردّ Redis."
+msgstr "اختيارية. ينجح الفحص حين تساوي أول قيمة في الإجابة هذا النص: أول عمود من أول صف، أو ردّ Redis، أو أول حقل من ردّ MongoDB."
 
 #. js-lingui-explicit-id
 msgid "monitor_field_docker_endpoint"

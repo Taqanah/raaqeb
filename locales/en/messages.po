@@ -1299,6 +1299,10 @@ msgid "monitor_type_redis"
 msgstr "Redis"
 
 #. js-lingui-explicit-id
+msgid "monitor_type_mongodb"
+msgstr "MongoDB"
+
+#. js-lingui-explicit-id
 msgid "monitor_type_database"
 msgstr "Database"
 
@@ -1427,6 +1431,10 @@ msgid "reason_tls_required"
 msgstr "The server asked for an encrypted connection to verify the password; add ?sslmode=require to the URL"
 
 #. js-lingui-explicit-id
+msgid "reason_tls_required_mongodb"
+msgstr "The server accepts only an encrypted connection; add ?tls=true to the URL"
+
+#. js-lingui-explicit-id
 msgid "reason_smtp_no_greeting"
 msgstr "The SMTP server sent no greeting in time"
 
@@ -1513,6 +1521,14 @@ msgstr "Enter a full URL starting with mysql or mariadb that names the host."
 #. js-lingui-explicit-id
 msgid "monitor_error_connection_url_redis"
 msgstr "Enter a full URL starting with redis or rediss that names the host."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_connection_url_mongodb"
+msgstr "Enter a full URL starting with mongodb or mongodb+srv that names its hosts, signs in with SCRAM if at all, and names no certificate file or proxy."
+
+#. js-lingui-explicit-id
+msgid "monitor_error_command_mongodb"
+msgstr "Enter one JSON document whose first key is a read-only command, such as {\"dbStats\": 1}."
 
 #. js-lingui-explicit-id
 msgid "monitor_error_docker_endpoint"
@@ -1659,8 +1675,12 @@ msgid "monitor_field_query_hint"
 msgstr "Optional. Raaqeb runs it as written, so keep it read-only and sign in as a user that can only read."
 
 #. js-lingui-explicit-id
+msgid "monitor_field_command_mongodb_hint"
+msgstr "Optional. One JSON document whose first key is a read-only command: ping, hello, buildInfo, serverStatus, hostInfo, connectionStatus, dbStats, collStats, count, distinct, listDatabases or replSetGetStatus."
+
+#. js-lingui-explicit-id
 msgid "monitor_field_answer_expected_hint"
-msgstr "Optional. The check is up when the first value of the answer equals this text: the first column of the first row, or the Redis reply."
+msgstr "Optional. The check is up when the first value of the answer equals this text: the first column of the first row, the Redis reply, or the first field of the MongoDB reply."
 
 #. js-lingui-explicit-id
 msgid "monitor_field_docker_endpoint"

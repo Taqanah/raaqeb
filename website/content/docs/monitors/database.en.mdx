@@ -1,19 +1,19 @@
 ---
 title: Database
-description: Watch a Postgres, MySQL or Redis server with a database monitor that signs in, runs a query and checks the answer.
+description: Watch a Postgres, MySQL, Redis or MongoDB server with a database monitor that signs in, runs a query or a command and checks the answer.
 ---
 
-A database monitor connects to a Postgres, MySQL or Redis server with its connection URL, signs in, runs `SELECT 1`, `PING` or your own query, and closes the connection. When you name an expected value, the first value of the answer must equal it. Use it when a server that accepts connections is not enough: a refused sign-in, a missing database or a failing query all show as down.
+A database monitor connects to a Postgres, MySQL, Redis or MongoDB server with its connection URL, signs in, runs `SELECT 1`, `PING`, `{"ping": 1}` or your own query or command, and closes the connection. When you name an expected value, the first value of the answer must equal it. Use it when a server that accepts connections is not enough: a refused sign-in, a missing database or a failing query all show as down.
 
 ## Add a database monitor
 
-Select **Add monitor**, choose **Database** as the **Check type**, then choose the **Database type**: **Postgres**, **MySQL** or **Redis**. The fields every check type shares are on [Monitors](/en/docs/monitors).
+Select **Add monitor**, choose **Database** as the **Check type**, then choose the **Database type**: **Postgres**, **MySQL**, **Redis** or **MongoDB**. The fields every check type shares are on [Monitors](/en/docs/monitors).
 
 | Field | What it means | Default and limits |
 |---|---|---|
 | **Database type** | Which server the URL reaches. | Postgres. |
 | **Connection URL** | The server's address with the user and password, such as `postgres://user:password@db.example.com:5432/app`. | Required, up to 2048 characters. Must name a host. See the schemes below. |
-| **Query** (Postgres, MySQL) or **Command** (Redis) | What each check runs. | Empty, which runs `SELECT 1`, or `PING` for Redis. Up to 4000 characters. |
+| **Query** (Postgres, MySQL) or **Command** (Redis, MongoDB) | What each check runs. | Empty, which runs `SELECT 1`, `PING` for Redis or `{"ping": 1}` for MongoDB. Up to 4000 characters. A MongoDB command must be one that only reads, see [MongoDB](#mongodb). |
 | **Expected value** | Text the first value of the answer must equal. | Empty, which accepts any answer. Up to 200 characters. |
 
 The connection URL must start with one of its type's schemes:
@@ -23,6 +23,7 @@ The connection URL must start with one of its type's schemes:
 | Postgres | `postgres://`, `postgresql://` | `5432` |
 | MySQL | `mysql://`, `mariadb://` | `3306` |
 | Redis | `redis://`, `rediss://` for TLS | `6379` |
+| MongoDB | `mongodb://`, `mongodb+srv://` | `27017` |
 
 A Redis URL's path may only be a database number, such as `/0`.
 
@@ -42,6 +43,20 @@ The answer is compared as text: a string as it is, a date in ISO 8601, a number 
 
 MySQL 8's default sign-in (`caching_sha2_password`) needs an encrypted connection unless the server remembers the password from an earlier encrypted sign-in. With a URL that has no `sslmode`, Raaqeb signs in while the server remembers it, and the check goes down after the server restarts until some client signs in encrypted. A `sha256_password` user is always down. Add `?sslmode=require` to the URL, for example `mysql://user:password@db.example.com:3306/app?sslmode=require`, and the check no longer depends on the server's memory. Without it, the check can be down with "The server asked for an encrypted connection to verify the password; add ?sslmode=require to the URL". A wrong password over a plain connection reports this too, because the server asks for the encrypted connection before it refuses the password.
 
+### MongoDB
+
+Raaqeb speaks MongoDB's protocol itself, with no driver to install. The connection URL follows MongoDB's own connection string:
+
+- **Several hosts.** `mongodb://user:password@db1.example.com:27017,db2.example.com:27017/app?replicaSet=rs0` names a replica set's members. Each check says hello to five of them at once, and to the next five only if those fail, and asks the first that answers, so the monitor is up while any member answers. A member that is not the primary still answers a read. To watch one member alone, give one host and `directConnection=true`.
+- **SRV.** `mongodb+srv://user:password@cluster0.example.mongodb.net/app` looks the hosts up in DNS, as MongoDB Atlas gives its URLs. TLS is then on unless the URL says `tls=false`. Every host the SRV record names must sit under the URL's domain, and a TXT record may add `authSource`, `replicaSet` and `loadBalanced` only.
+- **Sign-in.** A URL with a user signs in with SCRAM-SHA-256, or SCRAM-SHA-1 when the server lists no SHA-256 for that user, on the `authSource` database, else the URL's database, else `admin`. `authMechanism` may name `SCRAM-SHA-256` or `SCRAM-SHA-1`; any other mechanism is refused when you save. Raaqeb checks the server's own proof that it knows the password before it runs the command.
+- **TLS.** `tls=true` (or the older `ssl=true`) encrypts the connection and verifies the server's certificate and host name. `tlsAllowInvalidHostnames=true` accepts a certificate for another name, and `tlsAllowInvalidCertificates=true` or `tlsInsecure=true` accepts any certificate.
+- **Refused options.** `tlsCAFile`, `tlsCertificateKeyFile`, `tlsCertificateKeyFilePassword`, `tlsCRLFile` and `proxyHost` name files or a proxy on the server Raaqeb runs on, so a URL with any of them is refused when you save. Every other option, such as `retryWrites` or `appName`, is accepted and has no effect on the check.
+
+The command is one JSON document whose first key is a command that only reads: `ping`, `hello`, `buildInfo`, `serverStatus`, `hostInfo`, `connectionStatus`, `dbStats`, `collStats`, `count`, `distinct`, `listDatabases` or `replSetGetStatus`. A command that writes, and `find` or `aggregate`, are refused when you save. Values may use Extended JSON, such as `{"count": "orders", "query": {"_id": {"$oid": "5f1d7c3e9a1b2c3d4e5f6a7b"}}}`. The command runs on the URL's database, or `admin` when it names none.
+
+The first value of the answer is the first field of the reply, shown as relaxed Extended JSON: `ping` answers `1`, `buildInfo` the server's version such as `8.0.34`, and `dbStats` the database's name. A field that is an ObjectId or a date compares as its Extended JSON, such as `{"$oid":"5f1d7c3e9a1b2c3d4e5f6a7b"}`.
+
 ## Up, degraded and down
 
 Each check opens a new connection. The response time runs from connecting to the answer, capped by the timeout; one timer covers the connection, the sign-in and the query. At the timeout, a query still running is stopped on a Postgres server and the connection closes at once. MySQL runs a query it has received to its end, so keep a MySQL check's query quick.
@@ -55,11 +70,13 @@ The reasons a failed check reports:
 | Reason | What happened |
 |---|---|
 | Timed out | Connecting, signing in and the query took longer than the timeout together. |
-| Connection refused | Nothing accepted the connection. Shows the URL's host and port. For Postgres and MySQL, a host name that does not resolve reports this too. |
-| Connection failed | The driver gave up on the connection. The code is kept. For Redis, a refused port and a host that does not resolve both report this. A server at its connection limit reports this too, with `53300` (Postgres) or `1040` (MySQL). |
-| The server refused the sign-in | A wrong user or password, or a database that does not exist. Shows the server's code, such as `28P01` or `1045`. |
-| The server refused the query | The server signed in and returned an error for the query. Shows its code, such as `42703` or `1054`. |
+| Connection refused | Nothing accepted the connection. Shows the URL's host and port, the first host of a MongoDB seed list. For Postgres and MySQL, a host name that does not resolve reports this too. |
+| DNS lookup failed | A MongoDB host name, or the SRV name of a `mongodb+srv` URL, does not resolve. |
+| Connection failed | The driver gave up on the connection. The code is kept. For Redis, a refused port and a host that does not resolve both report this. For MongoDB, `ERR_MONGODB_SRV_INVALID` is an SRV or TXT record the specification refuses, and `ERR_MONGODB_PROTOCOL` a reply Raaqeb cannot read or one past 1 MB. A server at its connection limit reports this too, with `53300` (Postgres) or `1040` (MySQL). |
+| The server refused the sign-in | A wrong user or password, or a database that does not exist. Shows the server's code, such as `28P01`, `1045` or MongoDB's `18`, or Raaqeb's own when the server's proof did not match the password, such as `ERR_MONGODB_SASL_SIGNATURE_MISMATCH`. |
+| The server refused the query | The server signed in and returned an error for the query. Shows its code, such as `42703`, `1054` or MongoDB's `13` for a command the user may not run. A MongoDB command off the read-only list shows `ERR_MONGODB_COMMAND_NOT_ALLOWED`, and one whose Extended JSON does not encode `ERR_MONGODB_INVALID_COMMAND`. |
 | The server asked for an encrypted connection to verify the password; add ?sslmode=require to the URL | MySQL 8, see above. |
+| The server accepts only an encrypted connection; add ?tls=true to the URL | MongoDB: the server closed a plain connection before it answered, and then completed a TLS handshake on a second connection. A server that closes a plain connection and speaks no TLS, such as a load balancer with no backend or one at its connection limit, is "Connection failed" with `ConnectionClosed` instead. |
 | Certificate invalid | The server's TLS certificate did not verify. |
 | An assertion failed | The first value does not equal the expected value. Shows both, up to 200 characters, with the URL and password masked. |
 | Unknown error | Anything else, including a saved URL the install key can no longer open. The raw error text is kept beside it, with the URL and password masked. |
@@ -71,6 +88,8 @@ To check that a Postgres primary has not become a replica, set **Database type**
 After a failover leaves this server as a replica, the check is down with "An assertion failed", expected `false`, observed `true`. If someone changes the `monitor` user's password, it is down with "The server refused the sign-in" and the code `28P01`.
 
 For Redis, the default `PING` answers `PONG`. To check a key instead, set **Command** to `GET maintenance:flag` and **Expected value** to `off`.
+
+For MongoDB, to check that no order waits in a queue, set **Command** to `{"count": "orders", "query": {"status": "queued"}}` and **Expected value** to `0`.
 
 ## Related pages
 

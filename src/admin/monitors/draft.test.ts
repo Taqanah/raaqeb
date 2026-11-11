@@ -229,6 +229,7 @@ describe("a database monitor's fields", () => {
       ["postgres", "monitor_error_connection_url_postgres"],
       ["mysql", "monitor_error_connection_url_mysql"],
       ["redis", "monitor_error_connection_url_redis"],
+      ["mongodb", "monitor_error_connection_url_mongodb"],
     ] as const;
     for (const [type, id] of cases) {
       const wrong = type === "postgres" ? "mysql://db.example.test" : url;
@@ -237,6 +238,21 @@ describe("a database monitor's fields", () => {
           ?.id
       ).toBe(id);
     }
+  });
+
+  test("a MongoDB command off the read-only list is refused naming the rule", () => {
+    const mongodb = {
+      connectionUrl: "mongodb://u:p@db.example.test",
+      type: "mongodb",
+    } as const;
+    expect(
+      errorsOf(database({ ...mongodb, query: '{"drop": "orders"}' }))[
+        "config.query"
+      ]?.id
+    ).toBe("monitor_error_command_mongodb");
+    expect(inputOf(database({ ...mongodb, query: '{"dbStats": 1}' })).ok).toBe(
+      true
+    );
   });
 
   test("a URL longer than a connection URL may be is refused as too long, not as another scheme", () => {

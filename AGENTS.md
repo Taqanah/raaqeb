@@ -66,8 +66,8 @@ Tests sit in `<name>.test.ts` beside `<name>.ts`. Integration tests use a real S
 
 ```
 bun run gate                    catalog check, lint, typecheck, unit and integration tests on SQLite
-docker compose up -d            a local Postgres, Mailpit for the email channel, MySQL and Redis for the database monitors
-bun run test:postgres           the same integration files against Postgres, Mailpit, MySQL and Redis; a missing service fails the run
+docker compose up -d            a local Postgres, Mailpit for the email channel, MySQL, Redis and two MongoDB servers for the database monitors
+bun run test:postgres           the same integration files against Postgres, Mailpit, MySQL, Redis and MongoDB; a missing service fails the run
 bun run e2e:install && bun run e2e    Playwright specs: the full suite once when your work is done, only the spec of your red test while working
 ```
 

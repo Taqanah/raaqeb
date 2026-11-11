@@ -125,7 +125,7 @@ _Avoid_: probe (that is a process checking from elsewhere), check (for the confi
 
 **Check type**:
 Arabic: نوع الفحص
-The way a monitor watches its target: HTTP, TCP, DNS, Postgres, MySQL, Redis, Docker, heartbeat, and later others.
+The way a monitor watches its target: HTTP, TCP, DNS, Postgres, MySQL, Redis, MongoDB, Docker, heartbeat, and later others.
 _Avoid_: monitor type, probe type
 
 **Check**:
@@ -170,7 +170,7 @@ _Avoid_: logging level, debug mode
 
 **Database monitor**:
 Arabic: مراقبة قاعدة بيانات
-A monitor of check type Postgres, MySQL or Redis. Each check opens a connection with its connection URL, signs in, runs `SELECT 1`, `PING` or the operator's own query, and closes it; when the monitor names an expected value, the first value the query answers must be that text. The connection URL holds the password, so it is a credential: sealed with the install key, kept on edit when left out, never shown again.
+A monitor of check type Postgres, MySQL, Redis or MongoDB. Each check opens a connection with its connection URL, signs in, runs `SELECT 1`, `PING`, `ping` or the operator's own query, and closes it; a MongoDB monitor's own query is a command that only reads; when the monitor names an expected value, the first value the query answers must be that text. The connection URL holds the password, so it is a credential: sealed with the install key, kept on edit when left out, never shown again.
 _Avoid_: DB check, datastore monitor, connection string (say connection URL)
 
 **Container monitor**:

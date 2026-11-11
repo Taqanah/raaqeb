@@ -32,7 +32,7 @@ docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data
 
 ## What it watches
 
-HTTP sites, TCP ports, DNS records, Postgres, MySQL and Redis databases, Docker containers, the heartbeats of scheduled jobs, TLS certificate expiry and domain registration expiry. Prometheus and Grafana can read the state of every monitor from an opt-in `/metrics` endpoint. Uptime reports over a month, a quarter or any range of days, against an uptime target, print or download as CSV.
+HTTP sites, TCP ports, DNS records, Postgres, MySQL, Redis and MongoDB databases, Docker containers, the heartbeats of scheduled jobs, TLS certificate expiry and domain registration expiry. Prometheus and Grafana can read the state of every monitor from an opt-in `/metrics` endpoint. Uptime reports over a month, a quarter or any range of days, against an uptime target, print or download as CSV.
 
 A monitor can be checked from more than one place by running Raaqeb itself as a probe on another server, so an outage opens only when as many locations as you choose agree.
 

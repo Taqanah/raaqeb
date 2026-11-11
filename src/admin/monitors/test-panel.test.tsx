@@ -31,6 +31,7 @@ describe("the test panel", () => {
           onRun={ignore}
           state={{
             assertions: [{ kind: "response_time_under", ms: 3000 }],
+            checkType: "http",
             kind: "done",
             test: {
               bytes: 0,
@@ -56,6 +57,7 @@ describe("the test panel", () => {
         onRun={ignore}
         state={{
           assertions: [{ codes: ["2xx"], kind: "status" }],
+          checkType: "http",
           kind: "done",
           test: {
             bytes: 0,
@@ -79,6 +81,7 @@ describe("the test panel", () => {
         onRun={ignore}
         state={{
           assertions: [{ codes: ["2xx"], kind: "status" }],
+          checkType: "http",
           kind: "done",
           test: {
             bytes: 0,
@@ -103,6 +106,7 @@ describe("the test panel", () => {
         onRun={ignore}
         state={{
           assertions: [{ codes: ["2xx"], kind: "status" }],
+          checkType: "http",
           kind: "done",
           test: {
             bytes: 4,
@@ -131,6 +135,7 @@ describe("the test panel", () => {
           onRun={ignore}
           state={{
             assertions: [{ codes: ["2xx"], kind: "status" }],
+            checkType: "http",
             kind: "done",
             test: {
               bytes: 5000,
@@ -165,7 +170,12 @@ describe("the test panel", () => {
       "ar",
       <TestPanel
         onRun={ignore}
-        state={{ assertions: [], kind: "done", test: dnsTest }}
+        state={{
+          assertions: [],
+          checkType: "http",
+          kind: "done",
+          test: dnsTest,
+        }}
       />
     );
     expect(html).toContain('data-slot="test-records"');
@@ -180,6 +190,7 @@ describe("the test panel", () => {
         onRun={ignore}
         state={{
           assertions: [],
+          checkType: "http",
           kind: "done",
           test: {
             ...dnsTest,
@@ -211,6 +222,7 @@ describe("the test panel", () => {
         onRun={ignore}
         state={{
           assertions: [],
+          checkType: "http",
           kind: "done",
           test: { ...dnsTest, address: "2001:db8::7", records: undefined },
         }}
@@ -228,6 +240,7 @@ describe("the test panel", () => {
         onRun={ignore}
         state={{
           assertions: [],
+          checkType: "http",
           kind: "done",
           test: { ...dnsTest, records: [] },
         }}
@@ -243,6 +256,7 @@ describe("the test panel", () => {
         onRun={ignore}
         state={{
           assertions: [],
+          checkType: "http",
           kind: "done",
           test: { ...dnsTest, answer: "ok", records: undefined },
         }}
@@ -256,6 +270,7 @@ describe("the test panel", () => {
         onRun={ignore}
         state={{
           assertions: [],
+          checkType: "http",
           kind: "done",
           test: { ...dnsTest, records: undefined },
         }}

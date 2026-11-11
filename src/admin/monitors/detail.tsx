@@ -44,7 +44,11 @@ import {
   type SpanChecksPage,
   type SpanChecksResult,
 } from "@/shared/schemas/detail.ts";
-import type { CaptureMode, Monitor } from "@/shared/schemas/monitor.ts";
+import type {
+  CaptureMode,
+  CheckType,
+  Monitor,
+} from "@/shared/schemas/monitor.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
 import { reasonMessageId, reasonName } from "@/shared/schemas/reason.ts";
 import type { DomainRegistration } from "@/shared/schemas/registration.ts";
@@ -244,12 +248,14 @@ function MonitorDays({
   readonly onZoom: ((span: ChartSpan) => void) | undefined;
 }): ReactNode {
   const { t } = useMessages();
+  const checkType = detail.monitor.config.type;
   const footer = useCallback(
     (day: MonitorDay, close: () => void) => {
       // Nothing to zoom to without a chart, or in the first minutes of today.
       const span = onZoom && dayZoom(Date.parse(day.date), detail.now);
       return span || day.outages.length > 0 ? (
         <DayFooter
+          checkType={checkType}
           clock={clock}
           close={close}
           day={day}
@@ -259,7 +265,7 @@ function MonitorDays({
         />
       ) : null;
     },
-    [clock, detail.now, onZoom]
+    [checkType, clock, detail.now, onZoom]
   );
   return (
     <Card data-slot="monitor-days">
@@ -282,6 +288,7 @@ function MonitorDays({
 
 /** A day card's foot on the detail: the day's outages, then the button that zooms the chart to the day and closes the card. */
 function DayFooter({
+  checkType,
   clock,
   close,
   day,
@@ -289,6 +296,8 @@ function DayFooter({
   onZoom,
   span,
 }: {
+  /** The monitor's check type, which a reason's words can depend on. */
+  readonly checkType: CheckType;
   readonly clock: TimeOptions;
   readonly close: () => void;
   readonly day: MonitorDay;
@@ -330,7 +339,12 @@ function DayFooter({
                       })
                     : formatDuration(locale, outage.endedAt - outage.startedAt)}
                   {" · "}
-                  {t(reasonMessageId(reasonName(outage.reason) ?? "unknown"))}
+                  {t(
+                    reasonMessageId(
+                      reasonName(outage.reason) ?? "unknown",
+                      checkType
+                    )
+                  )}
                 </span>
               </span>
             </li>
@@ -652,6 +666,7 @@ function RecentChecks({
                       : "off"
                   }
                   check={check}
+                  checkType={detail.monitor.config.type}
                   clock={clock}
                   key={check.startedAt}
                   now={detail.now}
@@ -755,12 +770,14 @@ type RecordState =
 function CheckRow({
   captureMode,
   check,
+  checkType,
   clock,
   now,
   openRecord,
   span,
 }: {
   readonly captureMode: CaptureMode;
+  readonly checkType: CheckType;
   readonly check: Check;
   readonly clock: TimeOptions;
   readonly now: number;
@@ -805,7 +822,7 @@ function CheckRow({
           <Badge variant={check.result}>{t(resultWords[check.result])}</Badge>
         </TableCell>
         <TableCell>
-          {t(reasonMessageId(reason))}
+          {t(reasonMessageId(reason, checkType))}
           {check.statusCode === undefined ? null : (
             <Token className="ms-2">{String(check.statusCode)}</Token>
           )}
@@ -916,6 +933,7 @@ function OutageList({
             <TableBody>
               {detail.outages.map((outage) => (
                 <OutageRow
+                  checkType={detail.monitor.config.type}
                   clock={clock}
                   key={outage.startedAt}
                   now={detail.now}
@@ -932,10 +950,12 @@ function OutageList({
 
 /** "Detected at" and the span as the resolution: an outage starts at the first failed check and ends at the first good one. */
 function OutageRow({
+  checkType,
   clock,
   now,
   outage,
 }: {
+  readonly checkType: CheckType;
   readonly clock: TimeOptions;
   readonly now: number;
   readonly outage: Outage;
@@ -978,7 +998,7 @@ function OutageRow({
         )}
       </TableCell>
       <TableCell>
-        {t(reasonMessageId(reasonName(outage.reason) ?? "unknown"))}
+        {t(reasonMessageId(reasonName(outage.reason) ?? "unknown", checkType))}
       </TableCell>
     </TableRow>
   );

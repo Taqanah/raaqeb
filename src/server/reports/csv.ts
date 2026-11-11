@@ -92,7 +92,10 @@ function outageCells(words: CsvWords, outage: ReportOutage): string[] {
 
 /** The message id of an outage's reason. */
 function reasonId(outage: ReportOutage): MessageId {
-  return reasonMessageId(reasonName(outage.reason) ?? "unknown");
+  return reasonMessageId(
+    reasonName(outage.reason) ?? "unknown",
+    outage.checkType
+  );
 }
 
 /** The file: the subject's line and its members', then a blank line and the worst outages. */

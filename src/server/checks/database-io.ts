@@ -1,12 +1,14 @@
 /**
  * The database check's live I/O: one connection per check over Bun's
  * own drivers, `Bun.SQL` for Postgres and MySQL and `Bun.RedisClient` for
- * Redis, opened with the connection URL, asked one query, closed. The one
+ * Redis, or Raaqeb's own MongoDB client (mongodb.ts), opened with the
+ * connection URL, asked one query, closed. The one
  * file outside `server/storage` that opens `Bun.SQL`: here it reaches a
  * monitored server, never Raaqeb's own database (scripts/import-rules.test.ts).
  * Each driver is a parameter, so a test can hand in a fake.
  */
 import { type DatabaseQuery, passwordOf } from "./database.ts";
+import { liveMongoPlatform, type MongoQuery, openMongo } from "./mongodb.ts";
 
 /** A query the driver started: awaited for its rows, or cancelled when the check gives up on it. */
 export interface SqlQuery extends PromiseLike<unknown> {
@@ -48,6 +50,11 @@ export interface RedisOptions {
 }
 
 export interface DatabaseDrivers {
+  /** Raaqeb's own MongoDB client (mongodb.ts): a connection that answers one command and closes. */
+  readonly mongodb: (query: MongoQuery) => {
+    readonly ask: () => Promise<unknown>;
+    readonly close: () => void;
+  };
   readonly redis: (url: string, options: RedisOptions) => RedisConnection;
   readonly sql: (options: SqlOptions) => SqlClient;
 }
@@ -57,7 +64,14 @@ export async function queryOnce(
   query: DatabaseQuery,
   drivers: DatabaseDrivers
 ): Promise<unknown> {
-  const connection = open(query, drivers);
+  const connection =
+    query.type === "mongodb"
+      ? drivers.mongodb({
+          command: query.query,
+          timeoutMs: query.timeoutMs,
+          url: query.url,
+        })
+      : open(query, drivers);
   let timer: Timer | undefined;
   // The drivers bound the connect alone; one timer bounds the sign-in and the query too.
   const timeout = new Promise<never>((_, reject) => {
@@ -149,6 +163,7 @@ export function firstValue(rows: unknown): unknown {
 
 /** Bun's drivers. */
 export const liveDrivers: DatabaseDrivers = {
+  mongodb: (query) => openMongo(query, liveMongoPlatform),
   redis: (url, options) => new Bun.RedisClient(url, options),
   sql: (options) => new Bun.SQL(options),
 };

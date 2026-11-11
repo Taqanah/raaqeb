@@ -421,7 +421,12 @@ function OutageRow({
         <Minutes ms={outage.downtimeMs} />
       </TableCell>
       <TableCell label={t("monitor_check_reason")}>
-        {t(reasonMessageId(reasonName(outage.reason) ?? "unknown"))}
+        {t(
+          reasonMessageId(
+            reasonName(outage.reason) ?? "unknown",
+            outage.checkType
+          )
+        )}
       </TableCell>
       <TableCell
         className="sm:whitespace-nowrap"

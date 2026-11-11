@@ -32,8 +32,18 @@ describe("a database monitor's connection URL", () => {
     expect(target("mysql")).toContain(askForTls);
   });
 
-  test("for Postgres or Redis says nothing of MySQL", () => {
+  test("for Postgres, Redis or MongoDB says nothing of MySQL", () => {
     expect(target("postgres")).not.toContain(askForTls);
     expect(target("redis")).not.toContain(askForTls);
+    expect(target("mongodb")).not.toContain(askForTls);
+  });
+});
+
+describe("a MongoDB monitor's command", () => {
+  test("is named a command, says which commands it may run and suggests ping", () => {
+    const html = target("mongodb");
+    expect(html).toContain(i18n._("monitor_field_command"));
+    expect(html).toContain("replSetGetStatus");
+    expect(html).toContain('placeholder="{&quot;ping&quot;: 1}"');
   });
 });

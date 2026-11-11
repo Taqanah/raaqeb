@@ -74,6 +74,29 @@ describe("the reason dictionary", () => {
     }
   });
 
+  test("TLS required tells a MongoDB monitor to add ?tls=true and any other to add ?sslmode=require, under one reason code", async () => {
+    expect(reasonMessageId("tls_required", "mongodb")).toBe(
+      "reason_tls_required_mongodb"
+    );
+    expect(reasonMessageId("tls_required", "mysql")).toBe(
+      "reason_tls_required"
+    );
+    expect(reasonMessageId("timeout", "mongodb")).toBe("reason_timeout");
+    const root = `${import.meta.dir}/../../..`;
+    for (const locale of ["ar", "en"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: two catalogs
+      const text = await Bun.file(
+        `${root}/locales/${locale}/messages.po`
+      ).text();
+      const message = (id: string) =>
+        text.split(`msgid "${id}"\nmsgstr "`)[1]?.split('"\n')[0] ?? "";
+      expect(message("reason_tls_required_mongodb")).toContain("?tls=true");
+      expect(message("reason_tls_required_mongodb")).not.toContain("sslmode");
+      expect(message("reason_tls_required")).toContain("?sslmode=require");
+      expect(message("reason_tls_required")).not.toContain("tls=true");
+    }
+  });
+
   test("the parameters of a reason parse from the failure detail's JSON", () => {
     expect(
       reasonParamsSchema.parse({

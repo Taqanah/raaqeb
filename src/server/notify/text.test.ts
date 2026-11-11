@@ -82,6 +82,24 @@ describe("a notification as text", () => {
     ).toBe(false);
   });
 
+  test("a MongoDB monitor down for TLS required is told to add ?tls=true, never MySQL's fix", async () => {
+    const text = await notificationText(
+      sent(
+        {
+          data: {
+            monitor: { ...monitor, checkType: "mongodb" },
+            reason: "tls_required",
+          },
+          timestamp,
+          type: "monitor.down",
+        },
+        "en"
+      )
+    );
+    expect(text.lines.join("\n")).toContain("?tls=true");
+    expect(text.lines.join("\n")).not.toContain("sslmode");
+  });
+
   test("a probe gone silent names the probe and when it was last heard; reporting again says so", async () => {
     const silent: NotificationPayload = {
       data: {

@@ -60,3 +60,34 @@ services:
       interval: 2s
       timeout: 2s
       retries: 15
+  # MongoDB signs in with SCRAM and takes TLS or a plain connection, with the
+  # self-signed test certificate; mongodb-init/ adds a user per mechanism.
+  mongo:
+    image: mongo:8.0.34
+    entrypoint: ["sh", "-c", "cat /fixtures/tls-cert.pem /fixtures/tls-key.pem > /tmp/server.pem && exec docker-entrypoint.sh \"$$@\"", "--"]
+    command: ["mongod", "--tlsMode", "preferTLS", "--tlsCertificateKeyFile", "/tmp/server.pem", "--tlsCAFile", "/fixtures/tls-cert.pem", "--tlsAllowConnectionsWithoutCertificates", "--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: raaqeb
+      MONGO_INITDB_ROOT_PASSWORD: raaqeb
+    ports:
+      - "127.0.0.1:27017:27017"
+    tmpfs:
+      - /data/db
+    volumes:
+      - ./src/server/checks/fixtures:/fixtures:ro
+      - ./src/server/checks/fixtures/mongodb-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  # A MongoDB with no sign-in that takes TLS alone, so a plain connection is refused.
+  mongo-tls:
+    image: mongo:8.0.34
+    entrypoint: ["sh", "-c", "cat /fixtures/tls-cert.pem /fixtures/tls-key.pem > /tmp/server.pem && exec mongod --bind_ip_all --port 27018 --tlsMode requireTLS --tlsCertificateKeyFile /tmp/server.pem --tlsCAFile /fixtures/tls-cert.pem --tlsAllowConnectionsWithoutCertificates --wiredTigerCacheSizeGB 0.25"]
+    ports:
+      - "127.0.0.1:27018:27018"
+    tmpfs:
+      - /data/db
+    volumes:
+      - ./src/server/checks/fixtures:/fixtures:ro

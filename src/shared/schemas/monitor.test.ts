@@ -725,13 +725,18 @@ describe("the selection bar's change", () => {
 describe("a database monitor", () => {
   const postgres = { ...base, config: { type: "postgres" } } as const;
 
-  test("Postgres, MySQL and Redis are check types of a database monitor, and no other is", () => {
-    expect(databaseCheckTypes).toEqual(["postgres", "mysql", "redis"]);
+  test("Postgres, MySQL, Redis and MongoDB are check types of a database monitor, and no other is", () => {
+    expect(databaseCheckTypes).toEqual([
+      "postgres",
+      "mysql",
+      "redis",
+      "mongodb",
+    ]);
     for (const type of databaseCheckTypes) {
       expect(isDatabaseCheckType(type)).toBe(true);
       expect(monitorConfigSchema.safeParse({ type }).success).toBe(true);
     }
-    for (const type of ["http", "tcp", "dns", "heartbeat", "mongodb"]) {
+    for (const type of ["http", "tcp", "dns", "heartbeat", "mssql"]) {
       expect(isDatabaseCheckType(type)).toBe(false);
     }
   });
@@ -788,6 +793,60 @@ describe("a database monitor", () => {
     // No host: a socket path, or the environment's defaults, which could reach Raaqeb's own database.
     expect(connectionUrlFits("postgres", "postgres:///app")).toBe(false);
     expect(connectionUrlFits("postgres", "not a url")).toBe(false);
+  });
+
+  test("a MongoDB URL fits by the connection string specification, a seed list and an SRV name included", () => {
+    expect(
+      connectionUrlFits(
+        "mongodb",
+        "mongodb://u:p@a.example.test:27017,b.example.test:27017/admin?replicaSet=rs0"
+      )
+    ).toBe(true);
+    expect(
+      connectionUrlFits("mongodb", "mongodb+srv://u:p@cluster0.example.test/")
+    ).toBe(true);
+    expect(connectionUrlFits("mongodb", "postgres://db.example.test")).toBe(
+      false
+    );
+    expect(connectionUrlFits("postgres", "mongodb://db.example.test")).toBe(
+      false
+    );
+    expect(
+      connectionUrlFits("mongodb", "mongodb://u@h/?authMechanism=GSSAPI")
+    ).toBe(false);
+  });
+
+  test("a stored MongoDB config, as an import reads it, holds only a command that only reads", () => {
+    expect(
+      monitorConfigSchema.safeParse({ query: '{"ping": 1}', type: "mongodb" })
+        .success
+    ).toBe(true);
+    expect(
+      monitorConfigSchema.safeParse({ query: '{"drop": "x"}', type: "mongodb" })
+        .success
+    ).toBe(false);
+  });
+
+  test("a MongoDB command must name a command that only reads; another check type's query is free text", () => {
+    const mongodb = (query: string) =>
+      monitorInputSchema.safeParse({
+        ...base,
+        config: { query, type: "mongodb" },
+        credentials: { url: "mongodb://u:p@db.example.test" },
+      });
+    expect(mongodb('{"dbStats": 1}').success).toBe(true);
+    const refused = mongodb('{"drop": "orders"}');
+    expect(refused.success).toBe(false);
+    expect(refused.error?.issues.map((issue) => issue.path.join("."))).toEqual([
+      "config.query",
+    ]);
+    expect(
+      monitorInputSchema.safeParse({
+        ...base,
+        config: { query: "DROP TABLE orders", type: "postgres" },
+        credentials: { url: "postgres://u:p@db.example.test/app" },
+      }).success
+    ).toBe(true);
   });
 
   test("a Redis URL names its database by number or not at all, as Bun's client reads it", () => {

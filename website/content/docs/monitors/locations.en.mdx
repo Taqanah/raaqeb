@@ -40,7 +40,7 @@ The monitor form has a **Locations** section once the install has a probe:
 | **An outage opens when** | How many of its locations must see it down together. | One. |
 | **Share credentials with probes** | Sends the monitor's auth (an OAuth 2.0 client secret included), headers, client certificate key and connection URL to its probes. | Off. |
 
-A probe checks HTTP, TCP, DNS, Postgres, MySQL and Redis monitors. A Docker monitor asks the install's own daemon and a heartbeat monitor listens on the install, so both are checked from the main location.
+A probe checks HTTP, TCP, DNS, Postgres, MySQL, Redis and MongoDB monitors. A Docker monitor asks the install's own daemon and a heartbeat monitor listens on the install, so both are checked from the main location.
 
 A monitor's credentials stay on the install unless you switch on sharing. Without it, a probe sends an HTTP monitor's request with no auth, no custom headers and no client certificate key; a database monitor cannot be checked from a probe without it, since its connection URL is its credential.
 

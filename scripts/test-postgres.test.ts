@@ -112,6 +112,8 @@ describe("the Mailpit the Postgres run also needs", () => {
     const url = "postgres://raaqeb:raaqeb@localhost:5432/raaqeb";
     const all = {
       api: true,
+      mongodb: true,
+      mongodbTls: true,
       mysql: true,
       postgres: true,
       redis: true,
@@ -163,18 +165,24 @@ describe("the Mailpit the Postgres run also needs", () => {
   });
 });
 
-describe("the MySQL and Redis the database monitors' checks reach", () => {
+describe("the MySQL, Redis and MongoDB the database monitors' checks reach", () => {
   test("are the compose services unless the run names others", () => {
     expect(databaseServers({})).toEqual({
+      mongodb: "mongodb://raaqeb:raaqeb@127.0.0.1:27017/admin",
+      mongodbTls: "mongodb://127.0.0.1:27018",
       mysql: "mysql://raaqeb:raaqeb@127.0.0.1:3306/raaqeb?sslmode=require",
       redis: "redis://:raaqeb@127.0.0.1:6379",
     });
     expect(
       databaseServers({
+        RAAQEB_TEST_MONGODB_TLS_URL: "mongodb://tls.example:27020",
+        RAAQEB_TEST_MONGODB_URL: "mongodb://u:p@mongo.example:27019",
         RAAQEB_TEST_MYSQL_URL: "mysql://u:p@db.example:3307/x",
         RAAQEB_TEST_REDIS_URL: "redis://cache.example:6380",
       })
     ).toEqual({
+      mongodb: "mongodb://u:p@mongo.example:27019",
+      mongodbTls: "mongodb://tls.example:27020",
       mysql: "mysql://u:p@db.example:3307/x",
       redis: "redis://cache.example:6380",
     });
@@ -184,6 +192,8 @@ describe("the MySQL and Redis the database monitors' checks reach", () => {
     const url = "postgres://raaqeb:raaqeb@localhost:5432/raaqeb";
     const all = {
       api: true,
+      mongodb: true,
+      mongodbTls: true,
       mysql: true,
       postgres: true,
       redis: true,
@@ -194,6 +204,12 @@ describe("the MySQL and Redis the database monitors' checks reach", () => {
     ]);
     expect(missingServices(url, { ...all, redis: false })).toEqual([
       databaseServerMissingMessage("RAAQEB_TEST_REDIS_URL"),
+    ]);
+    expect(missingServices(url, { ...all, mongodb: false })).toEqual([
+      databaseServerMissingMessage("RAAQEB_TEST_MONGODB_URL"),
+    ]);
+    expect(missingServices(url, { ...all, mongodbTls: false })).toEqual([
+      databaseServerMissingMessage("RAAQEB_TEST_MONGODB_TLS_URL"),
     ]);
   });
 
@@ -211,5 +227,6 @@ describe("the MySQL and Redis the database monitors' checks reach", () => {
     expect(portOf("mariadb://db/raaqeb")).toBe(3306);
     expect(portOf("rediss://cache")).toBe(6379);
     expect(portOf("postgresql://db/raaqeb")).toBe(5432);
+    expect(portOf("mongodb://mongo/admin")).toBe(27_017);
   });
 });

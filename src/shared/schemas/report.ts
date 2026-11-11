@@ -7,6 +7,7 @@
 import { z } from "zod";
 import type { DisplayedUptime } from "@/shared/domain/uptime.ts";
 import type { Content } from "./content.ts";
+import type { CheckType } from "./monitor.ts";
 import type { ReasonCode } from "./reason.ts";
 
 export const reportSubjectKinds = [
@@ -108,6 +109,8 @@ export interface ReportLine {
 /** One outage as a report lists it. */
 export interface ReportOutage {
   readonly acknowledgedAt: number | undefined;
+  /** Its monitor's check type, which a reason's words can depend on; none for a monitor no longer listed. */
+  readonly checkType: CheckType | undefined;
   /** Its time inside the range, less what maintenance covered. */
   readonly downtimeMs: number;
   readonly endedAt: number | undefined;

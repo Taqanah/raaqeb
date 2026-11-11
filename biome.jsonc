@@ -12,6 +12,8 @@
       "!!prototypes",
       "!!bench/**/results",
       "!src/routeTree.gen.ts",
+      // MongoDB's specification tests, copied unchanged.
+      "!!src/server/checks/mongodb-spec/**/*.json",
       "!website/routeTree.gen.ts",
       "!locales/message-ids.ts"
     ]

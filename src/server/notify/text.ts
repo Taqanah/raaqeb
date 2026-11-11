@@ -124,7 +124,7 @@ export async function notificationText(
     lines.push(
       line(
         "channel_line_reason",
-        messages._(reasonMessageId(notification.data.reason))
+        messages._(reasonMessageId(notification.data.reason, monitor.checkType))
       )
     );
   }

@@ -22,6 +22,8 @@ export interface MappedError {
 
 const dnsCodes = new Set([
   "ENOTFOUND",
+  // A name with no record of the type asked, as a MongoDB SRV lookup can answer.
+  "ENODATA",
   "EAI_AGAIN",
   "EAI_NONAME",
   "EAI_FAIL",
@@ -243,7 +245,9 @@ export function reasonForDatabaseError(
     });
   }
   const serverCode =
-    code === "ERR_POSTGRES_SERVER_ERROR" || code === "ERR_MYSQL_SERVER_ERROR"
+    code === "ERR_POSTGRES_SERVER_ERROR" ||
+    code === "ERR_MYSQL_SERVER_ERROR" ||
+    code === "ERR_MONGODB_SERVER_ERROR"
       ? errno
       : code;
   // A server at its connection limit refuses the connection before any query runs.
@@ -253,9 +257,9 @@ export function reasonForDatabaseError(
       reason: "connection_failed",
     });
   }
-  // MySQL 8 asks for its RSA key to check a password it has not cached, or any sha256_password one, over a plain connection; Bun refuses, so the password was never tried and a wrong one reads the same.
-  if (code === "ERR_MYSQL_PUBLIC_KEY_RETRIEVAL_NOT_ALLOWED") {
-    return mapped("tls_required", { reason: "tls_required" });
+  const signIn = signInReason(code, errno);
+  if (signIn !== undefined) {
+    return mapped(signIn.reason, signIn);
   }
   if (serverCode !== undefined && signInRefusals.has(serverCode)) {
     return mapped("auth_failed", { code: serverCode, reason: "auth_failed" });
@@ -269,11 +273,29 @@ export function reasonForDatabaseError(
   if (
     code?.startsWith("ERR_POSTGRES_") ||
     code?.startsWith("ERR_MYSQL_") ||
-    code?.startsWith("ERR_REDIS_")
+    code?.startsWith("ERR_REDIS_") ||
+    code?.startsWith("ERR_MONGODB_")
   ) {
     return mapped("connection_failed", { code, reason: "connection_failed" });
   }
   return reasonForError(error, target, credentials);
+}
+
+/** The reasons a driver's own code names before the server's code is read: TLS required, or a MongoDB sign-in the server refused under any code of its own. */
+function signInReason(
+  code: string | undefined,
+  errno: string | undefined
+): ReasonParams | undefined {
+  // MySQL 8 asks for its RSA key to check a password it has not cached, or any sha256_password one, over a plain connection; Bun refuses, so the password was never tried and a wrong one reads the same. MongoDB that takes TLS alone closes a plain connection before it answers.
+  if (
+    code === "ERR_MYSQL_PUBLIC_KEY_RETRIEVAL_NOT_ALLOWED" ||
+    code === "ERR_MONGODB_TLS_REQUIRED"
+  ) {
+    return { reason: "tls_required" };
+  }
+  if (code === "ERR_MONGODB_AUTHENTICATION_FAILED") {
+    return { code: errno ?? code, reason: "auth_failed" };
+  }
 }
 
 /** A connection Bun's drivers gave up on in their own time. */
@@ -291,6 +313,9 @@ const databaseRefusedCodes = new Set([
 const connectionLimitCodes = new Set(["53300", "1040"]);
 /** An error the server sent back, which is about the query once the sign-in is past. */
 const queryRefusalCodes = new Set([
+  "ERR_MONGODB_COMMAND_NOT_ALLOWED",
+  "ERR_MONGODB_INVALID_COMMAND",
+  "ERR_MONGODB_SERVER_ERROR",
   "ERR_MYSQL_SERVER_ERROR",
   "ERR_POSTGRES_SERVER_ERROR",
   "ERR_REDIS_SERVER_ERROR",
@@ -298,8 +323,10 @@ const queryRefusalCodes = new Set([
 /**
  * A sign-in the server refused: Postgres's SQLSTATE class 28 and a database
  * that does not exist; MySQL's access denied, unknown database and the
- * authentication plugins it would not use; and Bun's own codes for a
- * password exchange that failed or a Redis password it refused.
+ * authentication plugins it would not use; Bun's own codes for a
+ * password exchange that failed or a Redis password it refused; and the
+ * MongoDB client's for a SCRAM exchange it could not trust or a password
+ * SASLprep refuses.
  */
 const signInRefusals = new Set([
   "28000",
@@ -318,6 +345,13 @@ const signInRefusals = new Set([
   "ERR_POSTGRES_UNKNOWN_AUTHENTICATION_METHOD",
   "ERR_POSTGRES_UNSUPPORTED_AUTHENTICATION_METHOD",
   "ERR_REDIS_AUTHENTICATION_FAILED",
+  "ERR_MONGODB_SASL_INVALID_MESSAGE",
+  "ERR_MONGODB_SASL_ITERATIONS_TOO_FEW",
+  "ERR_MONGODB_SASL_ITERATIONS_TOO_MANY",
+  "ERR_MONGODB_SASL_NONCE_MISMATCH",
+  "ERR_MONGODB_SASL_SERVER_ERROR",
+  "ERR_MONGODB_SASL_SIGNATURE_MISMATCH",
+  "ERR_MONGODB_SASLPREP_PROHIBITED",
 ]);
 
 /**

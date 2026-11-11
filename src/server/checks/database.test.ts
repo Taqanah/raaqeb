@@ -272,6 +272,51 @@ describe("one database check", () => {
     expect(error).toContain("could not reach");
   });
 
+  test("a MongoDB monitor without a command runs ping, and a seed list's refusal names its first host", async () => {
+    const seeds =
+      "mongodb://watcher:s3cr%2Ft@a.example.test:27018,b.example.test/app?replicaSet=rs0";
+    const { io: databaseIo, queries } = io([
+      { ms: 2, throws: coded("ECONNREFUSED", "Failed to connect") },
+    ]);
+    const outcome = await runDatabaseCheck(
+      monitor({
+        config: { type: "mongodb" },
+        credentials: { headers: [], url: seeds },
+        retries: 0,
+      }),
+      databaseIo
+    );
+    expect(queries[0]).toMatchObject({ query: '{"ping": 1}', type: "mongodb" });
+    expect(outcome.detail?.params).toEqual({
+      host: "a.example.test",
+      port: 27_018,
+      reason: "connection_refused",
+    });
+  });
+
+  test("a MongoDB seed list's password never reaches the failure detail, as written or decoded", async () => {
+    const seeds =
+      "mongodb://watcher:s3cr%2Ft@a.example.test,b.example.test/app";
+    const { io: databaseIo } = io([
+      {
+        ms: 2,
+        throws: coded(
+          "ERR_MONGODB_PROTOCOL",
+          "odd reply to s3cr/t and s3cr%2Ft"
+        ),
+      },
+    ]);
+    const outcome = await runDatabaseCheck(
+      monitor({
+        config: { type: "mongodb" },
+        credentials: { headers: [], url: seeds },
+        retries: 0,
+      }),
+      databaseIo
+    );
+    expect(outcome.detail?.error).not.toContain("s3cr");
+  });
+
   test("an attempt past the timeout is a timeout naming the monitor's timeout", async () => {
     const { io: databaseIo } = io([
       {

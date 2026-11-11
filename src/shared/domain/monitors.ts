@@ -3,6 +3,7 @@
  * monitor's target is, and how the list is searched, filtered and sorted.
  * No I/O; the route hands the repository's list and the search parameters in.
  */
+import { parseConnectionString } from "@/shared/domain/mongodb.ts";
 import {
   type DatabaseCheckType,
   databasePorts,
@@ -28,6 +29,7 @@ export function targetOf(config: MonitorConfig): string | undefined {
     case "postgres":
     case "mysql":
     case "redis":
+    case "mongodb":
       return config.address;
     case "docker":
       return config.container;
@@ -36,11 +38,18 @@ export function targetOf(config: MonitorConfig): string | undefined {
   }
 }
 
-/** What a database monitor's list shows of its connection URL: `host:port`, the check type's port when the URL names none; never the user, the password, the database or the options. */
+/** What a database monitor's list shows of its connection URL: `host:port`, the check type's port when the URL names none, each host of a MongoDB seed list, and a MongoDB SRV name alone; never the user, the password, the database or the options. */
 export function connectionAddress(
   type: DatabaseCheckType,
   url: string
 ): string {
+  // A MongoDB seed list names several hosts, and an SRV name no port.
+  if (type === "mongodb") {
+    const { hosts, srv } = parseConnectionString(url);
+    return hosts
+      .map((each) => (srv ? each.host : addressOf(each.host, each.port)))
+      .join(",");
+  }
   const { hostname, port } = new URL(url);
   return `${hostname}:${port || databasePorts[type]}`;
 }

@@ -16,6 +16,7 @@ import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import type {
   Assertion,
+  CheckType,
   MonitorSaveRefusal,
   MonitorTest,
 } from "@/shared/schemas/monitor.ts";
@@ -50,6 +51,8 @@ export type TestState =
       readonly kind: "done";
       /** The assertions the test ran with, so a later edit of the form does not relabel the result. */
       readonly assertions: readonly Assertion[];
+      /** The check type tested, which the reason's words can depend on. */
+      readonly checkType: CheckType;
       readonly test: MonitorTest;
     };
 
@@ -118,7 +121,13 @@ function TestOutcome({ state }: { readonly state: TestState }): ReactNode {
         </Alert>
       );
     case "done":
-      return <TestResult assertions={state.assertions} test={state.test} />;
+      return (
+        <TestResult
+          assertions={state.assertions}
+          checkType={state.checkType}
+          test={state.test}
+        />
+      );
     default:
       return null;
   }
@@ -126,9 +135,11 @@ function TestOutcome({ state }: { readonly state: TestState }): ReactNode {
 
 function TestResult({
   assertions,
+  checkType,
   test,
 }: {
   readonly assertions: readonly Assertion[];
+  readonly checkType: CheckType;
   readonly test: MonitorTest;
 }): ReactNode {
   const { locale, t } = useMessages();
@@ -140,7 +151,9 @@ function TestResult({
     >
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={test.result}>{t(resultWords[test.result])}</Badge>
-        <span className="text-sm">{t(reasonMessageId(test.reason))}</span>
+        <span className="text-sm">
+          {t(reasonMessageId(test.reason, checkType))}
+        </span>
       </div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
         {test.responseMs === undefined ? null : (

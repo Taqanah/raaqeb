@@ -133,6 +133,18 @@ const kinds: readonly Kind[] = [
     type: "database",
   },
   {
+    database: "mongodb",
+    fields: {
+      answerExpected: "1",
+      connectionUrl:
+        "mongodb://watch:mg-secret-pass@127.0.0.1:4,127.0.0.1:5/admin?replicaSet=rs0",
+      query: '{"ping": 1}',
+    },
+    stored: { connectionUrl: "" },
+    target: "127.0.0.1:4,127.0.0.1:5",
+    type: "database",
+  },
+  {
     fields: {
       container: "kinds-api",
       dockerEndpoint: "/tmp/raaqeb-e2e-no-daemon.sock",

@@ -862,6 +862,7 @@ describe("the webhook's documented schema", () => {
       "postgres",
       "mysql",
       "redis",
+      "mongodb",
       "auth_failed",
       "query_failed",
       "tls_required",

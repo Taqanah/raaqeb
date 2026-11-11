@@ -18,7 +18,8 @@ import type { ReportFigures, ReportOutage } from "@/shared/schemas/report.ts";
 const dayMs = 86_400_000;
 
 /** An outage as a report counts it. */
-export type CountedOutage = Omit<ReportOutage, "monitorName">;
+/** An outage as the counting reads it; its monitor's name and check type are the report's to add. */
+export type CountedOutage = Omit<ReportOutage, "checkType" | "monitorName">;
 
 /** One subject's or member's measurements: sums, and the records counted, kept to merge members without counting a shared one twice. */
 export interface Measured {

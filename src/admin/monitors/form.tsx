@@ -248,7 +248,12 @@ export function MonitorForm({
         } else if (result.ok) {
           const assertions =
             input.config.type === "http" ? input.config.assertions : [];
-          setTesting({ assertions, kind: "done", test: result.test });
+          setTesting({
+            assertions,
+            checkType: input.config.type,
+            kind: "done",
+            test: result.test,
+          });
         } else {
           setTesting({ kind: "refused", reason: result.reason });
         }
@@ -537,6 +542,7 @@ function Target({
     case "postgres":
     case "mysql":
     case "redis":
+    case "mongodb":
       return <DatabaseTarget draft={draft} errors={errors} onField={onField} />;
     case "docker":
       return (
@@ -659,6 +665,7 @@ const connectionUrlExamples = {
   mysql: "mysql://user:password@db.example.com:3306/app?sslmode=require",
   postgres: "postgres://user:password@db.example.com:5432/app",
   redis: "redis://:password@cache.example.com:6379/0",
+  mongodb: "mongodb://user:password@db.example.com:27017/admin",
 } as const;
 
 /** A database monitor's connection URL, written once and never shown again, its query and the value the query must answer. */
@@ -699,7 +706,9 @@ export function DatabaseTarget({
       <Field>
         <FieldLabel htmlFor="query">
           {t(
-            type === "redis" ? "monitor_field_command" : "monitor_field_query"
+            type === "redis" || type === "mongodb"
+              ? "monitor_field_command"
+              : "monitor_field_query"
           )}
         </FieldLabel>
         <Textarea
@@ -713,7 +722,13 @@ export function DatabaseTarget({
           spellCheck={false}
           value={draft.query}
         />
-        <FieldDescription>{t("monitor_field_query_hint")}</FieldDescription>
+        <FieldDescription>
+          {t(
+            type === "mongodb"
+              ? "monitor_field_command_mongodb_hint"
+              : "monitor_field_query_hint"
+          )}
+        </FieldDescription>
         <Problem errors={errors} path="config.query" />
       </Field>
       <TextField

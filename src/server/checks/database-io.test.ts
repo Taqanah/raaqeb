@@ -1,7 +1,7 @@
 /**
  * The database check's live adapter: over fake drivers in every run, over a
  * port that refuses or a server that never answers in every run, and over
- * the compose Postgres, MySQL and Redis under `bun run test:postgres`, which
+ * the compose Postgres, MySQL, Redis and MongoDB under `bun run test:postgres`, which
  * sets their URLs and fails when one does not listen.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -25,16 +25,26 @@ import {
   type SqlOptions,
 } from "./database-io.ts";
 import { liveIo } from "./io.ts";
+import type { MongoQuery } from "./mongodb.ts";
 
 /** Fake drivers that record how they were opened and closed and answer what the test scripts. */
 function drivers(answer: () => Promise<unknown>) {
-  const opened: (SqlOptions | [string, RedisOptions])[] = [];
+  const opened: (SqlOptions | [string, RedisOptions] | MongoQuery)[] = [];
   const sent: [string, string[]][] = [];
   const queries: string[] = [];
   const closes: ({ readonly timeout?: number } | undefined)[] = [];
   let cancelled = 0;
   let closed = 0;
   const fake: DatabaseDrivers = {
+    mongodb: (query) => {
+      opened.push(query);
+      return {
+        ask: answer,
+        close: () => {
+          closed += 1;
+        },
+      };
+    },
     redis: (url, options) => {
       opened.push([url, options]);
       return {
@@ -121,7 +131,9 @@ describe("one query over the drivers", () => {
       fake
     );
     const passwords = opened.map((options) =>
-      Array.isArray(options) ? undefined : options.password()
+      Array.isArray(options) || !("password" in options)
+        ? undefined
+        : options.password()
     );
     expect(passwords).toEqual(["s3cr/t", ""]);
   });
@@ -200,6 +212,28 @@ describe("one query over the drivers", () => {
     expect(closed()).toBe(1);
   });
 
+  test("a MongoDB command goes to Raaqeb's own client with the URL and the timeout, and its answer is the answer", async () => {
+    const { closed, fake, opened } = drivers(() => Promise.resolve(1));
+    const answer = await queryOnce(
+      {
+        query: '{"ping": 1}',
+        timeoutMs: 3000,
+        type: "mongodb",
+        url: "mongodb://u:pw@db.example.test",
+      },
+      fake
+    );
+    expect(answer).toBe(1);
+    expect(opened).toEqual([
+      {
+        command: '{"ping": 1}',
+        timeoutMs: 3000,
+        url: "mongodb://u:pw@db.example.test",
+      },
+    ]);
+    expect(closed()).toBe(1);
+  });
+
   test("a driver error rejects as it came, and the connection is closed", async () => {
     const error = Object.assign(new Error("denied"), {
       code: "ERR_POSTGRES_SERVER_ERROR",
@@ -266,7 +300,7 @@ function freePort(): number {
 }
 
 describe("one query over Bun's drivers, with no server", () => {
-  const types: DatabaseCheckType[] = ["postgres", "mysql", "redis"];
+  const types = ["postgres", "mysql", "redis"] as const;
   const schemes = { mysql: "mysql", postgres: "postgres", redis: "redis" };
   let silent:
     | { readonly port: number; stop: (force: boolean) => void }
@@ -338,6 +372,7 @@ const servers: Record<DatabaseCheckType, string | undefined> = {
   mysql: process.env.RAAQEB_TEST_MYSQL_URL,
   postgres: process.env.RAAQEB_TEST_DATABASE_URL,
   redis: process.env.RAAQEB_TEST_REDIS_URL,
+  mongodb: process.env.RAAQEB_TEST_MONGODB_URL,
 };
 
 function check(
@@ -366,14 +401,11 @@ function wrongPassword(url: string): string {
   return parsed.toString();
 }
 
-const queries: Record<
-  DatabaseCheckType,
-  { readonly broken: string; readonly named: string }
-> = {
+const queries = {
   mysql: { broken: "SELECT nope", named: "SELECT 'watched' AS name" },
   postgres: { broken: "SELECT nope", named: "SELECT 'watched' AS name" },
   redis: { broken: "NOPE", named: "ECHO watched" },
-};
+} as const;
 
 /** The same URL with these query options in place of its own. */
 function withOptions(url: string, options: string): string {
@@ -723,5 +755,207 @@ describe.if(servers.mysql !== undefined)("a MySQL query", () => {
       query: "SELECT @@session.sql_select_limit",
     });
     expect(outcome.check.result).toBe("up");
+  });
+});
+
+/** The compose MongoDB servers: one that signs in with SCRAM and takes TLS or not, one with no sign-in that takes TLS alone. */
+const mongo = {
+  open: process.env.RAAQEB_TEST_MONGODB_TLS_URL,
+  signed: process.env.RAAQEB_TEST_MONGODB_URL,
+};
+
+/** The signed-in server's URL as another user, with options. */
+function mongoAs(user: string, password: string, options = ""): string {
+  const parsed = new URL(mongo.signed ?? "");
+  return `mongodb://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${parsed.host}/admin${options}`;
+}
+
+describe.if(mongo.signed !== undefined)(
+  "a MongoDB server that signs in with SCRAM",
+  () => {
+    const live = mongo.signed ?? "";
+
+    test("is up for the right password, by SCRAM-SHA-256", async () => {
+      const outcome = await check("mongodb", live);
+      expect(outcome.check).toMatchObject({ reason: reasons.ok, result: "up" });
+    });
+
+    test("signs in a user that has SCRAM-SHA-1 alone, and one that has SCRAM-SHA-256 alone", async () => {
+      for (const user of ["sha1", "sha256"]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one user at a time names the one that failed
+        const outcome = await check("mongodb", mongoAs(user, user));
+        expect(outcome.check.result).toBe("up");
+      }
+    });
+
+    test("refuses a mechanism the user lacks as auth failed", async () => {
+      const outcome = await check(
+        "mongodb",
+        mongoAs("sha256", "sha256", "?authMechanism=SCRAM-SHA-1")
+      );
+      expect(outcome.check.reason).toBe(reasons.auth_failed);
+    });
+
+    test("signs in with each form SASLprep makes the same password", async () => {
+      for (const [user, password] of [
+        ["IX", "IX"],
+        ["IX", "I­X"],
+        ["Ⅸ", "IV"],
+        ["Ⅸ", "I­V"],
+      ] as const) {
+        // biome-ignore lint/performance/noAwaitInLoops: one form at a time names the one that failed
+        const outcome = await check("mongodb", mongoAs(user, password));
+        expect(outcome.check.result).toBe("up");
+      }
+    });
+
+    test("is down as auth failed for a wrong password, the password nowhere in the outcome", async () => {
+      const outcome = await check(
+        "mongodb",
+        mongoAs("raaqeb", "not-the-password")
+      );
+      expect(outcome.check).toMatchObject({
+        reason: reasons.auth_failed,
+        result: "down",
+      });
+      expect(outcome.detail?.params).toEqual({
+        code: "18",
+        reason: "auth_failed",
+      });
+      expect(JSON.stringify(outcome)).not.toContain("not-the-password");
+    });
+
+    test("is down as auth failed for a user it does not know, as for a wrong password", async () => {
+      const outcome = await check("mongodb", mongoAs("nobody-here", "x"));
+      expect(outcome.detail?.params).toEqual({
+        code: "18",
+        reason: "auth_failed",
+      });
+    });
+
+    test("runs the monitor's command and compares the first value of its reply", async () => {
+      const up = await check("mongodb", live, {
+        expected: "admin",
+        query: '{"dbStats": 1}',
+      });
+      expect(up.check.result).toBe("up");
+      const down = await check("mongodb", live, {
+        expected: "other",
+        query: '{"dbStats": 1}',
+      });
+      expect(down.detail?.params).toEqual({
+        expected: "other",
+        observed: "admin",
+        reason: "assertion_failed",
+      });
+    });
+
+    test("is down as query failed for a command the user may not run", async () => {
+      const outcome = await check("mongodb", mongoAs("nobody", "nobody"), {
+        query: '{"serverStatus": 1}',
+      });
+      expect(outcome.check.reason).toBe(reasons.query_failed);
+      expect(outcome.detail?.params).toEqual({
+        code: "13",
+        reason: "query_failed",
+      });
+    });
+
+    test("refuses a command off the read-only list without sending it", async () => {
+      const outcome = await check("mongodb", live, {
+        query: '{"dropDatabase": 1}',
+      });
+      expect(outcome.detail?.params).toEqual({
+        code: "ERR_MONGODB_COMMAND_NOT_ALLOWED",
+        reason: "query_failed",
+      });
+    });
+
+    test("signs in over TLS, refusing the test certificate unless the URL allows it", async () => {
+      const verified = await check(
+        "mongodb",
+        mongoAs("raaqeb", "raaqeb", "?tls=true")
+      );
+      expect(verified.check.reason).toBe(reasons.certificate_invalid);
+      const allowed = await check(
+        "mongodb",
+        mongoAs(
+          "raaqeb",
+          "raaqeb",
+          "?tls=true&tlsAllowInvalidCertificates=true"
+        )
+      );
+      expect(allowed.check.result).toBe("up");
+    });
+  }
+);
+
+describe.if(mongo.open !== undefined)(
+  "a MongoDB server that takes TLS alone and no sign-in",
+  () => {
+    const live = mongo.open ?? "";
+
+    test("is down as TLS required over a plain connection", async () => {
+      const outcome = await check("mongodb", live);
+      expect(outcome.detail?.params).toEqual({ reason: "tls_required" });
+    });
+
+    test("refuses its self-signed certificate for a matching name when only invalid host names are allowed", async () => {
+      const named = live.replace("127.0.0.1", "localhost");
+      const outcome = await check(
+        "mongodb",
+        `${named}${named.includes("?") ? "&" : "?"}tls=true&tlsAllowInvalidHostnames=true`
+      );
+      expect(outcome.check.reason).toBe(reasons.certificate_invalid);
+    });
+
+    test("is up over TLS with no user", async () => {
+      const outcome = await check(
+        "mongodb",
+        `${live}${live.includes("?") ? "&" : "?"}tls=true&tlsInsecure=true`
+      );
+      expect(outcome.check.result).toBe("up");
+    });
+  }
+);
+
+describe("a MongoDB server that cannot be reached", () => {
+  test("is down as connection refused at a port nothing listens on", async () => {
+    const outcome = await check("mongodb", `mongodb://127.0.0.1:${freePort()}`);
+    expect(outcome.detail?.params).toMatchObject({
+      reason: "connection_refused",
+    });
+  });
+
+  test("is down as a timeout at the monitor's timeout when it never answers", async () => {
+    const silent = Bun.listen({
+      hostname: "127.0.0.1",
+      port: 0,
+      socket: { data: () => undefined },
+    });
+    try {
+      const started = performance.now();
+      const outcome = await runDatabaseCheck(
+        {
+          config: { type: "mongodb" },
+          credentials: {
+            headers: [],
+            url: `mongodb://127.0.0.1:${silent.port}`,
+          },
+          degradedMs: undefined,
+          id: "silent",
+          retries: 0,
+          timeoutMs: 300,
+        },
+        liveIo()
+      );
+      expect(outcome.detail?.params).toEqual({
+        reason: "timeout",
+        timeoutMs: 300,
+      });
+      expect(performance.now() - started).toBeLessThan(1500);
+    } finally {
+      silent.stop(true);
+    }
   });
 });

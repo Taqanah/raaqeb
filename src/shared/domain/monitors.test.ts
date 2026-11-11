@@ -141,6 +141,21 @@ describe("what the list shows of a connection URL", () => {
     );
   });
 
+  test("of a MongoDB seed list is every host and port it names, and of an SRV URL the name it looks up", () => {
+    expect(
+      connectionAddress(
+        "mongodb",
+        "mongodb://u:p@a.example.test:27018,[::1],c.example.test/app?replicaSet=rs0"
+      )
+    ).toBe("a.example.test:27018,[::1]:27017,c.example.test:27017");
+    expect(
+      connectionAddress(
+        "mongodb",
+        "mongodb+srv://u:p@cluster0.example.test/app"
+      )
+    ).toBe("cluster0.example.test");
+  });
+
   test("keeps an IPv6 address in its brackets", () => {
     expect(connectionAddress("redis", "redis://[2001:db8::1]:6380")).toBe(
       "[2001:db8::1]:6380"

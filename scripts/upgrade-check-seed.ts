@@ -106,6 +106,15 @@ const moreMonitors: readonly {
   },
   {
     config: {
+      address: "mongo1.example.test:27017,mongo2.example.test:27017",
+      query: '{"dbStats": 1}',
+      type: "mongodb",
+    },
+    name: "MongoDB",
+    url: "mongodb://raaqeb:mongo-secret@mongo1.example.test:27017,mongo2.example.test:27017/app?replicaSet=rs0",
+  },
+  {
+    config: {
       container: "raaqeb-web",
       endpoint: "http://docker.example.test:2375",
       type: "docker",

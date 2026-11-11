@@ -369,6 +369,8 @@ describe("the report of a group, a component and a page", () => {
     expect(made.subject.uptime).toEqual({ decimals: 2, percent: 98.61 });
     expect(made.members[1]?.id).toBe(two.id);
     expect(made.worst.map((each) => each.monitorName)).toEqual(["one"]);
+    // The reason's words can depend on the check type, as TLS required's do.
+    expect(made.worst.map((each) => each.checkType)).toEqual([one.config.type]);
   });
 
   test("a component's downtime is its monitors' outages and the time an incident held it down, each moment once", async () => {

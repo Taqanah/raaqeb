@@ -10,6 +10,7 @@
  * `reason_<name>` in Arabic and English, in the same pull request.
  */
 import { z } from "zod";
+import type { CheckType } from "./monitor.ts";
 
 export const reasons = {
   ok: 0,
@@ -56,9 +57,20 @@ export function reasonName(code: number): ReasonName | undefined {
   return reasonNames.find((name) => reasons[name] === code);
 }
 
-/** The catalog message that renders a reason in the reader's locale. */
-export function reasonMessageId(name: ReasonName): `reason_${ReasonName}` {
-  return `reason_${name}`;
+/** The catalog messages that render a reason, one per name, and one more where a check type's own words differ. */
+export type ReasonMessageId =
+  | `reason_${ReasonName}`
+  | "reason_tls_required_mongodb";
+
+/** The catalog message that renders a reason in the reader's locale, for a check of `checkType` when the words depend on it. */
+export function reasonMessageId(
+  name: ReasonName,
+  checkType?: CheckType
+): ReasonMessageId {
+  // One reason code, two fixes: MySQL's sslmode and MongoDB's tls option.
+  return name === "tls_required" && checkType === "mongodb"
+    ? "reason_tls_required_mongodb"
+    : `reason_${name}`;
 }
 
 /** An observed value kept beside a failed assertion is cut to this length. */

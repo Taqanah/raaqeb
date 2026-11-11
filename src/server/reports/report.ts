@@ -421,9 +421,11 @@ async function readNow(
       measured: measureMember(member, kept, records),
     }));
     const names = new Map(monitors.map((each) => [each.id, each.name]));
+    const types = new Map(monitors.map((each) => [each.id, each.config.type]));
     const total = totalOf(query.subject, measured, needed, kept, records);
     const named = (outage: CountedOutage) => ({
       ...outage,
+      checkType: types.get(outage.monitorId),
       monitorName: names.get(outage.monitorId) ?? outage.monitorId,
     });
     // A monitor or a component is its own one line.

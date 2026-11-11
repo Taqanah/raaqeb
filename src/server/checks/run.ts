@@ -37,6 +37,7 @@ export function runCheck(
     case "postgres":
     case "mysql":
     case "redis":
+    case "mongodb":
       return runDatabaseCheck({ ...monitor, config }, io);
     case "docker":
       return runDockerCheck({ ...monitor, config }, io);

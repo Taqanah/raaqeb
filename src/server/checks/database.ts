@@ -1,7 +1,8 @@
 /**
  * The database check (CONTEXT.md "Database monitor"):
- * a Postgres, MySQL or Redis server signs in with the monitor's
- * connection URL and answers `SELECT 1`, `PING` or the operator's query,
+ * a Postgres, MySQL, Redis or MongoDB server signs in with the monitor's
+ * connection URL and answers `SELECT 1`, `PING`, `{"ping": 1}` or the
+ * operator's query or command,
  * and when the monitor names an expected value, the first value the query
  * answered is that text. One call is one check with its retries and the
  * degraded threshold over the time from connecting to the answer. It does
@@ -9,6 +10,7 @@
  * parameters, and never throws. A database check has no status code, reads
  * no bytes and keeps no capture.
  */
+import { mongoPort, parseConnectionString } from "@/shared/domain/mongodb.ts";
 import type { CheckOutcome } from "@/shared/schemas/check.ts";
 import type { Credentials } from "@/shared/schemas/credentials.ts";
 import {
@@ -29,14 +31,14 @@ import { reasonForDatabaseError } from "./errors.ts";
 
 /** One query as the driver runs it: a fresh connection to the URL, signed in, closed after the answer. */
 export interface DatabaseQuery {
-  /** SQL, or a Redis command and its arguments separated by spaces. */
+  /** SQL, a Redis command and its arguments separated by spaces, or a MongoDB command as JSON. */
   readonly query: string;
   readonly timeoutMs: number;
   readonly type: DatabaseCheckType;
   readonly url: string;
 }
 
-/** Answers the first value the query answered: the first column of the first row, or Redis's reply; rejects with the driver's error, or a `TimeoutError` past the timeout. */
+/** Answers the first value the query answered: the first column of the first row, Redis's reply, or the first field of MongoDB's reply; rejects with the driver's error, or a `TimeoutError` past the timeout. */
 export type QueryDatabase = (query: DatabaseQuery) => Promise<unknown>;
 
 /** The I/O a database check borrows; tests hand in fakes. */
@@ -89,13 +91,7 @@ async function attemptOnce(
       responseMs: elapsed(),
     };
   } catch (error) {
-    // The URL parsed when it was saved; a stored one that no longer does still maps its error, never throws.
-    const { hostname, port } = URL.parse(url) ?? { hostname: "", port: "" };
-    const target = {
-      host: hostname,
-      port: Number(port) || databasePorts[config.type],
-      timeoutMs,
-    };
+    const target = { ...addressOf(config.type, url), timeoutMs };
     const secrets = secretsOf(url);
     return {
       ...reasonForDatabaseError(error, target, secrets),
@@ -128,9 +124,42 @@ function judged(
   };
 }
 
+/** The host and port a check's error names: the URL's, or a MongoDB seed list's first, the check type's port when it names none. */
+function addressOf(
+  type: DatabaseCheckType,
+  url: string
+): { host: string; port: number } {
+  // The URL parsed when it was saved; a stored one that no longer does still maps its error, never throws.
+  if (type === "mongodb") {
+    try {
+      const [first] = parseConnectionString(url).hosts;
+      return first ?? { host: "", port: mongoPort };
+    } catch {
+      return { host: "", port: mongoPort };
+    }
+  }
+  const { hostname, port } = URL.parse(url) ?? { hostname: "", port: "" };
+  return { host: hostname, port: Number(port) || databasePorts[type] };
+}
+
+/** The password as the URL writes it: after the first colon of the user information, which ends at the last @ before the host list. A MongoDB seed list is no WHATWG URL, so it is read by hand. */
+function writtenPasswordOf(url: string): string {
+  if (!url.startsWith("mongodb")) {
+    return URL.parse(url)?.password ?? "";
+  }
+  const authority =
+    url.slice(url.indexOf("//") + 2).split(hostInfoEnd)[0] ?? "";
+  const at = authority.lastIndexOf("@");
+  const userInfo = at < 0 ? "" : authority.slice(0, at);
+  const colon = userInfo.indexOf(":");
+  return colon < 0 ? "" : userInfo.slice(colon + 1);
+}
+
+const hostInfoEnd = /[/?]/;
+
 /** The URL's password as the server sees it, percent-decoding undone; one that does not decode as written, and none as empty text. */
 export function passwordOf(url: string): string {
-  const password = URL.parse(url)?.password ?? "";
+  const password = writtenPasswordOf(url);
   try {
     return decodeURIComponent(password);
   } catch {
@@ -140,11 +169,7 @@ export function passwordOf(url: string): string {
 
 /** What a database check masks wherever it shows text: the URL, and its password as written and as the server sees it. */
 export function secretsOf(url: string): CredentialPatterns {
-  return credentialPatterns([
-    url,
-    URL.parse(url)?.password ?? "",
-    passwordOf(url),
-  ]);
+  return credentialPatterns([url, writtenPasswordOf(url), passwordOf(url)]);
 }
 
 /** A value the driver answered as the text an expected value is compared with: a string as it is, a date in ISO 8601, bytes as UTF-8, no row as empty text, anything else as JSON with a big integer in full. */

@@ -30,6 +30,7 @@ export const checkTypeLabels: Readonly<Record<CheckType, MessageId>> = {
   mysql: "monitor_type_mysql",
   postgres: "monitor_type_postgres",
   redis: "monitor_type_redis",
+  mongodb: "monitor_type_mongodb",
   tcp: "monitor_type_tcp",
 };
 

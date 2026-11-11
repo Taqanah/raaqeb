@@ -767,6 +767,7 @@ function configOf(draft: MonitorDraft, refusals: Refusals): unknown {
     case "postgres":
     case "mysql":
     case "redis":
+    case "mongodb":
       return {
         expected: optionalText(draft.answerExpected),
         query: optionalText(draft.query),
@@ -992,6 +993,14 @@ function refusalOf(
   ) {
     return [path, { id: connectionUrlRefusals[type] }];
   }
+  // A MongoDB command off the read-only list names the rule; a length is a length.
+  if (
+    path === "config.query" &&
+    issue.code === "custom" &&
+    type === "mongodb"
+  ) {
+    return [path, { id: "monitor_error_command_mongodb" }];
+  }
   if (segments[0] === "locations") {
     return ["locations", { id: "monitor_error_locations_none" }];
   }
@@ -1037,6 +1046,7 @@ const connectionUrlRefusals: Readonly<Record<DatabaseCheckType, MessageId>> = {
   mysql: "monitor_error_connection_url_mysql",
   postgres: "monitor_error_connection_url_postgres",
   redis: "monitor_error_connection_url_redis",
+  mongodb: "monitor_error_connection_url_mongodb",
 };
 
 /** The two http addresses of an HTTP monitor: one that is no http or https URL, and one that carries a user name or a password. */
