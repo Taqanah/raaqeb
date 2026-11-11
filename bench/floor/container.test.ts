@@ -136,6 +136,13 @@ describe("the install's container", () => {
     ]);
   });
 
+  test("the stand-in runs the Bun the repository pins", async () => {
+    const { devDependencies } = await Bun.file(
+      `${import.meta.dir}/../../package.json`
+    ).json();
+    expect(standInImage).toBe(`oven/bun:${devDependencies["@types/bun"]}-slim`);
+  });
+
   test("the store Bun's node_modules links into is mounted at its own path", () => {
     expect(valuesOf(appArgs(standIn), "-v")).toContain(
       "/home/op/.bun/install/cache/links:/home/op/.bun/install/cache/links:ro"

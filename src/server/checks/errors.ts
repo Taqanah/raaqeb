@@ -131,7 +131,7 @@ const verboseHint =
 
 function messageOf(error: unknown): string {
   if (error instanceof Error) {
-    // Bun 1.4.3's fetch writes its code before the sentence; the reason names the code already.
+    // Bun 1.4.4's fetch writes its code before the sentence; the reason names the code already.
     const code = codeOf(error);
     const message =
       code && error.message.startsWith(`${code}: `)
@@ -246,6 +246,13 @@ export function reasonForDatabaseError(
     code === "ERR_POSTGRES_SERVER_ERROR" || code === "ERR_MYSQL_SERVER_ERROR"
       ? errno
       : code;
+  // A server at its connection limit refuses the connection before any query runs.
+  if (serverCode !== undefined && connectionLimitCodes.has(serverCode)) {
+    return mapped("connection_failed", {
+      code: serverCode,
+      reason: "connection_failed",
+    });
+  }
   // MySQL 8 asks for its RSA key to sign in over a plain connection and Bun refuses, so the password was never tried.
   if (code === "ERR_MYSQL_PUBLIC_KEY_RETRIEVAL_NOT_ALLOWED") {
     return mapped("tls_required", { reason: "tls_required" });
@@ -282,11 +289,13 @@ const databaseTimeoutCodes = new Set([
   "ERR_POSTGRES_CONNECTION_TIMEOUT",
   "ERR_REDIS_CONNECTION_TIMEOUT",
 ]);
-/** A refused connection; Bun 1.4.3 reports a name that does not resolve the same way. */
+/** A refused connection; Bun 1.4.4 still reports a name that does not resolve the same way. */
 const databaseRefusedCodes = new Set([
   "ERR_MYSQL_CONNECTION_REFUSED",
   "ERR_POSTGRES_CONNECTION_REFUSED",
 ]);
+/** Postgres's too_many_connections and MySQL's "Too many connections": the server turned a new connection away. */
+const connectionLimitCodes = new Set(["53300", "1040"]);
 /** An error the server sent back, which is about the query once the sign-in is past. */
 const queryRefusalCodes = new Set([
   "ERR_MYSQL_SERVER_ERROR",

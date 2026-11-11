@@ -68,9 +68,10 @@ const failureByCode: Readonly<Record<string, ConnectFailure>> = {
 /**
  * The driver options for a URL: named prepared statements off when the URL
  * points at a transaction pooler, idle and lifetime timers off so no timer can
- * cancel a query, one pool per process.
+ * cancel a query, one pool per process, and 64-bit columns as BigInt.
  */
 export function postgresOptions(url: string): {
+  bigint: boolean;
   connectionTimeout: number;
   idleTimeout: number;
   max: number;
@@ -78,6 +79,8 @@ export function postgresOptions(url: string): {
   prepare: boolean;
 } {
   return {
+    // Drizzle sets this on the client after it exists, which Bun reads only at construction since 1.4.4; without it an int8 column answers text.
+    bigint: true,
     connectionTimeout: connectionTimeoutSeconds,
     idleTimeout: 0,
     // The scheduler, a request and the nightly job; the floor is 240 MB.

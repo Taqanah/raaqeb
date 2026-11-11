@@ -370,10 +370,10 @@ describe.if(servers.mysql !== undefined)("a MySQL 8 server", () => {
     expect(outcome.check.reason).toBe(reasons.certificate_invalid);
   });
 
-  test("refuses a sign-in over a plain connection as TLS required, Bun keeping the password off it", async () => {
+  test("signs in over a plain connection once a sign-in over TLS has left the password in the server's cache", async () => {
+    expect((await check("mysql", servers.mysql ?? "")).check.result).toBe("up");
     const outcome = await check("mysql", withOptions(servers.mysql ?? "", ""));
-    expect(outcome.check.reason).toBe(reasons.tls_required);
-    expect(outcome.detail?.params).toEqual({ reason: "tls_required" });
+    expect(outcome.check.result).toBe("up");
   });
 });
 
@@ -459,6 +459,37 @@ describe.if(servers.postgres !== undefined)(
       const outcome = await check("postgres", servers.postgres ?? "", {
         expected: "1",
         query: "SELECT 1 -- the one row",
+      });
+      expect(outcome.check.result).toBe("up");
+    });
+  }
+);
+
+describe.if(servers.postgres !== undefined)("a Postgres array answer", () => {
+  test("is JSON whatever the element type, a uuid or a range among them", async () => {
+    const uuids = await check("postgres", servers.postgres ?? "", {
+      expected: '["00000000-0000-0000-0000-000000000001"]',
+      query: "SELECT ARRAY['00000000-0000-0000-0000-000000000001']::uuid[]",
+    });
+    expect(uuids.check.result).toBe("up");
+    const ranges = await check("postgres", servers.postgres ?? "", {
+      expected: '["[1,3)"]',
+      query: "SELECT ARRAY['[1,3)']::int8range[]",
+    });
+    expect(ranges.check.result).toBe("up");
+  });
+});
+
+describe.if(servers.mysql !== undefined)(
+  "a mariadb URL without a database",
+  () => {
+    test("signs in with no database selected", async () => {
+      const parsed = new URL(servers.mysql ?? "");
+      parsed.protocol = "mariadb:";
+      parsed.pathname = "";
+      const outcome = await check("mysql", parsed.toString(), {
+        expected: "null",
+        query: "SELECT DATABASE()",
       });
       expect(outcome.check.result).toBe("up");
     });

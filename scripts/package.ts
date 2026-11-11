@@ -21,7 +21,7 @@ export interface Target {
 /**
  * The four Linux targets, macOS on Apple Silicon only (Intel Macs are no
  * longer sold and no hardware tests them), and Windows on x64 and arm64. Bun
- * 1.4.3 has one x64 build, which picks its CPU paths at runtime (its
+ * 1.4.4 has one x64 build, which picks its CPU paths at runtime (its
  * `-baseline` archives hold the same binary), so there is no baseline target.
  * Bun signs the macOS binary ad hoc as it compiles it, which Apple Silicon
  * needs.

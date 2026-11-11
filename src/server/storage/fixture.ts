@@ -82,7 +82,7 @@ export async function runSql(
       connection.client.close();
     }
   }
-  const client = new SQL(location.url);
+  const client = new SQL({ bigint: true, url: location.url });
   try {
     let index = 0;
     const numbered = text.replace(/\?/g, () => {

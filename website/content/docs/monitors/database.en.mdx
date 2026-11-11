@@ -56,7 +56,7 @@ The reasons a failed check reports:
 |---|---|
 | Timed out | Connecting, signing in and the query took longer than the timeout together. |
 | Connection refused | Nothing accepted the connection. Shows the URL's host and port. For Postgres and MySQL, a host name that does not resolve reports this too. |
-| Connection failed | The driver gave up on the connection. The code is kept. For Redis, a refused port and a host that does not resolve both report this. |
+| Connection failed | The driver gave up on the connection. The code is kept. For Redis, a refused port and a host that does not resolve both report this. A server at its connection limit reports this too, with `53300` (Postgres) or `1040` (MySQL). |
 | The server refused the sign-in | A wrong user or password, or a database that does not exist. Shows the server's code, such as `28P01` or `1045`. |
 | The server refused the query | The server signed in and returned an error for the query. Shows its code, such as `42703` or `1054`. |
 | The server signs in only over an encrypted connection; add ?sslmode=require to the URL | MySQL 8, see above. |

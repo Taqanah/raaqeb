@@ -133,6 +133,15 @@ describe("a statement on the connection", () => {
       )
     ).toBe(0);
   });
+
+  test("reads a millisecond timestamp back as a number, inside a transaction or not", async () => {
+    const run = executor(await migrated());
+    const at = 1_700_000_060_000;
+    const read = (on: ReturnType<typeof executor>) =>
+      on.rows<{ at: unknown }>(sql`SELECT CAST(${at} AS BIGINT) AS at`);
+    expect(await read(run)).toEqual([{ at }]);
+    expect(await run.transaction((tx) => read(tx))).toEqual([{ at }]);
+  });
 });
 
 describe("a statement the Postgres database does not answer", () => {

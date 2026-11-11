@@ -262,7 +262,7 @@ describe("the reason of a resolver error", () => {
 
 describe("the reason of a database driver's error", () => {
   const server = { host: "db.example.test", port: 5432, timeoutMs: 10_000 };
-  /** A driver error as Bun 1.4.3 throws one: its own code, and the server's in `errno`. */
+  /** A driver error as Bun 1.4.4 throws one: its own code, and the server's in `errno`. */
   const driver = (code: string, errno?: string | number, message = code) =>
     Object.assign(new Error(message), { code, errno });
 
@@ -293,6 +293,20 @@ describe("the reason of a database driver's error", () => {
           reason: "connection_refused",
         },
         reason: "connection_refused",
+      });
+    }
+  });
+
+  test("a server at its connection limit is connection failed with the server's code, since no query ran", () => {
+    for (const [code, errno, message] of [
+      ["ERR_POSTGRES_SERVER_ERROR", "53300", "sorry, too many clients already"],
+      ["ERR_MYSQL_SERVER_ERROR", 1040, "Too many connections"],
+    ] as const) {
+      expect(
+        reasonForDatabaseError(driver(code, errno, message), server)
+      ).toMatchObject({
+        params: { code: String(errno), reason: "connection_failed" },
+        reason: "connection_failed",
       });
     }
   });

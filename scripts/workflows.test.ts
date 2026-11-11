@@ -35,6 +35,7 @@ const pinned = /^[\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+(?:\.\d+)*$/;
 const usesLine = /^\s*- uses: (.+)$/gm;
 const secret = /secrets\.(\w+)/g;
 const publishing = /gh release (?:edit|upload)/;
+const bunVersion = /^\s*BUN_VERSION: (\S+)$/m;
 const byKey = (a: string, b: string) => a.localeCompare(b);
 
 describe("the release workflows", () => {
@@ -87,6 +88,15 @@ describe("the release workflows", () => {
       "smoke-windows",
     ]);
     expect(workflow.jobs.release?.needs).toEqual(["build", "image"]);
+  });
+
+  test("the release compiles with the Bun the repository pins", async () => {
+    const { devDependencies } = await Bun.file(
+      `${import.meta.dir}/../package.json`
+    ).json();
+    expect(workflows.release.text.match(bunVersion)?.[1]).toBe(
+      devDependencies["@types/bun"]
+    );
   });
 
   test("a published pre-release moves no image tag", () => {

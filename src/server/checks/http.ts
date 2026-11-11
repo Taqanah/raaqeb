@@ -255,7 +255,7 @@ const wildcardPrefix = /^\*?\./;
 const entryPort = /^(.*[^:]):(\d+)$/;
 const brackets = /^\[|\]$/g;
 
-/** Whether `NO_PROXY` exempts the URL as Bun 1.4.3 reads it: `*`; an address range; or the host, or a domain it is under (a leading `.` or `*.` optional), in any case, at the entry's port when it names one. */
+/** Whether `NO_PROXY` exempts the URL as Bun 1.4.4 reads it: `*`; an address range; or the host, or a domain it is under (a leading `.` or `*.` optional), in any case, at the entry's port when it names one. */
 function exempt(url: URL, noProxy: string | undefined): boolean {
   const host = url.hostname.replace(brackets, "");
   const port = url.port || (url.protocol === "https:" ? "443" : "80");

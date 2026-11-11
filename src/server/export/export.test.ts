@@ -71,7 +71,7 @@ async function variedMonitor(
     timeoutMs: 5000,
   });
   for (let at = today - 4 * day; at < now; at += minute) {
-    const roll = Number(BigInt(Bun.hash(`${at}`)) % 1000n);
+    const roll = Number(Bun.hash(`${at}`) % 1000n);
     const down = roll < 10;
     // biome-ignore lint/performance/noAwaitInLoops: the head table's rows go in one at a time, as the scheduler writes them
     await storage.checks.record({
