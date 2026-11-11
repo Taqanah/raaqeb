@@ -266,13 +266,6 @@ export function reasonForDatabaseError(
       reason: "query_failed",
     });
   }
-  // Bun's Postgres driver reports a certificate for another name as an empty error, as storage's connection test reads it.
-  if (code === undefined && messageOf(error) === "" && errno === "0") {
-    return mapped("certificate_invalid", {
-      code: "ERR_TLS_CERT_ALTNAME_INVALID",
-      reason: "certificate_invalid",
-    });
-  }
   if (
     code?.startsWith("ERR_POSTGRES_") ||
     code?.startsWith("ERR_MYSQL_") ||

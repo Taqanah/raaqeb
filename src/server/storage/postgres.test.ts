@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test";
+// biome-ignore lint/style/noRestrictedImports: Bun.listen cannot turn an accepted socket into a TLS server after the Postgres SSLRequest
+import { createServer } from "node:net";
+// biome-ignore lint/style/noRestrictedImports: Bun.listen cannot turn an accepted socket into a TLS server after the Postgres SSLRequest
+import { TLSSocket } from "node:tls";
 import { closeConnection } from "./connection.ts";
 import { fixtureBackend, fixtureUrl } from "./fixture.ts";
 import {
@@ -90,7 +94,7 @@ describe("the driver options", () => {
     expect(postgresOptions("postgres://u:p@h:5432/d").prepare).toBe(true);
   });
 
-  test("the idle and lifetime timers are off so no timer cancels a query", () => {
+  test("the idle and lifetime timers are off, so a connection stays open once made", () => {
     const options = postgresOptions("postgres://u:p@h:5432/d");
     expect(options.idleTimeout).toBe(0);
     expect(options.maxLifetime).toBe(0);
@@ -141,30 +145,22 @@ describe("classifying a connection failure", () => {
     expect(classifyConnectError(withCode("3D000"))).toBe("database");
   });
 
-  test("TLS trouble is tls, and the empty error of a hostname mismatch too", () => {
-    expect(
-      classifyConnectError(withCode("ERR_POSTGRES_TLS_UPGRADE_FAILED"))
-    ).toBe("tls");
-    // A TLS hostname mismatch arrives as an empty error object.
-    const empty = Object.assign(new Error("mismatch"), { errno: 0 });
-    empty.message = "";
-    expect(classifyConnectError(empty)).toBe("tls");
+  test("TLS trouble is tls, a certificate the client does not trust among it", () => {
+    for (const code of [
+      "ERR_POSTGRES_TLS_UPGRADE_FAILED",
+      "ERR_TLS_CERT_ALTNAME_INVALID",
+      "DEPTH_ZERO_SELF_SIGNED_CERT",
+      "SELF_SIGNED_CERT_IN_CHAIN",
+      "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+      "CERT_HAS_EXPIRED",
+    ]) {
+      expect(classifyConnectError(withCode(code))).toBe("tls");
+    }
   });
 
   test("anything else is unknown", () => {
     expect(classifyConnectError(new Error("boom"))).toBe("unknown");
     expect(classifyConnectError("not an error")).toBe("unknown");
-  });
-
-  test("an empty message alone is not the TLS shape", () => {
-    // Only the documented shape (empty message, errno 0) is the mismatch.
-    const blank = (errno?: number): Error => {
-      const error = new Error("blanked below");
-      error.message = "";
-      return errno === undefined ? error : Object.assign(error, { errno });
-    };
-    expect(classifyConnectError(blank())).toBe("unknown");
-    expect(classifyConnectError(blank(-111))).toBe("unknown");
   });
 });
 
@@ -217,7 +213,69 @@ function refusingPostgres(sqlstate: string): { url: string; stop: () => void } {
   };
 }
 
+const certificateFile = `${import.meta.dir}/../checks/fixtures/tls-cert.pem`;
+
+/**
+ * A server that accepts the Postgres SSLRequest and completes the TLS
+ * handshake with the test certificate, which names `localhost` and
+ * `127.0.0.1` only. It listens on `::1`, a name the certificate lacks.
+ */
+async function tlsPostgres(): Promise<{ url: string; stop: () => void }> {
+  const [cert, key] = await Promise.all([
+    Bun.file(certificateFile).text(),
+    Bun.file(`${import.meta.dir}/../checks/fixtures/tls-key.pem`).text(),
+  ]);
+  const server = createServer((raw) => {
+    raw.once("data", () => {
+      raw.write("S");
+      const tls = new TLSSocket(raw, { cert, isServer: true, key });
+      tls.on("error", () => undefined);
+      tls.on("data", () => tls.end());
+    });
+  });
+  const port = await new Promise<number>((resolve) => {
+    server.listen(0, "::1", () => {
+      const address = server.address();
+      resolve(typeof address === "object" && address ? address.port : 0);
+    });
+  });
+  return {
+    stop: () => server.close(),
+    url: `postgres://u:p@[::1]:${port}/raaqeb`,
+  };
+}
+
 describe("connecting", () => {
+  test("a URL that prefers TLS reaches a server without it at once, in plain text", async () => {
+    const fake = refusingPostgres("28P01");
+    try {
+      const started = Date.now();
+      const result = await openPostgres(`${fake.url}?sslmode=prefer`, {
+        windowMs: 5000,
+      });
+      // The refusal comes from the startup message, which is only sent once the connection falls back.
+      expect(result).toEqual({ failure: "authentication", ok: false });
+      expect(Date.now() - started).toBeLessThan(1000);
+    } finally {
+      fake.stop();
+    }
+  });
+
+  test("a certificate that names another host is tls, read from the URL's own CA file", async () => {
+    const fake = await tlsPostgres();
+    try {
+      const started = Date.now();
+      const result = await openPostgres(
+        `${fake.url}?sslmode=verify-full&sslrootcert=${certificateFile}`,
+        { windowMs: 5000 }
+      );
+      expect(result).toEqual({ failure: "tls", ok: false });
+      expect(Date.now() - started).toBeLessThan(1000);
+    } finally {
+      fake.stop();
+    }
+  });
+
   test("nothing listening is reported as refused once the window closes, within one pause of its length", async () => {
     const started = Date.now();
     const result = await openPostgres("postgres://u:p@127.0.0.1:1/raaqeb", {

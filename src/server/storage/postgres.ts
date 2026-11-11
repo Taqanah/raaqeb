@@ -1,7 +1,7 @@
 /**
  * The Postgres backend: reached by URL, connected through
- * Bun's driver inside a bounded window, with the options that keep a transaction pooler and the driver's idle
- * timers from failing a query applied.
+ * Bun's driver inside a bounded window, with the options a transaction pooler
+ * needs applied.
  */
 import { SQL } from "bun";
 import { drizzle } from "drizzle-orm/bun-sql/postgres";
@@ -65,10 +65,13 @@ const failureByCode: Readonly<Record<string, ConnectFailure>> = {
   ERR_POSTGRES_UNSUPPORTED_AUTHENTICATION_METHOD: "authentication",
 };
 
+/** OpenSSL's verification codes and Bun's own for a certificate the client does not trust, such as `ERR_TLS_CERT_ALTNAME_INVALID`. */
+const certificateCode = /CERT|SELF_SIGNED|UNABLE_TO_(GET|VERIFY)/;
+
 /**
  * The driver options for a URL: named prepared statements off when the URL
- * points at a transaction pooler, idle and lifetime timers off so no timer can
- * cancel a query, one pool per process, and 64-bit columns as BigInt.
+ * points at a transaction pooler, idle and lifetime timers off so a connection
+ * stays open once made, one pool per process, and 64-bit columns as BigInt.
  */
 export function postgresOptions(url: string): {
   bigint: boolean;
@@ -157,25 +160,19 @@ export function classifyConnectError(error: unknown): ConnectFailure {
   if (typeof error !== "object" || error === null) {
     return "unknown";
   }
-  const { code, errno, message } = error as {
-    code?: unknown;
-    errno?: unknown;
-    message?: unknown;
-  };
+  const { code, errno } = error as { code?: unknown; errno?: unknown };
   for (const key of [code, errno]) {
     if (typeof key === "string" && key in failureByCode) {
       return failureByCode[key] ?? "unknown";
     }
   }
-  // A TLS hostname mismatch arrives as an empty message with errno 0.
-  if (message === "" && errno === 0) {
-    return "tls";
-  }
-  return "unknown";
+  return typeof code === "string" && certificateCode.test(code)
+    ? "tls"
+    : "unknown";
 }
 
 async function connectOnce(url: string): Promise<PostgresOpenResult> {
-  // The URL is passed whole; an options object loses the TLS host check.
+  // The URL is passed whole, so its sslmode and sslrootcert reach the driver.
   const client = new SQL({ url: driverUrl(url), ...postgresOptions(url) });
   try {
     await client.unsafe("SELECT 1");

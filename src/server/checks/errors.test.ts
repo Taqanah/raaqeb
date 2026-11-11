@@ -391,16 +391,31 @@ describe("the reason of a database driver's error", () => {
     }
   });
 
-  test("a TLS name mismatch, which Bun's Postgres driver reports as an empty error, is an invalid certificate", () => {
+  test("a certificate that names another host is an invalid certificate with the driver's code", () => {
+    expect(
+      reasonForDatabaseError(
+        Object.assign(
+          new Error("Hostname/IP does not match certificate's altnames"),
+          { code: "ERR_TLS_CERT_ALTNAME_INVALID", errno: 0 }
+        ),
+        server
+      )
+    ).toMatchObject({
+      params: {
+        code: "ERR_TLS_CERT_ALTNAME_INVALID",
+        reason: "certificate_invalid",
+      },
+      reason: "certificate_invalid",
+    });
+  });
+
+  test("an empty error is unknown, not a certificate", () => {
     expect(
       reasonForDatabaseError(
         Object.assign(new Error("emptied"), { errno: 0, message: "" }),
         server
       )
-    ).toMatchObject({
-      params: { reason: "certificate_invalid" },
-      reason: "certificate_invalid",
-    });
+    ).toMatchObject({ reason: "unknown" });
   });
 
   test("an error without a code is unknown with its text", () => {
