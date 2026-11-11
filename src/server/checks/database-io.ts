@@ -8,10 +8,15 @@
  */
 import { type DatabaseQuery, passwordOf } from "./database.ts";
 
+/** A query the driver started: awaited for its rows, or cancelled when the check gives up on it. */
+export interface SqlQuery extends PromiseLike<unknown> {
+  cancel: () => unknown;
+}
+
 /** What the adapter asks of a SQL client: one query, then a close. */
 export interface SqlClient {
   close: (options?: { readonly timeout?: number }) => Promise<void>;
-  unsafe: (query: string) => Promise<unknown>;
+  unsafe: (query: string) => SqlQuery;
 }
 
 /** What the adapter asks of a Redis client: one command, then a close. */
@@ -94,18 +99,29 @@ function open(
     // Named statements break behind a transaction pooler; Bun's MySQL driver refuses the option outright.
     ...(query.type === "postgres" && { prepare: false }),
   });
+  // The query in flight, if any: the one a close has to stop.
+  let running: SqlQuery | undefined;
+  const ask = async (text: string): Promise<unknown> => {
+    running = sql.unsafe(text);
+    try {
+      return await running;
+    } finally {
+      running = undefined;
+    }
+  };
   return {
     // One row is all the check reads, and Bun's drivers hold a whole result set: MySQL caps every SELECT on the connection, Postgres wraps a SELECT in a LIMIT.
     ask: async () => {
       if (query.type === "mysql") {
-        await sql.unsafe("SET SESSION sql_select_limit = 1");
-        return firstValue(await sql.unsafe(query.query));
+        await ask("SET SESSION sql_select_limit = 1");
+        return firstValue(await ask(query.query));
       }
-      return firstValue(await sql.unsafe(firstRowOf(query.query)));
+      return firstValue(await ask(firstRowOf(query.query)));
     },
-    // A query still running past the timeout gets a second to end before the socket closes (probed on Bun 1.4.3: `timeout: 0` waits for it).
+    // Postgres stops a cancelled statement on the server; MySQL runs one already sent to its end (Bun 1.4.4).
     close: () => {
-      sql.close({ timeout: 1 }).catch(() => undefined);
+      running?.cancel();
+      sql.close({ timeout: 0 }).catch(() => undefined);
     },
   };
 }

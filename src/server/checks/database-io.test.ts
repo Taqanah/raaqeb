@@ -11,7 +11,11 @@ import type {
   DatabaseConfig,
 } from "@/shared/schemas/monitor.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
-import { type DatabaseQuery, runDatabaseCheck } from "./database.ts";
+import {
+  type DatabaseQuery,
+  passwordOf,
+  runDatabaseCheck,
+} from "./database.ts";
 import {
   type DatabaseDrivers,
   firstValue,
@@ -27,6 +31,8 @@ function drivers(answer: () => Promise<unknown>) {
   const opened: (SqlOptions | [string, RedisOptions])[] = [];
   const sent: [string, string[]][] = [];
   const queries: string[] = [];
+  const closes: ({ readonly timeout?: number } | undefined)[] = [];
+  let cancelled = 0;
   let closed = 0;
   const fake: DatabaseDrivers = {
     redis: (url, options) => {
@@ -44,18 +50,31 @@ function drivers(answer: () => Promise<unknown>) {
     sql: (options) => {
       opened.push(options);
       return {
-        close: () => {
+        close: (closeOptions) => {
           closed += 1;
+          closes.push(closeOptions);
           return Promise.resolve();
         },
         unsafe: (query) => {
           queries.push(query);
-          return answer();
+          return Object.assign(answer(), {
+            cancel: () => {
+              cancelled += 1;
+            },
+          });
         },
       };
     },
   };
-  return { closed: () => closed, fake, opened, queries, sent };
+  return {
+    cancelled: () => cancelled,
+    closed: () => closed,
+    closes,
+    fake,
+    opened,
+    queries,
+    sent,
+  };
 }
 
 const postgres: DatabaseQuery = {
@@ -190,6 +209,24 @@ describe("one query over the drivers", () => {
     expect(closed()).toBe(1);
   });
 
+  test("an answered query is never cancelled, and the close does not wait", async () => {
+    const { cancelled, closes, fake } = drivers(() => Promise.resolve([]));
+    await queryOnce(postgres, fake);
+    expect(cancelled()).toBe(0);
+    expect(closes).toEqual([{ timeout: 0 }]);
+  });
+
+  test("a query past the timeout is cancelled, and the close does not wait", async () => {
+    const { cancelled, closes, fake } = drivers(
+      () => new Promise(() => undefined)
+    );
+    await queryOnce({ ...postgres, timeoutMs: 50 }, fake).catch(
+      () => undefined
+    );
+    expect(cancelled()).toBe(1);
+    expect(closes).toEqual([{ timeout: 0 }]);
+  });
+
   test("a query past the timeout rejects as a timeout and closes the connection", async () => {
     const { closed, fake } = drivers(() => new Promise(() => undefined));
     const started = performance.now();
@@ -306,7 +343,8 @@ const servers: Record<DatabaseCheckType, string | undefined> = {
 function check(
   type: DatabaseCheckType,
   url: string,
-  config: Omit<DatabaseConfig, "type"> = {}
+  config: Omit<DatabaseConfig, "type"> = {},
+  timeoutMs = 5000
 ): Promise<CheckOutcome> {
   return runDatabaseCheck(
     {
@@ -315,7 +353,7 @@ function check(
       degradedMs: undefined,
       id: "live",
       retries: 0,
-      timeoutMs: 5000,
+      timeoutMs,
     },
     liveIo()
   );
@@ -357,6 +395,50 @@ describe.if(servers.postgres !== undefined)(
         code: "ERR_POSTGRES_TLS_NOT_AVAILABLE",
         reason: "connection_failed",
       });
+    });
+  }
+);
+
+describe.if(servers.postgres !== undefined)(
+  "a Postgres query past the monitor's timeout",
+  () => {
+    test("is a timeout, and no longer runs on the server once the check ends", async () => {
+      const tag = `raaqeb_slow_${crypto.randomUUID().replaceAll("-", "")}`;
+      const outcome = await check(
+        "postgres",
+        servers.postgres ?? "",
+        { query: `SELECT pg_sleep(30) AS ${tag}` },
+        500
+      );
+      expect(outcome.check.reason).toBe(reasons.timeout);
+      // The adapter's own driver, the one file outside storage allowed to open a SQL client. The tag is letters, digits and underscores, so it is safe inside the text.
+      const watcher = liveDrivers.sql({
+        connectionTimeout: 5,
+        idleTimeout: 0,
+        max: 1,
+        maxLifetime: 0,
+        password: () => passwordOf(servers.postgres ?? ""),
+        url: servers.postgres ?? "",
+      });
+      const others = `FROM pg_stat_activity WHERE query LIKE '%${tag}%' AND pid <> pg_backend_pid()`;
+      try {
+        const running = async () =>
+          firstValue(
+            await watcher.unsafe(`SELECT count(*)::int AS n ${others}`)
+          );
+        // The server ends a cancelled statement within milliseconds; a second covers a loaded machine.
+        const deadline = Date.now() + 1000;
+        let left = await running();
+        while (left !== 0 && Date.now() < deadline) {
+          // biome-ignore lint/performance/noAwaitInLoops: each read waits for the one before
+          await Bun.sleep(50);
+          left = await running();
+        }
+        expect(left).toBe(0);
+      } finally {
+        await watcher.unsafe(`SELECT pg_terminate_backend(pid) ${others}`);
+        await watcher.close();
+      }
     });
   }
 );

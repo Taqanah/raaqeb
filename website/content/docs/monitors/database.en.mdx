@@ -44,7 +44,7 @@ MySQL 8's default sign-in (`caching_sha2_password`) needs an encrypted connectio
 
 ## Up, degraded and down
 
-Each check opens a new connection. The response time runs from connecting to the answer, capped by the timeout; one timer covers the connection, the sign-in and the query. A query still running at the timeout gets one second to end before the connection closes.
+Each check opens a new connection. The response time runs from connecting to the answer, capped by the timeout; one timer covers the connection, the sign-in and the query. At the timeout, a query still running is stopped on a Postgres server and the connection closes at once. MySQL runs a query it has received to its end, so keep a MySQL check's query quick.
 
 - **Up**: the server signed in and answered, and the first value equals the expected value if one is set.
 - **Degraded**: as up, slower than the degraded threshold.
