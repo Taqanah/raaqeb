@@ -29,7 +29,7 @@ Three candidates were run under Bun 1.4.2 with the same six-category Arabic plur
 
 ## Consequences
 
-- Raaqeb owns two small tools: the plural-category lint and the id-union generator. Both read the PO catalogs and run in CI.
+- Raaqeb owns two small tools: the plural-category lint and the id-union generator. Both read the PO catalogs and run in `bun run gate`.
 - Every message is written twice before merge, Arabic and English, in the same pull request.
 - A future switch to FormatJS or Paraglide is a catalog conversion plus a call-site rewrite, because both speak ICU-shaped plurals and the code holds ids only; the domain terms in `CONTEXT.md` (locale, install language, page language, channel language, subscription language, message catalog) do not depend on the library.
 - The Vite pipeline gains no Lingui transform. Should a macro ever be needed, the Babel plugin is one more transform, and if Start moves its template to the SWC React plugin, Lingui's Rust plugin exists but carries no semver guarantee against `swc_core`.

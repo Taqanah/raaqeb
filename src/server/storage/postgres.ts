@@ -85,6 +85,7 @@ export function postgresOptions(url: string): {
     // Drizzle sets this on the client after it exists, which Bun reads only at construction since 1.4.4; without it an int8 column answers text.
     bigint: true,
     connectionTimeout: connectionTimeoutSeconds,
+    // Both timers stay off: before Bun 1.4.4 one rejected healthy in-flight queries, and since 1.4.4 it would only cost a reconnect.
     idleTimeout: 0,
     // The scheduler, a request and the nightly job; the floor is 240 MB.
     max: 4,

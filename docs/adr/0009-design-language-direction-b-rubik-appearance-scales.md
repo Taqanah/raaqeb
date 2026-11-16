@@ -28,7 +28,7 @@ Raaqeb owns its design language. The components are shadcn copies on Base UI, ed
 - **IBM Plex Sans Arabic** as the interface face. Rejected after seeing both faces live on the directions.
 - **Direction A or C as the base.** A is denser and more keyboard-forward, C has the strongest Arabic typography. Both lost to B on restraint, and each kept the contribution named above.
 - **Fixed design tokens.** The simplest thing, and refused because the operator must be able to adjust theme, size, spacing and radius.
-- **Per-operator appearance settings.** Rejected: with one operator account in v1 they are the same thing with more state.
+- **Per-operator appearance settings.** Rejected: the look belongs to the install, so every operator sees the same product, and a per-operator setting is more state for the same screens.
 
 ## Consequences
 
