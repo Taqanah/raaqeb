@@ -548,24 +548,13 @@ describe.if(servers.mysql !== undefined)(
       );
     });
 
-    test("refuses a password the server has not cached as TLS required, the password never tried", async () => {
-      const url = await freshUser("caching_sha2_password", "cold-password");
-      const outcome = await check("mysql", url);
-      expect(outcome.check).toMatchObject({
-        reason: reasons.tls_required,
-        result: "down",
-      });
-      expect(outcome.detail?.params).toEqual({ reason: "tls_required" });
-    });
-
-    test("is TLS required again on every check while the server's cache stays empty", async () => {
+    test("refuses a password the server has not cached as TLS required, the password never tried, on every check while the cache stays empty", async () => {
       const url = await freshUser("caching_sha2_password", "cold-password");
       const first = await check("mysql", url);
       const second = await check("mysql", url);
-      expect([first.check.reason, second.check.reason]).toEqual([
-        reasons.tls_required,
-        reasons.tls_required,
-      ]);
+      expect(first.check.result).toBe("down");
+      expect(first.detail?.params).toEqual({ reason: "tls_required" });
+      expect(second.check.reason).toBe(reasons.tls_required);
     });
 
     test("signs in once a sign-in over TLS has left the password in the server's cache", async () => {

@@ -188,22 +188,41 @@ describe("an HTTP monitor's own proxy", () => {
     );
   });
 
-  test("sends no proxy authorization without credentials, and never to the target", async () => {
+  test("sends no proxy authorization without credentials", async () => {
     const own = proxy();
     restore = setProxyEnvironment({});
     await check(http({ proxy: own.url }));
+    expect(own.requests).toHaveLength(1);
     expect(own.requests[0]?.headers["proxy-authorization"]).toBeUndefined();
   });
 
-  test("a proxy that refuses the tunnel fails the check and names the refusal", async () => {
-    const own = proxy();
+  // The proxy's user name and password are not among the credentials a capture masks, so an answer that repeats them is kept as it came.
+  test.failing("a proxy that answers with its own credentials puts neither the password nor its Basic pair in the outcome", async () => {
+    const password = "proxy-pass-77";
+    const pair = btoa(`ops:${password}`);
+    const own = proxy(() => ({
+      body: `you sent Basic ${pair}, that is ops:${password}`,
+      headers: { "x-echo": pair },
+      status: 200,
+    }));
     restore = setProxyEnvironment({});
     const outcome = await runCheck(
-      http({ proxy: own.url, url: "https://secure.example.test/" }),
+      http(
+        { captureMode: "always", proxy: own.url },
+        { headers: [], proxyAuth: { password, user: "ops" } }
+      ),
       liveIo()
     );
-    expect(outcome?.check.result).toBe("down");
-    expect(outcome?.detail?.error).toContain("Proxy refused");
+    expect(own.requests[0]?.headers["proxy-authorization"]).toBe(
+      `Basic ${pair}`
+    );
+    expect(outcome?.capture?.body.length).toBeGreaterThan(0);
+    const written = JSON.stringify({
+      ...outcome,
+      body: new TextDecoder().decode(outcome?.capture?.body),
+    });
+    expect(written).not.toContain(password);
+    expect(written).not.toContain(pair);
   });
 });
 

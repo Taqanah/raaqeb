@@ -509,15 +509,15 @@ describe("the live bundle", () => {
             name: "example.test",
             recordType: "A",
             resolver: `127.0.0.1:${server.port}`,
-            timeoutMs: 6500,
+            timeoutMs: 5300,
           })
         ).rejects.toMatchObject({ name: "TimeoutError" });
-        expect(performance.now() - started).toBeGreaterThanOrEqual(6400);
+        expect(performance.now() - started).toBeGreaterThanOrEqual(5250);
       } finally {
         server.close();
       }
     },
-    { timeout: 10_000 }
+    { timeout: 8000 }
   );
 
   test("a TCP monitor whose host is the IPv6 loopback is up while it listens", async () => {
@@ -634,6 +634,19 @@ describe("asking a WHOIS server", () => {
     try {
       await askWhois("127.0.0.1", "raaqeb.ae", connect, 2000);
       expect(asked).toMatchObject([{ hostname: "127.0.0.1", port: 43 }]);
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("a reply as long as the cap is the answer", async () => {
+    const { connect, server } = whoisServer([
+      new Uint8Array(whoisReplyBytes).fill(65),
+    ]);
+    try {
+      expect(
+        await askWhois("127.0.0.1", "example.so", connect, 2000)
+      ).toHaveLength(whoisReplyBytes);
     } finally {
       server.stop(true);
     }

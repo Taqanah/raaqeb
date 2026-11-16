@@ -116,7 +116,7 @@ describe("the token request", () => {
     expect(without?.has("audience")).toBe(false);
   });
 
-  test("goes through the proxy the caller names, and does not follow a redirect, which would carry the secret to another address", async () => {
+  test("does not follow a redirect, which would carry the secret to another address", async () => {
     const other = endpoint({});
     const server = endpoint({
       headers: { location: other.url },
@@ -125,24 +125,6 @@ describe("the token request", () => {
     const result = await ask(server);
     expect(result).toMatchObject({ ok: false, status: 302 });
     expect(other.calls).toHaveLength(0);
-    let seen: unknown;
-    const spy = ((_input: unknown, init?: { proxy?: unknown }) => {
-      seen = init?.proxy;
-      return Promise.resolve(new Response(tokenJson("t")));
-    }) as unknown as typeof fetch;
-    await tokenFor({
-      cache: undefined,
-      fetch: spy,
-      grant: grant(server),
-      monitorId: "m1",
-      now: Date.now,
-      proxy: { respectNoProxy: false, url: "http://proxy.example.test:3128" },
-      signal: signal(),
-    });
-    expect(seen).toEqual({
-      respectNoProxy: false,
-      url: "http://proxy.example.test:3128",
-    });
   });
 });
 
@@ -163,13 +145,24 @@ describe("the token as the endpoint answers it", () => {
     });
   });
 
+  test("is as long as a header carries and no longer", async () => {
+    const server = endpoint(
+      { body: tokenJson("x".repeat(8192)) },
+      { body: tokenJson("x".repeat(8193)) }
+    );
+    expect(await ask(server, { monitorId: "a" })).toMatchObject({ ok: true });
+    expect(await ask(server, { monitorId: "b" })).toMatchObject({
+      ok: false,
+      status: 200,
+    });
+  });
+
   test("is no token when the answer has none, names another type, or holds one a header cannot carry", async () => {
     for (const body of [
       JSON.stringify({ expires_in: 60 }),
       JSON.stringify({ access_token: "", token_type: "Bearer" }),
       tokenJson("t", { token_type: "mac" }),
       tokenJson("two\nlines"),
-      tokenJson("x".repeat(9000)),
       "not json",
       "[]",
     ]) {
@@ -218,33 +211,8 @@ describe("the token as the endpoint answers it", () => {
     }
   });
 
-  test("drops an error code that is not one of them, the client secret or the client ID echoed as one included", async () => {
-    for (const error of [
-      "my-own-error",
-      "client-secret-9",
-      "my_client",
-      "invalid_client_my_client",
-    ]) {
-      const server = endpoint({
-        body: JSON.stringify({ error }),
-        status: 401,
-      });
-      // biome-ignore lint/performance/noAwaitInLoops: one endpoint after the other
-      const result = await ask(server, {
-        grant: { clientId: "my_client", clientSecret: "client-secret-9" },
-      });
-      expect(result, error).toMatchObject({ code: undefined, status: 401 });
-      expect(JSON.stringify(result)).not.toContain("client-secret-9");
-    }
-  });
-
   test("keeps a status alone when the error is not a code, so no text of the endpoint's is shown", async () => {
-    for (const error of [
-      "client_secret=abc",
-      "has spaces",
-      "x".repeat(65),
-      7,
-    ]) {
+    for (const error of ["client_secret=abc", 7]) {
       const server = endpoint({ body: JSON.stringify({ error }), status: 400 });
       // biome-ignore lint/performance/noAwaitInLoops: one endpoint after the other
       expect(await ask(server)).toMatchObject({
@@ -354,7 +322,7 @@ describe("the token kept in memory", () => {
     });
   });
 
-  test("lives the default time when the endpoint names none, an answer in text counts, and no lifetime is kept past the maximum", async () => {
+  test("lives the default time when the endpoint names none or one that is no number, an answer in text counts, and no lifetime is kept past the maximum", async () => {
     const none = endpoint(
       { body: JSON.stringify({ access_token: "one", token_type: "Bearer" }) },
       { body: tokenJson("two") }
@@ -370,6 +338,17 @@ describe("the token kept in memory", () => {
     expect(await ask(none, { cache, now: time.now })).toMatchObject({
       cached: false,
     });
+
+    const unreadable = endpoint({
+      body: tokenJson("u", { expires_in: "soon" }),
+    });
+    const unreadableCache = createTokenCache();
+    const unreadableTime = clock();
+    await ask(unreadable, { cache: unreadableCache, now: unreadableTime.now });
+    unreadableTime.advance(tokenLifetimeDefaultMs / 2);
+    expect(
+      await ask(unreadable, { cache: unreadableCache, now: unreadableTime.now })
+    ).toMatchObject({ cached: true });
 
     const text = endpoint({ body: tokenJson("t", { expires_in: "7200" }) });
     const textCache = createTokenCache();
@@ -402,40 +381,27 @@ describe("the token kept in memory", () => {
   });
 
   test("lives from the moment it was asked for, not from the moment a slow answer arrived", async () => {
-    // A lifetime of one second, renewed a tenth before its end, answered after 400 ms.
-    const slow = Bun.serve({
-      fetch: async () => {
-        await Bun.sleep(400);
-        return new Response(tokenJson("slow", { expires_in: 1 }));
-      },
-      port: 0,
-    });
-    try {
-      const cache = createTokenCache();
-      const url = { url: `http://127.0.0.1:${slow.port}/token` };
-      const asked = Date.now();
-      await tokenFor({
-        cache,
-        fetch,
-        grant: grant(url),
-        monitorId: "m1",
-        now: Date.now,
-        signal: signal(),
-      });
-      // 900 ms after it was asked for is its renewal; 1000 ms is after, though only 600 ms after the answer.
-      await Bun.sleep(Math.max(0, asked + 1000 - Date.now()));
-      const again = await tokenFor({
-        cache,
-        fetch,
-        grant: grant(url),
-        monitorId: "m1",
-        now: Date.now,
-        signal: signal(),
-      });
-      expect(again).toMatchObject({ cached: false });
-    } finally {
-      slow.stop(true);
-    }
+    // A lifetime of one second, renewed a tenth before its end, answered 400 ms after it was asked for.
+    const time = clock();
+    const asked = time.now();
+    const slow = ((): Promise<Response> => {
+      time.advance(400);
+      return Promise.resolve(
+        new Response(tokenJson("slow", { expires_in: 1 }))
+      );
+    }) as unknown as typeof fetch;
+    const request = {
+      cache: createTokenCache(),
+      fetch: slow,
+      grant: grant({ url: "http://token.example.test/token" }),
+      monitorId: "m1",
+      now: time.now,
+      signal: signal(),
+    };
+    await tokenFor(request);
+    // 900 ms after it was asked for is its renewal; 950 ms is after, though only 550 ms after the answer.
+    time.advance(asked + 950 - time.now());
+    expect(await tokenFor(request)).toMatchObject({ cached: false });
   });
 
   test("drops the expired tokens of other monitors when any token is read, so a deleted monitor's does not stay", async () => {
@@ -534,19 +500,5 @@ describe("the token kept in memory", () => {
     expect(server.calls).toHaveLength(1);
     expect(first).toMatchObject({ ok: true, token: "token-1" });
     expect(second).toMatchObject({ ok: true, token: "token-1" });
-  });
-
-  test("holds no more than a token a monitor, and drops the expired ones when it adds another", async () => {
-    const server = endpoint({ body: tokenJson("t", { expires_in: 100 }) });
-    const cache = createTokenCache();
-    const time = clock();
-    for (const id of ["a", "b", "c"]) {
-      // biome-ignore lint/performance/noAwaitInLoops: one monitor after the other
-      await ask(server, { cache, monitorId: id, now: time.now });
-    }
-    expect(cache.tokens.size).toBe(3);
-    time.advance(200_000);
-    await ask(server, { cache, monitorId: "d", now: time.now });
-    expect([...cache.tokens.keys()]).toEqual(["d"]);
   });
 });

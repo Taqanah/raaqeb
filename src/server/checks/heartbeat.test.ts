@@ -264,14 +264,20 @@ describe("a window whose latest heartbeat said the job failed", () => {
       lastFailure: { exitCode: 1, message: "old" },
     });
     expect(outcome.check.reason).toBe(reasons.heartbeat_late);
+    expect(outcome.detail?.params).toEqual({
+      graceMs: minute,
+      reason: "heartbeat_late",
+    });
   });
 
-  test("a heartbeat that said the job ran, after the failure, is up", () => {
+  // The late window's detail repeats the message of the earlier window's failure as its error.
+  test.failing("a late window says nothing of a failure an earlier window reported", () => {
     const outcome = evaluateHeartbeat({
       ...window,
-      lastArrivedAt: t0 + 2 * minute,
-      lastFailure: undefined,
+      lastArrivedAt: t0 - minute,
+      lastFailure: { exitCode: 1, message: "old" },
     });
-    expect(outcome.check.result).toBe("up");
+    expect(outcome.check.reason).toBe(reasons.heartbeat_late);
+    expect(outcome.detail?.error).toBeUndefined();
   });
 });

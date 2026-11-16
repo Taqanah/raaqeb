@@ -262,6 +262,31 @@ describe("an HTTP check with OAuth 2.0 client credentials", () => {
     );
   });
 
+  test("masks a client ID of eight characters, the shortest it masks", async () => {
+    const endpoint = tokenEndpoint({ body: tokenJson("tok-z") });
+    const target = api({ body: "id raaqeb-8" });
+    const base = monitor(endpoint, target);
+    const outcome = await runHttpCheck(
+      {
+        ...base,
+        credentials: {
+          auth: {
+            clientId: "raaqeb-8",
+            clientSecret: secret,
+            kind: "oauth2",
+            method: "basic",
+            tokenUrl: endpoint.url,
+          },
+          headers: [],
+        },
+      },
+      live().io
+    );
+    expect(new TextDecoder().decode(outcome.capture?.body)).toBe(
+      `id ${credentialMask}`
+    );
+  });
+
   test("masks the client secret as typed and as form-encoded, and leaves a short client ID alone", async () => {
     const odd = "p@ss word+9";
     const endpoint = tokenEndpoint({ body: tokenJson("tok-y") });
@@ -289,6 +314,36 @@ describe("an HTTP check with OAuth 2.0 client credentials", () => {
     expect(new TextDecoder().decode(outcome.capture?.body)).toBe(
       `plain ${credentialMask} encoded ${credentialMask} id raaqeb`
     );
+  });
+
+  test("a token endpoint whose certificate does not verify gets no secret, unless the monitor ignores TLS errors", async () => {
+    const asked: string[] = [];
+    const endpoint = Bun.serve({
+      fetch: (request) => {
+        asked.push(request.headers.get("authorization") ?? "");
+        return new Response(tokenJson("tok-tls"));
+      },
+      port: 0,
+      tls: {
+        cert: Bun.file(`${import.meta.dir}/fixtures/tls-cert.pem`),
+        key: Bun.file(`${import.meta.dir}/fixtures/tls-key.pem`),
+      },
+    });
+    stops.push(() => endpoint.stop(true));
+    const target = api();
+    const tokenUrl = { url: `https://127.0.0.1:${endpoint.port}/token` };
+    const verified = await runHttpCheck(
+      monitor(tokenUrl as FakeTokenServer, target),
+      live().io
+    );
+    expect(verified.check.reason).toBe(reasons.oauth2_token_failed);
+    expect(asked).toEqual([]);
+    const ignored = await runHttpCheck(
+      monitor(tokenUrl as FakeTokenServer, target, { ignoreTlsErrors: true }),
+      live().io
+    );
+    expect(ignored.check.result).toBe("up");
+    expect(target.authorizations).toEqual(["Bearer tok-tls"]);
   });
 
   test("an unreadable token request reads through the monitor's own proxy, as its checks do", async () => {

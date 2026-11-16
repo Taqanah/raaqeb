@@ -4,6 +4,7 @@ import {
   bsonDepthMax,
   decodeDocument,
   type ExtendedDocument,
+  type ExtendedJson,
   encodeDocument,
   parseExtendedJson,
   relaxed,
@@ -34,11 +35,21 @@ describe("a BSON document", () => {
 
   test("encodes a plain integer that fits 32 bits as an int32, a wider one as an int64, any other number as a double", () => {
     const decoded = decodeDocument(
-      encodeDocument({ big: 2 ** 40, fraction: 0.5, small: 1 })
+      encodeDocument({
+        big: 2 ** 40,
+        fraction: 0.5,
+        highest: 2 ** 31 - 1,
+        lowest: -(2 ** 31),
+        past: 2 ** 31,
+        small: 1,
+      })
     );
     expect(decoded).toEqual({
       big: { $numberLong: String(2 ** 40) },
       fraction: { $numberDouble: "0.5" },
+      highest: { $numberInt: "2147483647" },
+      lowest: { $numberInt: "-2147483648" },
+      past: { $numberLong: "2147483648" },
       small: { $numberInt: "1" },
     });
   });
@@ -92,16 +103,47 @@ describe("a BSON document", () => {
     expect(() => decodeDocument(padded)).toThrow(BsonError);
   });
 
-  test("refuses nesting deeper than its cap without recursing into it", () => {
+  /** A document holding `levels` documents (type 3) or arrays (type 4), each inside the one before. */
+  function nested(levels: number, type: 3 | 4): Uint8Array {
     let inner = new Uint8Array([5, 0, 0, 0, 0]);
-    for (let depth = 0; depth <= bsonDepthMax; depth += 1) {
+    for (let depth = 0; depth < levels; depth += 1) {
       const outer = new Uint8Array(inner.length + 8);
       new DataView(outer.buffer).setInt32(0, outer.length, true);
-      outer.set([3, 97, 0], 4);
+      // An array's keys are its indexes: "0".
+      outer.set([type, type === 4 ? 48 : 97, 0], 4);
       outer.set(inner, 7);
       inner = outer;
     }
-    expect(() => decodeDocument(inner)).toThrow(BsonError);
+    return inner;
+  }
+
+  test("refuses nesting deeper than its cap without recursing into it, of documents and of arrays", () => {
+    for (const type of [3, 4] as const) {
+      expect(() => decodeDocument(nested(bsonDepthMax, type))).not.toThrow();
+      expect(() => decodeDocument(nested(bsonDepthMax + 1, type))).toThrow(
+        "documents nest past the cap"
+      );
+    }
+  });
+
+  /** A command holding `levels` documents or arrays, each inside the one before, an empty document innermost. */
+  function nestedCommand(levels: number, inArray: boolean): ExtendedDocument {
+    let value: ExtendedJson = {};
+    for (let depth = 1; depth < levels; depth += 1) {
+      value = inArray ? [value] : { a: value };
+    }
+    return { a: value };
+  }
+
+  test("encodes a command nested to its cap and refuses one deeper, of documents and of arrays", () => {
+    for (const inArray of [false, true]) {
+      expect(() =>
+        encodeDocument(nestedCommand(bsonDepthMax, inArray))
+      ).not.toThrow();
+      expect(() =>
+        encodeDocument(nestedCommand(bsonDepthMax + 1, inArray))
+      ).toThrow("documents nest past the cap");
+    }
   });
 
   test("refuses to encode a key or a pattern holding a zero byte", () => {
@@ -128,10 +170,16 @@ describe("a BSON document", () => {
 
 describe("Extended JSON text", () => {
   test("reads 1 as an int32, 1.0 as a double and a wide integer as an int64", () => {
-    expect(parseExtendedJson('{"a": 1, "b": 1.0, "c": 4294967296}')).toEqual({
+    expect(
+      parseExtendedJson(
+        '{"a": 1, "b": 1.0, "c": 4294967296, "d": 2147483647, "e": -2147483648}'
+      )
+    ).toEqual({
       a: { $numberInt: "1" },
       b: { $numberDouble: "1.0" },
       c: { $numberLong: "4294967296" },
+      d: { $numberInt: "2147483647" },
+      e: { $numberInt: "-2147483648" },
     });
   });
 

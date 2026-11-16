@@ -105,7 +105,17 @@ describe("the framer", () => {
 
   test("refuses a length too short to hold an OP_MSG", () => {
     const header = new Uint8Array(4);
-    new DataView(header.buffer).setInt32(0, 20, true);
+    new DataView(header.buffer).setInt32(0, 25, true);
     expect(() => messageFramer()(header)).toThrow();
+  });
+
+  test("takes the smallest OP_MSG, an empty document, and waits for a message as long as the cap", () => {
+    const smallest = reply(1, encodeDocument({}));
+    expect(smallest).toHaveLength(26);
+    expect(messageFramer()(smallest)).toEqual([smallest]);
+    expect(decodeReply(smallest, 1)).toEqual({});
+    const header = new Uint8Array(4);
+    new DataView(header.buffer).setInt32(0, replyBytesMax, true);
+    expect(messageFramer()(header)).toEqual([]);
   });
 });

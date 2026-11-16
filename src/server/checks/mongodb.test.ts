@@ -1,4 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  test,
+} from "bun:test";
 import { parseConnectionString } from "@/shared/domain/mongodb.ts";
 import {
   decodeDocument,
@@ -14,6 +21,7 @@ import {
   seedList,
 } from "./mongodb.ts";
 import { messageFramer, opMsg } from "./mongodb-wire.ts";
+import { type MutualTls, mutualTls } from "./mtls-fixture.ts";
 
 /** What a fake server does with one command: answer it, close the connection, or never answer. */
 type Answer = ExtendedDocument | "close" | "hang";
@@ -292,6 +300,7 @@ describe("one command to a MongoDB server", () => {
     expect(error).toMatchObject({
       code: "ERR_MONGODB_SERVER_ERROR",
       errno: "13",
+      message: "command dbStats requires authentication",
     });
   });
 
@@ -592,68 +601,93 @@ describe("a sign-in", () => {
 });
 
 describe("TLS", () => {
-  /** A platform whose connect records its options and completes a handshake with the given verification error. */
-  function handshaking(authorizationError: Error | null) {
+  let certs: MutualTls;
+  beforeAll(async () => {
+    certs = await mutualTls();
+  });
+  afterAll(async () => {
+    await certs.cleanup();
+  });
+
+  const selfSigned = {
+    cert: Bun.file(`${import.meta.dir}/fixtures/tls-cert.pem`),
+    key: Bun.file(`${import.meta.dir}/fixtures/tls-key.pem`),
+  };
+
+  /**
+   * A real TLS server on the loopback, reached whatever host the URL names, so
+   * Bun's own handshake judges the certificate against that name. With `ca`
+   * the client trusts that CA, as it would a public one. The server counts the
+   * bytes that arrive past the handshake, the hello among them, then closes.
+   */
+  function tlsServer(
+    pair: { cert: unknown; key: unknown },
+    ca?: string
+  ): { on: MongoPlatform; received: () => number; seen: { tls?: unknown } } {
+    let received = 0;
+    const listener = Bun.listen({
+      hostname: "127.0.0.1",
+      port: 0,
+      socket: {
+        data: (socket, chunk) => {
+          received += chunk.length;
+          socket.end();
+        },
+      },
+      tls: pair as Bun.TLSOptions,
+    });
+    servers.push({
+      accepted: () => 0,
+      closed: () => true,
+      commands: [],
+      port: listener.port,
+      stop: () => listener.stop(true),
+    });
     const seen: { tls?: unknown } = {};
-    const on: MongoPlatform = {
-      ...platform,
-      connect: ((options: Parameters<typeof Bun.connect>[0]) => {
-        seen.tls = options.tls;
-        // Past the handshake the fake server closes on the first bytes, so the check ends.
-        const socket = {
-          end: () => undefined,
-          // A handshake that took place has the server's certificate, whatever its verification said.
-          getPeerCertificate: () => ({ fingerprint256: "AA:BB" }),
-          terminate: () => undefined,
-          write: (bytes: Uint8Array) => {
-            queueMicrotask(() =>
-              options.socket.close?.(socket as never, undefined)
-            );
-            return bytes.length;
-          },
-        };
-        // As Bun 1.4.4 does: without rejectUnauthorized, a chain error still reports success and only a name mismatch fails it.
-        const loose =
-          (options.tls as { rejectUnauthorized?: boolean } | undefined)
-            ?.rejectUnauthorized === false;
-        const success = loose
-          ? (authorizationError as { code?: string } | null)?.code !==
-            "ERR_TLS_CERT_ALTNAME_INVALID"
-          : authorizationError === null;
-        queueMicrotask(() =>
-          options.socket.handshake?.(
-            socket as never,
-            success,
-            authorizationError as never
-          )
-        );
-        return Promise.resolve(socket);
-      }) as never,
-    };
-    return { on, seen };
+    const connect = ((options: Parameters<typeof Bun.connect>[0]) => {
+      seen.tls = options.tls;
+      const tls =
+        ca === undefined ? options.tls : { ...(options.tls as object), ca };
+      return Bun.connect({
+        ...options,
+        hostname: "127.0.0.1",
+        port: listener.port,
+        tls,
+      } as Parameters<typeof Bun.connect>[0]);
+    }) as typeof Bun.connect;
+    return { on: { ...platform, connect }, received: () => received, seen };
   }
 
-  const altName = Object.assign(new Error("Hostname/IP does not match"), {
-    code: "ERR_TLS_CERT_ALTNAME_INVALID",
-  });
-  const selfSigned = Object.assign(new Error("self signed certificate"), {
-    code: "DEPTH_ZERO_SELF_SIGNED_CERT",
-  });
-
   test("verifies the certificate and the host name by default, naming the host", async () => {
-    const { on, seen } = handshaking(selfSigned);
+    const untrusted = tlsServer(selfSigned);
     const error = await failure(
-      ask("mongodb://db.example.com/?tls=true", undefined, on)
+      ask("mongodb://db.example.com/?tls=true", undefined, untrusted.on)
     );
     expect(error.code).toBe("DEPTH_ZERO_SELF_SIGNED_CERT");
-    expect(seen.tls).toMatchObject({ serverName: "db.example.com" });
+    expect(untrusted.seen.tls).toMatchObject({ serverName: "db.example.com" });
+    const otherName = tlsServer(certs.server, certs.ca);
+    const mismatch = await failure(
+      ask("mongodb://db.example.com/?tls=true", undefined, otherName.on)
+    );
+    expect(mismatch.code).toBe("ERR_TLS_CERT_ALTNAME_INVALID");
+    // A certificate for the right name that no one trusts: the case Bun reports as a success when verification is off.
+    const rightName = tlsServer(selfSigned);
+    expect(
+      (
+        await failure(
+          ask("mongodb://localhost/?tls=true", undefined, rightName.on)
+        )
+      ).code
+    ).toBe("DEPTH_ZERO_SELF_SIGNED_CERT");
+    expect(
+      untrusted.received() + otherName.received() + rightName.received()
+    ).toBe(0);
   });
 
   test("is on for an SRV URL without being asked", async () => {
-    const handshake = handshaking(selfSigned);
-    const { seen } = handshake;
+    const server = tlsServer(selfSigned);
     const on: MongoPlatform = {
-      ...handshake.on,
+      ...server.on,
       resolver: () => ({
         cancel: () => undefined,
         srv: () =>
@@ -661,46 +695,49 @@ describe("TLS", () => {
         txt: () => Promise.resolve([]),
       }),
     };
-    await failure(ask("mongodb+srv://cluster.example.com", undefined, on));
-    expect(seen.tls).toMatchObject({ serverName: "n1.cluster.example.com" });
+    const error = await failure(
+      ask("mongodb+srv://cluster.example.com", undefined, on)
+    );
+    expect(error.code).toBe("DEPTH_ZERO_SELF_SIGNED_CERT");
+    expect(server.seen.tls).toMatchObject({
+      serverName: "n1.cluster.example.com",
+    });
   });
 
   test("with invalid host names allowed accepts a certificate for another name and nothing worse", async () => {
-    const other = handshaking(altName);
-    const otherError = await failure(
-      ask(
-        "mongodb://db.example.com/?tls=true&tlsAllowInvalidHostnames=true",
-        undefined,
-        other.on
-      )
-    );
-    // Past the handshake, the fake socket never answers hello: the sign-in went on.
-    expect(otherError.code).not.toBe("ERR_TLS_CERT_ALTNAME_INVALID");
-    const worse = handshaking(selfSigned);
-    expect(
-      (
-        await failure(
-          ask(
-            "mongodb://db.example.com/?tls=true&tlsAllowInvalidHostnames=true",
-            undefined,
-            worse.on
-          )
-        )
-      ).code
-    ).toBe("DEPTH_ZERO_SELF_SIGNED_CERT");
+    const url =
+      "mongodb://db.example.com/?tls=true&tlsAllowInvalidHostnames=true";
+    const otherName = tlsServer(certs.server, certs.ca);
+    await failure(ask(url, undefined, otherName.on));
+    // The hello reached the server: the handshake was accepted.
+    expect(otherName.received()).toBeGreaterThan(0);
+    // An untrusted certificate is refused, for another name and for the right one alike.
+    for (const host of ["db.example.com", "localhost"]) {
+      const worse = tlsServer(selfSigned);
+      // biome-ignore lint/performance/noAwaitInLoops: one server at a time
+      const refused = await failure(
+        ask(url.replace("db.example.com", host), undefined, worse.on)
+      );
+      expect(refused.code, host).toBe("DEPTH_ZERO_SELF_SIGNED_CERT");
+      expect(worse.received(), host).toBe(0);
+    }
   });
 
-  test("with invalid certificates allowed, or tlsInsecure, accepts any certificate", async () => {
+  test("with invalid certificates allowed, or tlsInsecure, accepts any certificate, one for another name included", async () => {
     for (const option of [
       "tlsAllowInvalidCertificates=true",
       "tlsInsecure=true",
     ]) {
-      const { on } = handshaking(selfSigned);
-      // biome-ignore lint/performance/noAwaitInLoops: one platform at a time
-      const error = await failure(
-        ask(`mongodb://db.example.com/?tls=true&${option}`, undefined, on)
+      const server = tlsServer(selfSigned);
+      // biome-ignore lint/performance/noAwaitInLoops: one server at a time
+      await failure(
+        ask(
+          `mongodb://db.example.com/?tls=true&${option}`,
+          undefined,
+          server.on
+        )
       );
-      expect(error.code).not.toBe("DEPTH_ZERO_SELF_SIGNED_CERT");
+      expect(server.received(), option).toBeGreaterThan(0);
     }
   });
 });

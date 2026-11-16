@@ -317,6 +317,28 @@ describe("one database check", () => {
     expect(outcome.detail?.error).not.toContain("s3cr");
   });
 
+  test("a MongoDB password with no user name before it never reaches the failure detail either", async () => {
+    const { io: databaseIo } = io([
+      {
+        ms: 2,
+        throws: coded("ERR_MONGODB_PROTOCOL", "odd reply to s3cret-only"),
+      },
+    ]);
+    const outcome = await runDatabaseCheck(
+      monitor({
+        config: { type: "mongodb" },
+        credentials: {
+          headers: [],
+          url: "mongodb://:s3cret-only@a.example.test/app",
+        },
+        retries: 0,
+      }),
+      databaseIo
+    );
+    expect(outcome.detail?.error).toContain("odd reply to");
+    expect(outcome.detail?.error).not.toContain("s3cret-only");
+  });
+
   test("an attempt past the timeout is a timeout naming the monitor's timeout", async () => {
     const { io: databaseIo } = io([
       {

@@ -208,10 +208,11 @@ describe("an HTTP check against a server that requires a client certificate", ()
       io
     );
     const written = JSON.stringify(outcome);
+    const keyLine = certs.clientOther.key.split("\n")[1] ?? "";
+    expect(keyLine.length).toBeGreaterThan(40);
+    expect(outcome.check.reason).toBe(reasons.client_certificate_refused);
     expect(written).not.toContain(keyPassphrase);
-    expect(written).not.toContain(
-      certs.clientOther.key.split("\n")[1] ?? "never"
-    );
+    expect(written).not.toContain(keyLine);
   });
 });
 

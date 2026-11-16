@@ -15,6 +15,8 @@ export interface ProxyRequest {
 }
 
 export interface ProxyReply {
+  /** `ok` when none is given. */
+  readonly body?: string;
   readonly headers?: Readonly<Record<string, string>>;
   readonly status: number;
 }
@@ -50,12 +52,12 @@ export function startProxy(
         }
         const request = { headers, line };
         requests.push(request);
-        const { headers: extra = {}, status } = reply(request);
+        const { body = "ok", headers: extra = {}, status } = reply(request);
         const sent = Object.entries(extra)
           .map(([name, value]) => `${name}: ${value}\r\n`)
           .join("");
         socket.write(
-          `HTTP/1.1 ${status} X\r\ncontent-length: 2\r\nconnection: close\r\n${sent}\r\nok`
+          `HTTP/1.1 ${status} X\r\ncontent-length: ${Buffer.byteLength(body)}\r\nconnection: close\r\n${sent}\r\n${body}`
         );
         socket.end();
       },

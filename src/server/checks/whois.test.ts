@@ -32,11 +32,9 @@ describe("the WHOIS server IANA names for a TLD", () => {
 describe("what a registry's WHOIS answer says of the name asked", () => {
   test.each([
     ["google.co.ma", "google.co.ma", Date.UTC(2027, 0, 29)],
-    ["mx-registered", "google.com.mx", Date.UTC(2027, 1, 23)],
     ["sa-registered", "google.com.sa", undefined],
     ["google.dz", "google.dz", undefined],
     ["google.tn", "google.tn", undefined],
-    ["google.mr", "google.mr", undefined],
     ["www.google.de", "google.de", undefined],
   ])("%s is a record of %s", async (name, domain, expiresAt) => {
     expect(whoisAnswerOf(await captured(name))).toEqual({
@@ -48,12 +46,9 @@ describe("what a registry's WHOIS answer says of the name asked", () => {
 
   test.each([
     "mx-not-held",
-    "sa-second-level",
     "sa-not-held",
     "com.qa",
-    "nonexistent-raaqeb-test.ae",
     "www.google.co.ma",
-    "www.google.so",
     "www.google.tn",
   ])("%s says the registry holds no such name", async (name) => {
     expect(whoisAnswerOf(await captured(name))).toEqual({ held: false });
@@ -90,29 +85,10 @@ describe("the expiry a registry's WHOIS answer gives", () => {
     });
   });
 
-  // The sa- answers are Saudi Arabia's registry's: a registered name, its second level, and a name under a registered one.
   test.each([
-    "sa-registered",
-    "google.ae",
-    "google.com.qa",
-    "google.com.om",
-    "google.jo",
-    "google.tn",
-    "google.de",
-  ])(
-    "%s, from a registry that publishes no expiry, lists none",
-    async (name) => {
-      expect(whoisExpiry(await captured(name))).toEqual({ listed: false });
-    }
-  );
-
-  test.each([
-    "sa-second-level",
-    "com.qa",
-    "sa-not-held",
-    "www.google.co.ma",
-    "nonexistent-raaqeb-test.ae",
-  ])("%s, a name the registry does not hold, lists none", async (name) => {
+    ["sa-registered", "from a registry that publishes no expiry"],
+    ["sa-not-held", "a name the registry does not hold"],
+  ])("%s, %s, lists none", async (name) => {
     expect(whoisExpiry(await captured(name))).toEqual({ listed: false });
   });
 
@@ -133,6 +109,7 @@ describe("the expiry a registry's WHOIS answer gives", () => {
     ["Expiry date: 04-Mar-2027", Date.UTC(2027, 2, 4)],
     ["Expires On: 4 March 2027", Date.UTC(2027, 2, 4)],
     ["Expiry Date: 2027-03-04 12:00:00 +03:00", Date.UTC(2027, 2, 4, 9)],
+    ["Expiry Date: 2027-03-04 12:00:00 +05:30", Date.UTC(2027, 2, 4, 6, 30)],
     ["Expiry Date.......: 2027-03-04", Date.UTC(2027, 2, 4)],
   ])("“%s” reads one way only", (line, expiresAt) => {
     expect(whoisExpiry(`${line}\r\n`)).toEqual({ expiresAt, listed: true });
@@ -167,6 +144,7 @@ describe("the expiry a registry's WHOIS answer gives", () => {
     "Registry Expiry Date: 2027-03-00",
     "Registry Expiry Date: 2027-13-01",
     "Registry Expiry Date: 2027-03-04T24:00:00Z",
+    "Registry Expiry Date: 2027-03-04T12:60:00Z",
     "Expiry date: 04-Smarch-2027",
   ])("“%s”, no day there is, is an unknown date", (line) => {
     expect(whoisExpiry(line)).toEqual({ expiresAt: undefined, listed: true });

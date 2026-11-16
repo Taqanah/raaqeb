@@ -647,6 +647,19 @@ describe("the reason of a fetch error on a request that went through a proxy", (
     });
   });
 
+  test("a tunnel refusal names any status from 100 to 599", () => {
+    for (const status of [100, 599]) {
+      const error = Object.assign(new Error("Proxy refused"), {
+        code: "ERR_PROXY_TUNNEL",
+        status,
+      });
+      expect(reasonForError(error, target).params).toEqual({
+        reason: "proxy_failed",
+        status,
+      });
+    }
+  });
+
   test("a tunnel refusal without a usable status names none", () => {
     for (const status of [undefined, 0, 600, "502"]) {
       const error = Object.assign(new Error("Proxy refused"), {

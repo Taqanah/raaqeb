@@ -169,6 +169,24 @@ describe("a custom CA or a client certificate through an https proxy", () => {
     }
   });
 
+  test("is refused for a client certificate alone, with no custom CA, and not for a certificate whose key is missing, which is never presented", async () => {
+    const proxied = {
+      caCertificates: undefined,
+      proxy: "https://proxy.example.test:8443",
+    };
+    const certificateOnly = scripted([new Response("ok")]);
+    const refused = await runHttpCheck(monitor(proxied), certificateOnly.io);
+    expect(refused.check.reason).toBe(reasons.tls_proxy_unsupported);
+    expect(certificateOnly.seen).toHaveLength(0);
+    const keyless = scripted([new Response("ok")]);
+    const sent = await runHttpCheck(
+      { ...monitor(proxied), credentials: { headers: [] } },
+      keyless.io
+    );
+    expect(sent.check.result).toBe("up");
+    expect(keyless.seen).toHaveLength(1);
+  });
+
   test("is not refused for an http proxy, own or the install's, nor for a host NO_PROXY exempts", async () => {
     for (const [config, env] of [
       [{ proxy: "http://proxy.example.test:3128" }, {}],
