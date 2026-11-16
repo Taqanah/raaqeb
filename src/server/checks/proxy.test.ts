@@ -196,34 +196,48 @@ describe("an HTTP monitor's own proxy", () => {
     expect(own.requests[0]?.headers["proxy-authorization"]).toBeUndefined();
   });
 
-  // The proxy's user name and password are not among the credentials a capture masks, so an answer that repeats them is kept as it came.
-  test.failing("a proxy that answers with its own credentials puts neither the password nor its Basic pair in the outcome", async () => {
-    const password = "proxy-pass-77";
-    const pair = btoa(`ops:${password}`);
-    const own = proxy(() => ({
-      body: `you sent Basic ${pair}, that is ops:${password}`,
-      headers: { "x-echo": pair },
+  // A hostile proxy repeats what it was sent; the capture, the failure detail and the error must not keep it.
+  test.each([
+    { assertions: config.assertions, captureMode: "always", status: 200 },
+    { assertions: config.assertions, captureMode: "always", status: 407 },
+    // With no capture, only the failed assertion's detail quotes the body.
+    {
+      assertions: [{ kind: "body_contains", text: "never" }],
+      captureMode: "off",
       status: 200,
-    }));
-    restore = setProxyEnvironment({});
-    const outcome = await runCheck(
-      http(
-        { captureMode: "always", proxy: own.url },
-        { headers: [], proxyAuth: { password, user: "ops" } }
-      ),
-      liveIo()
-    );
-    expect(own.requests[0]?.headers["proxy-authorization"]).toBe(
-      `Basic ${pair}`
-    );
-    expect(outcome?.capture?.body.length).toBeGreaterThan(0);
-    const written = JSON.stringify({
-      ...outcome,
-      body: new TextDecoder().decode(outcome?.capture?.body),
-    });
-    expect(written).not.toContain(password);
-    expect(written).not.toContain(pair);
-  });
+    },
+  ] satisfies (Pick<HttpConfig, "assertions" | "captureMode"> & {
+    status: number;
+  })[])(
+    "a proxy that answers $status with its own credentials, capture $captureMode, puts neither the password nor its Basic pair in the outcome",
+    async ({ assertions, captureMode, status }) => {
+      const password = "proxy-pass-77";
+      const pair = btoa(`ops:${password}`);
+      const own = proxy(() => ({
+        body: `you sent Basic ${pair}, that is ops:${password}`,
+        headers: { "x-echo": pair },
+        status,
+      }));
+      restore = setProxyEnvironment({});
+      const outcome = await runCheck(
+        http(
+          { assertions, captureMode, proxy: own.url },
+          { headers: [], proxyAuth: { password, user: "ops" } }
+        ),
+        liveIo()
+      );
+      expect(own.requests[0]?.headers["proxy-authorization"]).toBe(
+        `Basic ${pair}`
+      );
+      const written = JSON.stringify({
+        ...outcome,
+        body: new TextDecoder().decode(outcome?.capture?.body),
+      });
+      expect(written).toContain("you sent Basic");
+      expect(written).not.toContain(password);
+      expect(written).not.toContain(pair);
+    }
+  );
 });
 
 describe("a proxy that fails the check", () => {

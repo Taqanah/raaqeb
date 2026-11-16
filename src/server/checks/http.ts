@@ -65,7 +65,7 @@ export function proxyOf(
     // RFC 7617, as the target's own basic auth is built; Bun sends it with the CONNECT or the request.
     ...(auth && {
       headers: {
-        "Proxy-Authorization": `Basic ${new TextEncoder().encode(`${auth.user}:${auth.password}`).toBase64()}`,
+        "Proxy-Authorization": `Basic ${basicPair(auth.user, auth.password)}`,
       },
     }),
     respectNoProxy: false,
@@ -510,15 +510,21 @@ function buildHeaders(
   }
   const auth = credentials?.auth;
   if (auth?.kind === "basic") {
-    // RFC 7617: the user and password joined by a colon, in UTF-8, as base64.
-    const pair = new TextEncoder().encode(`${auth.user}:${auth.password}`);
-    headers.set("authorization", `Basic ${pair.toBase64()}`);
+    headers.set(
+      "authorization",
+      `Basic ${basicPair(auth.user, auth.password)}`
+    );
   } else if (auth?.kind === "bearer") {
     headers.set("authorization", `Bearer ${auth.token}`);
   } else if (auth?.kind === "oauth2" && token !== undefined) {
     headers.set("authorization", `Bearer ${token}`);
   }
   return headers;
+}
+
+/** RFC 7617: the user and password joined by a colon, in UTF-8, as base64. */
+function basicPair(user: string, password: string): string {
+  return new TextEncoder().encode(`${user}:${password}`).toBase64();
 }
 
 /** The token or the base64 pair after its scheme, as the platform sent it. */
@@ -537,8 +543,17 @@ const standardHeaders = [
   "user-agent",
 ];
 
-/** Every credential value as the request carried it: each custom header's value as the platform sends it, trimmed, but a standard header's; the auth field's token or base64 pair after its scheme; the basic password inside the pair. Headers the platform refuses send nothing. */
+/** Every credential value as the request carried it: the proxy's base64 pair and password; each custom header's value as the platform sends it, trimmed, but a standard header's; the auth field's token or base64 pair after its scheme; the basic password inside the pair. Headers the platform refuses send nothing. */
 function sentValues(credentials: Credentials | undefined): string[] {
+  const proxy = credentials?.proxyAuth;
+  return [
+    ...(proxy ? [basicPair(proxy.user, proxy.password), proxy.password] : []),
+    ...requestValues(credentials),
+  ];
+}
+
+/** The credential values the request's own headers carry. */
+function requestValues(credentials: Credentials | undefined): string[] {
   let sent: Headers;
   try {
     sent = buildHeaders(credentials);
