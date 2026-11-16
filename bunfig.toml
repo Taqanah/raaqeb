@@ -3,5 +3,7 @@
 bun = true
 
 # A release younger than three days is held back: a hijacked npm version is usually caught and pulled within that window.
+# A security fix that must land sooner adds one reviewed `name@version` to `minimumReleaseAgeExcludes` for each package
+# it brings in under that age, and the line goes once the age has passed.
 [install]
 minimumReleaseAge = 259200 # 3 days in seconds; the "3d" form breaks every command on Bun 1.4.3 and older

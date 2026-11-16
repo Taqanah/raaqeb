@@ -47,18 +47,14 @@ SQLite and Postgres work under one rule: a feature works on both or on neither.
 - A migration lands under both `migrations/sqlite/` and `migrations/postgres/`. `bun run db:generate <name>` writes both. Hand-write only what the generator cannot: a data step such as a seed row, and `WITHOUT ROWID` on a SQLite head table.
 - Columns are the lowest common denominator: JSON as text, timestamps as integer milliseconds (`bigint` on Postgres), booleans as integers, packed blobs as `blob` and `bytea`. Every day boundary is UTC.
 
-## The test-first loop
+## Test first
 
-Anything with logic is written test first, one commit per step, so a reviewer can replay the work (ADR-0008). Tests are committed before the code they test.
+Anything with logic is written test first (ADR-0008).
 
-1. **Interface.** Exported signatures and types, no bodies. Done when `bun run typecheck` accepts the file and every name is a `CONTEXT.md` word.
-2. **Red** (`test:`). Tests against that interface, named by the behaviour they pin in glossary words, never by the function they call. Done when each fails for the reason its name gives.
-3. **Green.** The smallest code that passes, test files untouched. Done when the suite is green.
-4. **Audit** (`test:`). Re-read every test against the issue, not the code. A test changes only when it asserts something the issue never asked for or contradicts `CONTEXT.md`; list each changed assertion with its reason in the pull request body.
-5. **Harden.** Add the edge cases you met, then break the code: for each behaviour, flip one condition, watch a test go red, restore it. A behaviour that stays green has no test yet.
-6. **Gate.** Both gate commands are green (below).
-
-A bug starts at red: a failing test reproduces the report before any fix. A test that fails stays as written; "fixed" means the same test, green.
+- **A bug** starts with its failing test: reproduce the report through the real entry point and commit that test (`test:`) before the fix. "Fixed" means the same test, green.
+- **A feature** goes one behaviour at a time: a failing test at the highest seam that reaches the behaviour, named by the behaviour it pins in glossary words, then the least code that passes it, then the next behaviour.
+- **Then break it.** `bun run flip --sweep <file> -- <test files>` flips each operator on the lines you changed and lists the flips no test noticed. Each gets a test or a stated reason: a behaviour that stays green when broken has no test yet.
+- **A test changes after it first passed** only when it asserts something the issue never asked for or contradicts `CONTEXT.md`; list each such change with its reason in the pull request body. A test is never weakened or deleted to reach green.
 
 Tests sit in `<name>.test.ts` beside `<name>.ts`. Integration tests use a real SQLite file in a temp directory. Styling and copy have no tests. Playwright specs in `e2e/` walk every flow an operator or visitor finishes in the browser, each test on records it creates or on an install of its own, never on a seeded record another spec reads: `retries: 0`, `@playwright/test` pinned exactly, `expectPath(page, "/...")` never a regex `toHaveURL`, every `expect.poll` awaited, selectors are attributes (`input[name=email]`) never Arabic copy.
 
@@ -67,7 +63,7 @@ Tests sit in `<name>.test.ts` beside `<name>.ts`. Integration tests use a real S
 ```
 bun run gate                    catalog check, lint, typecheck, unit and integration tests on SQLite
 docker compose up -d            a local Postgres, Mailpit for the email channel, MySQL, Redis and two MongoDB servers for the database monitors
-bun run test:postgres           the same integration files against Postgres, Mailpit, MySQL, Redis and MongoDB; a missing service fails the run
+bun run test:postgres           the same integration files against Postgres, Mailpit, MySQL, Redis and MongoDB; a missing service fails the run; needed when your change reaches a database
 bun run e2e:install && bun run e2e    Playwright specs: the full suite once when your work is done, only the spec of your red test while working
 ```
 

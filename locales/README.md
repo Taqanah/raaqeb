@@ -7,4 +7,6 @@ One PO file per locale, `ar` and `en`, both complete before merge (ADR-0003). Co
 - Plurals are ICU `{count, plural, ...}` with every category the locale needs: six for Arabic (`zero one two few many other`), two for English (`one other`).
 - `bun run catalog` checks both files, writes `message-ids.ts` and compiles the catalogs; `bun run catalog:check` only checks, and the gate runs it. Both then write `fallback.ts` (gitignored): the error notice's three words in each locale, taken from the compiled catalogs, for a document whose own read failed.
 
+To add a message: append its three lines (`#. js-lingui-explicit-id`, `msgid "<area>_<words>"`, `msgstr "<text>"`) and a blank line to both PO files, anywhere in each, then run `bun run catalog`. It refuses an id whose prefix is not an area and lists the areas.
+
 To translate: take the Arabic lines of `CONTEXT.md` as settled, choose any other word for the sense of the sentence (the one Microsoft, Apple and Mozilla share, else plain words), then open a pull request that edits the PO file. A translation platform arrives with the third language.
