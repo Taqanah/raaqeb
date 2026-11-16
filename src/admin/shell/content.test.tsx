@@ -6,6 +6,9 @@ import { MessagesProvider } from "@/shared/i18n/react.tsx";
 import { messages as en } from "../../../locales/en/messages.ts";
 import { ContentField, ContentInputs } from "./content.tsx";
 
+const i18n = createMessages("en", en);
+const required = i18n._("app_required");
+const optional = i18n._("app_optional");
 const noop = () => undefined;
 const describedBy = /aria-describedby="([^"]*)"/g;
 const hintId = /id="([^"]+)"[^>]*>Visitors read it\.</;
@@ -13,7 +16,7 @@ const refusalId = /id="([^"]+)"[^>]*>Type a title\.</;
 
 function field(error?: string): string {
   return renderToStaticMarkup(
-    <MessagesProvider i18n={createMessages("en", en)}>
+    <MessagesProvider i18n={i18n}>
       <ContentField
         description="Visitors read it."
         error={error}
@@ -54,7 +57,7 @@ describe("a content field's description of its inputs", () => {
 
 function render(node: ReactNode): string {
   return renderToStaticMarkup(
-    <MessagesProvider i18n={createMessages("en", en)}>{node}</MessagesProvider>
+    <MessagesProvider i18n={i18n}>{node}</MessagesProvider>
   );
 }
 
@@ -70,9 +73,9 @@ describe("a content field's marks on its inputs", () => {
         value={{ ar: "", en: "" }}
       />
     );
-    expect(html).toContain("Required");
-    expect(html.match(/Optional/g)).toHaveLength(1);
-    expect(html.indexOf("Required")).toBeLessThan(html.indexOf("Optional"));
+    expect(html.split(required)).toHaveLength(2);
+    expect(html.split(optional)).toHaveLength(2);
+    expect(html.indexOf(required)).toBeLessThan(html.indexOf(optional));
   });
 
   test("optional content, empty in every locale, marks no input required", () => {
@@ -87,7 +90,7 @@ describe("a content field's marks on its inputs", () => {
         value={{ ar: "", en: "" }}
       />
     );
-    expect(html).not.toContain("Required");
+    expect(html).not.toContain(required);
   });
 
   test("a name either locale may hold alone marks both inputs optional and none required", () => {
@@ -102,8 +105,8 @@ describe("a content field's marks on its inputs", () => {
         value={{ ar: "", en: "" }}
       />
     );
-    expect(html).not.toContain("Required");
-    expect(html.match(/Optional/g)).toHaveLength(2);
+    expect(html).not.toContain(required);
+    expect(html.split(optional)).toHaveLength(3);
   });
 
   test("compact inputs name the install language's input required in its label and placeholder", () => {
@@ -118,8 +121,8 @@ describe("a content field's marks on its inputs", () => {
         value={{ ar: "", en: "" }}
       />
     );
-    expect(html).toContain('aria-label="Name · English · Required"');
-    expect(html).toContain('placeholder="Name · English · Required"');
-    expect(html).toContain('aria-label="Name · العربية · Optional"');
+    expect(html).toContain(`aria-label="Name · English · ${required}"`);
+    expect(html).toContain(`placeholder="Name · English · ${required}"`);
+    expect(html).toContain(`aria-label="Name · العربية · ${optional}"`);
   });
 });

@@ -64,7 +64,10 @@ describe("the heartbeat panel", () => {
     expect(html).toContain("Exit code");
     expect(html).toContain("dump failed: disk full");
     expect(html.match(/data-failed=""/g)).toHaveLength(1);
-    expect(html.match(/data-slot="last-heartbeat"/g)).toHaveLength(1);
+    const [first = "", second = ""] = html.split("<li").slice(1);
+    expect(first).toContain('data-slot="last-heartbeat"');
+    expect(first).toContain("dump failed: disk full");
+    expect(second).not.toContain('data-slot="last-heartbeat"');
   });
 
   test("a failure with no exit code shows none", () => {

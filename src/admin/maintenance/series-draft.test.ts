@@ -55,6 +55,15 @@ describe("the recurrence picker's draft", () => {
     });
   });
 
+  test("a window that ends where it starts or before it picks an hour", () => {
+    for (const ends of ["2026-09-26T15:30", "2026-09-26T14:00"]) {
+      expect(recurrenceDraftOf({ ...window, ends }, riyadh)).toMatchObject({
+        hours: "1",
+        minutes: 0,
+      });
+    }
+  });
+
   test("a window in a month's last seven days past the 28th starts the nth weekday at the last", () => {
     expect(
       recurrenceDraftOf(
@@ -184,6 +193,9 @@ describe("what the series form posts", () => {
     }
     expect(
       seriesInputOf(text, { ...weekly, hours: "168", minutes: 0 }, "ar").ok
+    ).toBe(true);
+    expect(
+      seriesInputOf(text, { ...weekly, hours: "0", minutes: 1 }, "ar").ok
     ).toBe(true);
   });
 });

@@ -43,7 +43,9 @@ describe("a MongoDB monitor's command", () => {
   test("is named a command, says which commands it may run and suggests ping", () => {
     const html = target("mongodb");
     expect(html).toContain(i18n._("monitor_field_command"));
-    expect(html).toContain("replSetGetStatus");
+    expect(html).toContain(
+      i18n._("monitor_field_command_mongodb_hint").replaceAll("'", "&#x27;")
+    );
     expect(html).toContain('placeholder="{&quot;ping&quot;: 1}"');
   });
 });

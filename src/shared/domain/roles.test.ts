@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  allows,
   assignableRoles,
   can,
   keyCan,
@@ -127,20 +128,6 @@ describe("what an API key's role allows", () => {
     });
   }
 
-  test("never reaches the account, the settings, the team, ownership, export and import, the audit log, or the sign-in policy, whatever its role", () => {
-    for (const permission of [
-      "audit",
-      "profile",
-      "settings",
-      "team",
-      "owners",
-      "transfer",
-      "security",
-    ] as const) {
-      expect(roles.filter((role) => keyCan(role, permission))).toEqual([]);
-    }
-  });
-
   test("an account's key may carry its role or any below it, never one above", () => {
     expect(keyRoles("owner")).toEqual([...roles]);
     expect(keyRoles("admin")).toEqual([
@@ -159,5 +146,19 @@ describe("what an API key's role allows", () => {
     expect(lesserRole("viewer", "admin")).toBe("viewer");
     expect(lesserRole("editor", "responder")).toBe("responder");
     expect(lesserRole("owner", "owner")).toBe("owner");
+  });
+});
+
+describe("what a caller may do", () => {
+  test("an operator's session does what its role allows", () => {
+    expect(allows({ role: "owner" }, "settings")).toBe(true);
+    expect(allows({ role: "editor" }, "settings")).toBe(false);
+    expect(allows({ role: "viewer" }, "read")).toBe(true);
+  });
+
+  test("an API key's call never reaches what only an operator's session may, even with an owner's role", () => {
+    expect(allows({ apiKey: {}, role: "owner" }, "settings")).toBe(false);
+    expect(allows({ apiKey: {}, role: "owner" }, "monitors")).toBe(true);
+    expect(allows({ apiKey: {}, role: "viewer" }, "monitors")).toBe(false);
   });
 });

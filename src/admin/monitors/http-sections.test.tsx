@@ -127,7 +127,7 @@ describe("the TLS section", () => {
     expect(html).toMatch(passphraseInput);
   });
 
-  test("shows the certificates as they were typed, left to right, and never a key a draft does not hold", () => {
+  test("shows the certificates as they were typed, left to right", () => {
     const html = tlsSection({ caCertificates: pem, clientCertificate: pem });
     expect(html).toContain("AAAA");
     expect(html.match(/dir="ltr"/g)?.length).toBeGreaterThanOrEqual(2);

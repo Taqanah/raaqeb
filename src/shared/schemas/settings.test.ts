@@ -5,6 +5,7 @@ import {
   emailChangeSchema,
   generalSettingsSchema,
   passwordChangeSchema,
+  proxyEntries,
   storageSettingsSchema,
 } from "./settings.ts";
 
@@ -144,5 +145,16 @@ describe("the storage page's input", () => {
     ]) {
       expect(storageSettingsSchema.safeParse(input).success).toBe(false);
     }
+  });
+});
+
+describe("the trusted proxies as a field or the variable writes them", () => {
+  test("are the comma-separated entries, trimmed, with blank ones dropped", () => {
+    expect(proxyEntries(" 10.0.0.1 ,, 192.0.2.0/24 ,")).toEqual([
+      "10.0.0.1",
+      "192.0.2.0/24",
+    ]);
+    expect(proxyEntries("")).toEqual([]);
+    expect(proxyEntries(" , ")).toEqual([]);
   });
 });

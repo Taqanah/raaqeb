@@ -41,6 +41,14 @@ describe("a report's range", () => {
     });
   });
 
+  test("a range of today alone is open from the very midnight it starts", () => {
+    const midnight = Date.UTC(2026, 9, 19);
+    expect(reportPeriod("2026-10-19", "2026-10-19", midnight)).toMatchObject({
+      open: true,
+      toMs: midnight,
+    });
+  });
+
   test("a range ending the day before now is closed even when now is its midnight", () => {
     expect(
       reportPeriod("2026-10-01", "2026-10-18", Date.UTC(2026, 9, 19))

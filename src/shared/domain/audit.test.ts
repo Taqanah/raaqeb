@@ -32,7 +32,7 @@ describe("an audit entry's detail", () => {
         currentPassword: "pw",
         email: "ops@example.com",
         enabled: true,
-        input: { auth: { user: "nested twice" } },
+        input: { options: { level: "nested twice" } },
         name: "x".repeat(300),
         retentionDays: 30,
         token: "rqi_x",
@@ -78,6 +78,10 @@ describe("an audit entry's record", () => {
     expect(targetOf({ pageId: "p1", subscriberId: "s1" })).toBe("p1");
     expect(targetOf({ clock: "24h" })).toBeNull();
     expect(targetOf(undefined)).toBeNull();
+    // A value of another type names no record.
+    expect(targetOf({ id: 5 })).toBeNull();
+    expect(targetOf({ ids: "m1" })).toBeNull();
+    expect(targetOf({ pageId: 3 })).toBeNull();
   });
 });
 

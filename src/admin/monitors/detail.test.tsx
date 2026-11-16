@@ -390,6 +390,30 @@ describe("the checks of a zoomed span", () => {
     const html = zoomed({ kept: false });
     expect(html).toContain('data-slot="span-checks-none"');
     expect(html).not.toContain('data-slot="span-checks-gone"');
+    // A bucket that holds no check summarises none.
+    const empty = zoomed({ kept: false }, [{ ...summarised, checks: 0 }]);
+    expect(empty).toContain('data-slot="span-checks-none"');
+    expect(empty).not.toContain('data-slot="span-checks-gone"');
+  });
+
+  test("an old span of a chart that was not read says it has no checks", () => {
+    const html = render(
+      "en",
+      <MonitorDetailView
+        clock={clock}
+        detail={{
+          ...detail("off"),
+          chart: undefined,
+          spanChecks: { kept: false },
+        }}
+        onRange={noRange}
+        openRecord={noRecord}
+        readSpanChecks={noPage}
+        zoom={span}
+      />
+    );
+    expect(html).toContain('data-slot="span-checks-none"');
+    expect(html).not.toContain('data-slot="span-checks-gone"');
   });
 
   test("while zoomed no range reads as chosen, since the chart shows the span", () => {
@@ -461,7 +485,9 @@ describe("the checks of a zoomed span", () => {
     });
     function unzoomed(
       more: boolean,
-      days: readonly ReturnType<typeof dayOf>[]
+      days: readonly ReturnType<typeof dayOf>[],
+      from = edge,
+      checks = detail("off").recent
     ): string {
       return render(
         "en",
@@ -470,12 +496,7 @@ describe("the checks of a zoomed span", () => {
           detail={{
             ...detail("off"),
             days,
-            spanChecks: {
-              checks: detail("off").recent,
-              from: edge,
-              kept: true,
-              more,
-            },
+            spanChecks: { checks, from, kept: true, more },
           }}
           onRange={noRange}
           openRecord={noRecord}
@@ -489,6 +510,19 @@ describe("the checks of a zoomed span", () => {
       expect(
         unzoomed(false, [dayOf(edge - 3 * 1440 * minute, 3_600_000)])
       ).toContain(end);
+    });
+
+    test("a day that ends exactly where the raw checks begin is before them", () => {
+      const midnight = Date.UTC(2023, 10, 10);
+      expect(
+        unzoomed(false, [dayOf(midnight - 1440 * minute, 3_600_000)], midnight)
+      ).toContain(end);
+    });
+
+    test("it says nothing of older summaries beside a list with no check", () => {
+      expect(
+        unzoomed(false, [dayOf(edge - 3 * 1440 * minute, 3_600_000)], edge, [])
+      ).not.toContain(end);
     });
 
     test("it says nothing while older checks remain to show, or when no day before it has data", () => {
@@ -540,6 +574,10 @@ describe("the domain registration card", () => {
       'data-warning="expiring"'
     );
     expect(card({ ...read, expiresAt: now - day })).toContain(
+      'data-warning="expired"'
+    );
+    // The moment it ends it has ended.
+    expect(card({ ...read, expiresAt: now })).toContain(
       'data-warning="expired"'
     );
   });

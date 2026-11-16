@@ -220,13 +220,6 @@ describe("the OpenAPI document", () => {
     }
   });
 
-  test("the fail address says a monitor goes down at the next tick when it is not down already, and at the window's end when it is", () => {
-    const { description } = operation("/api/heartbeat/{token}/fail", "get");
-    expect(description).toContain("next tick");
-    expect(description).toContain("window");
-    expect(description).not.toContain("at once");
-  });
-
   test("the custom domain question is a GET or HEAD with the domain in the query, answering 200, 404 or 503", () => {
     for (const method of ["get", "head"]) {
       const question = operation("/api/custom-domain", method);

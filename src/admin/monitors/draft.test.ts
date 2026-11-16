@@ -112,6 +112,14 @@ const typed = (fields: Partial<MonitorDraft>): MonitorDraft => ({
   ...fields,
 });
 
+/** The input a draft posts, or the test fails when the draft is refused: a check that something is left out of it means nothing on a refusal. */
+function postedOf(parsed: ReturnType<typeof inputOf>) {
+  if (!parsed.ok) {
+    throw new Error(JSON.stringify(parsed.errors));
+  }
+  return parsed.input;
+}
+
 /** The refusals of a draft, or the test fails when it parses. */
 function errorsOf(draft: MonitorDraft): FieldErrors {
   const parsed = inputOf(draft);
@@ -253,6 +261,17 @@ describe("a database monitor's fields", () => {
     expect(inputOf(database({ ...mongodb, query: '{"dbStats": 1}' })).ok).toBe(
       true
     );
+  });
+
+  test("a MongoDB command too long is refused as too long, not as off the read-only list", () => {
+    const parsed = errorsOf(
+      database({
+        connectionUrl: "mongodb://u:p@db.example.test",
+        query: `{"ping": 1, "comment": "${"x".repeat(4000)}"}`,
+        type: "mongodb",
+      })
+    );
+    expect(parsed["config.query"]?.id).toBe("monitor_error_too_long");
   });
 
   test("a URL longer than a connection URL may be is refused as too long, not as another scheme", () => {
@@ -481,7 +500,7 @@ describe("the form's units and text fields", () => {
   test("the certificate expiry option off posts no day count, on posts the days", () => {
     const off = inputOf(typed({ tlsExpiry: false, tlsExpiryDays: "30" }));
     expect(off.ok && off.input.config.type).toBe("http");
-    expect(off.ok && off.input.config).not.toHaveProperty("tlsExpiryDays");
+    expect(postedOf(off).config).not.toHaveProperty("tlsExpiryDays");
     const on = inputOf(typed({ tlsExpiry: true, tlsExpiryDays: "30" }));
     expect(on.ok && on.input.config).toMatchObject({ tlsExpiryDays: 30 });
   });
@@ -939,7 +958,7 @@ describe("the domain expiry option in the form", () => {
       const off = inputOf(typed({ ...fields, domainExpiry: false }));
       expect(off.ok && off.input.config).toMatchObject({ domainExpiry: false });
       const on = inputOf(typed({ ...fields, domainExpiry: true }));
-      expect(on.ok && on.input.config).not.toHaveProperty("domainExpiry");
+      expect(postedOf(on).config).not.toHaveProperty("domainExpiry");
     }
   });
 
@@ -951,7 +970,7 @@ describe("the domain expiry option in the form", () => {
         type: "postgres",
       })
     );
-    expect(parsed.ok && parsed.input.config).not.toHaveProperty("domainExpiry");
+    expect(postedOf(parsed).config).not.toHaveProperty("domainExpiry");
   });
 
   test("the host whose registration is read is the typed URL's, TCP host or DNS name, in lower case", () => {
@@ -994,9 +1013,7 @@ describe("edge cases of the posted input", () => {
       typed({ tlsExpiry: true, tlsExpiryDays: "30", url: "http://x.test/" })
     );
     expect(parsed.ok && parsed.input.config.type).toBe("http");
-    expect(parsed.ok && parsed.input.config).not.toHaveProperty(
-      "tlsExpiryDays"
-    );
+    expect(postedOf(parsed).config).not.toHaveProperty("tlsExpiryDays");
   });
 
   test("numbers typed in Arabic-Indic digits are read as the same numbers", () => {
@@ -1532,7 +1549,7 @@ describe("an HTTP monitor's own proxy in the draft", () => {
       "",
     ]);
     const parsed = inputOf(typed({}));
-    expect(parsed.ok && parsed.input.config).not.toHaveProperty("proxy");
+    expect(postedOf(parsed).config).not.toHaveProperty("proxy");
     expect(parsed.ok && parsed.input.credentials).toBe(undefined);
   });
 
@@ -1586,7 +1603,7 @@ describe("an HTTP monitor's own proxy in the draft", () => {
     const parsed = inputOf(
       typed({ proxy: "  ", proxyPassword: "pw", proxyUser: "ops" })
     );
-    expect(parsed.ok && parsed.input.config).not.toHaveProperty("proxy");
+    expect(postedOf(parsed).config).not.toHaveProperty("proxy");
     expect(parsed.ok && parsed.input.credentials).toBe(undefined);
   });
 
@@ -1642,7 +1659,7 @@ describe("an HTTP monitor's own proxy in the draft", () => {
       proxyPassword: "pw",
       proxyUser: "ops",
     });
-    expect(tcp.ok && tcp.input.config).not.toHaveProperty("proxy");
+    expect(postedOf(tcp).config).not.toHaveProperty("proxy");
     expect(tcp.ok && tcp.input.credentials).toBe(undefined);
   });
 
@@ -1731,6 +1748,16 @@ describe("a monitor's locations in the form", () => {
     ).toBe(2);
   });
 
+  test("sharing is posted only once a probe is ticked", () => {
+    expect(
+      posted(typed({ shareCredentials: true })).shareCredentials
+    ).toBeUndefined();
+    expect(
+      posted(typed({ locations: [probe], shareCredentials: true }))
+        .shareCredentials
+    ).toBe(true);
+  });
+
   test("a check type no probe runs posts the main location alone, and the draft keeps the probes for a type that can", () => {
     const draft = typed({
       container: "web",
@@ -1799,12 +1826,8 @@ describe("an HTTP monitor's client certificate in the draft", () => {
       draft.caCertificates,
     ]).toEqual(["", "", "", ""]);
     const parsed = inputOf(typed({}));
-    expect(parsed.ok && parsed.input.config).not.toHaveProperty(
-      "clientCertificate"
-    );
-    expect(parsed.ok && parsed.input.config).not.toHaveProperty(
-      "caCertificates"
-    );
+    expect(postedOf(parsed).config).not.toHaveProperty("clientCertificate");
+    expect(postedOf(parsed).config).not.toHaveProperty("caCertificates");
     expect(parsed.ok && parsed.input.credentials).toBe(undefined);
   });
 
@@ -1888,9 +1911,7 @@ describe("an HTTP monitor's client certificate in the draft", () => {
         storedClientKey: true,
       })
     );
-    expect(parsed.ok && parsed.input.config).not.toHaveProperty(
-      "clientCertificate"
-    );
+    expect(postedOf(parsed).config).not.toHaveProperty("clientCertificate");
     expect(parsed.ok && parsed.input.credentials).toBe(undefined);
   });
 
@@ -1949,10 +1970,8 @@ describe("an HTTP monitor's OAuth 2.0 client credentials in the draft", () => {
       typed({ ...filled, oauthAudience: " ", oauthScope: "" })
     );
     expect(bare.ok).toBe(true);
-    expect(bare.ok && bare.input.credentials?.auth).not.toHaveProperty("scope");
-    expect(bare.ok && bare.input.credentials?.auth).not.toHaveProperty(
-      "audience"
-    );
+    expect(postedOf(bare).credentials?.auth).not.toHaveProperty("scope");
+    expect(postedOf(bare).credentials?.auth).not.toHaveProperty("audience");
   });
 
   test("a stored grant comes back as its fields, the secret left out so the server keeps it", () => {

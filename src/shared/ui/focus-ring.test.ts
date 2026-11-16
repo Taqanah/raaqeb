@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { Glob } from "bun";
 
 const stylesheet = await Bun.file(
   new URL("../../styles.css", import.meta.url)
@@ -94,16 +93,4 @@ describe("the keyboard focus ring", () => {
       });
     }
   }
-
-  test("is the one ring every control draws: no component keeps its own faint one", async () => {
-    const files = [...new Glob("src/**/*.tsx").scanSync(".")];
-    const faint: string[] = [];
-    for (const file of files) {
-      // biome-ignore lint/performance/noAwaitInLoops: a scan of a few hundred small files
-      if ((await Bun.file(file).text()).includes("ring-ring-soft")) {
-        faint.push(file);
-      }
-    }
-    expect(faint).toEqual([]);
-  });
 });

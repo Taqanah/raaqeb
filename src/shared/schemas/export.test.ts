@@ -180,27 +180,17 @@ describe("the export file's format", () => {
     }
   });
 
-  test("a header of version 1, the format before an HTTP monitor's own proxy and domain expiring, is still this format", () => {
+  test("a header of version 1 reads as this format with no maintenance series, every window of none and every monitor checked from the main location alone", () => {
+    const encoded = configurationSchema.encode({
+      ...empty,
+      monitors: [monitor],
+    });
+    // Version 1 wrote none of these four lists.
     const {
       maintenanceSeries: _,
       maintenanceSeriesComponents: __,
-      ...older
-    } = configurationSchema.encode(empty);
-    const earlier = {
-      configuration: older,
-      exportedAt: "2026-09-28T12:00:00.000Z",
-      mode: "full",
-      raaqeb: "export",
-      version: 1,
-    };
-    expect(headerSchema.safeParse(fromVersion1(earlier)).success).toBe(true);
-  });
-
-  test("a header of version 1 reads as this format with no maintenance series and every window of none", () => {
-    const encoded = configurationSchema.encode(empty);
-    const {
-      maintenanceSeries: _,
-      maintenanceSeriesComponents: __,
+      monitorProbes: ___,
+      probes: ____,
       ...older
     } = encoded;
     const window = {
@@ -213,8 +203,19 @@ describe("the export file's format", () => {
       title: { ar: "صيانة" },
       updatedAt: "2026-09-28T12:00:00.000Z",
     };
+    // Version 1 wrote a monitor before probes: none of the three columns they added.
+    const {
+      confirmations: _c,
+      fromMain: _f,
+      shareCredentials: _s,
+      ...before
+    } = older.monitors[0] ?? {};
     const first = {
-      configuration: { ...older, maintenanceWindows: [window] },
+      configuration: {
+        ...older,
+        maintenanceWindows: [window],
+        monitors: [before],
+      },
       exportedAt: "2026-09-28T12:00:00.000Z",
       mode: "full",
       raaqeb: "export",
@@ -224,6 +225,14 @@ describe("the export file's format", () => {
     expect(read.configuration.maintenanceSeries).toEqual([]);
     expect(read.configuration.maintenanceSeriesComponents).toEqual([]);
     expect(read.configuration.maintenanceWindows[0]?.seriesId).toBeNull();
+    expect(read.configuration.probes).toEqual([]);
+    expect(read.configuration.monitorProbes).toEqual([]);
+    expect(read.configuration.monitors).toHaveLength(1);
+    expect(read.configuration.monitors[0]).toMatchObject({
+      confirmations: 1,
+      fromMain: 1,
+      shareCredentials: 0,
+    });
     // Anything else stays as it came, for the schema to refuse.
     expect(fromVersion1("not a header")).toBe("not a header");
   });

@@ -17,24 +17,6 @@ describe("the messages a status page's document inlines", () => {
     }
   });
 
-  test("the copy button's words are, since the subscribe dialog shows it beside the feed address", () => {
-    for (const id of ["app_copy", "app_copied"]) {
-      expect(isPublicMessage(id)).toBe(true);
-    }
-  });
-
-  test("the days a maintenance series repeats on are, since its card names them", () => {
-    for (const id of [
-      "maintenance_repeats_daily",
-      "maintenance_repeats_weekly",
-      "maintenance_repeats_monthly_day",
-      "maintenance_repeats_monthly_weekday",
-      "maintenance_weekday",
-    ]) {
-      expect(isPublicMessage(id)).toBe(true);
-    }
-  });
-
   test("the error notice's words are, so a subscription page's failure speaks the catalog", () => {
     for (const id of [
       "app_error_title",

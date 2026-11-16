@@ -42,6 +42,13 @@ describe("the host a monitor's domain registration is read for", () => {
     ).toBe("_dmarc.example.com");
   });
 
+  test("a name of two labels is a registrable domain itself", () => {
+    expect(registrationHost(http("https://raaqeb.dev/"))).toBe("raaqeb.dev");
+    expect(
+      registrationHost({ host: "raaqeb.dev", port: 443, type: "tcp" })
+    ).toBe("raaqeb.dev");
+  });
+
   test("a monitor with the domain expiry option off has none", () => {
     expect(
       registrationHost(http("https://raaqeb.dev/", { domainExpiry: false }))
@@ -52,6 +59,14 @@ describe("the host a monitor's domain registration is read for", () => {
         host: "db.raaqeb.dev",
         port: 5432,
         type: "tcp",
+      })
+    ).toBeUndefined();
+    expect(
+      registrationHost({
+        domainExpiry: false,
+        name: "raaqeb.dev",
+        recordType: "A",
+        type: "dns",
       })
     ).toBeUndefined();
   });

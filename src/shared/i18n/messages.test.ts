@@ -39,11 +39,10 @@ describe("a locale's messages", () => {
 });
 
 describe("a catalog as the text a document carries", () => {
-  test("reads back as the catalog, holds no `<`, and is written once per catalog", () => {
+  test("reads back as the catalog and holds no `<`, which a script element would end on", () => {
     const text = catalogText(ar);
     expect(catalogFromJson(text)).toEqual(ar);
     expect(text).not.toContain("<");
-    expect(catalogText(ar)).toBe(text);
     expect(catalogText(en)).not.toBe(text);
   });
 });

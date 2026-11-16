@@ -19,6 +19,7 @@ import {
   monitorInputSchema,
   monitorListSearchSchema,
   monitorTestSchema,
+  probesMax,
   tagMaxLength,
 } from "./monitor.ts";
 
@@ -1065,6 +1066,17 @@ describe("a monitor's locations", () => {
     expect(
       monitorInputSchema.safeParse({ ...base, confirmations: 2 }).success
     ).toBe(false);
+  });
+
+  test("a monitor is checked from the main location and every probe the install may have, and from no more", () => {
+    const probes = Array.from(
+      { length: probesMax },
+      (_, index) => `0199f0aa-0000-7000-8000-${String(index).padStart(12, "0")}`
+    );
+    const accepted = (locations: string[]) =>
+      monitorInputSchema.safeParse({ ...base, locations }).success;
+    expect(accepted([mainLocation, ...probes])).toBe(true);
+    expect(accepted([mainLocation, ...probes, "one-more"])).toBe(false);
   });
 
   test("a location is named once", () => {

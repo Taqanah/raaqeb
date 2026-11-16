@@ -190,6 +190,8 @@ describe("OAuth 2.0 client credentials", () => {
       { tokenUrl: "ftp://idp.example.test/token" },
       { tokenUrl: "not a url" },
       { tokenUrl: "https://user:pw@idp.example.test/token" },
+      { tokenUrl: "https://user@idp.example.test/token" },
+      { tokenUrl: "https://:pw@idp.example.test/token" },
       { clientId: "  " },
       { clientSecret: "" },
       { method: "header" },

@@ -70,6 +70,18 @@ describe("the form as the address asks for it", () => {
     });
   });
 
+  test("a range with only one end asked is no range", () => {
+    expect(draftOf({ from: "2026-08-10" }, now)).toMatchObject({
+      from: "2026-09-01",
+      period: "month",
+      to: "2026-09-30",
+    });
+    expect(draftOf({ to: "2026-08-31" }, now)).toMatchObject({
+      from: "2026-09-01",
+      to: "2026-09-30",
+    });
+  });
+
   test("the target asked for is kept as text", () => {
     expect(draftOf({ target: 99.95 }, now).target).toBe("99.95");
   });
@@ -119,5 +131,8 @@ describe("the address the form asks with", () => {
     expect(searchOf({ ...draft, target: "99.99949" })?.target).toBe(99.999);
     expect(searchOf({ ...draft, target: "100" })).toBeUndefined();
     expect(searchOf({ ...draft, target: "0.5" })).toBeUndefined();
+    // The least and the most a target may be are asked for.
+    expect(searchOf({ ...draft, target: "1" })?.target).toBe(1);
+    expect(searchOf({ ...draft, target: "99.999" })?.target).toBe(99.999);
   });
 });

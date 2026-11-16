@@ -47,6 +47,24 @@ describe("a status page's own style", () => {
     );
   });
 
+  test.each([
+    ["#000000", "#ffffff"],
+    ["#ffffff", "#000000"],
+    ["#ff0000", "#000000"],
+    ["#00ff00", "#000000"],
+    ["#0000ff", "#ffffff"],
+    // The two greys either side of where black and white read the same.
+    ["#757575", "#ffffff"],
+    ["#767676", "#000000"],
+  ])(
+    "the text on the brand colour %s is %s, the one with the higher contrast",
+    (brandColour, text) => {
+      expect(pageStyle({ ...plain, brandColour })).toContain(
+        `--action-foreground:${text}`
+      );
+    }
+  );
+
   test("the custom CSS comes last, so it wins", () => {
     expect(
       pageStyle({
@@ -330,7 +348,9 @@ describe("a maintenance card", () => {
   });
 
   test("of a window scheduled on its own says nothing of repeating", () => {
-    expect(card(backup)).not.toContain("Repeats");
+    const alone = card(backup);
+    expect(alone).toContain("Backup");
+    expect(alone).not.toContain("Repeats");
   });
 });
 

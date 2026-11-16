@@ -22,6 +22,7 @@ import {
   isoTimestamp,
   normalizeDigits,
   relativeTime,
+  weekdayNames,
   zoneLabel,
 } from "./format.ts";
 
@@ -583,5 +584,28 @@ describe("a check's time in a zoomed list", () => {
       to: Date.parse("2026-09-11T21:00:00Z"),
     };
     expect(formatSpanTime("en", at, span, riyadh)).toBe("10:42:15 AM");
+  });
+});
+
+describe("the days of the week", () => {
+  test("are named Sunday first, in the locale's own words", () => {
+    expect(weekdayNames("en")).toEqual([
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ]);
+    expect(weekdayNames("ar")).toEqual([
+      "الأحد",
+      "الاثنين",
+      "الثلاثاء",
+      "الأربعاء",
+      "الخميس",
+      "الجمعة",
+      "السبت",
+    ]);
   });
 });

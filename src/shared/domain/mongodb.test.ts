@@ -48,6 +48,12 @@ describe("a MongoDB connection URL", () => {
     ).toBe("");
   });
 
+  test("takes an empty user before the colon and the rest as the password", () => {
+    const parsed = parseConnectionString("mongodb://:secret@db.example.com");
+    expect(parsed.user).toBe("");
+    expect(parsed.password).toBe("secret");
+  });
+
   test("keeps a plus sign in the password as it is", () => {
     expect(
       parseConnectionString("mongodb://u:a+b@db.example.com").password
@@ -69,6 +75,10 @@ describe("a MongoDB connection URL", () => {
         "tls"
       )
     ).toBe("true");
+    // The options are no part of the database's name.
+    expect(
+      parseConnectionString("mongodb://db.example.com?tls=true").database
+    ).toBe(undefined);
   });
 
   test("of the SRV scheme names one host and no port", () => {
@@ -87,12 +97,21 @@ describe("a MongoDB connection URL", () => {
     }
   });
 
+  test("takes the lowest and the highest port there is", () => {
+    for (const port of [1, 65_535]) {
+      expect(
+        parseConnectionString(`mongodb://db.example.com:${port}`).hosts
+      ).toEqual([{ host: "db.example.com", port }]);
+    }
+  });
+
   test.each([
     ["another scheme", "mongo://db.example.com"],
     ["no host", "mongodb://"],
     ["an empty host in the list", "mongodb://a.example.com,,b.example.com"],
     ["a port of zero", "mongodb://db.example.com:0"],
     ["a port past 65535", "mongodb://db.example.com:65536"],
+    ["a port with no host", "mongodb://:27017"],
     ["a port that is not a number", "mongodb://db.example.com:port"],
     ["two colons before the port", "mongodb://db.example.com::27017"],
     ["a user with two colons", "mongodb://a:b:c@db.example.com"],
@@ -206,7 +225,7 @@ describe("a URL the monitor can check", () => {
     ["options that conflict", "mongodb://h/?tls=true&ssl=false"],
     [
       "a sign-in that is not SCRAM",
-      "mongodb://u@h/?authMechanism=MONGODB-X509",
+      "mongodb://u:p@h/?authMechanism=MONGODB-X509",
     ],
     [
       "a CA file on the install's disk",
@@ -241,6 +260,9 @@ describe("a MongoDB command", () => {
     ["a read-only command after another key", '{"$db": "admin", "ping": 1}'],
     ["an empty document", "{}"],
     ["an array", '[{"ping": 1}]'],
+    ["a JSON value that is no document", "null"],
+    ["a JSON string", '"ping"'],
+    ["a JSON number", "5"],
     ["text that is not JSON", "ping"],
     ["two documents", '{"ping": 1} {"ping": 1}'],
   ])("is not %s", (_, text) => {
