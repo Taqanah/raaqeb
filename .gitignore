@@ -10,3 +10,5 @@ locales/*/messages.ts
 locales/fallback.ts
 bench/floor/results/
 .design-shots/
+.flip.json
+.shots/

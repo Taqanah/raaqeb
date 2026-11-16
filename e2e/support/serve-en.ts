@@ -35,6 +35,7 @@ import {
   publicPage,
   seededSubscriptions,
 } from "./servers.ts";
+import { waitForOrigin } from "./wait.ts";
 
 /** Each seeded subscription's random token, and the one the spec knows it by. */
 const subscriptionTokens = new Map<string, string>();
@@ -209,85 +210,96 @@ async function seedStatusPage(storage: Storage): Promise<void> {
   );
 }
 
-const [, , arabicOrigin, port, dataDir] = Bun.argv;
-if (!(arabicOrigin && port && dataDir)) {
-  process.stderr.write(
-    "usage: bun e2e/support/serve-en.ts <arabic origin> <port> <data dir>\n"
-  );
-  process.exit(2);
-}
-
-/** Resolves once the origin answers, or after two minutes. */
-async function waitFor(origin: string, deadline: number): Promise<void> {
-  if (Date.now() >= deadline) {
-    return;
+/**
+ * Seeds `dataDir` afresh as the English install, all but its appearance: the
+ * install language, the operator account, the monitors, both status pages
+ * with their incidents, windows and subscribers. Also run by
+ * scripts/serve-seeded.ts, which serves it for a look in the browser.
+ */
+export async function seedExampleInstall(dataDir: string): Promise<void> {
+  await Bun.$`rm -rf ${dataDir}`.quiet();
+  await Bun.$`mkdir -p ${dataDir}`.quiet();
+  const opened = await openStorage({
+    backend: "sqlite",
+    file: `${dataDir}/raaqeb.sqlite`,
+  });
+  if (!opened.ok) {
+    throw new Error(opened.message);
   }
-  const up = await fetch(origin).then(
-    (response) => response.ok,
-    () => false
-  );
-  if (!up) {
-    await Bun.sleep(500);
-    return waitFor(origin, deadline);
+  // English before any content, which needs the install language's text.
+  await opened.storage.settings.set(installLanguage, "en");
+  // Past getting started: the list's density is measured as an operator who dismissed the checklist sees it; the onboarding spec walks the checklist.
+  await opened.storage.settings.set(gettingStartedClosed, true);
+  // The daily release check would ask api.github.com; the run sends nothing off the machine.
+  await opened.storage.settings.set(releaseCheckEnabled, false);
+  // The operator account, created the way onboarding does: on the server, through auth.api.
+  const auth = await authFor(opened.storage, {
+    betterAuthSecrets: undefined,
+    installKey: await scratchInstallKey(),
+  });
+  await auth.api.signUpEmail({
+    body: {
+      email: operatorEmail,
+      name: operatorName,
+      password: operatorPassword,
+    },
+  });
+  await seedMonitors(opened.storage);
+  await seedStatusPage(opened.storage);
+  await opened.storage.close();
+  // The repository makes random tokens; the spec knows each subscription by a fixed one.
+  for (const [made, known] of subscriptionTokens) {
+    // biome-ignore lint/performance/noAwaitInLoops: one row at a time
+    await runSql(
+      { backend: "sqlite", file: `${dataDir}/raaqeb.sqlite` },
+      "UPDATE subscriptions SET token = ? WHERE token = ?",
+      [known, made]
+    );
   }
 }
 
-await waitFor(arabicOrigin, Date.now() + 120_000);
-
-await Bun.$`rm -rf ${dataDir}`.quiet();
-await Bun.$`mkdir -p ${dataDir}`.quiet();
-const opened = await openStorage({
-  backend: "sqlite",
-  file: `${dataDir}/raaqeb.sqlite`,
-});
-if (!opened.ok) {
-  process.stderr.write(`${opened.message}\n`);
-  process.exit(1);
-}
-await opened.storage.settings.set(installLanguage, "en");
-// Every appearance setting away from its default, so the document can be seen to follow them.
-await opened.storage.settings.set(appearanceTheme, "dark");
-await opened.storage.settings.set(appearanceFontSize, "large");
-await opened.storage.settings.set(appearanceDensity, "compact");
-await opened.storage.settings.set(appearanceRadius, "none");
-// Past getting started: the list's density is measured as an operator who dismissed the checklist sees it; the onboarding spec walks the checklist.
-await opened.storage.settings.set(gettingStartedClosed, true);
-// The daily release check would ask api.github.com; the run sends nothing off the machine.
-await opened.storage.settings.set(releaseCheckEnabled, false);
-// The operator account, created the way onboarding does: on the server, through auth.api.
-const auth = await authFor(opened.storage, {
-  betterAuthSecrets: undefined,
-  installKey: await scratchInstallKey(),
-});
-await auth.api.signUpEmail({
-  body: {
-    email: operatorEmail,
-    name: operatorName,
-    password: operatorPassword,
-  },
-});
-await seedMonitors(opened.storage);
-await seedStatusPage(opened.storage);
-await opened.storage.close();
-// The repository makes random tokens; the spec knows each subscription by a fixed one.
-for (const [made, known] of subscriptionTokens) {
-  // biome-ignore lint/performance/noAwaitInLoops: one row at a time
-  await runSql(
-    { backend: "sqlite", file: `${dataDir}/raaqeb.sqlite` },
-    "UPDATE subscriptions SET token = ? WHERE token = ?",
-    [known, made]
+/** Seeds the install with every appearance setting away from its default, then serves the build. */
+async function serve(
+  arabicOrigin: string,
+  port: string,
+  dataDir: string
+): Promise<void> {
+  await waitForOrigin(arabicOrigin, Date.now() + 120_000);
+  await seedExampleInstall(dataDir);
+  const opened = await openStorage({
+    backend: "sqlite",
+    file: `${dataDir}/raaqeb.sqlite`,
+  });
+  if (!opened.ok) {
+    throw new Error(opened.message);
+  }
+  // Every appearance setting away from its default, so the document can be seen to follow them.
+  await opened.storage.settings.set(appearanceTheme, "dark");
+  await opened.storage.settings.set(appearanceFontSize, "large");
+  await opened.storage.settings.set(appearanceDensity, "compact");
+  await opened.storage.settings.set(appearanceRadius, "none");
+  await opened.storage.close();
+  // The peer is always 127.0.0.1 in the e2e run, so it is a trusted proxy here
+  // and each spec picks its own client address through x-forwarded-for; Better
+  // Auth's sign-in limit (3 per 10 s) is then per spec, not per run.
+  const main = await builtMain();
+  const running = await main(
+    ["--port", port, "--data-dir", dataDir, "--trusted-proxies", "127.0.0.1"],
+    {},
+    buildDir
   );
+  if (typeof running === "number") {
+    process.exit(running);
+  }
 }
 
-// The peer is always 127.0.0.1 in the e2e run, so it is a trusted proxy here
-// and each spec picks its own client address through x-forwarded-for; Better
-// Auth's sign-in limit (3 per 10 s) is then per spec, not per run.
-const main = await builtMain();
-const running = await main(
-  ["--port", port, "--data-dir", dataDir, "--trusted-proxies", "127.0.0.1"],
-  {},
-  buildDir
-);
-if (typeof running === "number") {
-  process.exit(running);
+if (import.meta.main) {
+  const [, , arabicOrigin, port, dataDir] = Bun.argv;
+  if (!(arabicOrigin && port && dataDir)) {
+    process.stderr.write(
+      "usage: bun e2e/support/serve-en.ts <arabic origin> <port> <data dir>\n"
+    );
+    process.exit(2);
+  }
+  await serve(arabicOrigin, port, dataDir);
 }
