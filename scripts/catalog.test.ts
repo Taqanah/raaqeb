@@ -355,6 +355,25 @@ describe("the catalog command", () => {
     }
   });
 
+  test("postinstall writes nothing and exits 0 when lingui is not installed, as after a production install", async () => {
+    const dir = (await Bun.$`mktemp -d`.text()).trim();
+    try {
+      await Bun.$`cp -r ${root}locales ${root}lingui.config.ts ${root}package.json ${dir}/`.quiet();
+      await Bun.$`rm -f ${dir}/locales/ar/messages.ts`.quiet();
+      const run = Bun.spawnSync(
+        ["bun", `${root}scripts/catalog.ts`, "postinstall"],
+        { cwd: dir }
+      );
+      expect(run.stderr.toString()).toBe("");
+      expect(run.exitCode).toBe(0);
+      expect(await Bun.file(`${dir}/locales/ar/messages.ts`).exists()).toBe(
+        false
+      );
+    } finally {
+      await Bun.$`rm -rf ${dir}`.quiet();
+    }
+  });
+
   test("a command other than check or write exits 2", () => {
     const run = Bun.spawnSync(["bun", "scripts/catalog.ts", "lint"], {
       cwd: root,

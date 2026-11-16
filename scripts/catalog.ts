@@ -309,6 +309,11 @@ function compile(root: string): number {
 }
 
 async function main(command: string | undefined): Promise<number> {
+  if (command === "postinstall") {
+    // A production install has no lingui and runs no tests, so its catalogs can wait for a build.
+    const lingui = Bun.file(`${process.cwd()}/node_modules/.bin/lingui`);
+    return (await lingui.exists()) ? await main("write") : 0;
+  }
   if (command !== "check" && command !== "write") {
     process.stderr.write("usage: bun scripts/catalog.ts check | write\n");
     return 2;

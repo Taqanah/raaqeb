@@ -16,6 +16,7 @@ import {
   operatorPassword,
   publicPage,
   seededSubscriptions,
+  sinkPort,
 } from "./support/servers.ts";
 import { fillTime, timeOf } from "./support/status-page.ts";
 
@@ -65,7 +66,10 @@ test("the form refuses a webhook that is not https on the public internet, and s
   await page.click("[data-slot=subscribe-submit]");
   await expect(answer).toHaveAttribute("data-state", "refused");
   await expect(answer).not.toBeEmpty();
-  await page.fill("input[name=address]", "https://127.0.0.1:3213/ok/raaqeb");
+  await page.fill(
+    "input[name=address]",
+    `https://127.0.0.1:${sinkPort}/ok/raaqeb`
+  );
   await page.click("[data-slot=subscribe-submit]");
   await expect(answer).toHaveAttribute("data-state", "refused");
   await expect(answer).not.toBeEmpty();

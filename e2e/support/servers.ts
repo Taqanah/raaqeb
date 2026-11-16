@@ -4,13 +4,17 @@
  * with its operator account; a fresh install the onboarding spec walks to
  * the end, so no other spec depends on its state; an install with its
  * operator account and nothing else, which the export spec imports into;
- * and the webhook receiver the channels spec sends to.
+ * and the webhook receiver the channels spec sends to. Their ports are
+ * 3210 to 3214 in the main checkout and five of its own in a linked worktree.
  */
-export const arabicPort = 3210;
-export const englishPort = 3211;
-export const freshPort = 3212;
-export const sinkPort = 3213;
-export const emptyPort = 3214;
+import { checkoutFirstPort } from "../../scripts/e2e-ports.ts";
+
+const first = checkoutFirstPort();
+export const arabicPort = first;
+export const englishPort = first + 1;
+export const freshPort = first + 2;
+export const sinkPort = first + 3;
+export const emptyPort = first + 4;
 export const arabicOrigin = `http://127.0.0.1:${arabicPort}`;
 export const englishOrigin = `http://127.0.0.1:${englishPort}`;
 export const freshOrigin = `http://127.0.0.1:${freshPort}`;

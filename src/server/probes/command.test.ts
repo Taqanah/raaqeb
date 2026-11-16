@@ -84,6 +84,9 @@ const monitor = (
 
 describe("a probe process beside the install", () => {
   test("registers with its token, checks the monitors assigned to it, and its results open the outages they confirm", async () => {
+    if (!(await Bun.file(entry).exists())) {
+      throw new Error("this test serves the built app: run `bun run build`");
+    }
     const dir = (await Bun.$`mktemp -d`.text()).trim();
     cleanups.push(async () => {
       await Bun.$`rm -rf ${dir}`.quiet();

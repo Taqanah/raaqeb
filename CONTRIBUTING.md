@@ -57,8 +57,8 @@ bun run install:check  # the installer on Debian with systemd and Alpine with Op
 bun run catalog        # after editing locales/*/messages.po: lint, regenerate the id union, compile
 bun run bench:record <run.json> <release>  # appends a release run's row to bench/floor/history.jsonl
 bun run gate           # catalog check, lint, types, unit and integration tests on SQLite
-docker compose up -d   # the test Postgres and Mailpit
-bun run test:postgres  # the same tests against them; fails when either is down
+docker compose up -d   # the test Postgres, Mailpit, MySQL, Redis and two MongoDB servers
+bun run test:postgres [files]  # the same tests, or the files named, against them, in a database of this checkout's own; fails when one is down
 bun run e2e:install    # once: the Chromium build Playwright pins
 bun run e2e            # Playwright specs against the built entry
 bun run dev            # then open /design: the sample page of the design language (development only)

@@ -2082,6 +2082,11 @@ describe("the entry never prints a boot setting's value", () => {
 
 /** Starts `serve` over a data directory holding an empty SQLite file, so the write-ahead log exists, and answers once it listens. */
 async function servingOverSqlite(command: string[]) {
+  if (
+    !(await Bun.file(`${import.meta.dir}/../dist/server/handler.js`).exists())
+  ) {
+    throw new Error("this test serves the built app: run `bun run build`");
+  }
   const dataDir = await clientBuild({});
   await Bun.write(`${dataDir}/raaqeb.sqlite`, "");
   const child = Bun.spawn(command, {

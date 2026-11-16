@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { SQL } from "bun";
 import {
   databaseServerMissingMessage,
   databaseServers,
@@ -9,10 +10,13 @@ import {
   missingServices,
   portOf,
   postgresUrl,
+  takeDatabase,
+  testCommand,
 } from "./test-postgres.ts";
 
-const scriptPath = new URL("./test-postgres.ts", import.meta.url).pathname;
-const composeUrl = "postgres://raaqeb:raaqeb@localhost:5432/raaqeb";
+const scriptPath = `${import.meta.dir}/test-postgres.ts`;
+const composeServer = "postgres://raaqeb:raaqeb@localhost:5432";
+const checkout = "/home/someone/raaqeb";
 
 /** A port nothing listens on: bound once by a throwaway server, then released. */
 function freePort(): number {
@@ -29,18 +33,87 @@ function freePort(): number {
 describe("the Postgres test run", () => {
   test("targets RAAQEB_TEST_DATABASE_URL when it is set", () => {
     const url = "postgres://u:p@db.example:6543/raaqeb";
-    expect(postgresUrl({ RAAQEB_TEST_DATABASE_URL: url })).toBe(url);
+    expect(postgresUrl({ RAAQEB_TEST_DATABASE_URL: url }, checkout)).toBe(url);
   });
 
-  test("targets the compose Postgres when RAAQEB_TEST_DATABASE_URL is unset", () => {
-    expect(postgresUrl({})).toBe(composeUrl);
+  test("targets a database of the checkout's own on the compose Postgres when RAAQEB_TEST_DATABASE_URL is unset", () => {
+    const url = postgresUrl({}, checkout);
+    expect(url.startsWith(`${composeServer}/raaqeb_test_`)).toBe(true);
+    expect(postgresUrl({}, checkout)).toBe(url);
+  });
+
+  test("two checkouts never share a database, so one run never drops the other's tables", () => {
+    expect(postgresUrl({}, `${checkout}-second`)).not.toBe(
+      postgresUrl({}, checkout)
+    );
+  });
+
+  test("never targets the compose service's own database unless its URL is passed", () => {
+    expect(postgresUrl({}, checkout)).not.toBe(`${composeServer}/raaqeb`);
   });
 
   test("never targets the boot setting DATABASE_URL, which may name a real database", () => {
     expect(
-      postgresUrl({ DATABASE_URL: "postgres://raaqeb:pw@db.example/prod" })
-    ).toBe(composeUrl);
+      postgresUrl(
+        { DATABASE_URL: "postgres://raaqeb:pw@db.example/prod" },
+        checkout
+      )
+    ).toBe(postgresUrl({}, checkout));
   });
+
+  test("runs the files it is given, or every test folder when given none", () => {
+    expect(testCommand([])).toEqual(["bun", "test", "src", "scripts", "bench"]);
+    expect(testCommand(["src/server/storage/storage.test.ts"])).toEqual([
+      "bun",
+      "test",
+      "src/server/storage/storage.test.ts",
+    ]);
+  });
+
+  test.if(process.env.RAAQEB_TEST_DATABASE_URL !== undefined)(
+    "a run takes its database, created when absent, refuses a second run while it holds it, and drops it when done",
+    async () => {
+      const server = new URL(process.env.RAAQEB_TEST_DATABASE_URL ?? "");
+      const name = `raaqeb_test_taken_${process.pid}`;
+      server.pathname = `/${name}`;
+      const url = server.toString();
+      const exists = async () => {
+        server.pathname = "/postgres";
+        const admin = new SQL(server.toString());
+        try {
+          return (
+            (await admin`SELECT 1 FROM pg_database WHERE datname = ${name}`)
+              .length === 1
+          );
+        } finally {
+          await admin.close();
+        }
+      };
+      const drop = await takeDatabase(url);
+      expect(drop).toBeDefined();
+      expect(await exists()).toBe(true);
+      expect(await takeDatabase(url)).toBeUndefined();
+      await drop?.();
+      expect(await exists()).toBe(false);
+      // A database a killed run left behind is taken again.
+      const again = await takeDatabase(url);
+      expect(again).toBeDefined();
+      await again?.();
+    }
+  );
+
+  test.if(process.env.RAAQEB_TEST_DATABASE_URL !== undefined)(
+    "first runs that start at once on a missing database: one takes it, the others are refused, none fails",
+    async () => {
+      const server = new URL(process.env.RAAQEB_TEST_DATABASE_URL ?? "");
+      server.pathname = `/raaqeb_test_race_${process.pid}`;
+      const url = server.toString();
+      const taken = await Promise.all([1, 2, 3].map(() => takeDatabase(url)));
+      const drops = taken.filter((drop) => drop !== undefined);
+      expect(drops).toHaveLength(1);
+      await drops[0]?.();
+    }
+  );
 
   test("finds a Postgres that listens", async () => {
     const server = Bun.listen({

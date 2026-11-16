@@ -1,6 +1,8 @@
 /**
- * `bun run test:postgres`: the same test files as `bun run test`, run against
- * the compose Postgres, plus the email channel's send through the compose
+ * `bun run test:postgres [files]`: the same test files as `bun run test`, or
+ * the files named, run against a database of the checkout's own on the
+ * compose Postgres, created for the run and dropped after it, so two checkouts
+ * run side by side and a second run in one checkout is refused, plus the email channel's send through the compose
  * Mailpit and the database monitors' checks against the compose MySQL,
  * Redis and the two MongoDB servers. A missing service fails the run and never skips it. The run is named
  * by `RAAQEB_TEST_DATABASE_URL`, its own variable: the boot setting
@@ -8,14 +10,65 @@
  * in the one it targets.
  */
 
-const composeUrl = "postgres://raaqeb:raaqeb@localhost:5432/raaqeb";
-const composeCommand = "docker compose up -d";
+import { SQL } from "bun";
 
-/** The URL the run targets: RAAQEB_TEST_DATABASE_URL when set, else the compose service. */
+const composeServer = "postgres://raaqeb:raaqeb@localhost:5432";
+const composeCommand = "docker compose up -d";
+const checkoutRoot = `${import.meta.dir}/..`;
+
+/** The URL the run targets: RAAQEB_TEST_DATABASE_URL when set, else the checkout's own database on the compose service. */
 export function postgresUrl(
-  env: Readonly<Record<string, string | undefined>>
+  env: Readonly<Record<string, string | undefined>>,
+  root = checkoutRoot
 ): string {
-  return env.RAAQEB_TEST_DATABASE_URL ?? composeUrl;
+  return (
+    env.RAAQEB_TEST_DATABASE_URL ??
+    `${composeServer}/raaqeb_test_${Bun.hash.crc32(root).toString(16)}`
+  );
+}
+
+/**
+ * Takes the database a URL names for one run, through the server's `postgres`
+ * database: locks it against a second run, creates it when absent, and
+ * answers the drop that ends the run and frees the lock; nothing when another
+ * run holds it. A killed run's lock ends with its connection.
+ */
+export async function takeDatabase(
+  url: string
+): Promise<(() => Promise<void>) | undefined> {
+  const server = new URL(url);
+  const name = server.pathname.slice(1);
+  server.pathname = "/postgres";
+  // One connection, so the session lock lives exactly as long as the run.
+  const admin = new SQL({ max: 1, url: server.toString() });
+  const [taken] =
+    await admin`SELECT pg_try_advisory_lock(hashtext(${name})) AS locked`;
+  if (!taken?.locked) {
+    await admin.close();
+    return;
+  }
+  // 42P04 is a database a killed run left; 23505 is a create that raced another.
+  await admin.unsafe(`CREATE DATABASE "${name}"`).catch((error) => {
+    if (error?.errno !== "42P04" && error?.errno !== "23505") {
+      throw error;
+    }
+  });
+  return async () => {
+    try {
+      await admin.unsafe(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+    } finally {
+      await admin.close();
+    }
+  };
+}
+
+/** The test command: the files named, or every test folder. */
+export function testCommand(files: readonly string[]): string[] {
+  return [
+    "bun",
+    "test",
+    ...(files.length > 0 ? files : ["src", "scripts", "bench"]),
+  ];
 }
 
 /** The port a URL names, or its scheme's own. */
@@ -170,7 +223,21 @@ if (import.meta.main) {
     process.stderr.write(`${missing.join("\n")}\n`);
     process.exit(1);
   }
-  const run = Bun.spawn(["bun", "test", "src", "scripts", "bench"], {
+  const name = new URL(url).pathname.slice(1);
+  const own = process.env.RAAQEB_TEST_DATABASE_URL === undefined;
+  const drop = own ? await takeDatabase(url) : undefined;
+  if (own && !drop) {
+    process.stderr.write(
+      `raaqeb: another test:postgres run in this checkout holds ${name}; wait for it to end, or give this run its own database with RAAQEB_TEST_DATABASE_URL\n`
+    );
+    process.exit(1);
+  }
+  process.stderr.write(
+    own
+      ? `raaqeb: Postgres tests on ${name}, this checkout's own database, dropped when the run ends\n`
+      : `raaqeb: Postgres tests on database ${name}\n`
+  );
+  const run = Bun.spawn(testCommand(process.argv.slice(2)), {
     cwd: `${import.meta.dir}/..`,
     env: {
       ...process.env,
@@ -184,5 +251,7 @@ if (import.meta.main) {
     },
     stdio: ["inherit", "inherit", "inherit"],
   });
-  process.exit(await run.exited);
+  const code = await run.exited;
+  await drop?.();
+  process.exit(code);
 }
