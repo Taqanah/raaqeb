@@ -76,6 +76,7 @@ async function callerOf(
     return unauthenticated;
   }
   try {
+    // An indexed lookup on the hash, not a constant-time compare: the secret is 256 random bits, so no input can steer a hash towards a stored one.
     const key = await storage.apiKeys.open(hashApiKey(secret), now);
     if (!key) {
       return unauthenticated;

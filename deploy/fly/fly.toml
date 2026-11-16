@@ -43,6 +43,7 @@ primary_region = "<region>"
   source = "raaqeb_data"
   destination = "/data"
 
+# 256 is a machine size Fly offers, not the floor (240 MB); leave it.
 [[vm]]
   cpus = 1
   memory_mb = 256

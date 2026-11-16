@@ -1,6 +1,6 @@
 /**
  * The generic webhook: the notification's payload as the
- * JSON body of a POST, signed by the Standard Webhooks scheme. The headers are `webhook-id` (the notification's id, the same on
+ * JSON body of a POST, signed by the Standard Webhooks scheme, which receivers already have libraries for. The headers are `webhook-id` (the notification's id, the same on
  * every retry, so a receiver can drop a duplicate), `webhook-timestamp`
  * (Unix seconds of the attempt) and `webhook-signature`, `v1,` and the
  * base64 HMAC-SHA256 of `id.timestamp.body` under the secret's bytes. The

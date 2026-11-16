@@ -279,7 +279,7 @@ export function createScheduler(
     return (await maintenance.read()) && settled;
   }
 
-  /** Reads the monitors and answers whether the read is settled: a row this version cannot read stays so until the operator acts, any other failure is tried again next tick. */
+  /** Reads the monitors and answers whether the read is settled: a row this version cannot read stays so until the operator acts, any other failure is tried again next tick. This runs when the counter moves, so a setting the scheduler reads is read here. */
   async function readMonitorRows(now: number): Promise<boolean> {
     try {
       // The time zone reads a cron schedule; saving it moves the counter, which brings the scheduler here.

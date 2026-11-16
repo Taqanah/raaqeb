@@ -1,7 +1,8 @@
 /**
  * The browser's calls to Better Auth's allowed endpoints under /api/auth
  *: plain JSON fetches, no Better Auth
- * client. The browser sets Origin, which Better Auth checks against the
+ * client, because Better Auth's rate limit and disabled-paths check run only in
+ * its HTTP router, never on `auth.api`. The browser sets Origin, which Better Auth checks against the
  * public address. Each answer is a result with a code the page words.
  */
 import type {

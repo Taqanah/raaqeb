@@ -26,7 +26,7 @@ test("a new install is onboarded in Arabic on a phone, the account screen refusi
     await expectPath(page, "/onboarding/account");
     await expect(page.locator(rtl)).toHaveCount(1);
 
-    // The browser refuses these before the form posts (no `noValidate`), so the install stays in onboarding.
+    // The form sets `noValidate` and refuses these itself beside the field, so the install stays in onboarding; the constraint attributes keep each field `:invalid`.
     const name = page.locator("input[name=name]");
     const email = page.locator("input[name=email]");
     const password = page.locator("input[name=password]");

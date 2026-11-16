@@ -463,6 +463,7 @@ export function createAuth(input: CreateAuthInput) {
     account: {
       accountLinking: {
         enabled: true,
+        // Only an emailed code verifies an account here, so most are unverified locally and the default `true` would stop them linking.
         requireLocalEmailVerified: false,
         trustedProviders: [],
       },
@@ -722,6 +723,7 @@ export function createAuth(input: CreateAuthInput) {
         }
         admitted.set(user.email.toLowerCase(), decision.role);
       },
+      // Roles are these columns and the hooks above, not Better Auth's admin plugin (it mounts many endpoints, keeps its own role table beside ours and bans with a reason, an expiry and impersonation, which is not a deactivation) nor its organization plugin (multi-tenant).
       additionalFields: {
         calendar: { input: false, required: false, type: "string" },
         clock: { input: false, required: false, type: "string" },

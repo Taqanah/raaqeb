@@ -24,7 +24,7 @@ export interface HostReading {
   readonly cpuThrottledUsec: number;
   /** `cpu.stat` usage_usec: CPU time since the container started. */
   readonly cpuUsageUsec: number;
-  /** `memory.current` in bytes: everything charged to the cgroup, page cache included. */
+  /** `memory.current` in bytes: everything charged to the cgroup, page cache included. A page is charged to whichever container read it first, so the same image reads differently between runs; judge growth by `anon` in `memory.stat`, not by this or `memory.peak`. */
   readonly memoryCurrent: number;
   /** `memory.peak` in bytes since the container started. */
   readonly memoryPeak: number;

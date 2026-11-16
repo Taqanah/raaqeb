@@ -260,6 +260,7 @@
     transition: --n 1.2s var(--ease-out);
   }
 }
+/* Tailwind's own `spin`, `ping`, `pulse` and `bounce` keyframes replace a same-named one here when their utility is built, so these are named `live` and `run-out`. */
 @keyframes rise {
   to {
     opacity: 1;

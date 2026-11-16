@@ -1,4 +1,4 @@
-/** Raaqeb's own mark as head links: the app's tab icon, and a status page's when it uploaded none. Files live in `public/`. */
+/** Raaqeb's own mark as head links: the app's tab icon, and a status page's when it uploaded none. Files live in `public/`; the same mark is in `website/public/`, so change both. */
 export const raaqebIcons = [
   { href: "/favicon.svg", rel: "icon", type: "image/svg+xml" },
   { href: "/apple-touch-icon.png", rel: "apple-touch-icon" },

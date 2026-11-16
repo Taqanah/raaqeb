@@ -1,6 +1,6 @@
 /**
  * The notification queue's drain: every notification is stored
- * before it is sent and tried again three times with backoff, 30 seconds,
+ * before it is sent, so it survives a restart and needs no queue service, and tried again three times with backoff, 30 seconds,
  * 2 minutes and 10 minutes after each failure, so four attempts over about
  * 12.5 minutes. It runs on the scheduler's tick, on
  * the one event loop. It keeps the next due time in memory, so an empty

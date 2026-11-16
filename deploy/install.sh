@@ -141,7 +141,7 @@ verify() {
 		fail "$2 does not match its checksum in SHA256SUMS"
 }
 
-# The systemd unit, hardened.
+# The systemd unit, hardened. It leaves out MemoryDenyWriteExecute: Bun's JIT writes memory and then runs it.
 unit_text() {
 	cat <<'UNIT'
 [Unit]

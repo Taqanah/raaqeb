@@ -139,6 +139,7 @@ export function compileArgs(target: Target, outfile: string): string[] {
     "--compile-exec-argv=--disallow-code-generation-from-strings=strict",
     // Bun compiles for development unless told, which bundles React's development build.
     '--define=process.env.NODE_ENV="production"',
+    // No --bytecode: with --splitting it needs --format esm, and the floor is measured without it.
     // Minified, the binary measured 4 to 7 MB less RSS in one run each.
     "--minify",
     "--asset=client",

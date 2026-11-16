@@ -34,7 +34,7 @@ export interface Memo {
   readonly size: () => number;
 }
 
-/** Entries kept per status page: two locales of the four views as HTML and as documents, the summary, and the feed and the badge in each locale. */
+/** Entries kept per status page: two locales of the four views as HTML and as documents, the summary, and the feed and the badge in each locale. A new view adds 4: its HTML and its document in each locale. */
 export const entriesPerPage = 21;
 
 /** The cap for so many pages: pages times locales times views plus the summary, the feeds and the badges; never under one page's worth. */

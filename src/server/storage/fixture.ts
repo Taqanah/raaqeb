@@ -3,7 +3,8 @@
  * the compose Postgres when `RAAQEB_TEST_DATABASE_URL` is set
  * (scripts/test-postgres.ts), so the same test files run on both backends.
  * The boot setting `DATABASE_URL` is never read here: a test run
- * drops every table in the database it targets. Not product code.
+ * drops every table in the database it targets, so two runs against one
+ * database wipe each other's tables: give each its own. Not product code.
  */
 import { SQL } from "bun";
 import type { Connection } from "./connection.ts";

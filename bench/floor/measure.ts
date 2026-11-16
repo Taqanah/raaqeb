@@ -50,7 +50,10 @@ export interface MinuteLateness {
  * first runs spread over 30 seconds in list order, each next run one
  * interval after the run was due, or after its start when it started more
  * than an interval late. The boot is the earliest time every first check
- * allows, so the least late first run counts as on time.
+ * allows, so the least late first run counts as on time. A monitor whose
+ * check is still in flight is skipped and its next run follows the late
+ * start, so heavy skipping keeps the median under the bound: the day's check
+ * count shows it, not the lateness.
  */
 export function latenessOf(
   rows: readonly StartedCheck[],

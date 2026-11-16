@@ -4,7 +4,7 @@ status: accepted
 
 # The export's version changes with its shape
 
-The export's first line carries `version` (`exportVersion` in `src/shared/schemas/export.ts`). An import reads it before anything else and refuses a file whose version is not its own, naming the reason. Any change to the shape of the export, in its header or in its history lines, raises `exportVersion` in the same pull request. Version 1 is the shape the first release ships.
+The export's first line carries `version` (`exportVersion` in `src/shared/schemas/export.ts`). An import reads it before anything else. It reads its own version and the earlier versions `readableExportVersions` lists, converting each on the way in, and refuses any other, naming the reason. Any change to the shape of the export, in its header or in its history lines, raises `exportVersion` in the same pull request. Version 1 is the shape the first release ships.
 
 ## Why
 
@@ -16,4 +16,4 @@ The export's first line carries `version` (`exportVersion` in `src/shared/schema
 
 - A pull request that changes `src/shared/schemas/export.ts` in a way that changes what a file holds raises `exportVersion`; a pull request that only renames a type or adds a comment does not.
 - The release runbook checks it: when the export schema changed since the previous release and `exportVersion` did not, the release stops.
-- An import accepts only its own version. Reading an older version, converting it on the way in, is a feature for when operators need it, not a promise this record makes.
+- An import reads the current version and version 1, the one the first releases wrote (`readableExportVersions`), rewriting version 1 to the current shape on the way in, so a backup from those releases still imports. Any other version is refused, and dropping a version from the list needs its own decision.

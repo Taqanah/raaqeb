@@ -81,7 +81,7 @@ export function contentDraftOf(content: Content | undefined): ContentDraft {
   return { ar: content?.ar ?? "", en: content?.en ?? "" };
 }
 
-/** What a reader in `locale` sees: its own text, else the fallback locale's, else the first locale's that has one; empty with none. */
+/** What a reader in `locale` sees: its own text, else the fallback locale's, else the first locale's that has one; empty with none. The fallback changes nothing while there are two locales; it stays because it states the rule a third one needs. */
 export function contentIn(
   content: Content | undefined,
   locale: Locale,

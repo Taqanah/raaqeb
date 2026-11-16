@@ -293,7 +293,7 @@ test("a reset link from the mail sets a new password once, refuses a short one f
   expect(new URL(link).origin).toBe(origin);
 
   await page.goto(link);
-  // The browser refuses a password under eight characters before it posts (no `noValidate`).
+  // The form sets `noValidate` and refuses a password under eight characters itself; the constraint attributes keep the field `:invalid`.
   await page.fill("input[name=newPassword]", "short");
   await page.click(continueButton);
   await expect(page.locator("input[name=newPassword]:invalid")).toHaveCount(1);

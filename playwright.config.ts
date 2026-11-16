@@ -22,6 +22,7 @@ import {
 
 export default defineConfig({
   expect: { timeout: 10_000 },
+  // A `lock` and `--shuffle` act on a whole test group, so a serial block keeps its lock and its order. A file with a `beforeAll` and no serial block is split into one group per worker, and each worker runs the hook once.
   fullyParallel: true,
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   reporter: "list",

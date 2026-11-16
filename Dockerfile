@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # The raaqeb image: the compiled binary on distroless, non-root,
-# no shell and no entrypoint script. `bun run image` compiles the binaries
+# no shell and no entrypoint script. It is the file the Linux binaries are,
+# with no Bun and no node_modules beside it. `bun run image` compiles the binaries
 # into dist/bin first and passes the labels (scripts/package.ts).
 
 # Each platform takes its own glibc binary.

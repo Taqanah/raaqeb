@@ -18,7 +18,7 @@ services:
       # With the caddy profile, delete this line: Caddy is the way in.
       - "3000:3000"
     environment:
-      # Caddy's address below: only its forwarded headers are believed.
+      # Caddy's address below: only its forwarded headers are believed. The whole subnet would also trust its gateway, which is where traffic to a published port arrives from.
       RAAQEB_TRUSTED_PROXIES: 172.31.253.2
     volumes:
       # A named volume needs nothing. A bind mount (./data:/data) needs the

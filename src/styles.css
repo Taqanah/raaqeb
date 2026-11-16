@@ -9,7 +9,7 @@
 /* Tailwind scans for classes from this folder only; other folders hold markup that is not the product. */
 @import "tailwindcss" source("./");
 
-/* Rubik, self-hosted: one variable file per script, weight 400 to 700. */
+/* Rubik, self-hosted: one variable file per script, weight 400 to 700. Rubik 2.300 is instanced to `wght` 400 to 700 and cut to each face's `unicode-range`, IBM Plex Mono 2.3 to Latin, all with `pyftsubset --layout-features='*' --flavor=woff2`. */
 /*
  * Rubik declares 935 above the baseline and 250 below, which centres Latin capitals but sets Arabic,
  * whose letters run from about 750 down to 350 (marks to 479), some 0.14em low, its descenders cut

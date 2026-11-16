@@ -8,6 +8,7 @@
  * Without the variable it does nothing. It imports nothing of the harness,
  * because it is the one file mounted into the container.
  */
+// Object counts and sizes, never `Bun.generateHeapSnapshot()`: a snapshot takes several times the heap's size in memory, which a 240 MB container cannot spare.
 import { heapStats } from "bun:jsc";
 
 /** The variable that turns the sampler on, in milliseconds. */
