@@ -767,24 +767,6 @@ test("test now on a TCP monitor shows the address it connected to as a token", a
   ).toHaveText("127.0.0.1");
 });
 
-test("the form creates a heartbeat monitor and opens its edit page, where the new URL shows", async ({
-  page,
-}) => {
-  await signIn(page, "/admin/monitors/new");
-  await page.fill("input[name=name]", "Hourly sync");
-  await page.click("[role=radio][data-value=heartbeat]");
-  await page.fill("input[name=every]", "2");
-  await page.click(
-    "[role=radiogroup][data-name=everyUnit] [role=radio][data-value=hours]"
-  );
-  await page.click("[data-slot=save-monitor]");
-  await expect.poll(() => new URL(page.url()).pathname).toMatch(editPath);
-  await expect(page.locator("[data-slot=heartbeat-url]")).toContainText(
-    `${englishOrigin}/api/heartbeat/`
-  );
-  await expect(page.locator("input[name=every]")).toHaveValue("2");
-});
-
 test("a job that reports failure takes its heartbeat monitor down at once with its message, and the next heartbeat that says it ran brings it back", async ({
   page,
   request,
@@ -893,26 +875,31 @@ test("a Docker monitor's form lists the daemon's containers until the endpoint c
   }
 });
 
-// In order: the first reads the seeded heartbeat monitor before any call reaches it, and the second's call to the renewed URL is a heartbeat too.
-test.describe("the seeded heartbeat monitor's URL", () => {
+// In order: the first makes the heartbeat monitor and calls it, and the second renews the URL of the same monitor.
+test.describe("a heartbeat monitor's URL", () => {
   test.describe.configure({ mode: "serial" });
+  let id = "";
 
-  test("a heartbeat monitor's edit page shows its URL; a call to it is answered OK and shows as the last heartbeat with its source address", async ({
+  test("the form creates a heartbeat monitor and opens its edit page, where its URL shows; a call to it is answered OK and shows as the last heartbeat with its source address", async ({
     page,
     request,
   }) => {
-    await signIn(page);
-    const item = page.locator("[data-monitor]", {
-      has: page.locator("[data-slot=monitor-name]", {
-        hasText: "Nightly backup",
-      }),
-    });
-    const id = await item.getAttribute("data-monitor");
-    await page.goto(`${englishOrigin}/admin/monitors/${id}/edit`);
-    await expect(page.locator("[data-slot=monitor-form]")).toBeVisible();
+    await signIn(page, "/admin/monitors/new");
+    await page.fill("input[name=name]", "Hourly sync");
+    await page.click("[role=radio][data-value=heartbeat]");
+    await page.fill("input[name=every]", "2");
+    await page.click(
+      "[role=radiogroup][data-name=everyUnit] [role=radio][data-value=hours]"
+    );
+    await page.click("[data-slot=save-monitor]");
+    await expect.poll(() => new URL(page.url()).pathname).toMatch(editPath);
+    [, , , id = ""] = new URL(page.url()).pathname.split("/");
+    await expect(page.locator("[data-slot=heartbeat-url]")).toContainText(
+      `${englishOrigin}/api/heartbeat/`
+    );
+    await expect(page.locator("input[name=every]")).toHaveValue("2");
     const url =
       (await page.locator("[data-slot=heartbeat-url]").textContent()) ?? "";
-    expect(url.startsWith(`${englishOrigin}/api/heartbeat/`)).toBe(true);
     await expect(page.locator("[data-slot=last-heartbeat]")).toHaveCount(0);
     // The HEAD first: the last heartbeat is the POST, sent from the forwarded address.
     expect((await request.head(url)).status()).toBe(200);
@@ -935,12 +922,6 @@ test.describe("the seeded heartbeat monitor's URL", () => {
 
   test("a new URL retires the old one on save", async ({ page, request }) => {
     await signIn(page);
-    const item = page.locator("[data-monitor]", {
-      has: page.locator("[data-slot=monitor-name]", {
-        hasText: "Nightly backup",
-      }),
-    });
-    const id = await item.getAttribute("data-monitor");
     await page.goto(`${englishOrigin}/admin/monitors/${id}/edit`);
     const before =
       (await page.locator("[data-slot=heartbeat-url]").textContent()) ?? "";

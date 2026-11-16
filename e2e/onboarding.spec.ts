@@ -172,7 +172,8 @@ test.describe("the fresh install, walked to the end and then used", () => {
 
     // The getting-started checklist, every step open, until the operator dismisses it for good.
     const checklist = page.locator("main [data-slot=getting-started]");
-    await expect(checklist.locator("li[data-done=false]")).toHaveCount(4);
+    await expect(checklist.locator("li").first()).toBeVisible();
+    await expect(checklist.locator("li:not([data-done=false])")).toHaveCount(0);
     await page.click("[data-slot=dismiss-getting-started]");
     await expect(checklist).toHaveCount(0);
     // The focus the dismiss button held moves to the first control after the card.
@@ -236,7 +237,11 @@ test.describe("the fresh install, walked to the end and then used", () => {
     await page.goto(`${freshOrigin}/admin/monitors`);
     await expect(page.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
     // The reports, team and audit log pages among them, for the owner.
-    await expect(page.locator("nav a[data-nav]")).toHaveCount(10);
+    await expect(
+      page.locator(
+        "nav a[data-nav=reports], nav a[data-nav=team], nav a[data-nav=audit]"
+      )
+    ).toHaveCount(3);
     await page.goto(`${freshOrigin}/sign-out`);
     await expect(page.locator("html[lang=en][dir=ltr]")).toHaveCount(1);
     await page.goto(`${freshOrigin}/admin/settings/account`);

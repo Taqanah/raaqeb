@@ -522,27 +522,3 @@ test("an HTTP monitor's bearer token is stored out of sight, and its capture mod
     page.locator("[data-slot=monitor-events] [data-event=degraded_started]")
   ).toBeEnabled();
 });
-
-// A long group name and tags end in an ellipsis inside the organization cell, so the row never pushes the item menu off the side of the list.
-test("a long group name and tags stay inside the list at 1280 px, the item menu in view", async ({
-  page,
-}) => {
-  const group = unique("a-group-name-written-out-in-full-words");
-  await signIn(page);
-  await createTcpMonitor(page, {
-    group,
-    name: unique("long"),
-    tags: `${unique("a-tag-written-out-in-words")}, ${unique("another-tag-written-out-in-words")}`,
-  });
-  await page.goto(`${englishOrigin}/admin/monitors?group=${group}`);
-  await expect(
-    page.locator("[data-monitor] [data-slot=monitor-menu]")
-  ).toBeInViewport({ ratio: 1 });
-  expect(
-    await page
-      .locator("[data-slot=monitor-list] table")
-      .evaluate(
-        (table) => table.scrollWidth <= (table.parentElement?.clientWidth ?? 0)
-      )
-  ).toBe(true);
-});

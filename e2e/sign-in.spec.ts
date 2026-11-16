@@ -4,6 +4,7 @@
 
 import {
   clientAddress,
+  english,
   expect,
   expectPath,
   expectRefused,
@@ -105,7 +106,7 @@ test("a sign-in the origin check refuses says the page is not at the public addr
   await page.fill(passwordField, operatorPassword);
   await page.click(submit);
   await expect(page.locator(failure)).toHaveText(
-    "This address is not the install's public address. Open Raaqeb at its public address."
+    english("auth_origin_refused")
   );
   // The way back in from the server, for an operator who means this address.
   await expect(page.locator("[data-slot=set-address-command]")).toHaveText(
@@ -132,7 +133,7 @@ test("a sign-out the origin check refuses says the page is not at the public add
   await page.goto(`${englishOrigin}/sign-out`);
   await page.click(submit);
   await expect(page.locator(failure)).toHaveText(
-    "This address is not the install's public address. Open Raaqeb at its public address."
+    english("auth_origin_refused")
   );
   await expect(page.locator("[data-slot=set-address-command]")).toHaveText(
     `raaqeb set-address ${englishOrigin}`

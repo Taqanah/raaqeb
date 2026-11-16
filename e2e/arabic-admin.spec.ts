@@ -147,11 +147,14 @@ test.describe("on a phone", () => {
     await expect(sheet).toHaveCount(0);
     await page.click("[data-slot=new-monitor]");
     await expectPath(page, "/admin/monitors/new");
+    // The address moves before the page does: measure the form, not the list it leaves.
+    await expect(page.locator("[data-slot=monitor-form]")).toBeVisible();
     expect(await fitsTheScreen(page)).toBe(true);
     await page.fill("input[name=name]", `فحص الهاتف ${run}`);
     await page.fill("input[name=url]", "http://127.0.0.1:1/");
     await page.locator("[data-slot=save-monitor]").tap();
     await pathMatching(page, monitorPath);
+    await expect(page.locator("[data-slot=monitor-summary]")).toBeVisible();
     expect(await fitsTheScreen(page)).toBe(true);
 
     await page.goto(`${origin}${incident}`);

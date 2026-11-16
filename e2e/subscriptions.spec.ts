@@ -8,7 +8,12 @@
 
 import type { Page } from "@playwright/test";
 import { runSql } from "@/server/storage/fixture.ts";
-import { expect, expectPath, test } from "./support/fixtures.ts";
+import {
+  english as englishWords,
+  expect,
+  expectPath,
+  test,
+} from "./support/fixtures.ts";
 import {
   englishOrigin,
   noticesPage,
@@ -19,6 +24,9 @@ import {
   sinkPort,
 } from "./support/servers.ts";
 import { fillTime, timeOf } from "./support/status-page.ts";
+
+/** Any text that is more than space. */
+const anyWord = /\S/;
 
 /** The subscribe button's tag in a page's HTML. */
 const submitButton = /<button[^>]*data-slot="subscribe-submit"[^>]*>/;
@@ -87,7 +95,12 @@ test("the feed's copy button speaks the catalog the status page loads, in both l
       .click();
     const copy = page.locator("[data-slot=subscribe-copy]");
     await expect(copy).toBeVisible();
+    // Words, never the bare message id a page shows for an id its catalog lacks.
+    await expect(copy).toHaveText(anyWord);
     await expect(copy).not.toContainText("app_");
+    if (path === "/") {
+      await expect(copy).toHaveText(englishWords("app_copy"));
+    }
   }
 });
 

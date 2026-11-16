@@ -83,8 +83,15 @@ test("OAuth 2.0 client credentials carry the test and the check, a refused secre
 
   endpoint.answers = [{ body: tokenJson("e2e-token") }];
   await page.fill("input[name=oauthClientSecret]", "oauth-secret-7");
+  const tested = api.authorizations.length;
   await page.click("[data-slot=save-monitor]");
   await expect.poll(() => new URL(page.url()).pathname).toMatch(detailPath);
+  // A saved monitor is due at once, so the scheduler's first check asks for a token and calls the API with it too.
+  await expect.poll(() => api.authorizations.length).toBeGreaterThan(tested);
+  expect(api.authorizations.at(-1)).toBe("Bearer e2e-token");
+  expect(endpoint.calls.at(-1)?.headers.authorization).toBe(
+    `Basic ${btoa("raaqeb:oauth-secret-7")}`
+  );
   const detail = new URL(page.url()).pathname;
   await page.goto(`${install.origin}${detail}/edit`);
   await expect(page.locator("input[name=oauthTokenUrl]")).toHaveValue(

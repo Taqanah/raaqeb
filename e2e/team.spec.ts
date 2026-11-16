@@ -160,7 +160,7 @@ test.describe("a second step every operator must have", () => {
     await install?.stop();
   });
 
-  test("leaves an operator without one their own sign-in page, which says why, until they switch it on", async ({
+  test("sends an operator without one to their own sign-in page, which says why, and lets them reach their account", async ({
     page,
   }) => {
     const origin = install?.origin ?? "";

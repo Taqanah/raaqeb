@@ -71,6 +71,18 @@ test("a client certificate carries the test and the check, a key that is not its
 
   await page.click("[data-slot=save-monitor]");
   await expect.poll(() => new URL(page.url()).pathname).toMatch(detailPath);
+  // A saved monitor is due at once; the server answers no connection without the certificate, so the first check is up only if it carried it.
+  await expect
+    .poll(async () => {
+      await page.reload();
+      return await page.evaluate(
+        () =>
+          document
+            .querySelector("[data-slot=monitor-state]")
+            ?.getAttribute("data-state") ?? "none"
+      );
+    })
+    .toBe("up");
   const detail = new URL(page.url()).pathname;
   await page.goto(`${install.origin}${detail}/edit`);
   await expect(page.locator("textarea[name=clientCertificate]")).toHaveValue(

@@ -53,24 +53,6 @@ test("the setup check lists what the server can judge, each passed or not: a tru
   await expectPath(page, "/admin/channels");
 });
 
-test("a public address with a path is refused and nothing is stored", async ({
-  page,
-}) => {
-  await signIn(page, englishOrigin);
-  await page.goto(`${englishOrigin}/admin/settings`);
-  const address = page.locator("input#publicAddress");
-  const stored = await address.inputValue();
-  await address.fill("https://status.example.com/path");
-  await page.click("[data-slot=general-form] button[type=submit]");
-  await expect(
-    page.locator(
-      "[data-slot=general-form] [data-slot=save-outcome][data-state=failed][data-reason=invalid]"
-    )
-  ).toHaveCount(1);
-  await page.reload();
-  await expect(address).toHaveValue(stored);
-});
-
 test("a new public address other than the page's own warns before the save that sign-in and sign-out move with it", async ({
   page,
 }) => {
@@ -88,13 +70,14 @@ test("a new public address other than the page's own warns before the save that 
   await expect(warning).toHaveCount(0);
 });
 
-test("a public address the page refuses is marked on its own field, in the page's language", async ({
+test("a public address the page refuses is marked on its own field, in the page's language, and nothing is stored", async ({
   page,
 }) => {
   // A bare host is the page's to refuse, never the browser's bubble; a path is marked on the field, not only in the footer.
   await signIn(page, englishOrigin);
   await page.goto(`${englishOrigin}/admin/settings`);
   const address = page.locator("input#publicAddress");
+  const stored = await address.inputValue();
   for (const refused of [
     "status.example.com/path",
     "https://status.example.com/path",
@@ -105,6 +88,8 @@ test("a public address the page refuses is marked on its own field, in the page'
     await expectRefused(page, "[data-slot=general-form]", ["publicAddress"]);
     await expectSaidOnce(page, "[data-slot=general-form]", "publicAddress");
   }
+  await page.reload();
+  await expect(address).toHaveValue(stored);
 });
 
 test.describe("on an install of its own", () => {
@@ -261,9 +246,10 @@ test.describe("on an install of its own", () => {
     await expect(requestLog).toHaveAttribute("aria-checked", "true");
   });
 
-  test("trusted proxies that are not addresses are refused and nothing is stored", async ({
+  test("trusted proxies that are not addresses are refused on their own field, and nothing is stored", async ({
     page,
   }) => {
+    // The server's refusal is said beside the field as well as in the footer, as the storage page marks its own.
     await open(page, "/admin/settings");
     await page.fill("input#trustedProxies", "not-an-ip");
     await page.click(saveGeneral);
@@ -272,18 +258,9 @@ test.describe("on an install of its own", () => {
         `${general} [data-slot=save-outcome][data-state=failed][data-reason=trusted_proxy_invalid]`
       )
     ).toHaveCount(1);
-    await page.reload();
-    await expect(page.locator("input#trustedProxies")).toHaveValue("");
-  });
-
-  test("trusted proxies the page refuses are marked on their own field", async ({
-    page,
-  }) => {
-    // The server's refusal is said beside the field as well as in the footer, as the storage page marks its own.
-    await open(page, "/admin/settings");
-    await page.fill("input#trustedProxies", "not-an-ip");
-    await page.click(saveGeneral);
     await expectRefused(page, general, ["trustedProxies"]);
     await expectSaidOnce(page, general, "trustedProxies");
+    await page.reload();
+    await expect(page.locator("input#trustedProxies")).toHaveValue("");
   });
 });

@@ -76,7 +76,8 @@ test.describe("single sign-on", () => {
     await page.goto(`${origin}/sign-in`);
     await page.click("[data-slot=sso-sign-in]");
     await expectPath(page, "/admin/monitors");
-    // An editor's sidebar has no team.
+    // An editor adds monitors, which a viewer cannot, and has no team in the sidebar.
+    await expect(page.locator("[data-slot=new-monitor]")).toBeVisible();
     await expect(page.locator("[data-nav=team]")).toHaveCount(0);
 
     await page.context().clearCookies();

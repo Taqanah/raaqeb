@@ -1,12 +1,14 @@
 /**
  * The Playwright harness: `test`, `expect`, `expectPath`, `expectRefused`,
- * `expectSaidOnce` and `clientAddress`, imported by every spec in e2e/ instead of `@playwright/test`.
+ * `expectSaidOnce`, `english` and `clientAddress`, imported by every spec in e2e/ instead of `@playwright/test`.
  */
 import {
   test as base,
   expect as baseExpect,
   type Page,
 } from "@playwright/test";
+import type { MessageId } from "@/shared/i18n/messages.ts";
+import { messages as englishCatalog } from "../../locales/en/messages.ts";
 
 declare global {
   interface Window {
@@ -138,4 +140,16 @@ export async function expectSaidOnce(
     .locator(`${form} [data-error-for=${name}]`)
     .textContent();
   await baseExpect(line).not.toHaveText(beside ?? "");
+}
+
+/** The English catalog's words for a message id without placeholders: what an element that carries no id of its own, such as a toast, is told apart by, never copy typed into a spec. */
+export function english(id: MessageId): string {
+  const words = englishCatalog[id];
+  if (typeof words === "string") {
+    return words;
+  }
+  if (Array.isArray(words) && words.every((part) => typeof part === "string")) {
+    return words.join("");
+  }
+  throw new Error(`${id} is not plain words in the English catalog`);
 }

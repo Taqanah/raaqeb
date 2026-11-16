@@ -4,7 +4,7 @@
 // in order; the last makes records of its own.
 
 import type { Page } from "@playwright/test";
-import { expect, expectPath, test } from "./support/fixtures.ts";
+import { english, expect, expectPath, test } from "./support/fixtures.ts";
 import {
   englishOrigin,
   operatorEmail,
@@ -16,6 +16,7 @@ const linkedName = `Checkout ${run}`;
 const handName = `Mail ${run}`;
 const componentPath = /^\/admin\/components\/[0-9a-f-]{36}$/;
 const incidentPath = /^\/admin\/incidents\/[0-9a-f-]{36}$/;
+const windowPath = /^\/admin\/maintenance\/[0-9a-f-]{36}$/;
 
 async function signIn(page: Page): Promise<void> {
   await page.goto(`${englishOrigin}/sign-in`);
@@ -37,7 +38,7 @@ let incidentPage = "";
 test.describe("one incident, from the monitor's down notification to its deletion", () => {
   test.describe.configure({ mode: "serial" });
 
-  test("the down notification's link opens a new incident from the monitor: its name and the components linked to it", async ({
+  test("a new incident opened from a monitor, as the down notification's link opens it, takes the monitor's name and the components linked to it", async ({
     page,
   }) => {
     await signIn(page);
@@ -167,7 +168,12 @@ test.describe("one incident, from the monitor's down notification to its deletio
     await expect(
       first.locator("[data-slot=fix-form] textarea[lang=en]")
     ).toBeFocused();
-    await first.getByRole("button", { name: "Cancel" }).click();
+    // The button beside save, which carries no name of its own.
+    await first
+      .locator(
+        "[data-slot=fix-form] [data-slot=save-fix] ~ button[type=button]"
+      )
+      .click();
     await expect(first.locator("[data-slot=fix-update]")).toBeFocused();
     await first.locator("[data-slot=fix-update]").click();
     await first
@@ -192,7 +198,9 @@ test.describe("one incident, from the monitor's down notification to its deletio
     await expectPath(page, "/admin/incidents");
     // The delete's own toast, not the save's before it.
     await expect(
-      page.locator("[data-slot=toast]", { hasText: "deleted" })
+      page.locator("[data-slot=toast]", {
+        hasText: english("incident_deleted"),
+      })
     ).toBeVisible();
     await expect(
       page.locator(`[data-incident="${incidentPage.split("/").at(-1)}"]`)
@@ -233,7 +241,7 @@ test("an incident naming only a component deleted since the form opened is refus
   ).toBeVisible();
 });
 
-test("deleting a component names the incidents it is the last affected component of, and they go with it", async ({
+test("deleting a component names the incidents and the maintenance windows it is the last component of, and they go with it", async ({
   page,
 }) => {
   await signIn(page);
@@ -249,13 +257,29 @@ test("deleting a component names the incidents it is the last affected component
   await page.click("[data-slot=create-incident]");
   const incidentId = await idOf(page, incidentPath);
 
+  await page.goto(`${englishOrigin}/admin/maintenance/new`);
+  await page.fill("input[name=title-en]", `Only on last ${run}`);
+  await page.fill("textarea[name=message-en]", "Touches one component.");
+  await page
+    .locator(`[data-slot=window-component][data-component="${lastId}"] label`)
+    .click();
+  await page.click("[data-slot=create-window]");
+  const windowId = await idOf(page, windowPath);
+
   await page.goto(`${englishOrigin}/admin/components/${lastId}`);
   await page.click("[data-slot=delete-component]");
   await expect(
     page.locator(`[data-slot=deleted-incidents] [data-record="${incidentId}"]`)
   ).toBeVisible();
+  await expect(
+    page.locator(`[data-slot=deleted-maintenance] [data-record="${windowId}"]`)
+  ).toBeVisible();
   await page.click("[data-slot=confirm-delete]");
   await expectPath(page, "/admin/components");
   await page.goto(`${englishOrigin}/admin/incidents`);
   await expect(page.locator(`[data-incident="${incidentId}"]`)).toHaveCount(0);
+  await page.goto(`${englishOrigin}/admin/maintenance`);
+  await expect(
+    page.locator(`a[href="/admin/maintenance/${windowId}"]`)
+  ).toHaveCount(0);
 });

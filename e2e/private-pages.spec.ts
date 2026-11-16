@@ -3,7 +3,7 @@
 // from a browser with no session, as a visitor would.
 
 import type { Browser, Page } from "@playwright/test";
-import { expect, test } from "./support/fixtures.ts";
+import { clientAddress, expect, test } from "./support/fixtures.ts";
 import { englishOrigin } from "./support/servers.ts";
 import {
   handComponent,
@@ -97,4 +97,35 @@ test("a page for signed-in users shows itself to the operator and the way to sig
   await expect(visitor.locator("input[name=password]")).toHaveCount(0);
   await expect(visitor.getByText(component)).toHaveCount(0);
   await visitor.context().close();
+});
+
+test("a page for listed addresses shows itself to a visitor from one and refuses one from elsewhere, with no password to try", async ({
+  address,
+  browser,
+  page,
+}) => {
+  const run = runId();
+  const slug = `office-${run}`;
+  const component = `Office ${run}`;
+  await signIn(page);
+  const componentId = await handComponent(page, component);
+  await publishedPage(page, slug, [componentId]);
+  await page.click("[data-name=accessMode] [role=radio][data-value=addresses]");
+  await page.fill("textarea[name=accessAddresses]", address);
+  await savePage(page);
+
+  // The English server trusts the loopback proxy, so each visitor comes from the address it forwards.
+  const listed = await visitorOf(browser, address);
+  const opened = await listed.goto(`${englishOrigin}/status/${slug}`);
+  expect(opened?.status()).toBe(200);
+  await expect(listed.getByText(component)).toBeVisible();
+  await listed.context().close();
+
+  const elsewhere = await visitorOf(browser, clientAddress(99));
+  const refused = await elsewhere.goto(`${englishOrigin}/status/${slug}`);
+  expect(refused?.status()).toBe(403);
+  await expect(elsewhere.locator("[data-slot=access-page]")).toBeVisible();
+  await expect(elsewhere.locator("input[name=password]")).toHaveCount(0);
+  await expect(elsewhere.getByText(component)).toHaveCount(0);
+  await elsewhere.context().close();
 });

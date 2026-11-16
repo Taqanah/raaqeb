@@ -5,7 +5,7 @@
 // made the default.
 
 import type { Browser, Page } from "@playwright/test";
-import { expect, expectPath, test } from "./support/fixtures.ts";
+import { english, expect, expectPath, test } from "./support/fixtures.ts";
 import { englishOrigin } from "./support/servers.ts";
 import {
   afterRefresh,
@@ -157,7 +157,7 @@ test("a renamed slug moves the page's address, and a deleted page is gone from t
   await expectPath(page, "/admin/pages");
   // The delete's own toast, not the save's before it.
   await expect(
-    page.locator("[data-slot=toast]", { hasText: "deleted" })
+    page.locator("[data-slot=toast]", { hasText: english("page_deleted") })
   ).toBeVisible();
   await expect(page.locator("[data-page]").first()).toBeVisible();
   await expect(page.locator(`[data-page="${pageId}"]`)).toHaveCount(0);

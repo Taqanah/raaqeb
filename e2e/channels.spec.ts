@@ -114,7 +114,11 @@ test.describe("one webhook channel, from its creation to its deletion", () => {
     await openChannel(page);
     const preview = page.locator("[data-slot=notification-preview]");
     await expect(preview.locator("[data-slot=preview-sample]")).toBeVisible();
-    await expect(preview.locator("[data-preview]")).toHaveCount(9);
+    // Which notifications a type receives is pinned by the preview's unit tests; here each one drawn has its body.
+    await expect(preview.locator("[data-preview]").first()).toBeVisible();
+    await expect(
+      preview.locator("[data-preview] [data-slot=preview-body]:empty")
+    ).toHaveCount(0);
     await expect(
       preview.locator("[data-preview='probe.silent'] [data-slot=preview-body]")
     ).toContainText('"type": "probe.silent"');
@@ -410,6 +414,8 @@ test.describe("a channel saved twice", () => {
       await expect
         .poll(() => new URL(page.url()).pathname)
         .toMatch(channelPath);
+      // The address changes before the stored channel's page commits; typed sooner, the rename lands in the new-channel form that is leaving.
+      await expect(page.locator("[data-slot=send-test]")).toBeVisible();
 
       const saveAs = async (renamed: string) => {
         await name.fill(renamed);

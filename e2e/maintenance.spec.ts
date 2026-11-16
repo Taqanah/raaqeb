@@ -3,7 +3,7 @@
 // one component run in order; the refusals need no window.
 
 import type { Page } from "@playwright/test";
-import { expect, expectPath, test } from "./support/fixtures.ts";
+import { english, expect, expectPath, test } from "./support/fixtures.ts";
 import {
   englishOrigin,
   operatorEmail,
@@ -88,7 +88,9 @@ test.describe("two windows on one component", () => {
     await expectPath(page, "/admin/maintenance");
     // The delete's own toast, not the save's before it.
     await expect(
-      page.locator("[data-slot=toast]", { hasText: "cancelled" })
+      page.locator("[data-slot=toast]", {
+        hasText: english("maintenance_cancelled"),
+      })
     ).toBeVisible();
     await expect(page.locator(`a[href="${path}"]`)).toHaveCount(0);
   });

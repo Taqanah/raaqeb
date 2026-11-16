@@ -5,7 +5,7 @@
 // on an install of their own.
 
 import type { Page } from "@playwright/test";
-import { expect, expectPath, test } from "./support/fixtures.ts";
+import { english, expect, expectPath, test } from "./support/fixtures.ts";
 import {
   englishOrigin,
   operatorEmail,
@@ -13,6 +13,10 @@ import {
   sinkOrigin,
 } from "./support/servers.ts";
 import { type Install, spawnInstall } from "./support/spawn.ts";
+
+/** The reports, team and audit log pages, each named, since a count of every page grows with the product. */
+const ownersPages =
+  "nav a[data-nav=reports], nav a[data-nav=team], nav a[data-nav=audit]";
 
 /** A field described by the name field's refusal, among its other lines. */
 const describedByError = /name-error/;
@@ -34,8 +38,7 @@ test("the shell renders around an admin page: the grouped navigation, the header
   await expect(
     page.locator("html[lang=en][dir=ltr][data-theme=dark]")
   ).toHaveCount(1);
-  // The reports, team and audit log pages among them, for the owner.
-  await expect(page.locator("nav a[data-nav]")).toHaveCount(10);
+  await expect(page.locator(ownersPages)).toHaveCount(3);
   await expect(
     page.locator("a[data-nav=monitors][aria-current=page]")
   ).toHaveCount(1);
@@ -64,12 +67,12 @@ test("controls are named without their shortcut letters,the list's menu column i
   page,
 }) => {
   await signIn(page);
+  await expect(page.locator("[data-slot=new-monitor]")).toHaveAccessibleName(
+    english("monitor_add")
+  );
   await expect(
-    page.getByRole("link", { exact: true, name: "Add monitor" })
-  ).toHaveCount(1);
-  await expect(
-    page.getByRole("button", { exact: true, name: "Search" })
-  ).toHaveCount(1);
+    page.locator("[data-slot=palette-trigger]")
+  ).toHaveAccessibleName(english("app_search"));
   await expect(
     page.locator("[data-slot=monitor-list] thead th").last()
   ).not.toHaveText("");
@@ -107,9 +110,15 @@ test("the arrow keys move the palette's highlight, Enter opens the highlighted p
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowUp");
-  await expect(highlighted).toHaveAttribute("data-palette-item", "reports");
+  // The palette lists the pages in the sidebar's order.
+  const second = page.locator("nav a[data-nav]").nth(1);
+  await expect(highlighted).toHaveAttribute(
+    "data-palette-item",
+    (await second.getAttribute("data-nav")) ?? ""
+  );
+  const target = (await second.getAttribute("href")) ?? "";
   await page.keyboard.press("Enter");
-  await expectPath(page, "/admin/reports");
+  await expectPath(page, target);
   await expect(page.locator("[data-slot=palette]")).toHaveCount(0);
   // The key N types ى on an Arabic layout; the shortcut, taken on the monitor list alone, follows the physical key.
   await page.click("a[data-nav=monitors]");
@@ -314,7 +323,9 @@ test("a form's Save rests until something changes, Ctrl+S presses it, and a crea
   await expectPath(page, "/admin/components");
   // The delete's own toast, not the save's before it.
   await expect(
-    page.locator("[data-slot=toast]", { hasText: "deleted" })
+    page.locator("[data-slot=toast]", {
+      hasText: english("component_deleted"),
+    })
   ).toBeVisible();
 });
 
@@ -484,8 +495,7 @@ test("a page whose read failed shows the error inside the shell, never its text,
   await page.click("a[data-nav=channels]");
   await expect(page.locator("[data-slot=page-error]")).toBeVisible();
   await expect(page.locator("[data-slot=sidebar]")).toBeVisible();
-  // The reports, team and audit log pages among them, for the owner.
-  await expect(page.locator("nav a[data-nav]")).toHaveCount(10);
+  await expect(page.locator(ownersPages)).toHaveCount(3);
   await expect(page.locator("[data-slot=page] h1")).toHaveCount(1);
   await expect(page.getByText("a private failure")).toHaveCount(0);
 

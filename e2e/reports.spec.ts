@@ -220,9 +220,13 @@ test("the page's read of a report, asked again with no session, serves no report
   const read = await reading;
   await expect(page.locator("[data-slot=report]")).toBeVisible();
   const anonymous = await request.newContext();
-  // The page's own headers, which carry no cookie.
+  // The page's own headers without its cookie, which Playwright leaves out of them only while no route is installed.
   const replay = await anonymous.get(read.url(), {
-    headers: read.headers(),
+    headers: Object.fromEntries(
+      Object.entries(await read.allHeaders()).filter(
+        ([name]) => name !== "cookie"
+      )
+    ),
     maxRedirects: 0,
   });
   const body = await replay.text();
