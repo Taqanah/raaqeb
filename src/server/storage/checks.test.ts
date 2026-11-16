@@ -1315,7 +1315,7 @@ describe("sealed days", () => {
   test("a day sealed while a summary is under way is counted once, not twice and not lost", async () => {
     const { checks, monitors } = await repositories();
     if (!open) {
-      return;
+      throw new Error("the repositories open a database");
     }
     const a = await monitors.create(site);
     await recorded(checks, every(a.id, d, 6, 20 * minuteMs));

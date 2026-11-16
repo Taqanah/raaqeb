@@ -177,11 +177,16 @@ describe("an account's keys", () => {
     await store.apiKeys.create(
       key({ id: "k2", role: "viewer", tokenHash: "hash-2" })
     );
+    await store.apiKeys.create(
+      key({ id: "k3", role: "owner", tokenHash: "hash-3" })
+    );
     await store.operatorAccounts.setRole("a", "responder");
     expect((await store.apiKeys.find("k1"))?.role).toBe("responder");
+    expect((await store.apiKeys.find("k3"))?.role).toBe("responder");
     expect((await store.apiKeys.find("k2"))?.role).toBe("viewer");
-    // Raising the account again leaves the keys where they dropped to.
+    // Raising the account again leaves the keys where they dropped to, to the widest role too, which no key is wider than.
     await store.operatorAccounts.setRole("a", "admin");
+    expect(await store.operatorAccounts.setRole("a", "owner")).toBe(true);
     expect((await store.apiKeys.find("k1"))?.role).toBe("responder");
   });
 });

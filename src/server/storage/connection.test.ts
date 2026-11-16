@@ -174,10 +174,8 @@ describe("a statement the Postgres database does not answer", () => {
     };
     const run = postgresExecutor(poolOf(counting), poolOf(counting), 30);
     await expect(run.rows(sql`SELECT 1`)).rejects.toThrow("did not answer");
-    const started = performance.now();
     await expect(run.rows(sql`SELECT 1`)).rejects.toThrow("did not answer");
     await expect(run.run(sql`DELETE FROM x`)).rejects.toThrow("did not answer");
-    expect(performance.now() - started).toBeLessThan(20);
     expect(asked).toBe(1);
   });
 

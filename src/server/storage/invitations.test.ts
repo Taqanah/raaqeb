@@ -81,6 +81,20 @@ describe("the invitations", () => {
     expect(await store.invitations.open("other", 1500)).toBeUndefined();
   });
 
+  test("is open for its address, whatever the case it is asked in, until it expires", async () => {
+    const { store } = await storage();
+    await store.invitations.put(invitation());
+    expect(await store.invitations.openFor("NEW@Example.com", 4999)).toEqual(
+      shown
+    );
+    expect(
+      await store.invitations.openFor("new@example.com", 5000)
+    ).toBeUndefined();
+    expect(
+      await store.invitations.openFor("other@example.com", 1500)
+    ).toBeUndefined();
+  });
+
   test("taking one deletes it, so its link signs up once; an expired one is not taken", async () => {
     const { store } = await storage();
     await store.invitations.put(invitation());
@@ -88,6 +102,7 @@ describe("the invitations", () => {
     expect(await store.invitations.take("hash-1", 1500)).toBeUndefined();
     expect(await store.invitations.list()).toEqual([]);
     await store.invitations.put(invitation());
+    expect(await store.invitations.take("hash-1", 5000)).toBeUndefined();
     expect(await store.invitations.take("hash-1", 6000)).toBeUndefined();
     expect(await store.invitations.list()).toHaveLength(1);
   });

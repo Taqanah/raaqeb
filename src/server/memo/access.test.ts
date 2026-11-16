@@ -514,6 +514,14 @@ describe("a page index that may be stale never answers a private page as public"
     await memo.read(s.storage);
     await s.storage.bump();
     let slow = true;
+    let reached: () => void = () => undefined;
+    const arrived = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const delayed = {
       ...s.storage,
       pages: {
@@ -522,19 +530,21 @@ describe("a page index that may be stale never answers a private page as public"
           const pages = await s.storage.pages.list();
           if (slow) {
             slow = false;
-            await Bun.sleep(200);
+            reached();
+            await gate;
           }
           return pages;
         },
       },
     };
-    // Reads the page while public, and answers late.
+    // Reads the page while public, and answers only once released.
     const older = memo.read(delayed);
-    await Bun.sleep(20);
+    await arrived;
     await setAccess(s, main, modes.signed_in);
     await memo.read(delayed);
     const counted = memo.read(delayed);
     await counted;
+    release();
     await older;
     const answer = await ask(memo, s.storage, route, counted);
     expect(answer?.status).toBe(403);
@@ -803,6 +813,30 @@ describe("a visitor's try at a page password", () => {
       route.renderMissing
     );
     expect(answer?.status).toBe(413);
+  });
+
+  test("a body of the bound itself is judged and one byte more is refused, by its length as declared or as read", async () => {
+    const { main, s } = await install();
+    const memo = memoOf(await installKey());
+    const route = app();
+    await setAccess(s, main, modes.password);
+    const answered = async (attempted: Request) =>
+      (await memo.attempt(attempted, s.storage, route.renderMissing))?.status;
+    // "password=" and the typed characters make 2048 bytes.
+    expect(await answered(attempt("/", "x".repeat(2039)))).toBe(403);
+    expect(await answered(attempt("/", "x".repeat(2040)))).toBe(413);
+    const declared = (length: number) => {
+      const small = attempt("/", "x");
+      const headers = new Headers(small.headers);
+      headers.set("content-length", String(length));
+      return new Request(small.url, {
+        body: "password=x",
+        headers,
+        method: "POST",
+      });
+    };
+    expect(await answered(declared(2048))).toBe(403);
+    expect(await answered(declared(2049))).toBe(413);
   });
 
   test("a new page password ends the pass the old one earned", async () => {

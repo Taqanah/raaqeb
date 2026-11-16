@@ -241,16 +241,35 @@ describe("the memo", () => {
   });
 });
 
+/** Reads again until it answers `want`, at most two seconds: a refresh lands when its render settles, which no request waits on. */
+async function until(read: () => Promise<string>, want: string) {
+  const deadline = performance.now() + 2000;
+  let got = await read();
+  while (got !== want && performance.now() < deadline) {
+    // biome-ignore lint/performance/noAwaitInLoops: each read waits for the one before
+    await Bun.sleep(2);
+    got = await read();
+  }
+  return got;
+}
+
 describe("a stale entry", () => {
   const later: Validity = { counter: 8, day };
-  /** A render that answers `body` after `ms`, counting its calls and whether each refreshed a stale entry. */
-  function slow(body: string, ms: number, init: ResponseInit = {}) {
+  /** A render that answers `body` once released, counting its calls and whether each refreshed a stale entry; with `held` false it answers at once. */
+  function slow(body: string, held: boolean, init: ResponseInit = {}) {
     const refreshes: boolean[] = [];
+    let release: () => void = () => undefined;
+    const gate = held
+      ? new Promise<void>((resolve) => {
+          release = resolve;
+        })
+      : Promise.resolve();
     return {
       refreshes,
+      release: () => release(),
       render: async (refresh: boolean) => {
         refreshes.push(refresh);
-        await Bun.sleep(ms);
+        await gate;
         return new Response(body, {
           headers: {
             "cache-control": "public, max-age=0, must-revalidate",
@@ -262,32 +281,57 @@ describe("a stale entry", () => {
     };
   }
 
-  test("is answered at once when its refresh does not land within the wait, and the refresh lands for the next request", async () => {
-    const memo = createMemo(() => 10, isStorable, 50);
+  test("is answered once the wait is over when its refresh has not landed, and the refresh lands for the next request", async () => {
+    const memo = createMemo(() => 10, isStorable, 5);
     await memo.respond(get(), "k", at, counting(() => page("before")).render);
-    const refresh = slow("after", 200);
-    const started = performance.now();
+    const refresh = slow("after", true);
+    // The refresh is held until released, so an answer before that is the stale entry.
     const first = await memo.respond(get(), "k", later, refresh.render);
-    expect(performance.now() - started).toBeLessThan(150);
     expect(await first.text()).toBe("before");
-    await Bun.sleep(250);
-    const next = await memo.respond(get(), "k", later, refresh.render);
-    expect(await next.text()).toBe("after");
+    refresh.release();
+    expect(
+      await until(
+        async () =>
+          await (await memo.respond(get(), "k", later, refresh.render)).text(),
+        "after"
+      )
+    ).toBe("after");
     expect(refresh.refreshes).toEqual([true]);
   });
 
+  test("is rendered with the refresh flag, and a key the memo held nothing for without it, askers waiting on a render that was not stored included", async () => {
+    const told: boolean[] = [];
+    const render = (refresh: boolean) => {
+      told.push(refresh);
+      return Promise.resolve(page());
+    };
+    const memo = createMemo(() => 10);
+    await memo.respond(get(), "k", at, render);
+    await memo.respond(get(), "k", later, render);
+    expect(told).toEqual([false, true]);
+    const none: boolean[] = [];
+    const unstored = (refresh: boolean) => {
+      none.push(refresh);
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    };
+    await Promise.all(
+      [1, 2, 3].map(() => memo.respond(get(), "u", at, unstored))
+    );
+    expect(none).toEqual([false, false, false]);
+  });
+
   test("is answered fresh when its refresh lands within the wait", async () => {
-    const memo = createMemo(() => 10, isStorable, 200);
+    const memo = createMemo(() => 10, isStorable, 60_000);
     await memo.respond(get(), "k", at, counting(() => page("before")).render);
-    const refresh = slow("after", 20);
+    const refresh = slow("after", false);
     const fresh = await memo.respond(get(), "k", later, refresh.render);
     expect(await fresh.text()).toBe("after");
   });
 
   test("everyone asking it while it refreshes is answered from memory, and it refreshes once", async () => {
-    const memo = createMemo(() => 10, isStorable, 20);
+    const memo = createMemo(() => 10, isStorable, 5);
     await memo.respond(get(), "k", at, counting(() => page("before")).render);
-    const refresh = slow("after", 200);
+    const refresh = slow("after", true);
     const answers = await Promise.all(
       Array.from({ length: 20 }, () =>
         memo.respond(get(), "k", later, refresh.render)
@@ -296,12 +340,13 @@ describe("a stale entry", () => {
     const bodies = await Promise.all(answers.map((each) => each.text()));
     expect(new Set(bodies)).toEqual(new Set(["before"]));
     expect(refresh.refreshes).toEqual([true]);
+    refresh.release();
   });
 
   test("a counter that moves again while it refreshes costs no second refresh, and the next change after it lands refreshes again", async () => {
-    const memo = createMemo(() => 10, isStorable, 20);
+    const memo = createMemo(() => 10, isStorable, 5);
     await memo.respond(get(), "k", at, counting(() => page("before")).render);
-    const refresh = slow("after", 100);
+    const refresh = slow("after", true);
     const first = await memo.respond(get(), "k", later, refresh.render);
     const moved = await memo.respond(
       get(),
@@ -313,24 +358,27 @@ describe("a stale entry", () => {
       "before",
       "before",
     ]);
-    await Bun.sleep(150);
     expect(refresh.refreshes).toEqual([true]);
-    const landed = await memo.respond(
-      get(),
-      "k",
-      { counter: 9, day },
-      slow("newest", 0).render
-    );
-    expect(await landed.text()).toBe("newest");
+    refresh.release();
+    const newest = slow("newest", false);
+    expect(
+      await until(
+        async () =>
+          await (
+            await memo.respond(get(), "k", { counter: 9, day }, newest.render)
+          ).text(),
+        "newest"
+      )
+    ).toBe("newest");
   });
 
   test("stays while a refresh is refused a turn, and goes once a refresh answers something no longer kept", async () => {
     const memo = createMemo(() => 10, isStorable, 200);
     await memo.respond(get(), "k", at, counting(() => page("before")).render);
-    const refused = slow("busy", 0, { status: 503 });
+    const refused = slow("busy", false, { status: 503 });
     const busy = await memo.respond(get(), "k", later, refused.render);
     expect(await busy.text()).toBe("before");
-    const gone = slow("gone", 0, { status: 404 });
+    const gone = slow("gone", false, { status: 404 });
     const answer = await memo.respond(get(), "k", later, gone.render);
     expect(answer.status).toBe(404);
     expect(memo.size()).toBe(0);

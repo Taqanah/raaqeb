@@ -11,7 +11,6 @@ import {
 import { createPage, savePage } from "@/server/pages/pages.ts";
 import type { PublicTarget, ViewTarget } from "@/server/pages/public.ts";
 import { publicAddress } from "@/server/settings/address.ts";
-import { publicAccess } from "@/shared/schemas/page.ts";
 import { createPublicMemo } from "./public.ts";
 
 let scratch: PagesScratch | undefined;
@@ -163,29 +162,18 @@ describe("the memo in front of the public page", () => {
     expect(answer?.status).toBe(200);
   });
 
-  test("the overview's document is memoised once for both locales", async () => {
+  test("a view's document is rendered once for the requests that ask for it, whichever language they send", async () => {
     const { pageId, s } = await withDefaultPage();
     const memo = createPublicMemo({ now: () => now });
     const route = renders();
-    await memo.answer(
-      request(`/api/pages/${pageId}/overview`),
-      s.storage,
-      route.render
-    );
-    await memo.answer(
-      request(`/api/pages/${pageId}/overview`),
-      s.storage,
-      route.render
-    );
-    expect(route.targets).toEqual([
-      {
-        access: publicAccess,
-        key: `${pageId} document /overview`,
-        kind: "document",
-        pageId,
-        published: true,
-        view: "overview",
-      },
+    const document = (language: string) =>
+      request(`/api/pages/${pageId}/overview`, {
+        headers: { "accept-language": language },
+      });
+    await memo.answer(document("ar"), s.storage, route.render);
+    await memo.answer(document("en"), s.storage, route.render);
+    expect(route.targets).toMatchObject([
+      { kind: "document", pageId, view: "overview" },
     ]);
   });
 
@@ -456,11 +444,19 @@ describe("the change counter read once per request", () => {
     const { pageId, s } = await withDefaultPage();
     const memo = createPublicMemo({ now: () => now });
     let reads = 0;
+    let pageReads = 0;
     const watched = {
       ...s.storage,
       changeCounter: () => {
         reads += 1;
         return s.storage.changeCounter();
+      },
+      pages: {
+        ...s.storage.pages,
+        find: (id: string) => {
+          pageReads += 1;
+          return s.storage.pages.find(id);
+        },
       },
     };
     const route = renders();
@@ -475,6 +471,8 @@ describe("the change counter read once per request", () => {
     expect(await first?.text()).toBe("page 1");
     expect(route.targets).toMatchObject([{ kind: "view", pageId }]);
     expect(reads).toBe(1);
+    // With the counter read, the pages last indexed vouch for the page: no read of its row per request.
+    expect(pageReads).toBe(0);
   });
 
   test("a read the entry made after the counter moved indexes the pages again before the answer", async () => {

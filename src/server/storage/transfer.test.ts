@@ -129,6 +129,47 @@ describe("the transfer repository", () => {
     }
   });
 
+  test("a restore leaves the install's own account of the same id or the same address, and its own audit entry of the same id, and answers only what it wrote", async () => {
+    const from = await source();
+    const into = await target();
+    const configuration = await from.storage.transfer.configuration();
+    const [sameId, sameAddress, ...others] = configuration.operatorAccounts;
+    const [heldEntry, ...entries] = configuration.auditEntries;
+    if (!(sameId && sameAddress && heldEntry)) {
+      throw new Error("the source install has two accounts and an audit entry");
+    }
+    const user = (id: string, email: string) =>
+      runSql(
+        into.location,
+        "INSERT INTO auth_user (id, name, email, email_verified, role, created_at, updated_at) VALUES (?, 'Held', ?, 1, 'owner', 0, 0)",
+        [id, email]
+      );
+    await user(sameId.id, "held-by-id@install.example.test");
+    await user("held-by-address", sameAddress.email.toUpperCase());
+    await runSql(
+      into.location,
+      "INSERT INTO audit_entries (id, at, action, detail) VALUES (?, 0, 'held.entry', '{}')",
+      [heldEntry.id]
+    );
+    const restored = await into.storage.transfer.restore(configuration);
+    expect(restored?.operatorAccounts.toSorted()).toEqual(
+      others.map((account) => account.id).toSorted()
+    );
+    expect(restored?.auditEntries.toSorted()).toEqual(
+      entries.map((entry) => entry.id).toSorted()
+    );
+    expect(
+      await runSql(
+        into.location,
+        "SELECT action FROM audit_entries WHERE id = ?",
+        [heldEntry.id]
+      )
+    ).toEqual([{ action: "held.entry" }]);
+    expect((await into.storage.operatorAccounts.find(sameId.id))?.email).toBe(
+      "held-by-id@install.example.test"
+    );
+  });
+
   test("writes a configuration back with its ids and times as they were", async () => {
     const from = await source();
     const into = await target();

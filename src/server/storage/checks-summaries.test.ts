@@ -273,7 +273,7 @@ describe("the cost of a summary at 200 monitors with a day of one-minute checks"
       // biome-ignore lint/performance/noAwaitInLoops: monitors one after another, as the form creates them
       ids.push((await monitors.create({ ...site, name: `M${index}` })).id);
     }
-    const today = Math.floor(Date.now() / dayMs) * dayMs;
+    const today = Date.UTC(2026, 8, 26);
     const rows =
       location.backend === "postgres"
         ? `INSERT INTO checks (monitor_id, started_at, result, response_ms, status_code, reason, attempts, bytes) SELECT m.id, ${today} + g * 60000, CASE WHEN g % 50 = 0 THEN 2 ELSE 0 END, 100, 200, 0, 1, 1 FROM monitors m, generate_series(0, 1439) g`

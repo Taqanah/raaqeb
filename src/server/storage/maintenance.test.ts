@@ -700,6 +700,59 @@ describe("a maintenance series and its occurrences", () => {
     ).toEqual([[t0 + 2 * hour, { ar: "صيانة أسبوعية" }]]);
   });
 
+  test("on an edit at the very start of an occurrence, that occurrence is left to the tick too", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      [at(t0 + 2 * hour)],
+      t0 + 3 * hour
+    );
+    const edited = await maintenance.editSeries(
+      created.series.id,
+      seriesFields([web.id], { title: { ar: "عنوان آخر" } }),
+      [],
+      t0 + 2 * hour,
+      t0 + 3 * hour
+    );
+    expect(edited?.cancelled).toEqual([]);
+    expect((await maintenance.list()).map((each) => each.startsAt)).toEqual([
+      t0 + 2 * hour,
+    ]);
+  });
+
+  test("an occurrence moved on its own is still kept by the start its series gave it when the edit is made at that very start", async () => {
+    const { components, maintenance } = await repositories();
+    const web = await components.create(component("الموقع"));
+    const plan = [at(t0 + 2 * hour), at(t0 + 4 * hour)];
+    const created = await maintenance.createSeries(
+      seriesFields([web.id]),
+      plan,
+      t0 + 5 * hour
+    );
+    const [moved, stayed] = created.scheduled;
+    await maintenance.edit(moved?.id ?? "", "scheduled", {
+      endsAt: t0 + 3 * hour + 30 * 60_000,
+      message: { ar: "نقلناه نصف ساعة." },
+      startsAt: t0 + 3 * hour,
+      title: { ar: "صيانة أسبوعية" },
+    });
+    const edited = await maintenance.editSeries(
+      created.series.id,
+      seriesFields([web.id]),
+      plan,
+      t0 + 2 * hour,
+      t0 + 5 * hour
+    );
+    expect(edited?.scheduled).toEqual([]);
+    expect(
+      (await maintenance.list()).map((each) => [each.id, each.startsAt])
+    ).toEqual([
+      [moved?.id ?? "", t0 + 2 * hour],
+      [stayed?.id ?? "", t0 + 4 * hour],
+    ]);
+  });
+
   test("occurrences cancelled at once each stay cancelled through an edit", async () => {
     const { components, maintenance } = await repositories();
     const web = await components.create(component("الموقع"));

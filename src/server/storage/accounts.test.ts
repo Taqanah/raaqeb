@@ -249,6 +249,8 @@ describe("the operator accounts", () => {
     await session(location, "s1", "a", 10);
     await session(location, "s2", "a", 20);
     await session(location, "old", "a", 5, 50);
+    // A session whose expiry is this very moment is over.
+    await session(location, "edge", "a", 6, 100);
     await session(location, "s3", "b", 30);
     const sessions = await store.operatorAccounts.sessions("a", 100, "s1");
     expect(sessions).toEqual([
@@ -333,6 +335,5 @@ describe("the operator accounts", () => {
     const { store } = await storage();
     await store.close();
     await expect(store.operatorAccounts.exists()).rejects.toBeDefined();
-    open = undefined;
   });
 });

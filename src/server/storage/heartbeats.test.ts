@@ -251,7 +251,11 @@ describe("a heartbeat that reports failure", () => {
       message: "x",
     });
     await heartbeats.record(tokenNumber(1), t0, undefined);
-    expect((await heartbeats.latest([id])).get(id)?.failure).toBeUndefined();
+    expect((await heartbeats.latest([id])).get(id)).toEqual({
+      arrivedAt: t0,
+      failure: undefined,
+      sourceIp: undefined,
+    });
   });
 });
 

@@ -93,6 +93,15 @@ function png(bytes: number[]): StoredImage {
 }
 
 describe("the status pages repository", () => {
+  test("a page created in password mode starts public, since it has no password to ask for", async () => {
+    const { pages } = await repositories();
+    const created = await pages.create(
+      page({ access: { addresses: ["203.0.113.0/24"], mode: "password" } })
+    );
+    expect(created.access).toEqual(publicAccess);
+    expect((await pages.find(created.id))?.access).toEqual(publicAccess);
+  });
+
   test("a page is stored with its slug, title, language, domain, default flag and customization, and read back whole", async () => {
     const { pages } = await repositories();
     const customization = {

@@ -215,22 +215,7 @@ describe("the published switch arriving on an install that has pages", () => {
 describe("the domain expiring event arriving on an install that has monitors", () => {
   test("every monitor that exists when the migration runs gets the event on after its own, and one with every event off stays silent", async () => {
     const connection = await fresh();
-    const root = (await Bun.$`mktemp -d`.text()).trim();
-    const local = await localMigrations(connection.backend);
-    const before = local.slice(
-      0,
-      local.findIndex((name) => name.endsWith("_domain_registrations"))
-    );
-    await Promise.all(
-      before.map((name) =>
-        Bun.write(
-          `${root}/${connection.backend}/${name}/migration.sql`,
-          Bun.file(
-            `${migrationsFolder(connection.backend)}/${name}/migration.sql`
-          )
-        )
-      )
-    );
+    const earlier = await migratedUpTo(connection, "domain_registrations");
     const run = executor(connection);
     const monitor = (id: string, events?: string) =>
       run.run(
@@ -239,7 +224,6 @@ describe("the domain expiring event arriving on an install that has monitors", (
           : sql`INSERT INTO monitors (id, name, check_type, target, config, interval_ms, timeout_ms, retries, paused, created_at, updated_at, events) VALUES (${id}, ${id}, 'tcp', 'db.raaqeb.dev:5432', '{"host":"db.raaqeb.dev","port":5432,"type":"tcp"}', 60000, 10000, 0, 0, 0, 0, ${events})`
       );
     try {
-      await migrateEarlier(connection, root, before);
       await monitor("all");
       await monitor("quiet", '["recovered"]');
       await monitor("none", "[]");
@@ -265,7 +249,7 @@ describe("the domain expiring event arriving on an install that has monitors", (
         ["quiet", ["recovered", "domain_expiring"]],
       ]);
     } finally {
-      await Bun.$`rm -rf ${root}`.quiet();
+      await earlier.cleanup();
     }
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { stillDocument, withLocaleSwitch } from "./still.ts";
+import { stillDocument, withAccessLine, withLocaleSwitch } from "./still.ts";
 
 /** A document as Start renders a framed not-found: the theme script in the head, the app's preloads and scripts around the body. */
 const rendered = [
@@ -55,5 +55,24 @@ describe("a still document's language switch", () => {
       '<a data-slot="page-locale" href="/en/incidents/nope">English</a>'
     );
     expect(switched.replace("/en/incidents/nope", "/en")).toBe(rendered);
+  });
+});
+
+describe("an access page with the reason a try failed", () => {
+  const access = () =>
+    new Response(
+      '<form><input type="password" name="password"/><p data-slot="access-wrong" hidden>wrong</p><p data-slot="access-limited" hidden>limited</p></form>',
+      { headers: { "content-type": "text/html; charset=utf-8" }, status: 403 }
+    );
+
+  test("shows the line asked and no other, and marks the password field as refused and focused", async () => {
+    const shown = await withAccessLine(access(), "access-wrong").text();
+    expect(shown).toContain('<p data-slot="access-wrong">');
+    expect(shown).toContain('<p data-slot="access-limited" hidden>');
+    expect(shown).toContain('aria-invalid="true"');
+    expect(shown).toContain("autofocus");
+    const limited = await withAccessLine(access(), "access-limited").text();
+    expect(limited).toContain('<p data-slot="access-limited">');
+    expect(limited).toContain('<p data-slot="access-wrong" hidden>');
   });
 });
