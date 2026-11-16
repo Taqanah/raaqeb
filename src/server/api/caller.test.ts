@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { secondStepRequired } from "@/server/auth/second-step.ts";
+import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import { runSql, scratchDatabase } from "@/server/storage/fixture.ts";
 import {
@@ -7,7 +9,12 @@ import {
   type Storage,
 } from "@/server/storage/storage.ts";
 import type { Role } from "@/shared/domain/roles.ts";
-import { callerOfRequest, heldCaller, lastUsedEveryMs } from "./caller.ts";
+import {
+  callerOfRequest,
+  heldCaller,
+  lastUsedEveryMs,
+  permittedCaller,
+} from "./caller.ts";
 import { hashApiKey } from "./keys.ts";
 import { createRateLimit, type RateLimit } from "./limit.ts";
 
@@ -233,5 +240,76 @@ describe("an API call's caller", () => {
     expect((await first).ok).toBe(true);
     // A request the API's route never read, a server function's own call among them, holds none.
     expect(heldCaller(call(`Bearer ${secret}`))).toBeUndefined();
+  });
+});
+
+const boot = {
+  betterAuthSecrets: undefined,
+  installKey: await scratchInstallKey(),
+};
+
+describe("a server function's permission check of an API call", () => {
+  /** The answer of a refusal: its status and JSON body; or the operator a permitted call goes ahead as. */
+  async function checked(
+    request: Request,
+    store: Storage | undefined,
+    permission: Parameters<typeof permittedCaller>[3]
+  ): Promise<unknown> {
+    const answer = await permittedCaller(request, store, boot, permission);
+    if (answer instanceof Response) {
+      return { body: await answer.json(), status: answer.status };
+    }
+    return (
+      answer && {
+        operator: answer.operator.role,
+        storage: answer.storage === store,
+      }
+    );
+  }
+
+  test("leaves a request the API's route never read to the session check", async () => {
+    const { location, store } = await storage();
+    await holder(location, store);
+    expect(
+      await checked(call(`Bearer ${secret}`), store, "read")
+    ).toBeUndefined();
+  });
+
+  test("lets a key whose role allows the permission go ahead as its caller, and refuses one whose role does not as forbidden", async () => {
+    const { location, store } = await storage();
+    await holder(location, store, { keyRole: "viewer", role: "admin" });
+    const request = call(`Bearer ${secret}`);
+    await callerOfRequest(store, request, 2000, roomy());
+    expect(await checked(request, store, "read")).toEqual({
+      operator: "viewer",
+      storage: true,
+    });
+    expect(await checked(request, store, "monitors")).toEqual({
+      body: { reason: "forbidden" },
+      status: 403,
+    });
+  });
+
+  test("refuses a call without a live key as the route read it", async () => {
+    const { location, store } = await storage();
+    await holder(location, store);
+    const request = call("Bearer rqk_another");
+    await callerOfRequest(store, request, 2000, roomy());
+    expect(await checked(request, store, "read")).toEqual({
+      body: { reason: "unauthenticated" },
+      status: 401,
+    });
+  });
+
+  test("refuses a key whose account owes the second step an owner requires", async () => {
+    const { location, store } = await storage();
+    await holder(location, store);
+    await store.settings.set(secondStepRequired, true);
+    const request = call(`Bearer ${secret}`);
+    await callerOfRequest(store, request, 2000, roomy());
+    expect(await checked(request, store, "read")).toEqual({
+      body: { reason: "second_step" },
+      status: 403,
+    });
   });
 });

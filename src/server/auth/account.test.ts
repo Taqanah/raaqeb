@@ -364,6 +364,29 @@ describe("the operator's own sessions", () => {
   });
 });
 
+describe("a database that cannot answer", () => {
+  test("leaves the name, the session list and ending sessions unavailable, never a thrown error", async () => {
+    const store = await storage();
+    await store.close();
+    const operator = { id: "a", sessionId: "s" };
+    expect(await renameOperator(store, "a", { name: "Huda" })).toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
+    expect(await readOwnSessions(store, operator, 0)).toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
+    expect(await endOwnSessions(store, operator, {})).toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
+    // Closed already: only the scratch files are left to remove.
+    await open?.cleanup();
+    open = undefined;
+  });
+});
+
 describe("the current password's checks on the server", () => {
   afterEach(() => {
     setSystemTime();
@@ -378,6 +401,9 @@ describe("the current password's checks on the server", () => {
   test("after five wrong ones refuse the next for a quarter of an hour, the right one too, then take it again", async () => {
     const auth = await authWithOperator();
     const headers = await signedIn(auth);
+    // The clock stands still while the five are typed, so the quarter hour ends at a known millisecond.
+    const typedAt = Date.now();
+    setSystemTime(typedAt);
     for (let attempt = 0; attempt < 5; attempt += 1) {
       // biome-ignore lint/performance/noAwaitInLoops: the attempts count in order
       expect(await tries(auth, headers, "a guess")).toEqual({
@@ -392,7 +418,12 @@ describe("the current password's checks on the server", () => {
     expect(
       await change(auth, headers, "new@example.com", [], password)
     ).toEqual({ ok: false, reason: "too_many_attempts" });
-    setSystemTime(Date.now() + 16 * 60 * 1000);
+    setSystemTime(typedAt + 15 * 60 * 1000 - 1);
+    expect(await tries(auth, headers, password)).toEqual({
+      ok: false,
+      reason: "too_many_attempts",
+    });
+    setSystemTime(typedAt + 15 * 60 * 1000);
     expect((await tries(auth, headers, password)).ok).toBe(true);
   });
 

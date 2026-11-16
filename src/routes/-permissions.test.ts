@@ -210,36 +210,118 @@ const expected: Readonly<Record<string, string>> = {
 
 const routes = `${import.meta.dir}`;
 const declaration = /const (\w+) = createServerFn\(/g;
+const renamed = /createServerFn as /;
 const permittedCall = /^\s*\.middleware\(\[permitted\("(\w+)"\)\]\)/;
-// Every method a server route's `handlers` answers, and the session check its handler makes.
-const handlerKey = /^\s+(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS|ANY):/gm;
-const routeCheck = /signedIn\(context, request, "(\w+)"\)/;
+// A check counts only when its answer decides: the operator it returns is bound and a missing one turns the request away.
+const routeCheck =
+  /const (\w+) = await signedIn\(context, request, "(\w+)"\);\s*if \(!\1\)/;
+// Start answers a request by `handlers[method]`, so every name it could read is looked up, own or inherited, enumerable or not.
+const httpMethods = [
+  "ANY",
+  "DELETE",
+  "GET",
+  "HEAD",
+  "OPTIONS",
+  "PATCH",
+  "POST",
+  "PUT",
+];
 
-/** What the source names: each server function's permission, or `public` when it carries none, and each server route handler's, `public` when it checks no session. */
-async function named(): Promise<Map<string, string>> {
-  const found = new Map<string, string>();
+/** A server route handler: its compiled source, and a call as the entry makes it with a context the test builds by hand. */
+interface Handler {
+  readonly call: (arguments_: {
+    context: object;
+    params: Record<string, string>;
+    request: Request;
+  }) => Promise<unknown>;
+  readonly source: string;
+}
+
+/** The named property of an object, or nothing. */
+function field(value: unknown, name: string): unknown {
+  return typeof value === "object" && value !== null
+    ? Reflect.get(value, name)
+    : undefined;
+}
+
+/** Every source file under the routes, tests left out. */
+async function sources(): Promise<string[]> {
   const files = await Array.fromAsync(
     new Bun.Glob("**/*.{ts,tsx}").scan({ cwd: routes })
   );
-  for (const file of files.filter((one) => !one.includes(".test."))) {
+  return files.filter((one) => !one.includes(".test."));
+}
+
+/** Every property name the object or its prototypes carry, enumerable or not. */
+function namesOf(value: object): string[] {
+  const names: string[] = [];
+  for (
+    let level: object | null = value;
+    level !== null && level !== Object.prototype;
+    level = Reflect.getPrototypeOf(level)
+  ) {
+    names.push(...Object.getOwnPropertyNames(level));
+  }
+  return names;
+}
+
+/** Each server route handler by `file METHOD`, read from the route module the way Start reads it, by method name. */
+async function routeHandlers(): Promise<Map<string, Handler>> {
+  const found = new Map<string, Handler>();
+  for (const file of await sources()) {
+    // biome-ignore lint/performance/noAwaitInLoops: a few dozen modules, imported once
+    const module: Record<string, unknown> = await import(`${routes}/${file}`);
+    const handlers = field(
+      field(field(module.Route, "options"), "server"),
+      "handlers"
+    );
+    if (handlers === undefined) {
+      continue;
+    }
+    // The function form builds its handlers when called, out of this test's sight.
+    if (typeof handlers !== "object" || handlers === null) {
+      throw new Error(`${file}: its handlers are not an object`);
+    }
+    for (const method of new Set([...httpMethods, ...namesOf(handlers)])) {
+      const handler: unknown = Reflect.get(handlers, method);
+      if (handler === undefined) {
+        continue;
+      }
+      if (typeof handler !== "function") {
+        throw new Error(`${file} ${method} is not a function`);
+      }
+      found.set(`${file} ${method}`, {
+        call: async (arguments_) =>
+          Reflect.apply(handler, undefined, [arguments_]),
+        source: String(handler),
+      });
+    }
+  }
+  return found;
+}
+
+/** What the source names: each server function's permission, or `public` when it carries none, and each server route handler's, `public` when its own code checks no session. */
+async function named(): Promise<Map<string, string>> {
+  const found = new Map<string, string>();
+  for (const file of await sources()) {
     // biome-ignore lint/performance/noAwaitInLoops: a few dozen files, read once
     const text = await Bun.file(`${routes}/${file}`).text();
     const calls = text.split("createServerFn(").length - 1;
     const names = [...text.matchAll(declaration)];
     // A server function not assigned to a name of its own could not be looked up here.
     expect(`${file}: ${names.length}`).toBe(`${file}: ${calls}`);
+    // Under another name a server function would not be counted at all.
+    expect(`${file}: ${renamed.test(text)}`).toBe(`${file}: false`);
     for (const match of names) {
       const after = text.slice((match.index ?? 0) + match[0].length);
       const chain = after.slice(after.indexOf(")") + 1);
       const permission = permittedCall.exec(chain)?.[1] ?? "public";
       found.set(`${file} ${match[1]}`, permission);
     }
-    const handlers = [...text.matchAll(handlerKey)];
-    for (const [index, match] of handlers.entries()) {
-      // A handler runs to the next one, the last to the file's end.
-      const body = text.slice(match.index, handlers[index + 1]?.index);
-      found.set(`${file} ${match[1]}`, routeCheck.exec(body)?.[1] ?? "public");
-    }
+  }
+  // A handler's own compiled code, comments gone, so a check another handler or a comment makes is never credited to it.
+  for (const [key, handler] of await routeHandlers()) {
+    found.set(key, routeCheck.exec(handler.source)?.[2] ?? "public");
   }
   return found;
 }
@@ -268,6 +350,23 @@ describe("every server function's permission", () => {
     }
   });
 
+  test("is read for every server function, since each lives under the routes", async () => {
+    const src = `${routes}/..`;
+    const files = await Array.fromAsync(
+      new Bun.Glob("**/*.{ts,tsx}").scan({ cwd: src })
+    );
+    const read = files.filter(
+      (file) => !(file.startsWith("routes/") || file.includes(".test."))
+    );
+    const texts = await Promise.all(
+      read.map((file) => Bun.file(`${src}/${file}`).text())
+    );
+    const outside = read.filter((_, at) =>
+      texts[at]?.includes("createServerFn")
+    );
+    expect(outside).toEqual([]);
+  });
+
   test("is never public for a server function or route under the admin area", async () => {
     const found = await named();
     const exposed = [...found]
@@ -294,5 +393,55 @@ describe("every server function's permission", () => {
         .join("");
       expect(`${key}: ${allowed}`).toBe(`${key}: ${shape}`);
     }
+  });
+
+  test("refuses every server route that names a permission to a stranger's request, cookie or not, before it reads anything", async () => {
+    const guarded = [...(await routeHandlers())].filter(
+      ([key]) => expected[key] !== "public"
+    );
+    // A stranger sends no cookie, or one that names no session.
+    const strangers: Record<string, string>[] = [
+      {},
+      { cookie: "raaqeb.session_token=not-a-session" },
+    ];
+    const asked = guarded.flatMap(([key, handler]) =>
+      strangers.map((headers) => ({ handler, headers, key }))
+    );
+    const answers = await Promise.all(
+      asked.map(async ({ handler, headers, key }) => {
+        const label = `${key} ${headers.cookie ? "with" : "without"} a cookie`;
+        // No storage: a handler that went past its check would throw on the first read.
+        const answer = await handler.call({
+          context: {
+            boot: {},
+            holdOpen: () => undefined,
+            scheduler: undefined,
+            storage: undefined,
+          },
+          params: { id: "x" },
+          request: new Request("http://127.0.0.1/", {
+            headers,
+            method: key.endsWith(" POST") ? "POST" : "GET",
+          }),
+        });
+        if (!(answer instanceof Response)) {
+          return `${label}: not a response`;
+        }
+        const location = answer.headers.get("location");
+        const refused =
+          (answer.status === 401 ||
+            (answer.status === 303 &&
+              location !== null &&
+              new URL(location).pathname === "/sign-in")) &&
+          (await answer.text()) === "";
+        return `${label}: ${refused ? "refused" : answer.status}`;
+      })
+    );
+    expect(answers).toEqual(
+      asked.map(
+        ({ headers, key }) =>
+          `${key} ${headers.cookie ? "with" : "without"} a cookie: refused`
+      )
+    );
   });
 });

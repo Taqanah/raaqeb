@@ -274,3 +274,25 @@ describe("revoking a key", () => {
     expect(await store.apiKeys.list()).toEqual([]);
   });
 });
+
+describe("a database that cannot answer", () => {
+  test("makes, lists and revokes no key, and says so rather than throwing", async () => {
+    const { location, store } = await storage();
+    const owner = await operator(location, "a", "owner");
+    await store.close();
+    const unavailable = { ok: false, reason: "unavailable" } as const;
+    expect(
+      await createApiKey(
+        store,
+        owner,
+        { expiresInDays: null, name: "ci", role: "viewer" },
+        1000
+      )
+    ).toEqual(unavailable);
+    expect(await readApiKeys(store, owner)).toEqual(unavailable);
+    expect(await revokeApiKey(store, owner, "k1")).toEqual(unavailable);
+    // Closed already: only the scratch files are left to remove.
+    await open?.cleanup();
+    open = undefined;
+  });
+});

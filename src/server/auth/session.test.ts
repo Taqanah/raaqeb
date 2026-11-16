@@ -257,6 +257,27 @@ describe("the operator for a request context", () => {
     ).toBe(true);
   });
 
+  test("a preview is no operator's once the account is deactivated, though its session outlived it", async () => {
+    const own = await authFor(opened.storage, boot);
+    const signedIn = await own.api.signInEmail({
+      body: { email, password },
+      returnHeaders: true,
+    });
+    const headers = new Headers({
+      cookie: signedIn.headers.get("set-cookie")?.split(";")[0] ?? "",
+    });
+    expect(await isOperator(opened.storage, boot, headers)).toBe(true);
+    await runSql(scratch.location, "UPDATE auth_user SET deactivated_at = 1");
+    try {
+      expect(await isOperator(opened.storage, boot, headers)).toBe(false);
+    } finally {
+      await runSql(
+        scratch.location,
+        "UPDATE auth_user SET deactivated_at = NULL"
+      );
+    }
+  });
+
   test("a preview's read is no session, within the limit, when the database never answers", async () => {
     // The open storage with an auth adapter whose every call stays pending.
     const silent = {

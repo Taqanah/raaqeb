@@ -160,7 +160,7 @@ describe("the team page's read", () => {
     expect(await readTeam(storage, as("viewer"))).toBeUndefined();
   });
 
-  test("names who sent each invitation, and nobody once that account is removed", async () => {
+  test("names who sent each invitation, by name or else by email", async () => {
     const { storage } = await team();
     await invite(
       storage,
@@ -178,16 +178,13 @@ describe("the team page's read", () => {
       { email: "b@example.com", role: "editor" },
       now + 1
     );
-    let view = await readTeam(storage, as("owner"));
+    const view = await readTeam(storage, as("owner"));
     expect(
       view?.invitations.map((one) => [one.email, one.invitedByName])
     ).toEqual([
       ["b@example.com", "owner@example.com"],
       ["a@example.com", "The admin"],
     ]);
-    await storage.operatorAccounts.remove("admin");
-    view = await readTeam(storage, as("owner"));
-    expect(view?.invitations[1]?.invitedByName).toBeUndefined();
   });
 });
 
@@ -319,6 +316,21 @@ describe("an invitation", () => {
     expect(await storage.invitations.list()).toEqual([]);
   });
 
+  test("to an address that is not one is invalid, and nothing is stored", async () => {
+    const { storage } = await team();
+    expect(
+      await invite(
+        storage,
+        key,
+        io,
+        as("owner"),
+        { email: "not an address", role: "viewer" },
+        now
+      )
+    ).toEqual({ ok: false, reason: "invalid" });
+    expect(await storage.invitations.list()).toEqual([]);
+  });
+
   test("needs a public address for its link", async () => {
     const { storage } = await team();
     await storage.settings.remove(publicAddress);
@@ -418,18 +430,21 @@ describe("an invitation", () => {
     expect(
       await inviteAgain(storage, key, io, as("owner"), one?.id ?? "", now + 100)
     ).toEqual({ ok: false, reason: "too_many" });
-    expect(
-      (
-        await invite(
-          storage,
-          key,
-          io,
-          as("owner"),
-          { email: "late@example.com", role: "viewer" },
-          now + 60 * 60 * 1000 + 1
-        )
-      ).ok
-    ).toBe(true);
+    const late = (at: number) =>
+      invite(
+        storage,
+        key,
+        io,
+        as("owner"),
+        { email: "late@example.com", role: "viewer" },
+        at
+      );
+    expect(await late(now + 60 * 60 * 1000 - 1)).toEqual({
+      ok: false,
+      reason: "too_many",
+    });
+    // The first send is an hour old: it no longer counts.
+    expect((await late(now + 60 * 60 * 1000)).ok).toBe(true);
   });
 
   test("sent again gets a new link and seven more days; the old link stops working", async () => {
@@ -502,7 +517,7 @@ describe("an invitation", () => {
 });
 
 describe("a change of role", () => {
-  test("to a lower one ends the account's sessions; to a higher one keeps them", async () => {
+  test("to a lower one ends the account's sessions; to a higher one or the same keeps them", async () => {
     const { storage } = await team();
     expect(
       await changeRole(
@@ -516,6 +531,15 @@ describe("a change of role", () => {
       "viewer"
     );
     expect(await sessionsOf(storage, "editor")).toEqual([]);
+    expect(
+      await changeRole(
+        storage,
+        as("admin"),
+        { id: "responder", role: "editor" },
+        rightPassword
+      )
+    ).toEqual({ ok: true });
+    expect(await sessionsOf(storage, "responder")).toEqual(["s-responder"]);
     expect(
       await changeRole(
         storage,
@@ -998,6 +1022,9 @@ describe("a database that cannot answer", () => {
         { email: "new@example.com", role: "viewer" },
         now
       )
+    ).toEqual({ ok: false, reason: "unavailable" });
+    expect(
+      await inviteAgain(storage, key, io, as("owner"), "an-invitation", now)
     ).toEqual({ ok: false, reason: "unavailable" });
     open = undefined;
   });

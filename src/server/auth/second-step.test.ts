@@ -537,6 +537,20 @@ describe("setting up the authenticator app", () => {
     });
   });
 
+  test("after five wrong passwords the next is held back as too many attempts, the right one too", async () => {
+    const { storage } = await scratch();
+    const auth = await authWithOperator(storage);
+    const headers = new Headers({ cookie: cookiesOf(await signIn(auth)) });
+    for (let wrong = 0; wrong < 5; wrong += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: the wrong passwords count in order
+      await setUpApp(auth, headers, { password: "not the password" });
+    }
+    expect(await setUpApp(auth, headers, { password: testPassword })).toEqual({
+      ok: false,
+      reason: "too_many_attempts",
+    });
+  });
+
   test("a password longer than any password can be is the wrong password, not an outage", async () => {
     const { storage } = await scratch();
     const auth = await authWithOperator(storage);
@@ -1552,5 +1566,13 @@ describe("requiring a second step of every operator", () => {
       await requireSecondStep(s.storage, { secondStep: false }, false)
     ).toEqual({ ok: true });
     expect(await readSecondStepRequired(s.storage)).toBe(false);
+  });
+
+  test("is unavailable, never a thrown error, when the database cannot answer", async () => {
+    const s = await scratch();
+    await s.storage.close();
+    expect(
+      await requireSecondStep(s.storage, { secondStep: true }, true)
+    ).toEqual({ ok: false, reason: "unavailable" });
   });
 });

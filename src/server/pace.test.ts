@@ -177,6 +177,57 @@ describe("the render pace", () => {
     expect(await second).toBe("two");
   });
 
+  test("renders that end within their turn never count as running past it, and one that does still counts", async () => {
+    const deadlines: (() => void)[] = [];
+    const clock = {
+      ...fakeClock(),
+      after: () => new Promise<void>((pass) => deadlines.push(pass)),
+    };
+    const pace = createPace(limits(0, { a: 5, b: 5 }, 1), clock);
+    expect(await pace.run("a", () => Promise.resolve("one"))).toBe("one");
+    expect(await pace.run("a", () => Promise.resolve("two"))).toBe("two");
+    const wedged = held(clock, []);
+    const stuck = pace.run("a", wedged.render);
+    await settle();
+    for (const pass of deadlines) {
+      pass();
+    }
+    await settle();
+    expect(await pace.run("b", () => Promise.resolve("b"))).toBeUndefined();
+    wedged.end();
+    expect(await stuck).toBe("done");
+    expect(await pace.run("b", () => Promise.resolve("b"))).toBe("b");
+  });
+
+  test("a render that ran past its turn and then ends leaves the turn with the render that took it", async () => {
+    const deadlines: (() => void)[] = [];
+    const clock = {
+      ...fakeClock(),
+      after: () => new Promise<void>((pass) => deadlines.push(pass)),
+    };
+    const pace = createPace(limits(0, { a: 5, b: 5 }), clock);
+    const starts: number[] = [];
+    const wedged = held(clock, starts);
+    const second = held(clock, starts);
+    const runs = [
+      pace.run("a", wedged.render),
+      pace.run("a", second.render),
+      pace.run("a", () => {
+        starts.push(clock.now());
+        return Promise.resolve("third");
+      }),
+    ];
+    await settle();
+    deadlines[0]?.();
+    await settle();
+    expect(starts).toHaveLength(2);
+    wedged.end();
+    await settle();
+    expect(starts).toHaveLength(2);
+    second.end();
+    expect(await Promise.all(runs)).toEqual(["done", "done", "third"]);
+  });
+
   test("a render that throws rejects its own caller and frees the turn for the next", async () => {
     const pace = createPace(limits(0, { a: 2, b: 2 }), fakeClock());
     const failed = pace.run("a", () =>

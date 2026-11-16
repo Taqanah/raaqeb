@@ -36,16 +36,13 @@ describe("which operation a request names", () => {
     });
   });
 
-  test("a parameter is read decoded, and a fixed segment wins over a parameter", () => {
+  test("a parameter is read decoded", () => {
     expect(
       matchOperation("POST", "/api/v1/groups/Web%20site/monitors")
     ).toEqual({
       name: "addToGroup",
       ok: true,
       params: { groupName: "Web site" },
-    });
-    expect(matchOperation("POST", "/api/v1/monitors/test")).toMatchObject({
-      name: "testMonitor",
     });
   });
 

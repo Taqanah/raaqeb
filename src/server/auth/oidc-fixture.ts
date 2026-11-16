@@ -4,7 +4,9 @@
  * token signed by a key published at its JWKS address and checked by Better
  * Auth as a real one would be. It signs in whichever person the test names,
  * at once (no login page), and keeps the authorization code's PKCE
- * challenge and nonce. Imported by tests and the e2e harness only.
+ * challenge and nonce: a token request without the PKCE verifier is refused,
+ * as a provider that requires PKCE refuses it. Imported by tests and the e2e
+ * harness only.
  */
 
 /** The person the provider signs in next: the claims of their id token. */
@@ -53,7 +55,12 @@ async function sha256(text: string): Promise<string> {
 
 /** Starts the provider; `stop` it when done. */
 export async function startOidcProvider(
-  options: { readonly clientId?: string; readonly clientSecret?: string } = {}
+  options: {
+    readonly clientId?: string;
+    readonly clientSecret?: string;
+    /** False for a provider whose discovery names no signing keys, so no id token can be checked. */
+    readonly publishesKeys?: boolean;
+  } = {}
 ): Promise<OidcProviderFixture> {
   const clientId = options.clientId ?? "raaqeb-test";
   const clientSecret = options.clientSecret ?? "a-test-client-secret";
@@ -107,7 +114,7 @@ export async function startOidcProvider(
     const grant = grants.get(code);
     grants.delete(code);
     const verifier = await sha256(form.get("code_verifier") ?? "");
-    const pkce = grant?.challenge === null || grant?.challenge === verifier;
+    const pkce = grant?.challenge === verifier;
     return grant && grant.redirectUri === form.get("redirect_uri") && pkce
       ? grant
       : "invalid_grant";
@@ -154,7 +161,9 @@ export async function startOidcProvider(
             authorization_endpoint: `${issuer}/authorize`,
             id_token_signing_alg_values_supported: ["RS256"],
             issuer,
-            jwks_uri: `${issuer}/jwks`,
+            ...(options.publishesKeys === false
+              ? {}
+              : { jwks_uri: `${issuer}/jwks` }),
             response_types_supported: ["code"],
             subject_types_supported: ["public"],
             token_endpoint: `${issuer}/token`,

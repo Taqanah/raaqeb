@@ -343,11 +343,11 @@ describe("sending auth mail", () => {
 
   test("reports the channel's failure with its reason and every secret taken out", async () => {
     const s = await scratch();
+    // The password channel asks for STARTTLS, which the fake refuses with a reply that names the password.
     const smtp = fakeSmtp({
       offerAuth: true,
       offerStartTls: true,
-      refuseRecipient: testEmail,
-      replies: { RCPT: "550 5.1.1 no such user hunter2 here" },
+      replies: { STARTTLS: "454 4.7.0 TLS not available to hunter2" },
     });
     try {
       await emailChannel(s, "Mail", smtp.port, "hunter2");
@@ -358,7 +358,8 @@ describe("sending auth mail", () => {
       expect(result.ok).toBe(false);
       if (!result.ok && result.reason === "failed") {
         expect(result.failure.reason).toMatch(refusedOrUnverified);
-        expect(result.failure.error ?? "").not.toContain("hunter2");
+        expect(result.failure.error).toContain("TLS not available to");
+        expect(result.failure.error).not.toContain("hunter2");
       } else {
         throw new Error("expected a failed send");
       }

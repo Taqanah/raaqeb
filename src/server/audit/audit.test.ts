@@ -112,6 +112,14 @@ describe("an audit entry", () => {
     );
     expect(rest?.entries).toHaveLength(5);
     expect(rest?.more).toBe(false);
+    // Exactly a page left: nothing more after it.
+    const full = await readAuditLog(
+      s.storage,
+      { before: now + auditPageSize },
+      "UTC"
+    );
+    expect(full?.entries).toHaveLength(auditPageSize);
+    expect(full?.more).toBe(false);
     const pages = await readAuditLog(s.storage, { kind: "page" }, "UTC");
     expect(pages?.entries.every((one) => one.action === "page.change")).toBe(
       true

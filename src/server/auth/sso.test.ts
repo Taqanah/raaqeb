@@ -476,6 +476,27 @@ describe("starting a sign-in through the provider", () => {
   });
 });
 
+describe("a provider whose id tokens cannot be checked", () => {
+  test("whose discovery names no signing keys starts no sign-in", async () => {
+    const keyless = await startOidcProvider({ publishesKeys: false });
+    try {
+      const auth = await ssoAuth(
+        await scratch(),
+        ssoOf({ discoveryUrl: keyless.discoveryUrl })
+      );
+      const started = await call(auth, "/sign-in/social", {
+        body: { callbackURL: "/admin", provider: "oidc" },
+      });
+      expect(started.status).toBe(404);
+      expect(await started.json()).toMatchObject({
+        code: "PROVIDER_NOT_FOUND",
+      });
+    } finally {
+      keyless.stop();
+    }
+  });
+});
+
 describe("the password under single sign-on", () => {
   test("is refused to an operator who is not an owner once single sign-on is required, after the password was checked", async () => {
     const s = await scratch();

@@ -14,22 +14,37 @@ import {
  * -permissions.test.ts.
  */
 const routes = `${import.meta.dir}`;
+// Every server function behind a permission, with the options it was made with as written.
 const declaration =
-  /const (\w+) = createServerFn\(\{ method: "POST" \}\)\s*\.middleware\(\[permitted\(/g;
+  /const (\w+) = createServerFn\(([^)]*)\)\s*\.middleware\(\[permitted\(/g;
+// The options this test can read a method from: none (Start's GET) or a literal method.
+const readable = /^(?:\{ method: "(GET|POST)" \})?$/;
 
-async function postsBehindPermission(): Promise<string[]> {
+/** Each server function behind a permission by `file name`, with its method, or `unread` when its options are not a literal this test can read. */
+async function behindPermission(): Promise<Map<string, string>> {
   const files = await Array.fromAsync(
     new Bun.Glob("**/*.{ts,tsx}").scan({ cwd: routes })
   );
-  const found: string[] = [];
+  const found = new Map<string, string>();
   for (const file of files.filter((one) => !one.includes(".test."))) {
     // biome-ignore lint/performance/noAwaitInLoops: a few dozen files, read once
     const text = await Bun.file(`${routes}/${file}`).text();
     for (const match of text.matchAll(declaration)) {
-      found.push(`${file} ${match[1]}`);
+      const options = readable.exec(match[2] ?? "");
+      found.set(
+        `${file} ${match[1]}`,
+        options ? (options[1] ?? "GET") : "unread"
+      );
     }
   }
-  return found.toSorted((a, b) => a.localeCompare(b));
+  return found;
+}
+
+async function postsBehindPermission(): Promise<string[]> {
+  return [...(await behindPermission())]
+    .filter(([, method]) => method === "POST")
+    .map(([key]) => key)
+    .toSorted((a, b) => a.localeCompare(b));
 }
 
 describe("the audit log's coverage", () => {
@@ -37,6 +52,13 @@ describe("the audit log's coverage", () => {
     const posts = await postsBehindPermission();
     const covered = new Set([...Object.keys(auditedFunctions), ...unaudited]);
     expect(posts.filter((key) => !covered.has(key))).toEqual([]);
+  });
+
+  test("reads the method of every server function behind a permission, so a POST is never taken for a GET", async () => {
+    const unread = [...(await behindPermission())]
+      .filter(([, method]) => method === "unread")
+      .map(([key]) => key);
+    expect(unread).toEqual([]);
   });
 
   test("names no server function that is gone, and none twice", async () => {

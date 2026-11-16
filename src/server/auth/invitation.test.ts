@@ -187,7 +187,7 @@ describe("accepting an invitation", () => {
     expect(await scratch.storage.invitations.list()).toHaveLength(1);
   });
 
-  test("whose sender is deactivated, gone or can no longer give its role is closed, on the page and at the endpoint, and creates nothing", async () => {
+  test("whose sender is deactivated, gone or can no longer give its role is closed, on the page, at the endpoint and to single sign-on, and creates nothing", async () => {
     for (const change of [
       "UPDATE auth_user SET deactivated_at = 1 WHERE email = 'owner@example.com'",
       "UPDATE auth_user SET role = 'editor' WHERE email = 'owner@example.com'",
@@ -207,6 +207,14 @@ describe("accepting an invitation", () => {
       expect(
         await scratch.storage.operatorAccounts.findByEmail("new@example.com")
       ).toBeUndefined();
+      // Single sign-on finds an invitation by its address; the endpoint takes one again after its first check.
+      const gate = invitationGate(scratch.storage);
+      expect(
+        `${change}: ${await gate.forEmail("new@example.com", Date.now())}`
+      ).toBe(`${change}: undefined`);
+      expect(`${change}: ${await gate.take(token, Date.now())}`).toBe(
+        `${change}: undefined`
+      );
       await scratch.cleanup();
       open = undefined;
     }
