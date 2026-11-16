@@ -160,6 +160,27 @@ describe("what a monitor event sends", () => {
     );
   });
 
+  test("a failure with only an exit code, or only a message, sends that part alone", () => {
+    const only = (failure: { exitCode?: number; message?: string }) =>
+      notificationOf(
+        {
+          ...down,
+          failure: { exitCode: failure.exitCode, message: failure.message },
+          reason: reasons.heartbeat_failed,
+        },
+        monitor(),
+        address
+      )?.data;
+    expect(only({ exitCode: 2 })).toMatchObject({ failure: { exitCode: 2 } });
+    expect(only({ exitCode: 2 })).not.toHaveProperty("failure.message");
+    expect(only({ message: "disk full" })).toMatchObject({
+      failure: { message: "disk full" },
+    });
+    expect(only({ message: "disk full" })).not.toHaveProperty(
+      "failure.exitCode"
+    );
+  });
+
   test("recovered sends the downtime of the outage it closed", () => {
     expect(notificationOf(recovered, monitor(), address)).toEqual({
       data: { downtimeMs: 90 * minute, monitor: sampleMonitorData },

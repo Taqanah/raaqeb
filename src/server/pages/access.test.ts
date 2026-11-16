@@ -222,7 +222,7 @@ describe("the page pass cookie", () => {
       expect(header).toContain("HttpOnly");
       expect(header).toContain("SameSite=Lax");
       expect(header).toContain("Path=/");
-      expect(header).toContain(`Max-Age=${passLifetimeMs / 1000}`);
+      expect(header).toContain(`Max-Age=${passLifetimeMs / 1000};`);
     }
     expect(plain).not.toContain("Secure");
     expect(secure).toContain("Secure");
@@ -301,5 +301,13 @@ describe("attempts at a page password", () => {
     limiter.take("192.0.2.1", 400);
     expect(limiter.retryAfter("192.0.2.1", 500)).toBe(600);
     expect(limiter.retryAfter("192.0.2.1", 1100)).toBe(0);
+  });
+
+  test("the wait it names is exact: one millisecond short is still refused, and the moment it ends takes the try", () => {
+    const limiter = createAttemptLimiter(1, 1000, 100);
+    limiter.take("192.0.2.1", 0);
+    expect(limiter.retryAfter("192.0.2.1", 400)).toBe(600);
+    expect(limiter.take("192.0.2.1", 999)).toBe(false);
+    expect(limiter.take("192.0.2.1", 1000)).toBe(true);
   });
 });

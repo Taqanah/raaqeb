@@ -49,6 +49,8 @@ import {
   parse,
 } from "./fixture.ts";
 import {
+  announceNothing,
+  announceThrough,
   createSubscriberNotifications,
   sendToSubscriber,
   subscriberMail,
@@ -2129,5 +2131,29 @@ describe("an occurrence of a maintenance series", () => {
       );
       expect(body.meta.repeats).toBeUndefined();
     }
+  });
+});
+
+describe("the announce a route hands a module", () => {
+  const event = { incidentId: "i-1", type: "incident.published" } as const;
+
+  test("goes to the scheduler's subscriber notifications with the moment of the write", async () => {
+    const heard: { at: number; type: string }[] = [];
+    const before = Date.now();
+    await announceThrough({
+      announce: (each, at) => {
+        heard.push({ at, type: each.type });
+        return Promise.resolve();
+      },
+    })(event);
+    expect(heard).toHaveLength(1);
+    expect(heard[0]?.type).toBe("incident.published");
+    expect(heard[0]?.at).toBeGreaterThanOrEqual(before);
+    expect(heard[0]?.at).toBeLessThanOrEqual(Date.now());
+  });
+
+  test("sends nothing where no scheduler runs, and still answers", async () => {
+    expect(announceThrough(undefined)).toBe(announceNothing);
+    expect(await announceThrough(undefined)(event)).toBeUndefined();
   });
 });

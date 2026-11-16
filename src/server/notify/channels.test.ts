@@ -156,6 +156,7 @@ describe("the channels module", () => {
         (await secretsOf(store, channel.id))?.secret ?? ""
       );
       expect(read.form.kept).toEqual(["url"]);
+      expect(read.form.locked).toBe(false);
       expect(read.form.summary).toBe("hooks.example.test");
       expect(JSON.stringify(read.form)).not.toContain(token);
     }

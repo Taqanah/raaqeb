@@ -354,6 +354,8 @@ describe("the notification preview", () => {
     expect(domain).toContain(
       `Expires: ${formatDateTimeWithZone("en", now + 30 * 86_400_000, utc)}`
     );
+    const lastHeard = formatDateTimeWithZone("en", now - 2 * 60_000, utc);
+    expect(byType(previews, "probe.silent").body).toContain(lastHeard);
   });
 
   test("the links start from the stored public address, and an install with none shows no link", async () => {

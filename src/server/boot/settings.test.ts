@@ -445,24 +445,27 @@ describe("the data directory", () => {
     const dataDir = `${await scratch()}/data`;
     await Bun.$`mkdir ${dataDir} && chmod 755 ${dataDir}`.quiet();
     const notes = await notesOf({}, { RAAQEB_DATA_DIR: dataDir });
-    expect(notes.join("\n")).not.toContain("wider");
+    expect(notes).toEqual([
+      "install key generated into config.json in the data directory",
+    ]);
     expect(await modeOf(dataDir)).toBe("700");
   });
 
-  test("a wide directory with no config.json draws no note, since the key and the URL come from the environment", async () => {
-    const dataDir = `${await scratch()}/data`;
-    await Bun.$`mkdir ${dataDir} && chmod 755 ${dataDir}`.quiet();
-    const notes = await notesOf(
-      {},
-      {
-        DATABASE_URL: "postgres://raaqeb@127.0.0.1/raaqeb",
-        RAAQEB_DATA_DIR: dataDir,
-        RAAQEB_SECRET_KEY: generateInstallKey(),
-      }
-    );
-    expect(notes.join("\n")).not.toContain("wider");
-    expect(await Bun.file(`${dataDir}/config.json`).exists()).toBe(false);
-  });
+  // A folder of someone else's cannot be tightened, so it is the only way to boot with a directory that stays wide.
+  test.skipIf(process.getuid?.() === 0)(
+    "a wide directory that is not ours and holds no secret draws no note, since the key and the URL come from the environment",
+    async () => {
+      const result = await resolveBootSettings(
+        {},
+        {
+          DATABASE_URL: "postgres://raaqeb@127.0.0.1/raaqeb",
+          RAAQEB_DATA_DIR: "/usr",
+          RAAQEB_SECRET_KEY: generateInstallKey(),
+        }
+      );
+      expect(result).toMatchObject({ notes: [], ok: true });
+    }
+  );
 
   test("a wide directory holding config.json and the SQLite database is tightened, draws no note, and its files keep their modes", async () => {
     const dataDir = `${await scratch()}/data`;
@@ -470,7 +473,7 @@ describe("the data directory", () => {
     await writeConfigFile(dataDir, { installKey: generateInstallKey() });
     await Bun.write(`${dataDir}/raaqeb.sqlite`, "");
     const notes = await notesOf({}, { RAAQEB_DATA_DIR: dataDir });
-    expect(notes.join("\n")).not.toContain("wider");
+    expect(notes).toEqual([]);
     expect(await modeOf(dataDir)).toBe("700");
     expect(await modeOf(`${dataDir}/config.json`)).toBe("600");
   });
@@ -478,7 +481,9 @@ describe("the data directory", () => {
   test("a directory of mode 0700 draws no note", async () => {
     const dataDir = await scratch();
     const notes = await notesOf({}, { RAAQEB_DATA_DIR: dataDir });
-    expect(notes.join("\n")).not.toContain("wider");
+    expect(notes).toEqual([
+      "install key generated into config.json in the data directory",
+    ]);
   });
 
   test.skipIf(process.getuid?.() === 0)(

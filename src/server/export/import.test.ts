@@ -439,8 +439,7 @@ describe("an import", () => {
       free.storage,
       free.key,
       fileOf(await exportLines(from)),
-      now,
-      false
+      now
     );
     expect(await readNotificationHold(free.storage)).toBeUndefined();
   });
@@ -814,6 +813,67 @@ describe("an import", () => {
     const broken = [...lines.slice(0, 40), "{not json", ...lines.slice(40)];
     await importInstall(into.storage, into.key, fileOf(broken), now);
     expect(await count(into, "auth_user")).toBe(0);
+  });
+
+  test("that fails at a line and cannot take out what it wrote is unavailable, so the operator does not read a clean refusal", async () => {
+    const from = await source();
+    const into = await target();
+    const lines = await exportLines(from);
+    const broken = [...lines.slice(0, 40), "{not json", ...lines.slice(40)];
+    const stuck: typeof into.storage = {
+      ...into.storage,
+      transfer: {
+        ...into.storage.transfer,
+        remove: () => Promise.reject(new Error("the database went away")),
+      },
+    };
+    const log = spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(await importInstall(stuck, into.key, fileOf(broken), now)).toEqual(
+        { ok: false, reason: "unavailable" }
+      );
+      expect(String(log.mock.calls[0]?.[0])).toContain(
+        "the import could not take out what it wrote"
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  test("whose write the database refused is the file's fault while the database answers, and unavailable once it stopped answering", async () => {
+    const from = await source();
+    const into = await target();
+    const file = fileOf(await exportLines(from, "configuration"));
+    const refusing = (counter: () => Promise<number>): typeof into.storage => ({
+      ...into.storage,
+      changeCounter: counter,
+      transfer: {
+        ...into.storage.transfer,
+        restore: () =>
+          Promise.reject(new Error("FOREIGN KEY constraint failed")),
+      },
+    });
+    const log = spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(
+        await importInstall(
+          refusing(() => into.storage.changeCounter()),
+          into.key,
+          file,
+          now
+        )
+      ).toEqual({ line: 1, ok: false, reason: "invalid" });
+      expect(
+        await importInstall(
+          refusing(() => Promise.reject(new Error("the database went away"))),
+          into.key,
+          fileOf(await exportLines(from, "configuration")),
+          now
+        )
+      ).toEqual({ ok: false, reason: "unavailable" });
+    } finally {
+      log.mockRestore();
+    }
   });
 
   test("refuses a record of a monitor its configuration does not hold", async () => {

@@ -132,3 +132,65 @@ describe("a server route's methods", () => {
     }
   });
 });
+
+describe("how a server route's handlers are declared", () => {
+  /** The real router, with the route at `/health` carrying these options and the match carrying these parameters, so a declaration the tree has no route for is walked. */
+  function routerWith(
+    options: object,
+    params: Record<string, string> = {}
+  ): Pick<typeof router, "getMatchedRoutes"> {
+    return {
+      getMatchedRoutes: (pathname) => {
+        const [matched, found, route] = router.getMatchedRoutes(pathname);
+        return [
+          matched,
+          { ...found, ...params },
+          Object.assign(Object.create(route ?? null), { options }),
+        ];
+      },
+    };
+  }
+  const ask = (
+    stand: Pick<typeof router, "getMatchedRoutes">,
+    method: string
+  ) =>
+    methodNotAllowed(
+      stand,
+      new Request("http://raaqeb.test/health", { method })
+    );
+  const get = () => new Response("");
+
+  test("a function that makes the handlers is read as the object it makes", () => {
+    const stand = routerWith({
+      server: {
+        handlers: ({ createHandlers }: { createHandlers: <T>(h: T) => T }) =>
+          createHandlers({ GET: get, POST: get }),
+      },
+    });
+    expect(ask(stand, "POST")).toBeUndefined();
+    const refused = ask(stand, "DELETE");
+    expect(refused?.status).toBe(405);
+    expect(refused?.headers.get("allow")).toBe("GET, HEAD, POST");
+  });
+
+  test("a route that also has a page leaves an undeclared method to the page", () => {
+    const stand = routerWith({
+      component: () => null,
+      server: { handlers: { GET: get } },
+    });
+    expect(ask(stand, "POST")).toBeUndefined();
+  });
+
+  test("an address that matched only a catch-all is left to Start, whatever the route says", () => {
+    const stand = routerWith(
+      { server: { handlers: { GET: get } } },
+      { "**": "rest" }
+    );
+    expect(ask(stand, "POST")).toBeUndefined();
+  });
+
+  test("the same route without a page or a catch-all answers 405", () => {
+    const stand = routerWith({ server: { handlers: { GET: get } } });
+    expect(ask(stand, "POST")?.status).toBe(405);
+  });
+});

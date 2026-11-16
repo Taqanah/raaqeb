@@ -16,6 +16,7 @@ import {
   site,
 } from "@/server/pages/fixture.ts";
 import { createPage, savePage } from "@/server/pages/pages.ts";
+import { runSql } from "@/server/storage/fixture.ts";
 import type { Monitor } from "@/shared/schemas/monitor.ts";
 import { defaultCustomization } from "@/shared/schemas/page.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
@@ -373,6 +374,51 @@ describe("the report of a group, a component and a page", () => {
     expect(made.worst.map((each) => each.checkType)).toEqual([one.config.type]);
   });
 
+  test("a group lists the monitor with most downtime first, whatever order the monitors were made in", async () => {
+    const s = await opened();
+    const calm = await monitor(s, "calm", {
+      down: [[3 * hour, 4 * hour]],
+      group: "core",
+    });
+    const rough = await monitor(s, "rough", {
+      down: [[3 * hour, 8 * hour]],
+      group: "core",
+    });
+    await outage(s, calm, 3 * hour, 4 * hour);
+    await outage(s, rough, 3 * hour, 8 * hour);
+    const made = await report(s, query("group", "core"));
+    expect(made.members.map((each) => each.name)).toEqual(["rough", "calm"]);
+  });
+
+  test("a monitor's incidents are those that held a component it is in, not those of a component without it", async () => {
+    const s = await opened();
+    const one = await monitor(s, "one");
+    const two = await monitor(s, "two");
+    const web = await component(s, "الموقع", [one.id]);
+    await component(s, "الدفع", [two.id]);
+    s.at(d0 + 25 * hour);
+    const opening = await createIncident(
+      s.storage,
+      {
+        impact: "major",
+        message: { ar: "نحقق." },
+        stage: "investigating",
+        statuses: [{ componentId: web, status: "major_outage" }],
+        title: { ar: "تعطل" },
+      },
+      "owner@example.com"
+    );
+    if (!opening.ok) {
+      throw new Error(opening.reason);
+    }
+    expect(
+      (await report(s, query("monitor", one.id))).subject.figures
+    ).toMatchObject({ incidents: 1 });
+    expect(
+      (await report(s, query("monitor", two.id))).subject.figures
+    ).toMatchObject({ incidents: 0 });
+  });
+
   test("a component's downtime is its monitors' outages and the time an incident held it down, each moment once", async () => {
     const s = await opened();
     const one = await monitor(s, "one", { down: [[26 * hour, 28 * hour]] });
@@ -453,6 +499,33 @@ describe("the report of a group, a component and a page", () => {
       { keep: false, message: { ar: "حُلّ." }, stage: "resolved" },
       "owner@example.com"
     );
+    const made = await report(s, query("component", web));
+    expect(made.subject.figures).toMatchObject({
+      downtimeMs: 0,
+      incidents: 0,
+    });
+  });
+
+  test("an incident opened at the very moment the range ended is no incident of it", async () => {
+    const s = await opened();
+    const one = await monitor(s, "one");
+    const web = await component(s, "الموقع", [one.id]);
+    // The range 1 to 3 September ends at the start of the 4th.
+    s.at(d0 + 3 * day);
+    const opening = await createIncident(
+      s.storage,
+      {
+        impact: "major",
+        message: { ar: "نحقق." },
+        stage: "investigating",
+        statuses: [{ componentId: web, status: "major_outage" }],
+        title: { ar: "عند الحد" },
+      },
+      "owner@example.com"
+    );
+    if (!opening.ok) {
+      throw new Error(opening.reason);
+    }
     const made = await report(s, query("component", web));
     expect(made.subject.figures).toMatchObject({
       downtimeMs: 0,
@@ -557,6 +630,51 @@ describe("the report of a group, a component and a page", () => {
         now
       )
     ).toEqual({ ok: false, reason: "invalid" });
+  });
+
+  test("a target of 1 and one of 99.999 are the ends of what fits, and nothing outside them is read", async () => {
+    const s = await opened();
+    const alpha = await monitor(s, "alpha");
+    for (const [target, fits] of [
+      [0.99, false],
+      [1, true],
+      [99.999, true],
+      [99.9991, false],
+    ] as const) {
+      // biome-ignore lint/performance/noAwaitInLoops: one target after another
+      const result = await readReport(
+        s.storage,
+        query("monitor", alpha.id, { target }),
+        now
+      );
+      expect(result.ok).toBe(fits);
+    }
+  });
+
+  test("a record this version cannot read is named, and any other failed read is unavailable", async () => {
+    const s = await opened();
+    const one = await monitor(s, "one");
+    const web = await component(s, "الموقع", [one.id]);
+    const failing = {
+      ...s.storage,
+      monitors: {
+        ...s.storage.monitors,
+        list: () => Promise.reject(new Error("the database went away")),
+      },
+    };
+    expect(await readReport(failing, query("component", web), now)).toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
+    await runSql(s.location, "UPDATE components SET status = ? WHERE id = ?", [
+      "on_fire",
+      web,
+    ]);
+    expect(await readReport(s.storage, query("component", web), now)).toEqual({
+      id: web,
+      ok: false,
+      reason: "corrupt",
+    });
   });
 });
 
@@ -881,7 +999,7 @@ describe("what the form offers", () => {
     const s = await opened();
     await s.storage.monitors.create({ ...site, group: "core", name: "b" });
     await s.storage.monitors.create({ ...site, group: "core", name: "a" });
-    await s.storage.monitors.create({ ...site, name: "c" });
+    await s.storage.monitors.create({ ...site, group: "alpha", name: "c" });
     const web = await component(s, "الموقع", []);
     const choices = await readReportChoices(s.storage);
     expect(choices.ok).toBe(true);
@@ -891,11 +1009,26 @@ describe("what the form offers", () => {
         "b",
         "c",
       ]);
-      expect(choices.choices.groups).toEqual(["core"]);
+      expect(choices.choices.groups).toEqual(["alpha", "core"]);
       expect(choices.choices.components).toEqual([
         { id: web, name: { ar: "الموقع" } },
       ]);
       expect(choices.choices.pages).toEqual([]);
     }
+  });
+
+  test("is unavailable when the database does not answer", async () => {
+    const s = await opened();
+    const failing = {
+      ...s.storage,
+      monitors: {
+        ...s.storage.monitors,
+        list: () => Promise.reject(new Error("the database went away")),
+      },
+    };
+    expect(await readReportChoices(failing)).toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { authFor } from "@/server/auth/auth.ts";
 import { readOperator } from "@/server/auth/session.ts";
 import { readConfigFile } from "@/server/boot/datadir.ts";
@@ -465,6 +465,59 @@ describe("choosing Postgres, with the opener answering by hand", () => {
     expect(result).toEqual({ ok: false, reason: "open_failed" });
     expect(await Bun.file(`${dataDir}/config.json`).text()).toBe(before);
   });
+
+  test("a config.json that cannot take the URL refuses the choice before any database is opened", async () => {
+    const { context, dataDir } = await fresh();
+    await Bun.write(`${dataDir}/config.json`, "{");
+    let openedDatabase = false;
+    const result = await chooseDatabase(
+      { backend: "postgres", url: "postgres://u:p@db.example/raaqeb" },
+      {
+        ...context,
+        opener: {
+          open: () => {
+            openedDatabase = true;
+            return Promise.resolve({ message: "never", ok: false });
+          },
+          test: () => Promise.resolve({ kind: "empty" }),
+        },
+      }
+    );
+    expect(result).toEqual({ ok: false, reason: "open_failed" });
+    expect(openedDatabase).toBe(false);
+    expect(await Bun.file(`${dataDir}/config.json`).text()).toBe("{");
+  });
+
+  test.skipIf(process.getuid?.() === 0)(
+    "a config.json that cannot be put back after a failed open is named to the operator, who removes the URL by hand",
+    async () => {
+      const { context, dataDir } = await fresh();
+      const log = spyOn(process.stderr, "write").mockImplementation(() => true);
+      try {
+        const result = await chooseDatabase(
+          { backend: "postgres", url: "postgres://u:p@db.example/raaqeb" },
+          {
+            ...context,
+            opener: {
+              // The folder closes to writes while the open runs, as a volume turned read-only would.
+              open: async () => {
+                await Bun.$`chmod 500 ${dataDir}`.quiet();
+                return { message: "migration 0001 failed", ok: false };
+              },
+              test: () => Promise.resolve({ kind: "empty" }),
+            },
+          }
+        );
+        expect(result).toEqual({ ok: false, reason: "open_failed" });
+        expect(
+          log.mock.calls.map((call) => String(call[0])).join("")
+        ).toContain("remove it by hand");
+      } finally {
+        await Bun.$`chmod 700 ${dataDir}`.quiet();
+        log.mockRestore();
+      }
+    }
+  );
 
   test("the URL is in config.json by the time the open runs, encrypted", async () => {
     const { context, dataDir } = await fresh();

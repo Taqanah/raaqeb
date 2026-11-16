@@ -133,17 +133,6 @@ describe("a channel's send under the install's proxy environment", () => {
     // Sent direct, its refusal is the destination's, not the proxy's.
     expect(!direct.ok && direct.failure.reason).toBe("connection_refused");
   });
-
-  test("a proxy that refuses the tunnel fails the send with the proxy's refusal as its error", async () => {
-    through("HTTPS_PROXY");
-    const outcome = await deliver(
-      notificationChannels.slack,
-      { url: "https://hooks.slack.example.test/services/T0/B0/X" },
-      sampleSend(sampleDown, "en"),
-      live
-    );
-    expect(outcome.ok).toBe(false);
-  });
 });
 
 describe("a channel's send the install's proxy fails", () => {
@@ -187,6 +176,8 @@ describe("a channel's send the install's proxy fails", () => {
       params: { reason: "proxy_failed", status: 407 },
       reason: "proxy_failed",
     });
+    // The proxy's own text is the error.
+    expect(!outcome.ok && outcome.failure.error).toBe("ok");
   });
 
   test("a 407 from a destination reached with no proxy between is the destination's own status", async () => {
