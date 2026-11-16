@@ -610,6 +610,52 @@ describe("the monitor detail's read", () => {
     expect(result.detail.days.at(-2)?.outages).toEqual([]);
   });
 
+  test("an outage that ended as a day began did not run on that day", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    const today = Math.floor(monitor.updatedAt / day) * day + 2 * day;
+    await store.outages.open(monitor.id, today - 2 * hour, reasons.timeout);
+    await store.outages.close(monitor.id, today);
+    const result = await readMonitorDetail(
+      store,
+      monitor.id,
+      options(today + hour)
+    );
+    if (!result.ok) {
+      throw new Error(result.reason);
+    }
+    expect(result.detail.days.at(-2)?.outages).toHaveLength(1);
+    expect(result.detail.days.at(-1)?.outages).toEqual([]);
+  });
+
+  test("a monitor checked from probes alone whose latest check is past its bound has no state and says so", async () => {
+    const store = await storage();
+    const probe = await store.probes.create("Frankfurt", "f".repeat(64));
+    const monitor = await store.monitors.create({
+      ...site,
+      locations: [probe.id],
+    });
+    const at = monitor.updatedAt + 1000;
+    await store.checks.record(check(monitor.id, at));
+    const fresh = await readMonitorDetail(
+      store,
+      monitor.id,
+      options(at + minute)
+    );
+    const stale = await readMonitorDetail(
+      store,
+      monitor.id,
+      options(at + hour)
+    );
+    if (!(fresh.ok && stale.ok)) {
+      throw new Error("unavailable");
+    }
+    expect(fresh.detail.state).toBe("up");
+    expect(fresh.detail).not.toHaveProperty("unknown");
+    expect(stale.detail.state).toBeUndefined();
+    expect(stale.detail.unknown).toBe(true);
+  });
+
   test("the chart reads the range asked for, in buckets from its start to now, with the monitor's gap limit", async () => {
     const store = await storage();
     const monitor = await store.monitors.create(site);
@@ -1037,6 +1083,40 @@ describe("the checks of a zoomed span", () => {
     expect(read.state).toBe("up");
   });
 
+  test("unzoomed, a check at the raw checks' window's first millisecond is listed and one just before it is not", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create({ ...site, retentionDays: 7 });
+    const now = monitor.updatedAt + hour;
+    const rawStart = Math.floor((now - 7 * day) / day) * day;
+    await store.checks.record(check(monitor.id, rawStart - 1));
+    await store.checks.record(check(monitor.id, rawStart));
+    await store.checks.record(check(monitor.id, now - minute));
+    const read = await zoomedRead(store, monitor.id, now, undefined);
+    if (!read.spanChecks.kept) {
+      throw new Error("the newest checks are kept");
+    }
+    expect(read.spanChecks.checks.map((each) => each.startedAt)).toEqual([
+      now - minute,
+      rawStart,
+    ]);
+  });
+
+  test("a stored check this version cannot read is corrupt, never an error out of the read", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    await store.checks.record(check(monitor.id, monitor.updatedAt + 1));
+    if (!open) {
+      throw new Error("no database");
+    }
+    await runSql(open.location, "UPDATE checks SET reason = 250", []);
+    expect(
+      await readSpanChecks(store, monitor.id, {
+        from: monitor.updatedAt,
+        to: monitor.updatedAt + minute,
+      })
+    ).toEqual({ ok: false, reason: "corrupt" });
+  });
+
   test("a database that cannot answer is unavailable, and never throws", async () => {
     const store = await storage();
     const monitor = await store.monitors.create(site);
@@ -1052,6 +1132,21 @@ describe("the checks of a zoomed span", () => {
 });
 
 describe("one check's record", () => {
+  test("a failure detail this version cannot read is corrupt, never an error out of the read", async () => {
+    const store = await storage();
+    const monitor = await store.monitors.create(site);
+    const at = monitor.updatedAt + 1;
+    await store.checks.record(check(monitor.id, at, "down"));
+    if (!open) {
+      throw new Error("no database");
+    }
+    await runSql(open.location, "UPDATE failure_details SET params = 'x'", []);
+    expect(await readCheckRecord(store, monitor.id, at)).toEqual({
+      ok: false,
+      reason: "corrupt",
+    });
+  });
+
   test("a down check opens to its failure detail and its capture, the body as text", async () => {
     const store = await storage();
     const monitor = await store.monitors.create(site);

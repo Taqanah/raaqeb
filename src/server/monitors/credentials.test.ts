@@ -124,6 +124,7 @@ describe("sealing credentials with the install key", () => {
   test("the sealed text holds no secret and no header name in clear", async () => {
     const key = await scratchInstallKey();
     const sealed = (await sealCredentials(key, stored)) ?? "";
+    expect(sealed).not.toBe("");
     for (const clear of [
       "كلمة-سر",
       "operator-account",

@@ -441,6 +441,33 @@ describe("the domain expiring warnings the pass raises", () => {
     expect(w.rows.get("m1")?.warned).toBe(true);
   });
 
+  test("a warning raised stays remembered when the next day's read finds the same expiry, and a moved expiry is warned of again", async () => {
+    const { registrations } = stores();
+    const raised: Expiring[] = [];
+    const expiry = now + 10 * day;
+    const { read } = reader([
+      { domain: "raaqeb.dev", expiresAt: expiry },
+      { domain: "raaqeb.dev", expiresAt: expiry },
+      { domain: "raaqeb.dev", expiresAt: expiry + 5 * day },
+    ]);
+    const pass = createRegistrationPass({ registrations }, read, {
+      ...everyPass,
+      onExpiring: (event) => {
+        raised.push(event);
+        return Promise.resolve();
+      },
+    });
+    for (let days = 0; days < 3; days += 1) {
+      pass.run(now + days * day, [monitorOf("m1")]);
+      // biome-ignore lint/performance/noAwaitInLoops: one day's pass after the other
+      await pass.idle();
+    }
+    expect(raised.map((event) => event.expiresAt)).toEqual([
+      expiry,
+      expiry + 5 * day,
+    ]);
+  });
+
   test("a registration read in this pass is judged in this pass", async () => {
     const { registrations, rows } = stores();
     const raised: Expiring[] = [];

@@ -34,6 +34,15 @@ describe("a monitor with no recent result in a component's status", () => {
     ).toBe("operational");
   });
 
+  test("keeps the last state of the running monitors when each has none, over a paused monitor's", () => {
+    expect(
+      derivedStatus([
+        { paused: false, pausedAt: undefined, state: "down", unknown: true },
+        paused("up", 1000),
+      ])
+    ).toBe("major_outage");
+  });
+
   test("keeps its last state when every linked monitor has none, never inventing up", () => {
     expect(
       derivedStatus([

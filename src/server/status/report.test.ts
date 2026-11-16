@@ -334,19 +334,20 @@ describe("the figures of a measurement", () => {
     expect(figures.recoveryMs).toBe(15 * minute);
   });
 
-  test("an outage that recovered after the range ended is not a recovery inside it", () => {
+  test("an outage that recovered after the range ended is not a recovery inside it, and one that recovered as it ended is", () => {
     const figures = figuresOf(
       {
         ...base,
         outages: [
           counted(d0 + hour, d0 + hour + 10 * minute),
+          counted(range.to - hour, range.to),
           counted(range.to - hour, range.to + 5 * hour),
         ],
       },
       range
     );
-    expect(figures.outages).toBe(2);
-    expect(figures.recoveryMs).toBe(10 * minute);
+    expect(figures.outages).toBe(3);
+    expect(figures.recoveryMs).toBe(35 * minute);
   });
 
   test("one that began before the range and recovered inside it counts its whole length", () => {

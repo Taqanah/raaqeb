@@ -53,6 +53,23 @@ describe("a monitor's own days for the list's bar", () => {
     ]);
   });
 
+  test("a sealed day keeps the mean response time of its checks, and a day of failed checks has none to show", async () => {
+    scratch = await scratchPages(today);
+    const { storage } = scratch;
+    const monitor = await storage.monitors.create(site);
+    await checksEveryMinute(storage, monitor, d0, d0 + 2 * hour, "up");
+    await storage.checks.seal(monitor.id, d0, 40 * 60_000, []);
+    await checksEveryMinute(storage, monitor, today, noon, "down");
+    const days = await readMonitorDays(storage, [monitor], {
+      days: 2,
+      now: noon,
+    });
+    expect(days.get(monitor.id)?.map((each) => each.responseMs)).toEqual([
+      120,
+      undefined,
+    ]);
+  });
+
   test("a window that covered the monitor is neither observed time nor downtime, and is named on its day", async () => {
     scratch = await scratchPages(today);
     const { at, storage } = scratch;

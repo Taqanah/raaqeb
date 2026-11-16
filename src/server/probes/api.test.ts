@@ -230,7 +230,11 @@ describe("the probe API", () => {
     const it = await install();
     for (let sent = 0; sent < probeRequestsPerMinute; sent += 1) {
       // biome-ignore lint/performance/noAwaitInLoops: one request after another
-      await answerAssignments(it.context(), request(assignmentsPath, it.token));
+      const heard = await answerAssignments(
+        it.context(),
+        request(assignmentsPath, it.token)
+      );
+      expect(heard.status).toBe(200);
     }
     const refused = await answerAssignments(
       it.context(),
@@ -289,7 +293,41 @@ describe("the probe API", () => {
         0
       );
     }
-    expect(gate.tracked()).toBeLessThanOrEqual(refusalAddressesMax);
+    expect(gate.tracked()).toBe(refusalAddressesMax);
+  });
+
+  test("an address is barred for the minute after its tenth wrong token and heard again when the minute ends", () => {
+    const gate = createProbeGate();
+    for (let sent = 0; sent < refusalsPerMinute; sent += 1) {
+      gate.refused("203.0.113.7", 1000);
+    }
+    expect(gate.barred("203.0.113.7", 1000 + 59_999)).toBe(true);
+    expect(gate.barred("203.0.113.7", 1000 + 60_000)).toBe(false);
+  });
+
+  test("a minute on, the counts of addresses that went quiet are dropped, and the oldest address goes first once the bound is reached", () => {
+    const gate = createProbeGate();
+    gate.refused("203.0.113.1", 0);
+    gate.refused("203.0.113.2", 0);
+    gate.refused("203.0.113.3", 60_000);
+    expect(gate.tracked()).toBe(1);
+    for (let sent = 0; sent < refusalsPerMinute; sent += 1) {
+      gate.refused("198.51.100.1", 70_000);
+    }
+    expect(gate.barred("198.51.100.1", 70_000)).toBe(true);
+    for (let at = 0; at < refusalAddressesMax; at += 1) {
+      gate.refused(`10.0.${Math.floor(at / 256)}.${at % 256}`, 70_000);
+    }
+    expect(gate.barred("198.51.100.1", 70_000)).toBe(false);
+  });
+
+  test("an IPv6 address is keyed by its first four groups however it is written", () => {
+    const gate = createProbeGate();
+    for (let sent = 0; sent < refusalsPerMinute; sent += 1) {
+      gate.refused("2001::1:2:3:4:5", 0);
+    }
+    expect(gate.barred("2001:0:0:1:ffff:0:0:9", 0)).toBe(true);
+    expect(gate.barred("2001::9:2:3:4:5", 0)).toBe(false);
   });
 
   test("each result is judged on its own: a reason this install does not know is taken as unknown, a status code up to 999 as reported, one that fits no rule is dropped, and the answer counts the dropped", async () => {
@@ -336,6 +374,26 @@ describe("the probe API", () => {
     expect(gate.refusedPush(it.probe.id)).toBe(false);
   });
 
+  test("a round trip is stored when it is a whole number of milliseconds under ten minutes, and as none otherwise", async () => {
+    const it = await install();
+    const stored = async (said: string) => {
+      it.advance(contactWriteMs);
+      await answerAssignments(
+        it.context(),
+        request(assignmentsPath, it.token, {
+          headers: { [roundTripHeader]: said },
+        })
+      );
+      return (await it.storage.probes.list())[0]?.roundTripMs;
+    };
+    expect(await stored("0")).toBe(0);
+    expect(await stored("599999")).toBe(599_999);
+    expect(await stored("600000")).toBeUndefined();
+    expect(await stored("-5")).toBeUndefined();
+    expect(await stored("12.5")).toBeUndefined();
+    expect(await stored("fast")).toBeUndefined();
+  });
+
   test("a request with no round trip stores none", async () => {
     const it = await install();
     await answerAssignments(
@@ -362,6 +420,30 @@ describe("the probe API", () => {
       request(assignmentsPath, it.token)
     );
     expect(answer.status).toBe(503);
+  });
+
+  test("results pushed before the scheduler knows the probe are answered 503 and reported to nobody", async () => {
+    const it = await install();
+    const none = await answerResults(
+      { ...it.context(), scheduler: undefined },
+      push(it.token, { results: [saw] })
+    );
+    expect(none.status).toBe(503);
+    const reported: string[] = [];
+    const unknown = await answerResults(
+      {
+        ...it.context(),
+        scheduler: {
+          assignmentsOf: () => undefined,
+          report: (probeId) => {
+            reported.push(probeId);
+          },
+        },
+      },
+      push(it.token, { results: [saw] })
+    );
+    expect(unknown.status).toBe(503);
+    expect(reported).toEqual([]);
   });
 
   test("before a database or a scheduler there is nothing to answer", async () => {

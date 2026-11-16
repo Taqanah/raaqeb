@@ -13,6 +13,7 @@ import type {
   SeriesInput,
 } from "@/shared/schemas/maintenance.ts";
 import {
+  createWindow,
   deleteWindow,
   editWindow,
   listWindows,
@@ -215,6 +216,26 @@ describe("a series on the list and its page", () => {
     expect(result.ok && result.list.series[0]?.next).toBe(thursday);
   });
 
+  test("a series with no occurrence scheduled lists the start of the next one it has yet to schedule", async () => {
+    const { storage } = await opened();
+    const web = await component(storage, "الموقع");
+    saved(
+      await createSeries(
+        storage,
+        planned([web], {
+          recurrence: {
+            ...twiceWeekly,
+            days: { repeat: "weekly", weekdays: [2] },
+          },
+        }),
+        noon
+      )
+    );
+    await storage.maintenance.advance(tuesday);
+    const result = await listWindows(storage, tuesday);
+    expect(result.ok && result.list.series[0]?.next).toBe(tuesday + 7 * day);
+  });
+
   test("a series' page holds its unfinished occurrences soonest first and when the first it has yet to schedule starts", async () => {
     const { storage } = await opened();
     const web = await component(storage, "الموقع");
@@ -320,6 +341,43 @@ describe("editing a series", () => {
     ]);
     expect(events).toEqual([
       { type: "maintenance.rescheduled", windowId: after[0]?.id ?? "" },
+    ]);
+  });
+
+  test("a new start time announces the series' own next occurrence, never a window of something else that starts sooner", async () => {
+    const { storage } = await opened();
+    const web = await component(storage, "الموقع");
+    const series = saved(await createSeries(storage, planned([web]), noon));
+    const plain = await createWindow(
+      storage,
+      {
+        componentIds: [web],
+        endsAt: d0 + 13 * hour + 30 * 60_000,
+        message: { ar: "نقل قاعدة البيانات." },
+        startsAt: d0 + 13 * hour,
+        title: { ar: "نقل" },
+      },
+      noon
+    );
+    if (!plain.ok) {
+      throw new Error(plain.reason);
+    }
+    const { announce, events } = recorder();
+    saved(
+      await editSeries(
+        storage,
+        series.id,
+        planned([web], { recurrence: { ...twiceWeekly, time: "15:00" } }),
+        noon,
+        announce
+      )
+    );
+    const own = (await storage.maintenance.list()).find(
+      (each) => each.seriesId === series.id
+    );
+    expect(own?.startsAt).toBe(tuesday + hour);
+    expect(events).toEqual([
+      { type: "maintenance.rescheduled", windowId: own?.id ?? "" },
     ]);
   });
 
@@ -512,5 +570,32 @@ describe("ending a series", () => {
       ok: false,
       reason: "not_found",
     });
+  });
+});
+
+describe("a storage that cannot answer", () => {
+  test("every series read and write answers unavailable, never throws", async () => {
+    const { storage } = await opened();
+    const web = await component(storage, "الموقع");
+    const failing = () => Promise.reject(new Error("the database is gone"));
+    const broken: Storage = {
+      ...storage,
+      maintenance: {
+        ...storage.maintenance,
+        createSeries: failing,
+        editSeries: failing,
+        endSeries: failing,
+        findSeries: failing,
+      },
+    };
+    const unavailable = { ok: false, reason: "unavailable" } as const;
+    expect(await readSeries(broken, "s", noon)).toEqual(unavailable);
+    expect(await createSeries(broken, planned([web]), noon)).toEqual(
+      unavailable
+    );
+    expect(await editSeries(broken, "s", planned([web]), noon)).toEqual(
+      unavailable
+    );
+    expect(await endSeries(broken, "s", noon)).toEqual(unavailable);
   });
 });

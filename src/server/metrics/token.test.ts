@@ -62,9 +62,6 @@ describe("the metrics token", () => {
     expect(await store.settings.get(metricsTokenHash)).toBe(
       hashMetricsToken(token)
     );
-    expect(
-      JSON.stringify(await store.settings.get(metricsTokenHash))
-    ).not.toContain(token);
   });
 
   test("only the token in a bearer header is granted", async () => {

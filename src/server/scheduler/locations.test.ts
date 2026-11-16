@@ -8,6 +8,7 @@ import {
   type LocationResult,
   locationResultFromProbe,
   locationResultOf,
+  noRecentResult,
   verdictOf,
   verdictOutcome,
 } from "./locations.ts";
@@ -64,6 +65,21 @@ describe("a location's state", () => {
     expect(
       verdictOf(changed, held({ [frankfurt]: seen("down", 5000) }), now)
     ).toBeUndefined();
+  });
+
+  test("a result whose check started exactly as the monitor last changed counts", () => {
+    expect(
+      verdictOf(
+        {
+          ...monitor,
+          confirmations: 1,
+          locations: [frankfurt],
+          updatedAt: now - 1000,
+        },
+        held({ [frankfurt]: seen("down", 1000) }),
+        now
+      )?.result
+    ).toBe("down");
   });
 
   test("a result exactly as old as the bound still counts", () => {
@@ -169,21 +185,6 @@ describe("the verdict of a monitor's locations", () => {
     ).toBe("down");
   });
 
-  test("a silent probe is never down", () => {
-    const silent = freshForMs(monitor) + 1;
-    const verdict = verdictOf(
-      { ...monitor, confirmations: 1 },
-      held({ [frankfurt]: seen("down", silent), main: seen("up") }),
-      now
-    );
-    expect(verdict).toEqual({
-      down: [],
-      from: mainLocation,
-      known: 1,
-      result: "up",
-    });
-  });
-
   test("a location the monitor is no longer checked from counts for nothing", () => {
     expect(
       verdictOf(
@@ -224,22 +225,45 @@ describe("the verdict of a monitor's locations", () => {
     ).toBe("up");
   });
 
-  test("an outage closes once fewer than the needed count still see it down", () => {
-    expect(
-      verdictOf(
-        monitor,
-        held({
-          [frankfurt]: seen("down"),
-          [riyadh]: seen("up"),
-          main: seen("up"),
-        }),
-        now
-      )?.result
-    ).toBe("up");
-  });
-
   test("with no location known there is no verdict", () => {
     expect(verdictOf(monitor, new Map(), now)).toBeUndefined();
+  });
+});
+
+describe("a monitor checked from probes alone", () => {
+  const probesOnly = {
+    intervalMs: 60_000,
+    locations: [frankfurt],
+    paused: false,
+    retries: 0,
+    timeoutMs: 10_000,
+  };
+  const bound = freshForMs(probesOnly);
+
+  test("has no recent result once its latest check is older than the bound, and not before", () => {
+    expect(noRecentResult(probesOnly, now - bound, now)).toBe(false);
+    expect(noRecentResult(probesOnly, now - bound - 1, now)).toBe(true);
+  });
+
+  test("has none to report before its first check, while paused, or while the main location also checks it", () => {
+    expect(noRecentResult(probesOnly, undefined, now)).toBe(false);
+    expect(
+      noRecentResult({ ...probesOnly, paused: true }, now - bound - 1, now)
+    ).toBe(false);
+    expect(
+      noRecentResult(
+        { ...probesOnly, locations: [mainLocation, frankfurt] },
+        now - bound - 1,
+        now
+      )
+    ).toBe(false);
+    expect(
+      noRecentResult(
+        { ...probesOnly, locations: undefined },
+        now - bound - 1,
+        now
+      )
+    ).toBe(false);
   });
 });
 

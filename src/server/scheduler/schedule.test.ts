@@ -304,9 +304,11 @@ describe("what is due", () => {
     expect(dueAt(after, "b")).toBe(dueAt(schedule, "b"));
   });
 
-  test("a check that starts more than an interval late anchors the next run on its own start, so runs never pile up to catch up", () => {
+  test("a check that starts an interval or more late anchors the next run on its own start, so runs never pile up to catch up", () => {
     const after = afterCheck(schedule, "a", t0 + 70_000, "UTC");
     expect(dueAt(after, "a")).toBe(t0 + 70_000 + 60_000);
+    const exactly = afterCheck(schedule, "a", t0 + 60_000, "UTC");
+    expect(dueAt(exactly, "a")).toBe(t0 + 60_000 + 60_000);
   });
 
   test("a check of a monitor no longer on the schedule changes nothing", () => {

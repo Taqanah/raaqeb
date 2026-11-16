@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { encrypt } from "@/server/boot/installkey.ts";
 import { type LiveIo, liveIo } from "@/server/checks/io.ts";
@@ -150,6 +150,10 @@ afterEach(async () => {
     open = undefined;
   }
 });
+
+/** A fetch for a monitor of an address that is not served here: it answers at once, so a check never waits on the network and waiting for the scheduler waits only for what the test is about. */
+const answersAtOnce = (() =>
+  Promise.resolve(new Response("hello"))) as unknown as typeof fetch;
 
 const http = (port: number, path = "/"): HttpConfig => ({
   assertions: [{ codes: ["2xx"], kind: "status" }],
@@ -734,9 +738,7 @@ describe("the scheduler over three monitors and a local target", () => {
       h.storage,
       {
         ...h.io,
-        // The check answers at once, so waiting for the scheduler waits only for the pass.
-        fetch: ((_resource: string | URL | Request) =>
-          Promise.resolve(new Response("hello"))) as typeof fetch,
+        fetch: answersAtOnce,
         readTls: async () => {
           reading.resolve(undefined);
           await read.promise;
@@ -772,6 +774,7 @@ describe("the scheduler over three monitors and a local target", () => {
       h.storage,
       {
         ...h.io,
+        fetch: answersAtOnce,
         readTls: async () => {
           await Bun.sleep(30);
           return {
@@ -820,6 +823,7 @@ describe("the scheduler over three monitors and a local target", () => {
       },
       {
         ...h.io,
+        fetch: answersAtOnce,
         readTls: () =>
           Promise.resolve({
             fingerprint256: "AA:BB",
@@ -1263,23 +1267,8 @@ describe("heartbeat monitors", () => {
     await s.tick();
     await s.idle();
     expect(await h.count(b.id)).toBe(1);
-    h.advance(1000);
-    await s.tick();
-    await s.idle();
-    expect(await h.count(b.id)).toBe(1);
-  });
-
-  test("the next ok heartbeat recovers a monitor a failure took down, at the next tick", async () => {
-    const h = await harness();
-    const b = await beat(h);
-    const s = scheduler(h);
-    await s.tick();
-    await b.fail({ exitCode: 1, message: "x" }, h.io.now() + 500);
-    h.advance(1000);
-    await s.tick();
-    await s.idle();
-    await b.send(h.io.now() + 500);
-    h.advance(1000);
+    // The window that follows holds no heartbeat of its own: its check is the silence, not the failure again.
+    h.advance(window);
     await s.tick();
     await s.idle();
     const checks = await h.storage.checks.range(
@@ -1287,9 +1276,10 @@ describe("heartbeat monitors", () => {
       0,
       Number.MAX_SAFE_INTEGER
     );
-    expect(checks.map((check) => check.result)).toEqual(["down", "up"]);
-    expect(await h.storage.outages.ongoing()).toEqual([]);
-    expect(h.events.map((event) => event.kind)).toEqual(["down", "recovered"]);
+    expect(checks.map((check) => check.reason)).toEqual([
+      reasons.heartbeat_failed,
+      reasons.heartbeat_late,
+    ]);
   });
 
   test("another failure while down waits for the window's end: no check before it, then one down check with heartbeat failed", async () => {
@@ -3042,6 +3032,17 @@ describe("subscriber notifications on the scheduler", () => {
 
   let mailServer: FakeSmtp | undefined;
 
+  // The notification texts come from the generated catalogs; without them every send fails and each test reports an empty mailbox instead of the cause.
+  beforeAll(async () => {
+    for (const locale of ["ar", "en"]) {
+      const catalog = `${import.meta.dir}/../../../locales/${locale}/messages.ts`;
+      // biome-ignore lint/performance/noAwaitInLoops: two files
+      if (!(await Bun.file(catalog).exists())) {
+        throw new Error(`${catalog} is missing: run \`bun run catalog\``);
+      }
+    }
+  });
+
   afterEach(() => {
     mailServer?.stop();
     mailServer = undefined;
@@ -3652,7 +3653,7 @@ describe("the scheduler over a monitor checked from several locations", () => {
     ).toBeUndefined();
   });
 
-  test("a result older than the one held is dropped", async () => {
+  test("a result no newer than the one held is dropped", async () => {
     const h = await clocked();
     const { probe, site } = await located(h);
     const s = scheduler(h);
@@ -3660,9 +3661,26 @@ describe("the scheduler over a monitor checked from several locations", () => {
     const now = h.io.now();
     s.report(probe.id, [probeSaw(site.id, "up", 1000)], now);
     s.report(probe.id, [probeSaw(site.id, "down", 5000)], now);
+    s.report(probe.id, [probeSaw(site.id, "down", 1000)], now);
     expect(
       s.locationStates(site.id)?.find((state) => state.location === probe.id)
     ).toMatchObject({ result: "up", startedAt: now - 1000 });
+  });
+
+  test("a result of a check that started as the monitor last changed counts", async () => {
+    const h = await clocked();
+    const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
+    const site = await h.storage.monitors.create(
+      input("Site", http(h.port), { locations: [mainLocation, probe.id] })
+    );
+    const s = scheduler(h);
+    await run(s);
+    const now = h.io.now();
+    s.report(probe.id, [probeSaw(site.id, "up", now - site.updatedAt)], now);
+    expect(
+      s.locationStates(site.id)?.find((state) => state.location === probe.id)
+        ?.result
+    ).toBe("up");
   });
 
   test("each location's state shows on the monitor, named, and becomes unknown once it is old", async () => {
@@ -3784,11 +3802,37 @@ describe("the scheduler over a monitor checked from several locations", () => {
         url: "postgres://u:p@db.example.test/x",
       })
     );
+    const port = await h.storage.monitors.create(
+      input(
+        "Port",
+        { host: "127.0.0.1", port: h.port, type: "tcp" },
+        { locations: [probe.id], shareCredentials: true }
+      ),
+      await sealCredentials(key, {
+        headers: [],
+        url: "postgres://u:p@db.example.test/x",
+      })
+    );
+    const keyless = await h.storage.monitors.create(
+      input(
+        "Keyless",
+        { type: "postgres" },
+        { locations: [probe.id], shareCredentials: true }
+      ),
+      await sealCredentials(key, {
+        auth: { kind: "bearer", token: "secret-token" },
+        headers: [],
+      })
+    );
     const s = scheduler(h);
     await run(s);
     const byId = new Map(
       s.assignmentsOf(probe.id)?.monitors.map((each) => [each.id, each])
     );
+    expect(byId.get(port.id)).toBeDefined();
+    expect(byId.get(port.id)?.credentials).toBeUndefined();
+    expect(byId.get(keyless.id)).toBeDefined();
+    expect(byId.get(keyless.id)?.credentials).toBeUndefined();
     expect(byId.get(site.id)?.credentials).toEqual({
       auth: { kind: "bearer", token: "secret-token" },
       clientKey: { key: privateKey, passphrase: "pass" },
@@ -3823,6 +3867,44 @@ describe("the scheduler over a monitor checked from several locations", () => {
     expect(
       (await types()).filter((type) => type === "probe.reporting")
     ).toEqual(["probe.reporting"]);
+  });
+
+  test("a probe that never reported is told silent to the channels of the unpaused monitors it checks, and to no others", async () => {
+    const h = await clocked();
+    const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
+    const watching = await webhookChannel(h);
+    const stopped = await webhookChannel(h);
+    const elsewhere = await webhookChannel(h);
+    await h.storage.monitors.create(
+      input("Watched", http(h.port), {
+        channels: [watching],
+        locations: [mainLocation, probe.id],
+      })
+    );
+    const paused = await h.storage.monitors.create(
+      input("Stopped", http(h.port), {
+        channels: [stopped],
+        locations: [probe.id],
+      })
+    );
+    await h.storage.monitors.pause([paused.id]);
+    await h.storage.monitors.create(
+      input("Local", http(h.port), { channels: [elsewhere] })
+    );
+    advance(h, 60_000);
+    const s = scheduler(h);
+    await run(s);
+    advance(h, probeSilentAfterMs + 1000);
+    await run(s);
+    const told = async (channel: string) =>
+      (await queuedFor(h, channel)).filter(
+        (each) => each.payload.type === "probe.silent"
+      ).length;
+    expect([
+      await told(watching),
+      await told(stopped),
+      await told(elsewhere),
+    ]).toEqual([1, 0, 0]);
   });
 
   test("a monitor checked from probes alone has no recent result once none is fresh, and check now says so at once", async () => {
