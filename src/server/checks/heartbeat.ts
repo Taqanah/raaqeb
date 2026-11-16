@@ -189,7 +189,7 @@ export function evaluateHeartbeat({
       ? undefined
       : {
           assertion: undefined,
-          error: lastFailure?.message,
+          error: failed ? lastFailure.message : undefined,
           monitorId,
           params: failed
             ? {

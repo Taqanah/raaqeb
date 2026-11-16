@@ -270,14 +270,39 @@ describe("a window whose latest heartbeat said the job failed", () => {
     });
   });
 
-  // The late window's detail repeats the message of the earlier window's failure as its error.
-  test.failing("a late window says nothing of a failure an earlier window reported", () => {
+  test("a late window says nothing of a failure an earlier window reported", () => {
     const outcome = evaluateHeartbeat({
       ...window,
       lastArrivedAt: t0 - minute,
       lastFailure: { exitCode: 1, message: "old" },
     });
     expect(outcome.check.reason).toBe(reasons.heartbeat_late);
+    expect(outcome.detail?.error).toBeUndefined();
+  });
+
+  test("a failure at the very moment the window opened is this window's, one at the moment of the evaluation is the next window's and says nothing here", () => {
+    const failure = { exitCode: 1, message: "boom" };
+    const opening = evaluateHeartbeat({
+      ...window,
+      lastArrivedAt: t0,
+      lastFailure: failure,
+    });
+    expect(opening.check.reason).toBe(reasons.heartbeat_failed);
+    expect(opening.detail?.error).toBe("boom");
+    const evaluation = evaluateHeartbeat({
+      ...window,
+      lastArrivedAt: window.now,
+      lastFailure: failure,
+    });
+    expect(evaluation.check.reason).toBe(reasons.heartbeat_late);
+    expect(evaluation.detail).toBeDefined();
+    expect(evaluation.detail?.error).toBeUndefined();
+  });
+
+  test("a window with no heartbeat at all is late with no error", () => {
+    const outcome = evaluateHeartbeat({ ...window, lastArrivedAt: undefined });
+    expect(outcome.check.reason).toBe(reasons.heartbeat_late);
+    expect(outcome.detail).toBeDefined();
     expect(outcome.detail?.error).toBeUndefined();
   });
 });
