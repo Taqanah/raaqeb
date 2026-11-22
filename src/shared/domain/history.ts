@@ -32,6 +32,15 @@ export interface HistoryMonth {
   readonly previous: Month | undefined;
 }
 
+/** The history's first month: its oldest entry's, or the longest day bar's first day's when that is earlier. `starts` are the entries' start times. */
+export function historyFirst(starts: readonly number[], now: number): Month {
+  const current = monthOf(now);
+  // The longest bar any page draws, so no page's day card names a month before the history.
+  const bar = monthOf(utcDayStart(now) - (Math.max(...barLengths) - 1) * dayMs);
+  const oldest = starts.length > 0 ? monthOf(Math.min(...starts)) : current;
+  return oldest < bar ? oldest : bar;
+}
+
 /**
  * The month the history shows, the current one when none is named, with
  * its neighbours; nothing for a month outside the range. `starts` are the
@@ -43,10 +52,7 @@ export function historyMonth(
   now: number
 ): HistoryMonth | undefined {
   const current = monthOf(now);
-  // The longest bar any page draws, so no page's day card names a month before the history.
-  const bar = monthOf(utcDayStart(now) - (Math.max(...barLengths) - 1) * dayMs);
-  const oldest = starts.length > 0 ? monthOf(Math.min(...starts)) : current;
-  const first = oldest < bar ? oldest : bar;
+  const first = historyFirst(starts, now);
   const shown = month ?? current;
   // yyyy-mm sorts as it reads.
   if (shown < first || shown > current) {

@@ -54,6 +54,7 @@ import {
 } from "@/server/pages/fixture.ts";
 import { removePageImage, uploadPageImage } from "@/server/pages/images.ts";
 import { createPage, deletePage, savePage } from "@/server/pages/pages.ts";
+import { saveAppearance } from "@/server/settings/appearance.ts";
 import { saveGeneralSettings } from "@/server/settings/general.ts";
 import { defaultCustomization } from "@/shared/schemas/page.ts";
 
@@ -369,6 +370,16 @@ const writes: readonly (readonly [string, Write, Setup?])[] = [
         },
         { trustedProxies: [] }
       ),
+  ],
+  [
+    "the appearance saved, which the sign-in and onboarding pages the memo keeps are drawn in",
+    (w) =>
+      saveAppearance(w.s.storage, {
+        density: "compact",
+        fontSize: "large",
+        radius: "none",
+        theme: "dark",
+      }),
   ],
 ];
 

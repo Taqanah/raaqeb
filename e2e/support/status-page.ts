@@ -72,6 +72,14 @@ export async function savePage(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
+/** Waits until `read` answers `expected`: an address a stranger was answered before may answer its stale entry, as it was, while that entry refreshes. */
+export async function afterRefresh<T>(
+  read: () => Promise<T>,
+  expected: T
+): Promise<void> {
+  await expect.poll(read, { timeout: 20_000 }).toEqual(expected);
+}
+
 /** The minute a time reads on the operator's clock, as a datetime-local field takes it. */
 export function wallTime(ms: number, timeZone: string): string {
   const parts = Object.fromEntries(

@@ -911,6 +911,36 @@ describe("an incident, window or month a page does not have", () => {
     expect(route.targets).toMatchObject([{ view: "incident" }]);
   });
 
+  test("fifty months before its history cost one read of the page's history while the counter holds, and a write reads it again", async () => {
+    const { s } = await withIncident();
+    let reads = 0;
+    const counted = {
+      ...s.storage,
+      incidents: {
+        ...s.storage.incidents,
+        list: () => {
+          reads += 1;
+          return s.storage.incidents.list();
+        },
+      },
+    };
+    const memo = createPublicMemo({ now: () => now });
+    const route = renders();
+    const app = missingRenders();
+    const ask = (path: string) =>
+      memo.answer(request(path), counted, route.render, undefined, app.render);
+    for (let i = 0; i < 50; i += 1) {
+      const month = `${2010 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`;
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      expect((await ask(`/history/${month}`))?.status, month).toBe(404);
+    }
+    expect(reads).toBe(1);
+    expect(route.targets).toEqual([]);
+    await s.storage.bump();
+    await ask("/history/2009-01");
+    expect(reads).toBe(2);
+  });
+
   test("a counter that cannot be read renders the not-found fresh and keeps none", async () => {
     const { s } = await withIncident();
     const memo = createPublicMemo({ now: () => now });
@@ -925,5 +955,120 @@ describe("an incident, window or month a page does not have", () => {
       expect(answer?.status).toBe(404);
     }
     expect(app.asked).toHaveLength(2);
+  });
+});
+
+/** The app's render of a page: counts its calls, answers a 200 document, with a cookie or another status when told. */
+function pageRenders(answer: () => ResponseInit = () => ({})) {
+  let calls = 0;
+  const asked: Request[] = [];
+  return {
+    asked,
+    calls: () => calls,
+    render: (address?: Request) => {
+      calls += 1;
+      if (address) {
+        asked.push(address);
+      }
+      return Promise.resolve(
+        new Response(`page ${calls}`, {
+          headers: { "content-type": "text/html; charset=utf-8" },
+          ...answer(),
+        })
+      );
+    },
+  };
+}
+
+describe("a page everyone without a session gets the same, in the memo", () => {
+  test("costs one render per locale however often, through whatever host and with whatever cookie it is asked", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = pageRenders();
+    const ask = (path: string, headers: Record<string, string> = {}) =>
+      memo.anonymous(request(path, { headers }), s.storage, app.render);
+    for (const path of ["/sign-in", "/sign-in", "/sign-in?locale=en"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      expect((await ask(path))?.status, path).toBe(200);
+    }
+    expect(await (await ask("/sign-in"))?.text()).toBe("page 1");
+    for (const origin of ["https://a.example", "https://b.example"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      await ask("/sign-in", { [requestOriginHeader]: origin });
+    }
+    await ask("/sign-in", { cookie: "raaqeb.session_token=stale" });
+    expect(app.calls()).toBe(2);
+  });
+
+  test("is rendered at its path and search alone: no cookie and no origin shape the page every visitor gets", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = pageRenders();
+    await memo.anonymous(
+      request("/sign-in?locale=en", {
+        headers: { cookie: "raaqeb.session_token=x" },
+      }),
+      s.storage,
+      app.render
+    );
+    const [address] = app.asked;
+    expect(new URL(address?.url ?? "").pathname).toBe("/sign-in");
+    expect(new URL(address?.url ?? "").search).toBe("?locale=en");
+    expect([...(address?.headers.keys() ?? [])]).toEqual([]);
+  });
+
+  test("another search, another page or another method is not the memo's", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = pageRenders();
+    for (const asked of [
+      request("/sign-in?x=1"),
+      request("/reset-password?token=abc"),
+      request("/admin/monitors"),
+      request("/sign-in", { method: "POST" }),
+    ]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.anonymous(asked, s.storage, app.render);
+      expect(answer, asked.url).toBeUndefined();
+    }
+    expect(app.calls()).toBe(0);
+  });
+
+  test("a render that is no 200, or that sets a cookie, is answered as it came and kept by no one", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    for (const init of [
+      { status: 307 },
+      { headers: { "set-cookie": "a=b" } },
+    ]) {
+      const app = pageRenders(() => init);
+      // biome-ignore lint/performance/noAwaitInLoops: one case at a time
+      await memo.anonymous(request("/sign-in"), s.storage, app.render);
+      await memo.anonymous(request("/sign-in"), s.storage, app.render);
+      expect(app.calls()).toBe(2);
+    }
+  });
+
+  test("a moved change counter renders it again, and with no database open it is still rendered once", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = pageRenders();
+    await memo.anonymous(request("/sign-in"), s.storage, app.render);
+    await s.storage.bump();
+    await memo.anonymous(request("/sign-in"), s.storage, app.render);
+    expect(app.calls()).toBe(2);
+    const onboarding = createPublicMemo({ now: () => now });
+    const screens = pageRenders();
+    await onboarding.anonymous(
+      request("/onboarding"),
+      undefined,
+      screens.render
+    );
+    await onboarding.anonymous(
+      request("/onboarding"),
+      undefined,
+      screens.render
+    );
+    expect(screens.calls()).toBe(1);
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { messages as ar } from "../../../locales/ar/messages.ts";
 import { messages as en } from "../../../locales/en/messages.ts";
-import { catalogFromJson, createMessages } from "./messages.ts";
+import { catalogFromJson, catalogText, createMessages } from "./messages.ts";
 
 describe("a locale's messages", () => {
   test("answer the words of that locale for an id", () => {
@@ -35,5 +35,15 @@ describe("a locale's messages", () => {
     expect(i18n._("app_name", { name: "example.com" })).toBe(
       "Watching example.com"
     );
+  });
+});
+
+describe("a catalog as the text a document carries", () => {
+  test("reads back as the catalog, holds no `<`, and is written once per catalog", () => {
+    const text = catalogText(ar);
+    expect(catalogFromJson(text)).toEqual(ar);
+    expect(text).not.toContain("<");
+    expect(catalogText(ar)).toBe(text);
+    expect(catalogText(en)).not.toBe(text);
   });
 });

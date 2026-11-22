@@ -23,14 +23,14 @@
  * Every HTML response leaves with the security headers.
  */
 import type { ServerEntry } from "@tanstack/react-start/server-entry";
-import { mailSettled } from "./server/auth/auth.ts";
+import { authFor, mailSettled, resetLinkOpen } from "./server/auth/auth.ts";
 import {
   needsTerminal,
   processTerminal,
   resetPasswordCommand,
   type Terminal,
 } from "./server/auth/command.ts";
-import { isOperator } from "./server/auth/session.ts";
+import { carriesSession, isOperator } from "./server/auth/session.ts";
 import {
   type CommandLine,
   helpText,
@@ -53,7 +53,13 @@ import { liveIo } from "./server/checks/io.ts";
 import { error as logError, info as logInfo } from "./server/log.ts";
 import { createPublicMemo, type RenderMissing } from "./server/memo/public.ts";
 import { onboardingStep } from "./server/onboarding/onboarding.ts";
-import type { PublicTarget } from "./server/pages/public.ts";
+import {
+  busyAnswer,
+  createPace,
+  type Pace,
+  type PaceLimits,
+} from "./server/pace.ts";
+import { type PublicTarget, rendersDocument } from "./server/pages/public.ts";
 import { currentVersion } from "./server/release/release.ts";
 import { closed, type MemoAnswer, requestLine } from "./server/request-log.ts";
 import { healthCommand, healthUrl } from "./server/scheduler/health.ts";
@@ -119,9 +125,10 @@ export interface Running {
 /** The running command, or the exit code when the command ends. */
 export type MainResult = Running | number;
 
-/** What a test hands the entry: the storage options but the migrations, which are the build's, the terminal the reset command talks to (the process's own by default), and Bun's idle timeout in seconds (Bun's own by default). */
+/** What a test hands the entry: the storage options but the migrations, which are the build's, the terminal the reset command talks to (the process's own by default), Bun's idle timeout in seconds (Bun's own by default), and the pace of renders without a session (`strangerPace` by default). */
 export interface MainOptions extends Omit<OpenStorageOptions, "migrations"> {
   readonly idleTimeoutSeconds?: number;
+  readonly pace?: StrangerPace;
   readonly terminal?: Terminal;
 }
 
@@ -211,7 +218,8 @@ export async function main(
       routes,
       holder,
       opener,
-      options.idleTimeoutSeconds
+      options.idleTimeoutSeconds,
+      options.pace
     );
   } catch {
     // Bun's own message repeats the port; the rule is to name the settings only.
@@ -365,6 +373,67 @@ export function maintenanceLine(window: MaintenanceWindow): string {
   return `maintenance window ${window.id} ${stageWords[window.stage]}`;
 }
 
+/**
+ * The kinds of page a stranger's renders take turns between, so a flood of
+ * one kind waits behind itself alone: `refresh`, a status page answer the
+ * memo keeps (a view, document, badge, feed, summary or not-found) that went
+ * stale, which a visitor is answered with while it refreshes; `cold`, one it
+ * holds nothing for; `pages`, the pages everyone gets the same (sign-in,
+ * forgot-password, sign-out, a reset page with no link, onboarding's language
+ * and database screens); `subscriptions`, a subscription's page; `reset`, a
+ * reset page whose link is open; `onboarding`, onboarding's account screen
+ * and a screen asked with another search; `others`, every other document.
+ */
+export type RenderLane =
+  | "cold"
+  | "onboarding"
+  | "others"
+  | "pages"
+  | "refresh"
+  | "reset"
+  | "subscriptions";
+
+/** The render pace's settings: the reads that check a made-up item before its not-found, one at a time with no gap, and the renders, taking turns between their lanes. */
+export interface StrangerPace {
+  readonly checks: PaceLimits<"checks">;
+  readonly renders: PaceLimits<RenderLane>;
+}
+
+/**
+ * The render pace, one table. Renders start half a second apart whatever
+ * their lane: on a 256 MB Fly machine cycling every status page address, four
+ * a second took its available memory from 118 to 51 MB and still falling, one
+ * a second held it near 75 MB. A render there takes well under a second, so
+ * five seconds is a wedged one, and two may run on past it.
+ */
+export const strangerPace: StrangerPace = {
+  checks: {
+    burst: 1,
+    gapMs: 0,
+    overrun: 2,
+    turnMs: 5000,
+    waiting: { checks: 32 },
+  },
+  renders: {
+    burst: 60,
+    gapMs: 500,
+    overrun: 2,
+    turnMs: 5000,
+    waiting: {
+      cold: 64,
+      onboarding: 8,
+      others: 8,
+      pages: 16,
+      refresh: 64,
+      reset: 8,
+      subscriptions: 32,
+    },
+  },
+};
+
+/** Bun's own idle timeout, when the entry is given none. */
+const bunIdleSeconds = 10;
+
 /** The largest body a request other than an import may carry: Start reads a server function's whole body before any check, and the largest one the admin sends is a 1 MB cover image. */
 export const bodyLimitBytes = 8 * 1024 * 1024;
 
@@ -401,8 +470,13 @@ export function serve(
   routes: Record<string, Response>,
   holder: StorageHolder,
   opener: DatabaseOpener,
-  idleTimeoutSeconds?: number
+  idleTimeoutSeconds?: number,
+  paceLimits: StrangerPace = strangerPace
 ): Bun.Server<undefined> {
+  // A stranger's renders take turns, so a burst stays within what a small machine holds.
+  const renders = createPace(paceLimits.renders);
+  const idleSeconds = idleTimeoutSeconds ?? bunIdleSeconds;
+  const checks = createPace(paceLimits.checks);
   // An unpublished page shows its views to the signed-in operator alone.
   const memo = createPublicMemo({
     now: Date.now,
@@ -453,28 +527,37 @@ export function serve(
       let rendered = false;
       let memoised: Response | undefined;
       let response: Response;
+      holdWhileWaiting(server, request);
+      const { checked, paced, stranger } = gatesFor(
+        resolved,
+        () => isOperator(holder.current, settings, resolved.headers),
+        renders,
+        checks
+      );
       // A not-found the memo keeps still: its stylesheet linked, since the document is served at every address of its frame.
-      const renderMissing: RenderMissing = async (address, target) =>
-        await handler.fetch(address, {
-          context: context(target),
-          inlineCss: false,
-        });
+      const renderMissing: RenderMissing = (address, target, refresh) =>
+        paced(
+          visitorLane(refresh),
+          async () =>
+            await handler.fetch(address, {
+              context: context(target),
+              inlineCss: false,
+            })
+        );
       try {
         memoised = await memo.answer(
           resolved,
           storage,
-          async (target) => {
-            rendered = true;
-            // A HEAD renders as a GET, so the stored entry has its body.
-            return await handler.fetch(
-              new Request(resolved, { method: "GET" }),
-              {
+          (target, refresh) =>
+            paced(visitorLane(refresh), async () => {
+              rendered = true;
+              return await handler.fetch(viewRequest(resolved, refresh), {
                 context: context(target),
-              }
-            );
-          },
+              });
+            }),
           counter,
-          renderMissing
+          renderMissing,
+          checked
         );
         response =
           memoised ??
@@ -485,12 +568,32 @@ export function serve(
             counter,
             (pathname) => goneAt(storage, request.method, pathname)
           )) ??
-          (await handler.fetch(resolved, { context: context(undefined) }));
+          (await adminForStranger(resolved, storage, stranger)) ??
+          (await memo.anonymous(
+            resolved,
+            storage,
+            (address) =>
+              paced(
+                "pages",
+                async () =>
+                  await handler.fetch(address, { context: context(undefined) })
+              ),
+            counter
+          )) ??
+          (await documentFor(
+            resolved,
+            { checked, paced, settings, storage },
+            async () =>
+              await handler.fetch(resolved, { context: context(undefined) })
+          ));
       } catch (thrown) {
         if (logging) {
           logRequest(resolved, 500, started, undefined);
         }
         throw thrown;
+      } finally {
+        // Answered: the connection's idle timer is Bun's own again, so a kept-alive socket closes as any other does.
+        server.timeout(request, idleSeconds);
       }
       if (logging) {
         logRequest(
@@ -500,14 +603,8 @@ export function serve(
           memoAnswer(memoised, rendered)
         );
       }
-      if (!isHtml(response)) {
-        return response;
-      }
-      return withSecurityHeaders(response, {
-        framable: memoised !== undefined,
-        // The address the memo read with the change counter on this GET: no read of its own.
-        https: memo.publicAddress()?.startsWith("https:") ?? false,
-      });
+      // The address the memo read with the change counter on this GET: no read of its own.
+      return secured(response, memoised !== undefined, memo.publicAddress());
     },
     hostname: settings.host,
     idleTimeout: idleTimeoutSeconds,
@@ -522,6 +619,177 @@ export function serve(
     routes,
   });
   return server;
+}
+
+/** An HTML answer with the security headers, framable when it is a status page's view, with HSTS when the public address is https; any other answer as it is. */
+function secured(
+  response: Response,
+  framable: boolean,
+  publicAddress: string | undefined
+): Response {
+  if (!isHtml(response)) {
+    return response;
+  }
+  return withSecurityHeaders(response, {
+    framable,
+    https: publicAddress?.startsWith("https:") ?? false,
+  });
+}
+
+/** A request for a document, which may wait for a render, its own or one it joins, keeps its connection past Bun's idle timer; the entry gives the timer back once it is answered. So does one for an answer the memo keeps beside the views. Any other API call, a server function or the health check keeps Bun's timer, and asks for more itself when it needs it. */
+function holdWhileWaiting(
+  server: Pick<Bun.Server<undefined>, "timeout">,
+  request: Request
+): void {
+  const { pathname } = new URL(request.url);
+  if (
+    (request.method === "GET" || request.method === "HEAD") &&
+    (rendersDocument(pathname) || memoResource.test(pathname))
+  ) {
+    server.timeout(request, 255);
+  }
+}
+
+/** The answers the memo keeps beside the views: a view's document, a badge, a feed, a summary. */
+const memoResource = /^\/api\/pages\/|\/(badge\.svg|feed\.atom|summary\.json)$/;
+
+/** A status page answer's lane: a refresh of what the memo keeps, or an address it holds nothing for. */
+function visitorLane(refresh: boolean): RenderLane {
+  return refresh ? "refresh" : "cold";
+}
+
+/** The request a view renders through: a HEAD as a GET, so the stored entry has its body, and a refresh the visitor may not wait for with no signal of theirs to end it. */
+function viewRequest(request: Request, refresh: boolean): Request {
+  return refresh
+    ? new Request(request.url, { headers: request.headers })
+    : new Request(request, { method: "GET" });
+}
+
+/** A request's way through the render pace: whether it is a stranger's, read once and only when it names a session cookie, and its renders and checks paced if it is; a session's run at once, and a render with no room is a 503. */
+function gatesFor(
+  request: Request,
+  signedIn: () => Promise<boolean>,
+  renders: Pace<RenderLane>,
+  checks: Pace<"checks">
+) {
+  let strangerRead: Promise<boolean> | undefined;
+  const stranger = (): Promise<boolean> => {
+    strangerRead ??= carriesSession(request.headers)
+      ? signedIn().then((live) => !live)
+      : Promise.resolve(true);
+    return strangerRead;
+  };
+  return {
+    checked: async (
+      read: () => Promise<boolean>
+    ): Promise<boolean | undefined> =>
+      (await stranger()) ? await checks.run("checks", read) : await read(),
+    paced: async (
+      lane: RenderLane,
+      render: () => Promise<Response>
+    ): Promise<Response> =>
+      (await stranger())
+        ? ((await renders.run(lane, render)) ?? busyAnswer())
+        : await render(),
+    stranger,
+  };
+}
+
+const resetPage = /^\/reset-password\/?$/;
+
+/** What the entry hands a document's render: the request's gates and what a reset link's check reads. */
+interface DocumentGates {
+  readonly checked: (
+    read: () => Promise<boolean>
+  ) => Promise<boolean | undefined>;
+  readonly paced: (
+    lane: RenderLane,
+    render: () => Promise<Response>
+  ) => Promise<Response>;
+  readonly settings: BootSettings;
+  readonly storage: Storage | undefined;
+}
+
+/** The lane a stranger's document renders in: a subscription's page, an onboarding screen, a reset link that is open, every other one; the check tells an open link from one that is not. */
+async function laneOf(url: URL, gates: DocumentGates): Promise<RenderLane> {
+  if (subscriptionPage.test(url.pathname)) {
+    return "subscriptions";
+  }
+  if (onboardingScreen.test(url.pathname)) {
+    return "onboarding";
+  }
+  const token = url.searchParams.get("token");
+  if (resetPage.test(url.pathname) && token) {
+    const open = await gates.checked(() =>
+      resetOpen(gates.storage, gates.settings, token)
+    );
+    return open ? "reset" : "others";
+  }
+  return "others";
+}
+
+/** The app's answer to any other request: a document renders at its lane's pace, anything else at once. */
+async function documentFor(
+  request: Request,
+  gates: DocumentGates,
+  render: () => Promise<Response>
+): Promise<Response> {
+  const url = new URL(request.url);
+  if (
+    !(
+      (request.method === "GET" || request.method === "HEAD") &&
+      rendersDocument(url.pathname)
+    )
+  ) {
+    return await render();
+  }
+  return await gates.paced(await laneOf(url, gates), render);
+}
+
+/** Whether a reset link is one the install would honour now; a read that fails says no, and the page renders as any other. */
+async function resetOpen(
+  storage: Storage | undefined,
+  settings: BootSettings,
+  token: string
+): Promise<boolean> {
+  if (!storage) {
+    return false;
+  }
+  try {
+    return await resetLinkOpen(
+      await authFor(storage, settings),
+      token,
+      Date.now()
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** An admin page, as the guard reads it; its import upload and history download are server routes with answers of their own. */
+const adminPage = /^\/admin(\/.*)?$/i;
+const adminServerRoute = /^\/admin\/import\/?$|\.jsonl\.zst$/i;
+
+/** A stranger's admin page load, sent where the admin guard sends it without rendering anything: to onboarding until the account exists, then to sign-in; nothing for any other request. */
+async function adminForStranger(
+  request: Request,
+  storage: Storage | undefined,
+  stranger: () => Promise<boolean>
+): Promise<Response | undefined> {
+  const { pathname } = new URL(request.url);
+  if (
+    !(
+      (request.method === "GET" || request.method === "HEAD") &&
+      adminPage.test(pathname)
+    ) ||
+    adminServerRoute.test(pathname) ||
+    !(await stranger())
+  ) {
+    return;
+  }
+  const location =
+    (await onboardingStep(storage)) === "done" ? "/sign-in" : "/onboarding";
+  return new Response(null, { headers: { location }, status: 307 });
 }
 
 const onboardingScreen = /^\/onboarding(\/(account|database))?\/?$/;

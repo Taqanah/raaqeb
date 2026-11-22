@@ -27,7 +27,8 @@ export interface Memo {
     request: Request,
     key: string,
     validity: Validity,
-    render: () => Promise<Response>
+    /** Renders the key's answer; `refresh` says whether the memo held an entry for the key that went stale, else it fills a key it holds nothing for. */
+    render: (refresh: boolean) => Promise<Response>
   ) => Promise<Response>;
   /** How many entries are kept. */
   readonly size: () => number;
@@ -102,14 +103,20 @@ function answer(request: Request, entry: Entry): Response {
   });
 }
 
-/** A memo holding at most `cap()` entries, read at each store, of the renders `keeps` allows: by default a public 200 (`isStorable`). An entry keeps its render's status. */
+/** How long a request for a stale entry waits on its refresh before it is answered with the stale entry. */
+export const staleWaitMs = 500;
+
+/** A memo holding at most `cap()` entries, read at each store, of the renders `keeps` allows: by default a public 200 (`isStorable`). An entry keeps its render's status. A stale entry is answered while its one refresh runs, unless the refresh lands within `staleMs`. */
 export function createMemo(
   cap: () => number,
-  keeps: (response: Response) => boolean = isStorable
+  keeps: (response: Response) => boolean = isStorable,
+  staleMs: number = staleWaitMs
 ): Memo {
   // A Map keeps insertion order: the first key is the one used longest ago.
   const entries = new Map<string, Entry>();
   const rendering = new Map<string, Rendering>();
+  // The one refresh each stale entry has running, whatever the counter did since it began: the entry it stored, or why it stored none.
+  const refreshes = new Map<string, Promise<Entry | "busy" | "gone">>();
 
   async function store(
     key: string,
@@ -134,7 +141,62 @@ export function createMemo(
     return entry;
   }
 
-  return {
+  /** Starts the stale entry's one refresh, or joins the one running even when it began at an older validity, so a counter that keeps moving queues no second render of the key: the entry it stores; `busy` when the render had no turn, which keeps the stale entry; `gone` when the address answers something no longer kept, which drops it. */
+  function refresh(
+    key: string,
+    validity: Validity,
+    render: (refresh: boolean) => Promise<Response>,
+    kept: Entry
+  ): Promise<Entry | "busy" | "gone"> {
+    const running = refreshes.get(key);
+    if (running !== undefined) {
+      return running;
+    }
+    const done = render(true).then(
+      async (response): Promise<Entry | "busy" | "gone"> => {
+        if (keeps(response)) {
+          return await store(key, validity, response);
+        }
+        await response.body?.cancel();
+        if (response.status === 503) {
+          return "busy";
+        }
+        if (entries.get(key) === kept) {
+          entries.delete(key);
+        }
+        return "gone";
+      },
+      () => "busy" as const
+    );
+    const settled = () => {
+      if (refreshes.get(key) === done) {
+        refreshes.delete(key);
+      }
+    };
+    done.then(settled, settled);
+    refreshes.set(key, done);
+    return done;
+  }
+
+  /** A stale entry's answer: fresh when its refresh lands within the wait, else the stale entry, so a visitor never waits on it longer; what the address answers now when the refresh dropped it. */
+  async function stale(
+    request: Request,
+    key: string,
+    validity: Validity,
+    render: (refresh: boolean) => Promise<Response>,
+    kept: Entry
+  ): Promise<Response> {
+    const outcome = await Promise.race([
+      refresh(key, validity, render, kept),
+      Bun.sleep(staleMs).then(() => "late" as const),
+    ]);
+    if (outcome === "gone") {
+      return await memo.respond(request, key, validity, render);
+    }
+    return answer(request, typeof outcome === "string" ? kept : outcome);
+  }
+
+  const memo: Memo = {
     respond: async (request, key, validity, render) => {
       const kept = entries.get(key);
       if (kept && sameValidity(kept.validity, validity)) {
@@ -142,15 +204,18 @@ export function createMemo(
         entries.set(key, kept);
         return answer(request, kept);
       }
+      if (kept) {
+        return await stale(request, key, validity, render, kept);
+      }
       const under = rendering.get(key);
       if (under && sameValidity(under.validity, validity)) {
         const rendered = await under.done;
         // A response that may not be stored is one asker's: each other renders their own.
         return rendered instanceof Response
-          ? await render()
+          ? await render(false)
           : answer(request, rendered);
       }
-      const done = render().then(
+      const done = render(false).then(
         async (response): Promise<Entry | Response> =>
           keeps(response) ? await store(key, validity, response) : response
       );
@@ -168,4 +233,5 @@ export function createMemo(
     },
     size: () => entries.size,
   };
+  return memo;
 }

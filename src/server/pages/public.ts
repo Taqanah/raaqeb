@@ -344,6 +344,59 @@ export function unresolvedAt(pathname: string): Unresolved {
   return appRoutes.some((route) => route.test(path)) ? "route" : "page";
 }
 
+/** Whether a GET at `pathname` is a document the app renders: any route's but the API's, server functions, the health check, a badge, feed or summary, and a subscription's confirm and unsubscribe links. */
+export function rendersDocument(pathname: string): boolean {
+  if (pathname.startsWith(serverFunctions)) {
+    return false;
+  }
+  const path = pathname.toLowerCase();
+  return !(
+    path === "/api" ||
+    path.startsWith("/api/") ||
+    path === "/health" ||
+    notDocuments.some((route) => route.test(path))
+  );
+}
+
+/** The app's routes outside the API that answer with something else than a document. */
+const notDocuments: readonly RegExp[] = [
+  new RegExp(
+    `^(/(${locales.join("|")}))?(/status/[^/]+)?/(badge\\.svg|feed\\.atom)$`
+  ),
+  /^\/status\/[^/]+\/api\/v2\/summary\.json$/,
+  /^\/subscriptions\/[^/]+\/(confirm|unsubscribe)\/?$/,
+];
+
+/** The pages everyone gets the same, signed in or not and on any host; a reset page is one only with no link in its search. Onboarding's account screen is not: it fills in the address the request came through. */
+const anonymousPages = new Set([
+  "/sign-in",
+  "/forgot-password",
+  "/sign-out",
+  "/reset-password",
+  "/onboarding",
+  "/onboarding/database",
+]);
+
+/** The memo key of a page the app renders the same for everyone (sign-in, forgot-password, sign-out, a reset page with no link, onboarding's language and database screens), by its address and `?locale=`; nothing for any other address, or a search that holds anything else. */
+export function anonymousPageKey(
+  pathname: string,
+  search: string
+): string | undefined {
+  if (!anonymousPages.has(pathname)) {
+    return;
+  }
+  const params = new URLSearchParams(search);
+  const locale = params.get("locale");
+  const keys = [...params.keys()];
+  if (keys.length === 0) {
+    return pathname;
+  }
+  // Anything else in the search is the page's own to read: rendered, never from memory.
+  return keys.length === 1 && locales.some((each) => each === locale)
+    ? `${pathname} ${locale}`
+    : undefined;
+}
+
 /** The address a page's not-found is rendered at for the page that frames it, or for none: a month no history has, under the page's plain address, so the not-found every address of that frame shows is one document. */
 export function missingAddress(frame: PublicView | undefined): string {
   return `${frame ? frame.paths.bases[frame.locale] : ""}/history/0000-00`;

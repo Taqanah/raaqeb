@@ -8,6 +8,7 @@ import type { Browser, Page } from "@playwright/test";
 import { expect, expectPath, test } from "./support/fixtures.ts";
 import { englishOrigin } from "./support/servers.ts";
 import {
+  afterRefresh,
   handComponent,
   idOf,
   publishedPage,
@@ -117,9 +118,11 @@ test("every customization the operator saves shows on the public page", async ({
   // With the day bar off, no bar shows at all.
   await page.click("label[for=bars]");
   await savePage(page);
-  await visitor.reload();
-  await expect(visitor.locator("[data-slot=status-page]")).toBeVisible();
-  await expect(visitor.locator("[data-slot=uptime-bar]")).toHaveCount(0);
+  await afterRefresh(async () => {
+    await visitor.reload();
+    await expect(visitor.locator("[data-slot=status-page]")).toBeVisible();
+    return await visitor.locator("[data-slot=uptime-bar]").count();
+  }, 0);
   await visitor.context().close();
 });
 
@@ -138,7 +141,10 @@ test("a renamed slug moves the page's address, and a deleted page is gone from t
 
   await page.fill("input[name=slug]", after);
   await savePage(page);
-  expect([await statusOf(before), await statusOf(after)]).toEqual([404, 200]);
+  await afterRefresh(
+    async () => [await statusOf(before), await statusOf(after)],
+    [404, 200]
+  );
 
   await page.click("[data-slot=delete-page]");
   await page.click("[data-slot=alert-dialog-cancel]");
@@ -155,7 +161,7 @@ test("a renamed slug moves the page's address, and a deleted page is gone from t
   ).toBeVisible();
   await expect(page.locator("[data-page]").first()).toBeVisible();
   await expect(page.locator(`[data-page="${pageId}"]`)).toHaveCount(0);
-  expect(await statusOf(after)).toBe(404);
+  await afterRefresh(() => statusOf(after), 404);
 });
 
 test("the layout's components move up and down, leave the page, and a removed group leaves its components where it was", async ({
@@ -281,11 +287,11 @@ test("a favicon and a cover reach the public page's head, and a removed logo lea
   await expect(
     page.locator("[data-image=favicon] [data-slot=page-image-preview]")
   ).toBeVisible();
-  await visitor.reload();
-  await expect(visitor.locator("[data-slot=status-page]")).toBeVisible();
-  await expect(
-    visitor.locator("[data-slot=status-page] header img")
-  ).toHaveCount(0);
+  await afterRefresh(async () => {
+    await visitor.reload();
+    await expect(visitor.locator("[data-slot=status-page]")).toBeVisible();
+    return await visitor.locator("[data-slot=status-page] header img").count();
+  }, 0);
   await visitor.context().close();
 });
 

@@ -16,7 +16,9 @@
  */
 
 import { requestOriginHeader } from "@/server/boot/proxies.ts";
+import { busyAnswer } from "@/server/pace.ts";
 import {
+  anonymousPageKey,
   missingAddress,
   missingView,
   type PublicIndex,
@@ -28,7 +30,7 @@ import {
 } from "@/server/pages/public.ts";
 import {
   apiNotFound,
-  readHistory,
+  readHistoryFirst,
   readIncidentView,
   readMaintenanceView,
   type ViewResult,
@@ -40,19 +42,41 @@ import { historyMonth, monthOf } from "@/shared/domain/history.ts";
 import { utcDayStart } from "@/shared/domain/retention.ts";
 import { locales } from "@/shared/i18n/locale.ts";
 import { type PublicView, viewPath } from "@/shared/schemas/overview.ts";
-import { monthSchema } from "@/shared/schemas/views.ts";
+import { type Month, monthSchema } from "@/shared/schemas/views.ts";
 import { createMemo, memoCap } from "./memo.ts";
 import { stillDocument, withLocaleSwitch } from "./still.ts";
 
 export type PublicStorage = Pick<Storage, "changeCounter"> & ViewStorage;
 
+/** Runs the read that checks an item at the pace the entry gives this request; nothing when no turn is free. */
+export type Check = (
+  read: () => Promise<boolean>
+) => Promise<boolean | undefined>;
+
 /** Renders a page's not-found through the app at `address`, with the view target it shows or none, its stylesheet linked rather than inlined: the memo keeps the document still and serves it at every address of the same frame. */
 export type RenderMissing = (
   address: Request,
-  target: ViewTarget | undefined
+  target: ViewTarget | undefined,
+  /** Whether the memo held this not-found and it went stale, else it holds none for its frame. */
+  refresh: boolean
 ) => Promise<Response>;
 
 export interface PublicMemo {
+  /**
+   * A page the app renders the same for everyone, signed in or not and on any
+   * host (sign-in, forgot-password, sign-out, a reset page with no link,
+   * onboarding's language and database screens), answered from memory for a
+   * GET or HEAD by its address and `?locale=` alone, while the change counter
+   * and the UTC day hold; rendered through `render` once. Nothing for any
+   * other request.
+   */
+  readonly anonymous: (
+    request: Request,
+    storage: PublicStorage | undefined,
+    /** Renders the page at `address`: its path and search alone, no cookie and no origin, since the page reads neither. */
+    render: (address: Request, refresh: boolean) => Promise<Response>,
+    counter?: Promise<number | undefined>
+  ) => Promise<Response | undefined>;
   /**
    * The memoised answer to a GET or HEAD that shows a view, a view's
    * document, or a page's summary, badge or feed, rendering it through `render` with the target resolved;
@@ -61,11 +85,14 @@ export interface PublicMemo {
   readonly answer: (
     request: Request,
     storage: PublicStorage | undefined,
-    render: (target: PublicTarget) => Promise<Response>,
+    /** Renders the target; `refresh` says whether the memo held its entry and it went stale, else it holds none for the address. */
+    render: (target: PublicTarget, refresh: boolean) => Promise<Response>,
     /** The counter this request already read through `read`, so it reads it once; read here when absent. */
     counter?: Promise<number | undefined>,
     /** How a view whose incident, window or month is not on its page renders its not-found, which the memo then keeps still; without one the view renders it every time. */
-    renderMissing?: RenderMissing
+    renderMissing?: RenderMissing,
+    /** Runs the read that tells whether the incident, window or month is on the page, as the entry paces it (a stranger's takes its turn); nothing when no turn is free, which answers 503. Run at once without one. */
+    check?: Check
   ) => Promise<Response | undefined>;
   /** The page whose frame shows a not-found at the request's address, from the pages the last answer read: no database read of its own, so a scanner's address costs none. */
   readonly missing: (request: Request) => PublicView | undefined;
@@ -109,6 +136,9 @@ function resolvedHost(request: Request): string | undefined {
   }
 }
 
+/** The anonymous pages kept at once: six pages in three spellings of their locale. */
+const anonymousCap = 18;
+
 /** The counter a not-found is judged by while no database is open: never one a database reads, so the first read after onboarding opens one renders it again. */
 const noDatabase = -1;
 
@@ -138,7 +168,8 @@ async function lacks(
   pageId: string,
   kind: string | undefined,
   item: string,
-  now: number
+  now: number,
+  first: () => Promise<Month | undefined>
 ): Promise<boolean> {
   switch (kind) {
     case "incidents":
@@ -156,10 +187,8 @@ async function lacks(
       if (!month.success || historyMonth([], month.data, now)) {
         return false;
       }
-      return (
-        month.data > monthOf(now) ||
-        nothingAt(await readHistory(storage, pageId, month.data, now))
-      );
+      // Before the history's first month, read once per change counter for every month asked.
+      return month.data > monthOf(now) || month.data < ((await first()) ?? "");
     }
     default:
       return false;
@@ -196,6 +225,11 @@ export function createPublicMemo(options: {
     }
   };
   // One still not-found per frame, kept as long as the pages' own entries are.
+  // The anonymous pages: a 200 that sets no cookie, whatever its cache policy, since none is public.
+  const anonymousDocuments = createMemo(
+    () => anonymousCap,
+    (response) => response.status === 200 && !response.headers.has("set-cookie")
+  );
   const missingDocuments = createMemo(
     () => memoCap(index.pages.length),
     (response) => response.status === 404
@@ -205,11 +239,12 @@ export function createPublicMemo(options: {
     request: Request,
     key: string,
     counter: number | undefined,
-    render: () => Promise<Response>
+    render: (refresh: boolean) => Promise<Response>
   ): Promise<Response> => {
-    const still = async () => stillDocument(await render());
+    const still = async (refresh: boolean) =>
+      stillDocument(await render(refresh));
     if (counter === undefined) {
-      return await still();
+      return await still(false);
     }
     const validity = { counter, day: utcDayStart(options.now()) };
     return await missingDocuments.respond(request, key, validity, still);
@@ -228,8 +263,8 @@ export function createPublicMemo(options: {
     const key = frame
       ? `missing ${frame.pageId} ${frame.paths.origin ?? ""}`
       : "missing";
-    return kept(request, key, counter, () =>
-      renderMissing(bare(request, missingAddress(frame)), undefined)
+    return kept(request, key, counter, (refresh) =>
+      renderMissing(bare(request, missingAddress(frame)), undefined, refresh)
     );
   };
   /** A view's not-found in its locale, its language switch keeping the address. */
@@ -240,8 +275,12 @@ export function createPublicMemo(options: {
     renderMissing: RenderMissing
   ): Promise<Response> => {
     const key = `missing ${target.pageId} ${target.locale} ${target.paths.origin ?? ""}`;
-    const answer = await kept(request, key, counter, () =>
-      renderMissing(bare(request, new URL(request.url).pathname), target)
+    const answer = await kept(request, key, counter, (refresh) =>
+      renderMissing(
+        bare(request, new URL(request.url).pathname),
+        target,
+        refresh
+      )
     );
     const other =
       locales.find((each) => each !== target.locale) ?? target.locale;
@@ -251,6 +290,28 @@ export function createPublicMemo(options: {
     );
   };
   /** Whether the incident, window or month a view's address names is one its page lacks, read as the view would read it; an address that cannot be read is the view's to answer. */
+  // Each page's first history month, as of the change counter the index was read at.
+  const firsts = new Map<
+    string,
+    {
+      readonly at: number | undefined;
+      readonly first: Promise<Month | undefined>;
+    }
+  >();
+  const firstMonth = (
+    storage: PublicStorage,
+    pageId: string
+  ): Promise<Month | undefined> => {
+    const held = firsts.get(pageId);
+    if (held && held.at === indexedAt) {
+      return held.first;
+    }
+    const first = readHistoryFirst(storage, pageId, options.now()).then(
+      (found) => (found.ok ? found.document : undefined)
+    );
+    firsts.set(pageId, { at: indexedAt, first });
+    return first;
+  };
   const notOnPage = async (
     storage: PublicStorage,
     target: ViewTarget
@@ -262,7 +323,8 @@ export function createPublicMemo(options: {
         target.pageId,
         kind,
         decodeURIComponent(raw),
-        options.now()
+        options.now(),
+        () => firstMonth(storage, target.pageId)
       );
     } catch {
       // A malformed escape or a database that did not answer: the view answers it as it always has.
@@ -271,7 +333,7 @@ export function createPublicMemo(options: {
   };
 
   return {
-    answer: async (request, storage, render, counted, renderMissing) => {
+    answer: async (request, storage, render, counted, renderMissing, check) => {
       if (!storage || (request.method !== "GET" && request.method !== "HEAD")) {
         return;
       }
@@ -285,7 +347,7 @@ export function createPublicMemo(options: {
         if (target.kind === "resource" || !(await operator(request))) {
           return;
         }
-        const rendered = await render(target);
+        const rendered = await render(target, false);
         const headers = new Headers(rendered.headers);
         headers.set("cache-control", "no-store");
         return new Response(rendered.body, {
@@ -294,14 +356,26 @@ export function createPublicMemo(options: {
         });
       }
       // A view whose incident, window or month its page lacks is the page's not-found, kept still.
-      const shown = async () =>
-        renderMissing &&
-        target.kind === "view" &&
-        (await notOnPage(storage, target))
+      const shown = async (refresh: boolean): Promise<Response> => {
+        // Only an incident, a window or a month has a read of its own to check.
+        if (
+          !renderMissing ||
+          target.kind !== "view" ||
+          !itemPath.test(target.suffix)
+        ) {
+          return await render(target, refresh);
+        }
+        const itemRead = () => notOnPage(storage, target);
+        const lacking = check ? await check(itemRead) : await itemRead();
+        if (lacking === undefined) {
+          return busyAnswer();
+        }
+        return lacking
           ? await viewNotFound(request, target, counter, renderMissing)
-          : await render(target);
+          : await render(target, refresh);
+      };
       if (counter === undefined) {
-        return await shown();
+        return await shown(false);
       }
       const validity = { counter, day: utcDayStart(options.now()) };
       return await memo.respond(request, target.key, validity, shown);
@@ -320,8 +394,8 @@ export function createPublicMemo(options: {
         case "route":
           // The route's own not-found has no frame: rendered at its address, the same for every address it answers.
           return (await gone?.(pathname))
-            ? await kept(request, "missing plain", counter, () =>
-                renderMissing(bare(request, pathname), undefined)
+            ? await kept(request, "missing plain", counter, (refresh) =>
+                renderMissing(bare(request, pathname), undefined, refresh)
               )
             : undefined;
         case "api":
@@ -329,6 +403,33 @@ export function createPublicMemo(options: {
         default:
           return await pageNotFound(request, counter, renderMissing);
       }
+    },
+    anonymous: async (request, storage, render, counted) => {
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        return;
+      }
+      const url = new URL(request.url);
+      const page = anonymousPageKey(url.pathname, url.search);
+      if (page === undefined) {
+        return;
+      }
+      const counter = storage ? await (counted ?? read(storage)) : noDatabase;
+      // Nothing to judge an entry by: the page renders as any other does.
+      if (counter === undefined) {
+        return;
+      }
+      const validity = { counter, day: utcDayStart(options.now()) };
+      // The page reads neither a cookie nor the host: rendered at its path and search alone, it is every visitor's.
+      return await anonymousDocuments.respond(
+        request,
+        page,
+        validity,
+        (refresh) =>
+          render(
+            new Request(new URL(`${url.pathname}${url.search}`, url)),
+            refresh
+          )
+      );
     },
     missing: (request) =>
       missingView(index, resolvedHost(request), new URL(request.url).pathname),

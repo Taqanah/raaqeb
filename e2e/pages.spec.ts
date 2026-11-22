@@ -10,6 +10,7 @@ import {
   operatorEmail,
   operatorPassword,
 } from "./support/servers.ts";
+import { afterRefresh } from "./support/status-page.ts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -214,7 +215,7 @@ test("a new page is unpublished: a visitor finds nothing at its addresses and it
   await expect(
     page.locator("[data-slot=save-outcome][data-state=saved]")
   ).toBeVisible();
-  expect(await visitorStatuses()).toEqual([200, 200, 200, 200, 200]);
+  await afterRefresh(visitorStatuses, [200, 200, 200, 200, 200]);
   await page.goto(`${englishOrigin}/status/${slug}`);
   await expect(
     page.locator(`[data-slot=status-page][data-page="${draftId}"]`)

@@ -289,8 +289,18 @@ _Avoid_: 90-day bar (its length varies), uptime bar, heatmap, sparkline (that is
 
 **Memo**:
 Arabic: مستذكَر
-The in-process copy of every public response (HTML, JSON document, feed, badge) kept and served again until the change counter or the UTC date moves. It has no lifetime and no size rule beyond a cap of pages times locales times views plus the summary, feeds and badges.
+The in-process copy of every public response (HTML, JSON document, feed, badge), of the not-found every address of one frame shows, and of the sign-in, recovery and onboarding pages that are the same for everyone, kept and served again until the change counter or the UTC date moves. Once either moves an entry is stale: it is refreshed once, and a request that the refresh does not answer within half a second gets the stale entry, so a visitor may see the previous state for as long as one refresh takes. It has no lifetime and no size rule beyond its caps: pages times locales times views plus the summary, feeds and badges for the public responses, as many again for the not-founds, and one per page and locale for the sign-in pages.
 _Avoid_: cache, CDN, snapshot
+
+**Stranger**:
+Arabic: غريب
+Whoever sends a request without a live operator session: a visitor, a scanner, someone at the sign-in page. Every render a stranger causes takes its turn at the render pace; a memo answer costs none.
+_Avoid_: anonymous user, guest, attacker (most strangers are visitors)
+
+**Render pace**:
+Arabic: وتيرة العرض
+How often the app may start a full render for strangers: one at a time, half a second apart once the turns an idle spell saved up are spent, the kinds of page taking turns (a stale status page answer's refresh, a status page address the memo holds nothing for, the pages that are the same for everyone, a subscription's page, an open reset link, onboarding, and every other page), each with a short queue of its own. Past it a stranger is asked to try again in a second.
+_Avoid_: rate limit (that is Better Auth's count of sign-ins per address), throttle
 
 **Change counter**:
 Arabic: عدّاد التغيّرات

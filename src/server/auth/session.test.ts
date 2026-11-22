@@ -10,6 +10,7 @@ import {
   operatorName,
 } from "./auth.ts";
 import {
+  carriesSession,
   isOperator,
   operatorFor,
   operatorOfRequest,
@@ -263,5 +264,17 @@ describe("the operator for a request context", () => {
     expect(
       await operatorFor(opened3.storage, boot, new Headers())
     ).toBeUndefined();
+  });
+});
+
+describe("whether a request carries a session", () => {
+  test("is whether it names Raaqeb's session cookie, plain or under the secure prefix", () => {
+    const of = (cookie?: string) =>
+      carriesSession(new Headers(cookie === undefined ? {} : { cookie }));
+    expect(of("raaqeb.session_token=abc.def")).toBe(true);
+    expect(of("theme=dark; __Secure-raaqeb.session_token=abc")).toBe(true);
+    expect(of("theme=dark")).toBe(false);
+    expect(of("xraaqeb.session_token=abc")).toBe(false);
+    expect(of()).toBe(false);
   });
 });

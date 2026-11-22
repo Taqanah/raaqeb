@@ -9,6 +9,14 @@ import { answerLimitMs, withinLimit } from "@/server/storage/deadline.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { type Auth, type AuthBoot, authFor } from "./auth.ts";
 
+/** Whether the request names a session cookie at all; whether it is a live session is `isOperator`'s to read. */
+export function carriesSession(headers: Headers): boolean {
+  return sessionCookie.test(headers.get("cookie") ?? "");
+}
+
+/** Better Auth's session cookie under Raaqeb's prefix (auth.ts), plain or under the secure prefix it takes over https. */
+const sessionCookie = /(^|;\s*)(__Secure-)?raaqeb\.session_token=/;
+
 export interface Operator {
   readonly email: string;
   readonly id: string;
