@@ -3,11 +3,14 @@
  * dist/server/handler.js. Named handler.ts because Start's default entry name is
  * src/server.ts, which is the Bun.serve entry in this layout (ADR-0007);
  * vite.config.ts points Start here. Request-level middleware lives in
- * src/start.ts, not in this file.
+ * src/start.ts, not in this file; the one thing this file adds is the 405
+ * for a server route's undeclared method (src/server/pages/methods.ts).
  */
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
+import { getRouter } from "./router.tsx";
 import type { Peer } from "./server/boot/proxies.ts";
 import type { BootSettings } from "./server/boot/settings.ts";
+import { methodNotAllowed } from "./server/pages/methods.ts";
 import type { PublicTarget } from "./server/pages/public.ts";
 import type { Liveness } from "./server/scheduler/health.ts";
 import type {
@@ -62,6 +65,15 @@ declare module "@tanstack/react-router" {
   }
 }
 
+// One router for the matching alone, made on the first request.
+let matching: ReturnType<typeof getRouter> | undefined;
+
 export default createServerEntry({
-  fetch: (request, options) => handler.fetch(request, options),
+  // A server route answers a method it does not declare 405 before anything renders.
+  fetch: (request, options) => {
+    matching ??= getRouter();
+    return (
+      methodNotAllowed(matching, request) ?? handler.fetch(request, options)
+    );
+  },
 });
