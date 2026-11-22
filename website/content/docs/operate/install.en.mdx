@@ -113,7 +113,7 @@ The image runs the glibc binary on distroless, as uid 65532, with `/data` as its
 
 ```sh
 docker run -d --name raaqeb --restart unless-stopped \
-  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0
+  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.1
 ```
 
 A named volume needs nothing more. A bind mount needs the container to run as the folder's owner: `--user "$(id -u):$(id -g)" -v "$PWD/data:/data"`. The image has no shell; `docker exec raaqeb raaqeb <command>` runs the binary directly.

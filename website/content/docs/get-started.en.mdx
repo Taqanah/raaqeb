@@ -30,7 +30,7 @@ The image keeps its data in the `/data` volume and answers on port 3000:
 
 ```sh
 docker run -d --name raaqeb --restart unless-stopped \
-  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0
+  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.1
 ```
 
 Open `http://<server>:3000` in your browser. Keep the named volume: it holds the database and the install key.
