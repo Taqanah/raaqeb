@@ -2683,8 +2683,8 @@ msgid "auth_forgot_sent"
 msgstr "إذا كان هذا البريد بريد حساب المشغّل، فقد أُرسل إليه رابط صالح لساعة واحدة."
 
 #. js-lingui-explicit-id
-msgid "auth_forgot_no_mail"
-msgstr "إذا لم تصلك رسالة خلال دقائق، فربما لا تعمل قناة البريد. شغّل هذا الأمر على الخادوم ليطبع رابطًا دون بريد:"
+msgid "auth_forgot_docs"
+msgstr "لا يصلك بريد؟ اقرأ في التوثيقات كيف تعيد تعيين كلمة المرور"
 
 #. js-lingui-explicit-id
 msgid "auth_no_email_title"

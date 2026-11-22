@@ -33,10 +33,14 @@ import {
 } from "@/shared/ui/field.tsx";
 import { Input } from "@/shared/ui/input.tsx";
 import { Token } from "@/shared/ui/token.tsx";
+import { websiteDocs } from "@/shared/ui/website.ts";
 import { AuthPage } from "./auth-page.tsx";
 
 /** The command the no-email page shows; its flags are the reset command's own. */
 export const resetCommand = "raaqeb reset-password";
+
+/** The docs page that says how to reset a password without email; the confirmation links it instead of naming the command to whoever submits. */
+const resetDocsPage = "operate/commands";
 
 const signInPath = "/sign-in";
 const forgotPath = "/forgot-password";
@@ -78,9 +82,9 @@ function ResetCommand(): ReactNode {
   );
 }
 
-/** "Forgot password" with an email channel: the address, then "check your email", which never says whether it is the account's, and the command for mail that never comes. */
+/** "Forgot password" with an email channel: the address, then "check your email", which never says whether it is the account's, and a link to the docs for mail that never comes, never the command, which anyone who submits would see. */
 export function ForgotForm(): ReactNode {
-  const { t } = useMessages();
+  const { locale, t } = useMessages();
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
   const [failure, setFailure] = useState<ResetRequestFailure | undefined>();
@@ -120,10 +124,14 @@ export function ForgotForm(): ReactNode {
           <output className="text-sm" data-slot="reset-sent">
             {t("auth_forgot_sent")}
           </output>
-          <p className="text-muted-foreground text-sm">
-            {t("auth_forgot_no_mail")}
-          </p>
-          <ResetCommand />
+          <a
+            className="text-sm underline underline-offset-4 hover:text-primary"
+            data-slot="reset-docs"
+            href={websiteDocs(locale, resetDocsPage)}
+            rel="noopener"
+          >
+            {t("auth_forgot_docs")}
+          </a>
           <BackToSignIn />
         </FieldGroup>
       ) : (
