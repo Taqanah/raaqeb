@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import type { Locale } from "@/shared/i18n/locale.ts";
 import { createMessages } from "@/shared/i18n/messages.ts";
+import { publicCatalog } from "@/shared/i18n/public.ts";
 import { MessagesProvider } from "@/shared/i18n/react.tsx";
 import type { OverviewPage, PublicView } from "@/shared/schemas/overview.ts";
 import type { HistoryDocument } from "@/shared/schemas/views.ts";
@@ -52,7 +53,7 @@ export function viewIn(locale: Locale): PublicView {
   };
 }
 
-/** The markup the server writes for a node in the locale. */
+/** The markup the server writes for a node in the locale, from the part of the catalog a status page's document inlines, so a message it lacks shows as its id. */
 export function render(locale: Locale, node: ReactNode): string {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -61,7 +62,7 @@ export function render(locale: Locale, node: ReactNode): string {
   return renderToString(
     <RouterContextProvider router={router}>
       <MessagesProvider
-        i18n={createMessages(locale, locale === "ar" ? ar : en)}
+        i18n={createMessages(locale, publicCatalog(locale === "ar" ? ar : en))}
       >
         {node}
       </MessagesProvider>
