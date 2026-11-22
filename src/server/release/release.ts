@@ -27,6 +27,9 @@ declare const __RAAQEB_VERSION__: string | undefined;
 export const currentVersion: string =
   typeof __RAAQEB_VERSION__ === "string" ? __RAAQEB_VERSION__ : "0.0.0";
 
+/** How Raaqeb names itself to a server it calls: the product token and the running version, as the release check already does. */
+export const userAgent = `raaqeb/${currentVersion}`;
+
 const day = 86_400_000;
 const leadingV = /^v/;
 
