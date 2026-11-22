@@ -246,6 +246,31 @@ function testPace(
   };
 }
 
+/** A process running `raaqeb serve` on the data directory, build and port its arguments name; it prints `port <n>` after its log lines, or exits with the command's code. */
+const serveScript = `
+  const { main } = await import("${import.meta.dir}/server.ts");
+  const [dataDir, dir, port] = Bun.argv.slice(1);
+  const result = await main(["--port", port, "--data-dir", dataDir], {}, dir);
+  if (typeof result === "number") process.exit(result);
+  console.log("port " + result.server.port);
+  setInterval(() => {}, 1 << 30);
+`;
+
+const announcedPort = /^port (\d+)$/m;
+
+/** The port a `serveScript` process announces, read as its output arrives. */
+async function portOf(output: ReadableStream<Uint8Array>): Promise<string> {
+  let text = "";
+  for await (const chunk of output) {
+    text += new TextDecoder().decode(chunk);
+    const port = announcedPort.exec(text)?.[1];
+    if (port) {
+      return port;
+    }
+  }
+  throw new Error(`the server never announced its port: ${text}`);
+}
+
 async function withServer(
   args: string[],
   env: Record<string, string>,
@@ -1531,6 +1556,37 @@ describe("the raaqeb command", () => {
     );
   });
 
+  test("a second serve on a busy port exits 1 before it opens or migrates the database", async () => {
+    const dir = await build();
+    const mine = await clientBuild({});
+    const theirs = await clientBuild({ "raaqeb.sqlite": "" });
+    const first = Bun.spawn(
+      [process.execPath, "-e", serveScript, mine, dir, "0"],
+      { stderr: "ignore", stdout: "pipe" }
+    );
+    try {
+      const port = await portOf(first.stdout);
+      const second = Bun.spawn(
+        [process.execPath, "-e", serveScript, theirs, dir, port],
+        { stderr: "pipe", stdout: "ignore" }
+      );
+      const [lines, code] = await Promise.all([
+        new Response(second.stderr).text(),
+        second.exited,
+      ]);
+      expect(code).toBe(1);
+      // Only the refusal: no snapshot, migration or scheduler line before or after it.
+      expect(lines.trim().split("\n")).toEqual([
+        "raaqeb: cannot listen: RAAQEB_HOST and RAAQEB_PORT name an address that is not available",
+      ]);
+      // The database it was pointed at is as it was written.
+      expect(Bun.file(`${theirs}/raaqeb.sqlite`).size).toBe(0);
+    } finally {
+      first.kill();
+      await first.exited;
+    }
+  });
+
   test("serve without a build exits 1 before touching the database", async () => {
     const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
     expect(
@@ -1869,21 +1925,24 @@ describe("the entry never prints a boot setting's value", () => {
 
   test("onboarding says no database was chosen yet", async () => {
     const dataDir = await clientBuild({});
-    const held = Bun.serve({
-      fetch: () => new Response(""),
-      hostname: "127.0.0.1",
-      port: 0,
-      reusePort: false,
-    });
+    const written: string[] = [];
+    const stdout = spyOn(process.stdout, "write").mockImplementation(
+      (chunk) => {
+        written.push(String(chunk));
+        return true;
+      }
+    );
     try {
-      const { output } = await runEntry({
-        RAAQEB_DATA_DIR: dataDir,
-        RAAQEB_PORT: String(held.port),
-      });
-      expect(output).toContain("no database yet");
+      await withServer(
+        ["--port", "0", "--data-dir", dataDir],
+        {},
+        await build(),
+        () => Promise.resolve()
+      );
     } finally {
-      await held.stop(true);
+      stdout.mockRestore();
     }
+    expect(written.join("")).toContain("no database yet");
   });
 
   test("a refused install key is named with its length only", async () => {
