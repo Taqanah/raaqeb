@@ -431,7 +431,14 @@ function Components({
   );
 }
 
-function Footer({ page }: { readonly page: OverviewPage }): ReactNode {
+/** The page's links, the powered-by line and the theme switch; a not-found, served still with no script to run it, has no theme switch. */
+function Footer({
+  page,
+  still,
+}: {
+  readonly page: OverviewPage;
+  readonly still: boolean;
+}): ReactNode {
   const { locale, t } = useMessages();
   const shown = useContent();
   const link = quietLink;
@@ -479,7 +486,7 @@ function Footer({ page }: { readonly page: OverviewPage }): ReactNode {
         ) : (
           <span />
         )}
-        <ThemeSwitch fallback={page.theme} />
+        {still ? null : <ThemeSwitch fallback={page.theme} />}
       </div>
     </footer>
   );
@@ -545,7 +552,7 @@ export function PageFrame({
               view={view}
             />
             {children}
-            <Footer page={page} />
+            <Footer page={page} still={still} />
           </PageStatusColours>
         </PageProse>
       </main>

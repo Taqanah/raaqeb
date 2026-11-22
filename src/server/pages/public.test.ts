@@ -6,11 +6,13 @@ import {
 } from "@/shared/schemas/page.ts";
 import {
   canonicalPaths,
+  missingAddress,
   missingView,
   type PublicIndex,
   publicIndexOf,
   publicTarget,
   type ResourceTarget,
+  unresolvedAt,
   type ViewTarget,
 } from "./public.ts";
 
@@ -791,6 +793,160 @@ describe("an unpublished page", () => {
     expect(
       missingView(drafts(), host, "/status/api/history/2026-13")
     ).toMatchObject({ pageId: "p-api" });
+  });
+});
+
+describe("who answers an address no page resolves", () => {
+  test("a scanner's guess is a page's not-found, whatever its depth", () => {
+    for (const path of [
+      "/.env",
+      "/.env.prod",
+      "/old/.env",
+      "/.git/config",
+      "/credentials.json",
+      "/composer.json",
+      "/wp-admin/setup.php",
+      "/en/sign-in",
+      "/status/nope/x/y",
+      "/incidents",
+      "/history/2026-13",
+      "/design",
+    ]) {
+      expect(unresolvedAt(path), path).toBe("page");
+    }
+  });
+
+  test("an address under /api/ that no API route has is the API's not-found, never a page's", () => {
+    for (const path of [
+      "/api",
+      "/api/",
+      "/api/nope",
+      "/api/v2/monitors",
+      "/api/v2/summary",
+      "/api/pages",
+      "/api/heartbeat",
+    ]) {
+      expect(unresolvedAt(path), path).toBe("api");
+    }
+  });
+
+  test("an address one of the app's own routes answers is the route's", () => {
+    for (const path of [
+      "/",
+      "/admin",
+      "/admin/nope/at/any/depth",
+      "/sign-in",
+      "/sign-in/",
+      "/sign-out",
+      "/forgot-password",
+      "/reset-password",
+      "/onboarding",
+      "/onboarding/account",
+      "/health",
+      "/subscriptions/token/",
+      "/subscriptions/token/confirm",
+      "/_serverFn/routes.__root--readDocument",
+      "/api/auth/get-session",
+      "/api/heartbeat/token",
+      "/api/pages/id/overview",
+      "/api/pages/id/logo",
+      "/api/v2/summary.json",
+      "/badge.svg",
+      "/en/feed.atom",
+      "/status/slug/badge.svg",
+      "/en/status/slug/feed.atom",
+      "/status/slug/api/v2/summary.json",
+    ]) {
+      expect(unresolvedAt(path), path).toBe("route");
+    }
+  });
+
+  test("a route's address is its route's whatever its case, as the router matches it", () => {
+    for (const path of [
+      "/ADMIN/IMPORT",
+      "/Admin/Import/",
+      "/SIGN-IN",
+      "/API/AUTH/get-session",
+      "/Api/OpenAPI.json",
+    ]) {
+      expect(unresolvedAt(path), path).toBe("route");
+    }
+    expect(unresolvedAt("/API/NOPE")).toBe("api");
+  });
+
+  test("every route the app has is still answered by it, or is a view's address, which a page resolves first", async () => {
+    const tree = await Bun.file(
+      `${import.meta.dir}/../../routeTree.gen.ts`
+    ).text();
+    const byFullPath = tree.slice(
+      tree.indexOf("interface FileRoutesByFullPath"),
+      tree.indexOf("interface FileRoutesByTo")
+    );
+    const fullPaths = [...byFullPath.matchAll(fullPathPattern)].map(
+      ([, path]) => path ?? ""
+    );
+    expect(fullPaths.length).toBeGreaterThan(50);
+    for (const fullPath of fullPaths) {
+      const sample = fullPath
+        .replaceAll("$month", "2026-01")
+        .replace(splatPattern, "/any/depth")
+        .replaceAll(parameterPattern, "x");
+      // Built for development alone: under the entry it is never found.
+      if (sample === "/design") {
+        continue;
+      }
+      for (const prefix of sample.startsWith("/{-x}") ? ["", "/en"] : [""]) {
+        const path = sample.replace("/{-x}", prefix) || "/";
+        const answered = unresolvedAt(path);
+        const isView = viewPattern.test(path) && path !== "/";
+        expect(
+          isView ? answered !== "api" : answered === "route",
+          `${fullPath} at ${path}: ${answered}`
+        ).toBe(true);
+      }
+    }
+  });
+});
+
+const fullPathPattern = /"(\/[^"]*)": typeof/g;
+const splatPattern = /\/\$$/;
+const parameterPattern = /\$[A-Za-z]+/g;
+/** A view's address under either locale and either base: the memo resolves it when a page has it. */
+const viewPattern =
+  /^(\/en)?(\/status\/x)?(\/|\/history\/?.*|\/incidents\/x|\/maintenance\/x)?$/;
+
+describe("the address a frame's not-found renders at", () => {
+  test("a month no history has, under the plain address of the page that frames it, or the bare host's when none does", () => {
+    expect(missingAddress(undefined)).toBe("/history/0000-00");
+    expect(
+      missingAddress({
+        locale: "ar",
+        pageId: "p-main",
+        paths: { bases: { ar: "", en: "/en" }, origin: address },
+      })
+    ).toBe("/history/0000-00");
+    expect(
+      missingAddress({
+        locale: "en",
+        pageId: "p-docs",
+        paths: {
+          bases: { ar: "/ar/status/docs", en: "/status/docs" },
+          origin: address,
+        },
+      })
+    ).toBe("/status/docs/history/0000-00");
+  });
+
+  test("names no view, and the same page frames it", () => {
+    for (const frame of [
+      missingView(index(), host, "/nope"),
+      missingView(index(), host, "/status/api/nope"),
+    ]) {
+      const at = missingAddress(frame);
+      expect(publicTarget(index(), host, at), at).toBeUndefined();
+      expect(unresolvedAt(at), at).toBe("page");
+      expect(missingView(index(), host, at), at).toEqual(frame);
+    }
   });
 });
 

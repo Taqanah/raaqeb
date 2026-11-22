@@ -270,7 +270,6 @@ test("a framed not-found's links load the page in a new document, never the admi
   ] as const) {
     // biome-ignore lint/performance/noAwaitInLoops: one address at a time
     await page.goto(`${englishOrigin}${path}`);
-    await page.waitForFunction(() => window.__reactCommitted === true);
     await page.click(link);
     await expectPath(page, "/");
     await expect(page.locator("[data-slot=page-banner]"), path).toBeVisible();
@@ -282,7 +281,6 @@ test("a framed not-found keeps its frame when the live refresh would have run", 
 }) => {
   await page.clock.install();
   await page.goto(`${englishOrigin}/status/nope`);
-  await page.waitForFunction(() => window.__reactCommitted === true);
   await page.clock.fastForward(60_000);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   // Nothing to wait on when nothing refreshes: give a refresh time to land.
@@ -311,6 +309,45 @@ test("on an install with no status page an unknown slug is the plain not-found i
   await expect(page.locator("[data-slot=view-missing]")).toBeVisible();
   await expect(page.locator("[data-slot=page-title]")).toHaveCount(0);
   await expect(page.getByText("Not Found", { exact: true })).toHaveCount(0);
+});
+
+test("a not-found is a still document: no script the app hydrates with, its stylesheet linked, a fraction of a page's size", async ({
+  request,
+}) => {
+  for (const url of [
+    `${englishOrigin}/status/nope`,
+    `${englishOrigin}/.env.prod`,
+    `${englishOrigin}/incidents/nope`,
+    `${arabicOrigin}/.git/config`,
+  ]) {
+    // biome-ignore lint/performance/noAwaitInLoops: one address at a time
+    const response = await request.get(url);
+    expect(response.status(), url).toBe(404);
+    const body = await response.text();
+    expect(body, url).toContain('data-slot="view-missing"');
+    expect(body, url).toContain('rel="stylesheet"');
+    expect(body, url).not.toContain('type="module"');
+    expect(body, url).not.toContain("modulepreload");
+    expect(body.length, url).toBeLessThan(30_000);
+  }
+});
+
+test("an address under /api/ that no route has is the API's plain not-found, never a page", async ({
+  request,
+}) => {
+  for (const url of [
+    `${englishOrigin}/api/nope`,
+    `${englishOrigin}/api/v2/monitors`,
+    `${arabicOrigin}/api/nope`,
+  ]) {
+    // biome-ignore lint/performance/noAwaitInLoops: one address at a time
+    const response = await request.get(url);
+    expect(response.status(), url).toBe(404);
+    expect(response.headers()["content-type"], url).toBe(
+      "text/plain; charset=utf-8"
+    );
+    expect(await response.text(), url).toBe("Not Found");
+  }
 });
 
 /** The dir of the nearest element that names one, for every place each text shows on the status page. */

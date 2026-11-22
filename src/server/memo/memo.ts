@@ -2,7 +2,8 @@
  * The memo (CONTEXT.md "Memo"; ADR-0006): the in-process copy of
  * every public response, kept and served again until the change counter or
  * the UTC day moves. It stores a 200 GET whose route set `Cache-Control:
- * public`, buffered to a full body and hashed once for its ETag; everyone
+ * public` (a memo of not-founds stores their 404 instead, and never answers
+ * one with a 304), buffered to a full body and hashed once for its ETag; everyone
  * asking for a key while it renders awaits that one render. Nothing runs
  * without a visitor: no timer, no expiry, no warm fill. Past the cap the
  * entry used longest ago goes, which costs one render later.
@@ -72,10 +73,11 @@ export function holdsEtag(request: Request, etag: string): boolean {
     .some((tag) => tag === "*" || tag === etag);
 }
 
-/** A stored response: its body, the headers it is answered with, and what it was rendered at. */
+/** A stored response: its body, the headers and status it is answered with, and what it was rendered at. */
 interface Entry {
   readonly body: Uint8Array<ArrayBuffer>;
   readonly headers: Headers;
+  readonly status: number;
   readonly validity: Validity;
 }
 
@@ -90,16 +92,21 @@ const sameValidity = (a: Validity, b: Validity) =>
 
 function answer(request: Request, entry: Entry): Response {
   const etag = entry.headers.get("etag") ?? "";
-  if (holdsEtag(request, etag)) {
+  // A 304 tells a cache its copy is the page, which a not-found is not.
+  if (entry.status === 200 && holdsEtag(request, etag)) {
     return new Response(null, { headers: entry.headers, status: 304 });
   }
   return new Response(request.method === "HEAD" ? null : entry.body, {
     headers: entry.headers,
+    status: entry.status,
   });
 }
 
-/** A memo holding at most `cap()` entries, read at each store. */
-export function createMemo(cap: () => number): Memo {
+/** A memo holding at most `cap()` entries, read at each store, of the renders `keeps` allows: by default a public 200 (`isStorable`). An entry keeps its render's status. */
+export function createMemo(
+  cap: () => number,
+  keeps: (response: Response) => boolean = isStorable
+): Memo {
   // A Map keeps insertion order: the first key is the one used longest ago.
   const entries = new Map<string, Entry>();
   const rendering = new Map<string, Rendering>();
@@ -115,7 +122,7 @@ export function createMemo(cap: () => number): Memo {
     // Start's own length and encoding describe the stream it sent, not the stored body.
     headers.delete("content-length");
     headers.delete("transfer-encoding");
-    const entry: Entry = { body, headers, validity };
+    const entry: Entry = { body, headers, status: response.status, validity };
     entries.delete(key);
     entries.set(key, entry);
     for (const oldest of entries.keys()) {
@@ -145,7 +152,7 @@ export function createMemo(cap: () => number): Memo {
       }
       const done = render().then(
         async (response): Promise<Entry | Response> =>
-          isStorable(response) ? await store(key, validity, response) : response
+          keeps(response) ? await store(key, validity, response) : response
       );
       rendering.set(key, { done, validity });
       try {

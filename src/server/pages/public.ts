@@ -55,6 +55,8 @@ export interface ViewTarget {
   readonly paths: PagePaths;
   /** Whether the page is published; the memo answers an unpublished one to the signed-in operator alone, outside the memo. */
   readonly published: boolean;
+  /** The view's own part of the address, past the page's plain address: `/incidents/<id>`, `/history/<yyyy-mm>`, nothing for the overview. */
+  readonly suffix: string;
   readonly view: ViewName;
 }
 
@@ -252,7 +254,7 @@ export function publicTarget(
   };
   const view = viewOf(suffix);
   if (view) {
-    return { ...shown, kind: "view", view };
+    return { ...shown, kind: "view", suffix, view };
   }
   const resource = resourceNames.find(
     (name) => resourceSuffixes[name] === suffix
@@ -289,4 +291,60 @@ export function missingView(
       };
     }
   }
+}
+
+/**
+ * Who answers a path that names no page's view, document or resource: one
+ * of the app's own routes (the admin, sign-in, sign-out and recovery,
+ * onboarding, the health check, server functions, a subscription's pages,
+ * the API's routes, every badge, feed and summary address, and the bare host,
+ * which sends to onboarding or the admin), else a not-found: the API's under
+ * `/api/`, a page's anywhere else.
+ */
+export type Unresolved = "api" | "page" | "route";
+
+/** The API's routes, as src/routes/api names them; Better Auth answers its own not-found under `/api/auth/`. */
+const apiRoutes: readonly RegExp[] = [
+  /^\/api\/auth\/./,
+  /^\/api\/(custom-domain|openapi\.json|v2\/summary\.json)$/,
+  /^\/api\/heartbeat\/[^/]+$/,
+  /^\/api\/pages\/[^/]+\/[^/]+$/,
+  /^\/api\/pages\/[^/]+\/(history|incidents|maintenance)\/[^/]+$/,
+];
+
+/** The app's routes outside the API and the views, as src/routes names them, in lower case. */
+const appRoutes: readonly RegExp[] = [
+  /^\/$/,
+  /^\/admin(\/.*)?$/,
+  /^\/(forgot-password|health|reset-password|sign-in|sign-out)$/,
+  /^\/onboarding(\/(account|database))?$/,
+  /^\/subscriptions\/[^/]+(\/(confirm|unsubscribe))?$/,
+  new RegExp(
+    `^(/(${locales.join("|")}))?(/status/[^/]+)?/(badge\\.svg|feed\\.atom)$`
+  ),
+  /^\/status\/[^/]+\/api\/v2\/summary\.json$/,
+];
+
+/** Start answers its server functions under this base, matched as spelled. */
+const serverFunctions = "/_serverFn/";
+
+/** Who answers `pathname` when no page resolves it. The router matches a path whatever its case and a trailing slash, so this reads it the same way. */
+export function unresolvedAt(pathname: string): Unresolved {
+  if (pathname.startsWith(serverFunctions)) {
+    return "route";
+  }
+  const path = (
+    pathname.length > 1 && pathname.endsWith("/")
+      ? pathname.slice(0, -1)
+      : pathname
+  ).toLowerCase();
+  if (path === "/api" || path.startsWith("/api/")) {
+    return apiRoutes.some((route) => route.test(path)) ? "route" : "api";
+  }
+  return appRoutes.some((route) => route.test(path)) ? "route" : "page";
+}
+
+/** The address a page's not-found is rendered at for the page that frames it, or for none: a month no history has, under the page's plain address, so the not-found every address of that frame shows is one document. */
+export function missingAddress(frame: PublicView | undefined): string {
+  return `${frame ? frame.paths.bases[frame.locale] : ""}/history/0000-00`;
 }

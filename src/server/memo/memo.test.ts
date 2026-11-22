@@ -241,6 +241,40 @@ describe("the memo", () => {
   });
 });
 
+describe("a memo that keeps not-founds", () => {
+  const notFound = () =>
+    new Response("<html>not found</html>", {
+      headers: { "content-type": "text/html; charset=utf-8" },
+      status: 404,
+    });
+  const kept = (response: Response) => response.status === 404;
+
+  test("answers the kept not-found with its status, rendered once", async () => {
+    const memo = createMemo(() => 10, kept);
+    const renders = counting(notFound);
+    await memo.respond(get(), "missing", at, renders.render);
+    const again = await memo.respond(get(), "missing", at, renders.render);
+    expect(again.status).toBe(404);
+    expect(await again.text()).toBe("<html>not found</html>");
+    expect(renders.calls()).toBe(1);
+  });
+
+  test("never answers a not-found with a 304, which would tell a cache its copy is a page", async () => {
+    const memo = createMemo(() => 10, kept);
+    const renders = counting(notFound);
+    const first = await memo.respond(get(), "missing", at, renders.render);
+    const held = await memo.respond(
+      get({ "if-none-match": first.headers.get("etag") ?? "*" }),
+      "missing",
+      at,
+      renders.render
+    );
+    expect(held.status).toBe(404);
+    expect(await held.text()).toBe("<html>not found</html>");
+    expect(renders.calls()).toBe(1);
+  });
+});
+
 describe("what the memo stores", () => {
   test("a 200 whose Cache-Control says public", () => {
     expect(isStorable(page())).toBe(true);

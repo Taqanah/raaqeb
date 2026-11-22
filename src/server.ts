@@ -51,7 +51,8 @@ import {
 } from "./server/boot/settings.ts";
 import { liveIo } from "./server/checks/io.ts";
 import { error as logError, info as logInfo } from "./server/log.ts";
-import { createPublicMemo } from "./server/memo/public.ts";
+import { createPublicMemo, type RenderMissing } from "./server/memo/public.ts";
+import { onboardingStep } from "./server/onboarding/onboarding.ts";
 import type { PublicTarget } from "./server/pages/public.ts";
 import { currentVersion } from "./server/release/release.ts";
 import { closed, type MemoAnswer, requestLine } from "./server/request-log.ts";
@@ -72,12 +73,14 @@ import {
   openStorage,
   type Storage,
 } from "./server/storage/storage.ts";
+import { subscriptionView } from "./server/subscriptions/subscriptions.ts";
 import { importPath } from "./shared/schemas/export-page.ts";
 import type {
   MaintenanceStage,
   MaintenanceWindow,
 } from "./shared/schemas/maintenance.ts";
 import { reasonName } from "./shared/schemas/reason.ts";
+import { subscriptionTokenSchema } from "./shared/schemas/subscription.ts";
 
 /**
  * The build this entry serves. Compiled, the entry sits at the root of the
@@ -450,6 +453,12 @@ export function serve(
       let rendered = false;
       let memoised: Response | undefined;
       let response: Response;
+      // A not-found the memo keeps still: its stylesheet linked, since the document is served at every address of its frame.
+      const renderMissing: RenderMissing = async (address, target) =>
+        await handler.fetch(address, {
+          context: context(target),
+          inlineCss: false,
+        });
       try {
         memoised = await memo.answer(
           resolved,
@@ -464,10 +473,18 @@ export function serve(
               }
             );
           },
-          counter
+          counter,
+          renderMissing
         );
         response =
           memoised ??
+          (await memo.notFound(
+            resolved,
+            storage,
+            renderMissing,
+            counter,
+            (pathname) => goneAt(storage, request.method, pathname)
+          )) ??
           (await handler.fetch(resolved, { context: context(undefined) }));
       } catch (thrown) {
         if (logging) {
@@ -505,6 +522,39 @@ export function serve(
     routes,
   });
   return server;
+}
+
+const onboardingScreen = /^\/onboarding(\/(account|database))?\/?$/;
+const subscriptionPage = /^\/subscriptions\/([^/]+)\/?$/;
+
+/** Whether a page an app route answers is a not-found to anyone who loads it: onboarding's screens once the account exists, and a subscription's page for a token no subscription has. A read that fails leaves the route to answer. */
+async function goneAt(
+  storage: Storage | undefined,
+  method: string,
+  pathname: string
+): Promise<boolean> {
+  if (method !== "GET" && method !== "HEAD") {
+    return false;
+  }
+  try {
+    if (onboardingScreen.test(pathname)) {
+      return (
+        storage !== undefined && (await onboardingStep(storage)) === "done"
+      );
+    }
+    const [, raw] = subscriptionPage.exec(pathname) ?? [];
+    if (raw === undefined) {
+      return false;
+    }
+    const token = subscriptionTokenSchema.safeParse(raw);
+    return !(
+      token.success &&
+      storage &&
+      (await subscriptionView(storage, token.data))
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** How a status page's answer was made, or nothing when the memo did not answer. */

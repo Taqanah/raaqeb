@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { requestOriginHeader } from "@/server/boot/proxies.ts";
+import { createIncident } from "@/server/incidents/incidents.ts";
+import { createComponent } from "@/server/pages/components.ts";
 import {
   type PagesScratch,
   publish,
@@ -7,7 +9,7 @@ import {
   testAddress,
 } from "@/server/pages/fixture.ts";
 import { createPage, savePage } from "@/server/pages/pages.ts";
-import type { PublicTarget } from "@/server/pages/public.ts";
+import type { PublicTarget, ViewTarget } from "@/server/pages/public.ts";
 import { publicAddress } from "@/server/settings/address.ts";
 import { createPublicMemo } from "./public.ts";
 
@@ -304,6 +306,9 @@ describe("the page that frames a not-found, from the memo's pages index", () => 
       reads: () => reads,
       storage: {
         changeCounter: count(() => storage.changeCounter()),
+        components: storage.components,
+        incidents: storage.incidents,
+        maintenance: storage.maintenance,
         pages: { ...storage.pages, list: count(() => storage.pages.list()) },
         settings: {
           ...storage.settings,
@@ -568,5 +573,357 @@ describe("an unpublished page in front of the memo", () => {
     await memo.answer(request("/status/nope"), s.storage, renders().render);
     expect(memo.missing(request("/status/nope"))).toBeUndefined();
     expect(memo.missing(request("/"))).toBeUndefined();
+  });
+});
+
+/** The app's render of a not-found: records the address and target it was asked for, answers a framed not-found with its language switch. */
+function missingRenders() {
+  const asked: { path: string; target: ViewTarget | undefined }[] = [];
+  return {
+    asked,
+    render: (address: Request, target: ViewTarget | undefined) => {
+      asked.push({ path: new URL(address.url).pathname, target });
+      return Promise.resolve(
+        new Response(
+          `<html><head><script>theme()</script></head><body><main data-slot="view-missing">not found ${asked.length}</main><a data-slot="page-locale" href="/en">English</a><script type="module" src="/assets/index.js"></script></body></html>`,
+          {
+            headers: { "content-type": "text/html; charset=utf-8" },
+            status: 404,
+          }
+        )
+      );
+    },
+  };
+}
+
+describe("the not-found the memo answers", () => {
+  test("every address that names no page is the one still document, rendered once at the address its frame renders at", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    const bodies: string[] = [];
+    for (const path of ["/.env", "/wp-admin/setup.php", "/status/nope"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time, as a scanner sends them
+      const answer = await memo.notFound(request(path), s.storage, app.render);
+      expect(answer?.status, path).toBe(404);
+      bodies.push((await answer?.text()) ?? "");
+    }
+    expect(app.asked).toEqual([
+      { path: "/history/0000-00", target: undefined },
+    ]);
+    expect(new Set(bodies).size).toBe(1);
+    expect(bodies[0]).toContain("not found 1");
+    expect(bodies[0]).toContain("<script>theme()</script>");
+    expect(bodies[0]).not.toContain('type="module"');
+  });
+
+  test("a page's slug frames the not-found under its address, rendered under that address, apart from the default page's", async () => {
+    const { s } = await withDefaultPage();
+    const docs = await createPage(s.storage, {
+      locale: "ar",
+      slug: "docs",
+      title: "Docs",
+    });
+    if (!docs.ok) {
+      throw new Error(docs.reason);
+    }
+    await publish(s.storage, docs.page.id);
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    await memo.notFound(request("/status/docs/nope"), s.storage, app.render);
+    await memo.notFound(request("/status/main/nope"), s.storage, app.render);
+    expect(app.asked.map((each) => each.path)).toEqual([
+      "/status/docs/history/0000-00",
+      "/history/0000-00",
+    ]);
+  });
+
+  test("a moved change counter, or the next UTC day, renders the not-found again", async () => {
+    const { s } = await withDefaultPage();
+    let clock = now;
+    const memo = createPublicMemo({ now: () => clock });
+    const app = missingRenders();
+    await memo.notFound(request("/.env"), s.storage, app.render);
+    await s.storage.bump();
+    await memo.notFound(request("/.env"), s.storage, app.render);
+    clock = now + 86_400_000;
+    await memo.notFound(request("/.env"), s.storage, app.render);
+    expect(app.asked).toHaveLength(3);
+  });
+
+  test("with no database open, as in onboarding, it is still rendered once", async () => {
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    for (const path of ["/.env", "/.git/config"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.notFound(request(path), undefined, app.render);
+      expect(answer?.status, path).toBe(404);
+    }
+    expect(app.asked).toHaveLength(1);
+  });
+
+  test("an address under /api/ with no route is the API's own not-found, plain text, and renders nothing", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    for (const method of ["GET", "POST"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.notFound(
+        request("/api/nope", { method }),
+        s.storage,
+        app.render
+      );
+      expect(answer?.status, method).toBe(404);
+      expect(answer?.headers.get("content-type"), method).toBe(
+        "text/plain; charset=utf-8"
+      );
+      expect(await answer?.text(), method).toBe("Not Found");
+    }
+    expect(app.asked).toEqual([]);
+  });
+
+  test("an address the app's own route answers is not the memo's", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    for (const path of [
+      "/",
+      "/sign-in",
+      "/admin/nope",
+      "/health",
+      "/api/auth/get-session",
+      "/_serverFn/x",
+    ]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.notFound(request(path), s.storage, app.render);
+      expect(answer, path).toBeUndefined();
+    }
+    expect(app.asked).toEqual([]);
+  });
+
+  test("the bare host of an unpublished default page is a visitor's not-found too", async () => {
+    const { s } = await withDefaultPage(false);
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    await memo.answer(request("/"), s.storage, renders().render);
+    const answer = await memo.notFound(request("/"), s.storage, app.render);
+    expect(answer?.status).toBe(404);
+  });
+
+  test("an app route's address that is gone is the plain not-found, rendered once at its own address without the search, whatever page the host shows", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    const gone = (pathname: string) =>
+      Promise.resolve(pathname.startsWith("/onboarding"));
+    for (const path of ["/onboarding?locale=en", "/onboarding/account"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.notFound(
+        request(path),
+        s.storage,
+        app.render,
+        undefined,
+        gone
+      );
+      expect(answer?.status, path).toBe(404);
+    }
+    expect(app.asked).toEqual([{ path: "/onboarding", target: undefined }]);
+    expect(
+      await memo.notFound(
+        request("/sign-in"),
+        s.storage,
+        app.render,
+        undefined,
+        gone
+      )
+    ).toBeUndefined();
+  });
+
+  test("a HEAD gets the not-found's status and headers with no body", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    const answer = await memo.notFound(
+      request("/.env", { method: "HEAD" }),
+      s.storage,
+      app.render
+    );
+    expect(answer?.status).toBe(404);
+    expect(answer?.headers.get("content-type")).toBe(
+      "text/html; charset=utf-8"
+    );
+    expect(await answer?.text()).toBe("");
+  });
+});
+
+describe("an incident, window or month a page does not have", () => {
+  /** The default page showing one component, with one incident on it. */
+  async function withIncident(): Promise<{
+    incidentId: string;
+    s: PagesScratch;
+  }> {
+    const { pageId, s } = await withDefaultPage();
+    const component = await createComponent(s.storage, {
+      description: undefined,
+      monitorIds: [],
+      name: { ar: "الموقع" },
+      status: "operational",
+    });
+    if (!component.ok) {
+      throw new Error(component.reason);
+    }
+    const page = await s.storage.pages.find(pageId);
+    if (!page) {
+      throw new Error("no page");
+    }
+    await s.storage.pages.save(pageId, page, [
+      { componentId: component.component.id, kind: "component" },
+    ]);
+    const incident = await createIncident(
+      s.storage,
+      {
+        impact: "minor",
+        message: { ar: "بطء" },
+        stage: "investigating",
+        statuses: [
+          {
+            componentId: component.component.id,
+            status: "degraded_performance",
+          },
+        ],
+        title: { ar: "بطء" },
+      },
+      "operator@raaqeb.test"
+    );
+    if (!incident.ok) {
+      throw new Error(incident.reason);
+    }
+    await s.storage.bump();
+    return { incidentId: incident.incident.id, s };
+  }
+
+  test("is its page's not-found in the address's locale, rendered once for every such address, never the view", async () => {
+    const { s } = await withIncident();
+    const memo = createPublicMemo({ now: () => now });
+    const route = renders();
+    const app = missingRenders();
+    for (const path of [
+      "/incidents/nope",
+      "/maintenance/nope",
+      "/history/2000-01",
+      "/incidents/again",
+    ]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.answer(
+        request(path),
+        s.storage,
+        route.render,
+        undefined,
+        app.render
+      );
+      expect(answer?.status, path).toBe(404);
+    }
+    expect(route.targets).toEqual([]);
+    expect(app.asked).toHaveLength(1);
+    expect(app.asked[0]?.target).toMatchObject({
+      locale: "ar",
+      view: "incident",
+    });
+    const english = await memo.answer(
+      request("/en/incidents/nope"),
+      s.storage,
+      route.render,
+      undefined,
+      app.render
+    );
+    expect(english?.status).toBe(404);
+    expect(app.asked).toHaveLength(2);
+    expect(app.asked[1]?.target).toMatchObject({ locale: "en" });
+  });
+
+  test("its language switch keeps the address, in the other locale", async () => {
+    const { s } = await withIncident();
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    for (const [path, other] of [
+      ["/incidents/nope", "/en/incidents/nope"],
+      ["/maintenance/again", "/en/maintenance/again"],
+    ] as const) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.answer(
+        request(path),
+        s.storage,
+        renders().render,
+        undefined,
+        app.render
+      );
+      expect(await answer?.text(), path).toContain(
+        `<a data-slot="page-locale" href="${other}">`
+      );
+    }
+  });
+
+  test("an incident the page has, this month and the months every page shows render their views, as before", async () => {
+    const { incidentId, s } = await withIncident();
+    const memo = createPublicMemo({ now: () => now });
+    const route = renders();
+    const app = missingRenders();
+    for (const path of [
+      `/incidents/${incidentId}`,
+      "/history/2026-09",
+      "/history/2026-07",
+      "/history",
+    ]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.answer(
+        request(path),
+        s.storage,
+        route.render,
+        undefined,
+        app.render
+      );
+      expect(answer?.status, path).toBe(200);
+    }
+    expect(route.targets).toHaveLength(4);
+    expect(app.asked).toEqual([]);
+  });
+
+  test("a month after this one is not on the page, and an id with a malformed escape is left to the view", async () => {
+    const { s } = await withIncident();
+    const memo = createPublicMemo({ now: () => now });
+    const route = renders();
+    const app = missingRenders();
+    const future = await memo.answer(
+      request("/history/2026-10"),
+      s.storage,
+      route.render,
+      undefined,
+      app.render
+    );
+    expect(future?.status).toBe(404);
+    await memo.answer(
+      request("/incidents/%E0"),
+      s.storage,
+      route.render,
+      undefined,
+      app.render
+    );
+    expect(route.targets).toMatchObject([{ view: "incident" }]);
+  });
+
+  test("a counter that cannot be read renders the not-found fresh and keeps none", async () => {
+    const { s } = await withIncident();
+    const memo = createPublicMemo({ now: () => now });
+    const app = missingRenders();
+    const broken = {
+      ...s.storage,
+      changeCounter: () => Promise.reject(new Error("gone")),
+    };
+    for (const path of ["/.env", "/.env"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.notFound(request(path), broken, app.render);
+      expect(answer?.status).toBe(404);
+    }
+    expect(app.asked).toHaveLength(2);
   });
 });

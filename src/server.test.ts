@@ -300,10 +300,8 @@ describe("the raaqeb command", () => {
       async (server) => {
         expect(server.hostname).toBe("127.0.0.1");
         expect(server.port).toBeGreaterThan(0);
-        const response = await fetch(
-          `http://127.0.0.1:${server.port}/some/page`
-        );
-        expect(await response.text()).toBe("ok /some/page");
+        const response = await fetch(`http://127.0.0.1:${server.port}/sign-in`);
+        expect(await response.text()).toBe("ok /sign-in");
       }
     );
   });
@@ -474,13 +472,95 @@ describe("the raaqeb command", () => {
     }
   });
 
+  test("onboarding's screens once the account exists, and a subscription's page no subscription has, are the plain not-found rendered once; before the account onboarding is the app's", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "let renders = 0; export default { fetch: (r) => { renders += 1; return new Response('render ' + renders + ' of ' + new URL(r.url).pathname, { headers: { 'content-type': 'text/html; charset=utf-8' }, status: 404 }); } };",
+    });
+    const booted = await resolveBootSettings({}, { RAAQEB_DATA_DIR: dataDir });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir);
+    if (typeof result === "number" || !result.storage || !booted.ok) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const at = async (path: string) =>
+        await (
+          await fetch(`http://127.0.0.1:${result.server.port}${path}`)
+        ).text();
+      expect(await at("/onboarding")).toBe("render 1 of /onboarding");
+      expect(await at("/onboarding")).toBe("render 2 of /onboarding");
+      const created = await createOperatorAccount(
+        {
+          email: "operator@example.com",
+          locale: "ar",
+          password: "correct horse battery",
+          publicAddress: "http://raaqeb.test",
+        },
+        {
+          boot: booted.settings,
+          opener: databaseOpener(() => undefined),
+          storage: result.storage,
+        },
+        new Headers({ origin: "http://raaqeb.test" })
+      );
+      expect(created.ok).toBe(true);
+      expect(await at("/onboarding/account")).toBe(
+        "render 3 of /onboarding/account"
+      );
+      for (const path of [
+        "/onboarding",
+        "/onboarding/database",
+        "/subscriptions/AAAAAAAAAAAAAAAAAAAAAA",
+        "/subscriptions/nope",
+      ]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+        expect(await at(path), path).toBe("render 3 of /onboarding/account");
+      }
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a scanner's burst of not-founds, page and API, costs one render of the page's not-found, its stylesheet linked, and leaves the routes to the app", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "let renders = 0; export default { fetch: (r, o) => { renders += 1; const path = new URL(r.url).pathname; return new Response('<html><body>render ' + renders + ' of ' + path + ' inline ' + o?.inlineCss + '</body></html>', { headers: { 'content-type': 'text/html; charset=utf-8' }, status: path === '/sign-in' ? 200 : 404 }); } };",
+    });
+    await withServer(
+      ["--port", "0", "--data-dir", dataDir],
+      {},
+      dir,
+      async (server) => {
+        const at = (path: string) =>
+          fetch(`http://127.0.0.1:${server.port}${path}`);
+        for (let i = 0; i < 200; i += 1) {
+          // biome-ignore lint/performance/noAwaitInLoops: one request at a time, as a scanner sends them
+          const page = await at(`/.env.${i}`);
+          expect(page.status).toBe(404);
+          expect(page.headers.get("x-frame-options")).toBe("DENY");
+          expect(await page.text()).toBe(
+            "<html><body>render 1 of /history/0000-00 inline false</body></html>"
+          );
+          const api = await at(`/api/nope/${i}`);
+          expect(api.status).toBe(404);
+          expect(await api.text()).toBe("Not Found");
+        }
+        expect(await (await at("/sign-in")).text()).toBe(
+          "<html><body>render 2 of /sign-in inline undefined</body></html>"
+        );
+      }
+    );
+  });
+
   test("a request that asks to be held open outlives Bun's idle timer, which closes a quiet request beside it, as test now needs, over HTTP/1.1 and HTTP/2", async () => {
     const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
     // The quiet requests wait until the idle timer closes them; the held ones answer once both are closed, or say the timer never fired.
     const dir = await serverBuild({
       "server/handler.js": `let closes = 0; let fired; const closed = new Promise((resolve) => { fired = resolve; });
         export default { fetch: async (r, o) => {
-          if (new URL(r.url).pathname === "/quiet") {
+          if (new URL(r.url).pathname === "/admin/quiet") {
             await Promise.race([new Promise((resolve) => r.signal.addEventListener("abort", resolve)), Bun.sleep(8000)]);
             closes += 1;
             if (closes === 2) fired();
@@ -501,13 +581,13 @@ describe("the raaqeb command", () => {
       const origin = `http://127.0.0.1:${result.server.port}`;
       // Over HTTP/2 the timer belongs to the connection, so the held request still keeps it open.
       const [held, heldOverHttp2, quiet, quietOverHttp2] = await Promise.all([
-        fetch(`${origin}/held`).then((response) => response.text()),
-        overHttp2(origin, "/held").then((answer) => answer.body),
-        fetch(`${origin}/quiet`).then(
+        fetch(`${origin}/admin/held`).then((response) => response.text()),
+        overHttp2(origin, "/admin/held").then((answer) => answer.body),
+        fetch(`${origin}/admin/quiet`).then(
           (response) => response.text(),
           () => "closed"
         ),
-        overHttp2(origin, "/quiet").then(
+        overHttp2(origin, "/admin/quiet").then(
           (answer) => answer.body || "closed",
           () => "closed"
         ),
@@ -527,7 +607,7 @@ describe("the raaqeb command", () => {
     const dataDir = await clientBuild({});
     const dir = await serverBuild({
       "server/handler.js": `export default { fetch: async (r, o) => {
-        if (new URL(r.url).pathname === "/open") {
+        if (new URL(r.url).pathname === "/onboarding/database") {
           const opened = await o.context.opener.open({ backend: "sqlite", file: o.context.boot.dataDir + "/raaqeb.sqlite" });
           return new Response(String(opened.ok));
         }
@@ -541,7 +621,9 @@ describe("the raaqeb command", () => {
       async (server) => {
         const origin = `http://127.0.0.1:${server.port}`;
         expect(await (await fetch(`${origin}/`)).text()).toBe("undefined");
-        expect(await (await fetch(`${origin}/open`)).text()).toBe("true");
+        expect(
+          await (await fetch(`${origin}/onboarding/database`)).text()
+        ).toBe("true");
         expect(await (await fetch(`${origin}/`)).text()).toBe("sqlite");
       }
     );
@@ -578,7 +660,7 @@ describe("the raaqeb command", () => {
     const dataDir = await clientBuild({});
     const dir = await serverBuild({
       "server/handler.js": `export default { fetch: async (r, o) => {
-        if (new URL(r.url).pathname === "/open") {
+        if (new URL(r.url).pathname === "/onboarding/database") {
           const opened = await o.context.opener.open({ backend: "sqlite", file: o.context.boot.dataDir + "/raaqeb.sqlite" });
           return new Response(String(opened.ok));
         }
@@ -592,7 +674,9 @@ describe("the raaqeb command", () => {
       async (server) => {
         const origin = `http://127.0.0.1:${server.port}`;
         expect(await (await fetch(`${origin}/`)).text()).toBe("false");
-        expect(await (await fetch(`${origin}/open`)).text()).toBe("true");
+        expect(
+          await (await fetch(`${origin}/onboarding/database`)).text()
+        ).toBe("true");
         expect(await (await fetch(`${origin}/`)).text()).toBe("true");
       }
     );
@@ -968,7 +1052,9 @@ describe("the raaqeb command", () => {
       dir,
       async (server) => {
         const origin = `http://127.0.0.1:${server.port}`;
-        expect(await (await fetch(`${origin}/open`)).text()).toBe("false");
+        expect(
+          await (await fetch(`${origin}/onboarding/database`)).text()
+        ).toBe("false");
       }
     );
   });
@@ -1673,9 +1759,9 @@ describe("the request log", () => {
   const handler = [
     "export default { fetch: async (r, o) => {",
     "const path = new URL(r.url).pathname;",
-    "if (path === '/slow') await Bun.sleep(1100);",
+    "if (path === '/admin/slow') await Bun.sleep(1100);",
     // Start ends an abandoned request by throwing the abort's reason.
-    "if (path === '/left') return await new Promise((_, reject) => r.signal.addEventListener('abort', () => reject(r.signal.reason)));",
+    "if (path === '/admin/left') return await new Promise((_, reject) => r.signal.addEventListener('abort', () => reject(r.signal.reason)));",
     "if (path === '/health' && r.headers.has('x-fail')) return new Response('', { status: 503 });",
     "return new Response('ok', { headers: o?.context?.publicTarget ? { 'cache-control': 'public, max-age=0' } : {} });",
     "} };",
@@ -1740,7 +1826,7 @@ describe("the request log", () => {
         method: "POST",
       });
       const leaving = new AbortController();
-      const left = at("/left", { signal: leaving.signal }).catch(
+      const left = at("/admin/left", { signal: leaving.signal }).catch(
         () => undefined
       );
       await Bun.sleep(50);
@@ -1756,7 +1842,7 @@ describe("the request log", () => {
       await at("/admin/monitors?page=2");
       await at("/_serverFn/4f2a9c", { body: "{}", method: "POST" });
       await at("/api/auth/get-session");
-      await at("/api/v2/monitors");
+      await at("/api/openapi.json");
       await at("/api/heartbeat/s3cret", { method: "POST" });
       await at("/assets/app-Bx1c9d2e.js");
       expect(
@@ -1771,7 +1857,7 @@ describe("the request log", () => {
         "raaqeb: request method=GET path=/admin/monitors status=200 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
         "raaqeb: request method=POST path=/_serverFn/4f2a9c status=200 ms=<n> ip=127.0.0.1 kind=function browser=curl/8.5",
         "raaqeb: request method=GET path=/api/auth/get-session status=200 ms=<n> ip=127.0.0.1 kind=auth browser=curl/8.5",
-        "raaqeb: request method=GET path=/api/v2/monitors status=200 ms=<n> ip=127.0.0.1 kind=api browser=curl/8.5",
+        "raaqeb: request method=GET path=/api/openapi.json status=200 ms=<n> ip=127.0.0.1 kind=api browser=curl/8.5",
         "raaqeb: request method=POST path=/api/heartbeat/<token> status=200 ms=<n> ip=127.0.0.1 kind=api browser=curl/8.5",
         "raaqeb: request method=POST path=/sign-in status=413 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
       ]);
@@ -1810,9 +1896,9 @@ describe("the request log", () => {
 
   test("a request slower than a second carries the process's memory", async () => {
     await withLog(true, async (at, lines) => {
-      await at("/slow");
+      await at("/admin/slow");
       expect(lines()).toEqual([
-        "raaqeb: request method=GET path=/slow status=200 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5 rss_mb=<n>",
+        "raaqeb: request method=GET path=/admin/slow status=200 ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5 rss_mb=<n>",
       ]);
     });
   });
@@ -1820,7 +1906,7 @@ describe("the request log", () => {
   test("a client that leaves before the answer still gets a line, its status named closed", async () => {
     await withLog(true, async (at, lines) => {
       const leaving = new AbortController();
-      const left = at("/left", { signal: leaving.signal }).catch(
+      const left = at("/admin/left", { signal: leaving.signal }).catch(
         () => undefined
       );
       await Bun.sleep(100);
@@ -1832,7 +1918,7 @@ describe("the request log", () => {
         await Bun.sleep(20);
       }
       expect(lines()).toEqual([
-        "raaqeb: request method=GET path=/left status=closed ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
+        "raaqeb: request method=GET path=/admin/left status=closed ms=<n> ip=127.0.0.1 kind=page browser=curl/8.5",
       ]);
     });
   });

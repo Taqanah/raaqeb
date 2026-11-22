@@ -10,7 +10,6 @@ interface Found {
 /** Every element of the document with its attributes, as a client's parser reads them. */
 async function elementsOf(html: string): Promise<Found[]> {
   const found: Found[] = [];
-  // biome-ignore lint/correctness/noUndeclaredVariables: Bun's global, which Biome does not list
   await new HTMLRewriter()
     .on("*", {
       element(element) {
