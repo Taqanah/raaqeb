@@ -2,12 +2,15 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Suspense } from "react";
 import { SettingsNav } from "@/admin/settings/settings-nav.tsx";
 import { Page } from "@/admin/shell/page.tsx";
+import { MissingNotice } from "@/admin/shell/page-missing.tsx";
 import { useMessages } from "@/shared/i18n/react.tsx";
 
 // The settings area: the title, the row of its pages, and the
-// page itself below.
+// page itself below. An address no settings page matches shows the notice
+// below the title and the row, not a second page frame.
 export const Route = createFileRoute("/admin/settings")({
   component: SettingsLayout,
+  notFoundComponent: MissingNotice,
 });
 
 function SettingsLayout() {

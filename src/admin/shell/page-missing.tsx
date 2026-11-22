@@ -14,25 +14,33 @@ import {
 } from "@/shared/ui/empty.tsx";
 import { Page } from "./page.tsx";
 
+/** The notice alone, for an area that already has its own title row (settings). */
+export function MissingNotice(): ReactNode {
+  const { t } = useMessages();
+  return (
+    <Empty data-slot="page-missing">
+      <EmptyHeader>
+        <EmptyDescription>{t("app_not_found_description")}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button
+          data-slot="missing-back"
+          nativeButton={false}
+          render={<Link to="/admin/monitors" />}
+          variant="outline"
+        >
+          {t("app_not_found_back")}
+        </Button>
+      </EmptyContent>
+    </Empty>
+  );
+}
+
 export function PageMissing(): ReactNode {
   const { t } = useMessages();
   return (
     <Page title={t("app_not_found_title")}>
-      <Empty data-slot="page-missing">
-        <EmptyHeader>
-          <EmptyDescription>{t("app_not_found_description")}</EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <Button
-            data-slot="missing-back"
-            nativeButton={false}
-            render={<Link to="/admin/monitors" />}
-            variant="outline"
-          >
-            {t("app_not_found_back")}
-          </Button>
-        </EmptyContent>
-      </Empty>
+      <MissingNotice />
     </Page>
   );
 }

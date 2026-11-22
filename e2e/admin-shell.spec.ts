@@ -117,6 +117,21 @@ test("an admin address nothing matches shows the shell with a title and a way ba
   await expectPath(page, "/admin/monitors");
 });
 
+test("an unknown settings address keeps the settings title and its row of pages, with one not-found notice and no second title", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto(`${englishOrigin}/admin/settings/no-such-page`);
+  await expect(page.locator("[data-slot=page-missing]")).toBeVisible();
+  await expect(
+    page.locator('a[href="/admin/settings/appearance"]')
+  ).toBeVisible();
+  await expect(page.locator("[data-slot=page]")).toHaveCount(1);
+  await expect(page.locator("[data-slot=page] h1")).toHaveCount(1);
+  await page.click("[data-slot=missing-back]");
+  await expectPath(page, "/admin/monitors");
+});
+
 test("the question mark opens the shortcut sheet and Escape closes it", async ({
   page,
 }) => {
