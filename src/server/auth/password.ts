@@ -17,9 +17,21 @@ export const argon2id = {
   timeCost: 3,
 } as const;
 
+// Each hash holds its memory cost while it runs, and Bun runs as many at once as it sees cores, so a burst of sign-ins could pass the floor.
+let turn: Promise<unknown> = Promise.resolve();
+
+/** Runs `work` after every hash already asked for has settled. */
+function oneAtATime<T>(work: () => Promise<T>): Promise<T> {
+  const mine = turn.then(work);
+  turn = mine.catch(() => undefined);
+  return mine;
+}
+
 /** Hashes an NFKC-normalised password into a PHC string. */
 export function hashPassword(password: string): Promise<string> {
-  return Bun.password.hash(password.normalize("NFKC"), argon2id);
+  return oneAtATime(() =>
+    Bun.password.hash(password.normalize("NFKC"), argon2id)
+  );
 }
 
 /** True when the password matches the hash; false for a wrong password or a hash Bun cannot parse. */
@@ -28,9 +40,8 @@ export async function verifyPassword(input: {
   password: string;
 }): Promise<boolean> {
   try {
-    return await Bun.password.verify(
-      input.password.normalize("NFKC"),
-      input.hash
+    return await oneAtATime(() =>
+      Bun.password.verify(input.password.normalize("NFKC"), input.hash)
     );
   } catch {
     // A stored value Bun cannot parse, such as a scrypt hash from another hasher, is a failed sign-in.

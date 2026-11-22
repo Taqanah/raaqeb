@@ -81,3 +81,57 @@ describe("a hash Bun cannot parse is a failed sign-in, not a crash", () => {
     expect(await verifyPassword({ hash, password })).toBe(false);
   });
 });
+
+// Each hash holds its memory cost while it runs, and Bun runs as many at once as it sees cores, so a burst of sign-ins on a many-core host with a 240 MB limit was killed.
+describe("one hash at a time", () => {
+  const slowHash = Bun.password.hash(password, {
+    algorithm: "argon2id",
+    memoryCost: 12_288,
+    timeCost: 40,
+  });
+  const fastHash = Bun.password.hash(password, {
+    algorithm: "argon2id",
+    memoryCost: 64,
+    timeCost: 1,
+  });
+
+  /** The order two password calls settle in when both start at once. */
+  async function settled(
+    first: () => Promise<unknown>,
+    second: () => Promise<unknown>
+  ): Promise<string[]> {
+    const order: string[] = [];
+    await Promise.all([
+      first().then(() => order.push("first")),
+      second().then(() => order.push("second")),
+    ]);
+    return order;
+  }
+
+  test("a sign-in that starts during a slow one waits for it, however quick its own hash", async () => {
+    const slow = await slowHash;
+    const fast = await fastHash;
+    expect(
+      await settled(
+        () => verifyPassword({ hash: slow, password }),
+        () => verifyPassword({ hash: fast, password })
+      )
+    ).toEqual(["first", "second"]);
+  });
+
+  test("a new password is hashed after the sign-in already running", async () => {
+    const slow = await slowHash;
+    expect(
+      await settled(
+        () => verifyPassword({ hash: slow, password }),
+        () => hashPassword(password)
+      )
+    ).toEqual(["first", "second"]);
+  });
+
+  test("a hash Bun cannot parse does not hold up the next sign-in", async () => {
+    const fast = await fastHash;
+    expect(await verifyPassword({ hash: "deadbeef", password })).toBe(false);
+    expect(await verifyPassword({ hash: fast, password })).toBe(true);
+  });
+});
