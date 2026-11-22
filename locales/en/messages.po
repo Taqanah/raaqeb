@@ -35,6 +35,10 @@ msgid "app_optional"
 msgstr "Optional"
 
 #. js-lingui-explicit-id
+msgid "app_required"
+msgstr "Required"
+
+#. js-lingui-explicit-id
 msgid "app_save"
 msgstr "Save"
 
