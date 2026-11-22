@@ -19,6 +19,12 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && locales.some((l) => l === value);
 }
 
+/** The locale a path's first segment names (`/en/nope`), exactly spelled; nothing for any other path. */
+export function pathLocale(pathname: string): Locale | undefined {
+  const [, first] = pathname.split("/");
+  return locales.find((each) => each === first);
+}
+
 export function directionOf(locale: Locale): Direction {
   return locale === "ar" ? "rtl" : "ltr";
 }

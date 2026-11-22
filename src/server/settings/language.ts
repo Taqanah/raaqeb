@@ -16,6 +16,7 @@ import {
   isLocale,
   type Locale,
   localeSchema,
+  pathLocale,
 } from "@/shared/i18n/locale.ts";
 import { type Catalog, createMessages } from "@/shared/i18n/messages.ts";
 import { publicCatalog } from "@/shared/i18n/public.ts";
@@ -96,11 +97,15 @@ export const localePreviewPaths: readonly string[] = [
   "/admin/settings/account",
 ];
 
-/** The locale a request asks for, when its path may ask and its `locale` search value is one of the two. */
+/** The locale a request asks for: the one its path's prefix names (`/en/nope`, whose not-found reads in English), else when its path may ask, its `locale` search value if it is one of the two. */
 export function requestedLocale(
   pathname: string,
   search: unknown
 ): Locale | undefined {
+  const prefix = pathLocale(pathname);
+  if (prefix) {
+    return prefix;
+  }
   if (
     !(
       localeSwitchPaths.includes(pathname) ||
