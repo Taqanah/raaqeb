@@ -6,6 +6,12 @@ import {
   writeConfigFile,
 } from "./datadir.ts";
 
+// The one folder this test hands to ensureDataDir that it did not make, so it runs only where the system temporary folder (root's, mode 1777) is not the test user's: otherwise the chmod would succeed on a shared path.
+const tmpIsSomeoneElses = await Bun.file("/tmp")
+  .stat()
+  .then(({ uid }) => process.platform !== "win32" && uid !== process.getuid?.())
+  .catch(() => false);
+
 const tempDirs: string[] = [];
 afterAll(async () => {
   await Promise.all(tempDirs.map((dir) => Bun.$`rm -rf ${dir}`.quiet()));
@@ -36,28 +42,52 @@ describe("the data directory", () => {
     expect(await modeOf(dataDir)).toBe("700");
   });
 
-  test("an existing directory keeps its mode", async () => {
+  test("an existing directory wider than 0700 is tightened to 0700, since a platform that mounts its own volume sets the mode on every boot", async () => {
     const dataDir = `${await scratch()}/data`;
     // Bun's shell builtin mkdir has no -m; chmod is the system binary.
     await Bun.$`mkdir ${dataDir} && chmod 755 ${dataDir}`.quiet();
     await ensureDataDir(dataDir);
-    expect(await modeOf(dataDir)).toBe("755");
+    expect(await modeOf(dataDir)).toBe("700");
+  });
+
+  test("an existing directory already private is left as it is", async () => {
+    const dataDir = `${await scratch()}/data`;
+    await Bun.$`mkdir ${dataDir} && chmod 500 ${dataDir}`.quiet();
+    try {
+      await ensureDataDir(dataDir);
+      expect(await modeOf(dataDir)).toBe("500");
+    } finally {
+      await Bun.$`chmod 700 ${dataDir}`.quiet();
+    }
   });
 });
 
 describe("a data directory open to group and others", () => {
-  test("is wider than the owner on Linux and macOS, never on Windows, whose modes are made up from the read-only flag", async () => {
+  test("is not reported once Raaqeb has tightened it", async () => {
     const dataDir = `${await scratch()}/data`;
     await Bun.$`mkdir ${dataDir} && chmod 755 ${dataDir}`.quiet();
     expect(await ensureDataDir(dataDir, "linux")).toEqual({
-      widerThanOwner: true,
+      widerThanOwner: false,
     });
-    expect(await ensureDataDir(dataDir, "darwin")).toEqual({
-      widerThanOwner: true,
-    });
+    expect(await modeOf(dataDir)).toBe("700");
+  });
+
+  test.skipIf(!tmpIsSomeoneElses)(
+    "is reported when it belongs to someone else and cannot be changed",
+    async () => {
+      expect(await ensureDataDir("/tmp", "linux")).toEqual({
+        widerThanOwner: true,
+      });
+    }
+  );
+
+  test("is left alone on Windows, whose modes are made up from the read-only flag", async () => {
+    const dataDir = `${await scratch()}/data`;
+    await Bun.$`mkdir ${dataDir} && chmod 755 ${dataDir}`.quiet();
     expect(await ensureDataDir(dataDir, "win32")).toEqual({
       widerThanOwner: false,
     });
+    expect(await modeOf(dataDir)).toBe("755");
   });
 });
 

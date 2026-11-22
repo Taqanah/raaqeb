@@ -29,19 +29,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Creates the directory with mode 0700 when missing and answers whether the
- * directory, new or old, lets group or others in. An existing directory keeps
- * its mode: a mounted volume may not be ours to change. On Windows a mode is
- * only what Bun makes up from the read-only flag, so it is never wider.
+ * Creates the directory with mode 0700 when missing, tightens an existing one
+ * that lets group or others in (a platform that mounts its own volume, such as
+ * Fly, sets 0755 on every boot), and answers whether it is still wider, which
+ * happens when it is not ours to change. On Windows a mode is only what Bun
+ * makes up from the read-only flag, so it is never wider.
  */
 export async function ensureDataDir(
   dataDir: string,
   platform: NodeJS.Platform = process.platform
 ): Promise<{ widerThanOwner: boolean }> {
   await mkdir(dataDir, { mode: 0o700, recursive: true });
-  const { mode } = await Bun.file(dataDir).stat();
+  if (platform === "win32") {
+    return { widerThanOwner: false };
+  }
   // The low two octal digits are the group and other bits.
-  return { widerThanOwner: platform !== "win32" && mode % 0o100 !== 0 };
+  const wider = async () => (await Bun.file(dataDir).stat()).mode % 0o100 !== 0;
+  if (await wider()) {
+    await chmod(dataDir, 0o700).catch(() => undefined);
+  }
+  return { widerThanOwner: await wider() };
 }
 
 /** The data directory as it stands: its real absolute path, its permission bits, and which of `config.json` and the SQLite file, the two that hold secrets, are in it. */
