@@ -7,6 +7,34 @@ Releases are published at [github.com/Taqanah/raaqeb/releases](https://github.co
 
 This page lists each release, newest first, with its release notes.
 
+## 0.2.1
+
+2026-11-22. [Release page](https://github.com/Taqanah/raaqeb/releases/tag/v0.2.1)
+
+Fixes for 0.2.0, chiefly to memory: a flood of requests from people who are not signed in, or of sign-ins, no longer runs an install out of memory.
+
+### Before you upgrade
+
+- Raaqeb sets its data directory to mode 0700 at every start when the folder is its own to change, where 0.2.0 only noted in the log that the mode was wider. A backup tool or another user that read the folder through its group or other permissions loses access: run it as the user Raaqeb runs as, or as root.
+- When many requests arrive at once, someone who is not signed in can get `503` with `Retry-After: 1` for a page Raaqeb has to build. A signed-in operator is never held back. A tool that loads many pages at once, such as a link checker or a monitor of a status page from outside, may count these as failures.
+- HTTP checks send `User-Agent: raaqeb/0.2.1` where they sent `Bun/1.4.3`. A site or firewall that treats requests by this header may answer differently: one that refused Bun's lets checks through, and a rule written for the old value no longer matches. A `User-Agent` entry in **Request headers** replaces it.
+
+### Fixes
+
+- An address that does not exist answers a small `404` page of about 1 KB, where 0.2.0 built the whole app, 209 KB, for each one: a tool trying made-up addresses could run an install out of memory.
+- The other pages someone who is not signed in can open, such as sign-in, a password reset, onboarding and a subscription's page, are served from memory or built one at a time, so a flood of them no longer grows memory.
+- Sign-ins that arrive together have their passwords checked one after another, so a burst of them no longer runs an install out of memory.
+- A second `raaqeb serve` started while another holds the port exits before it opens the database, so an upgrade started beside a running install no longer migrates that install's database.
+- A not-found under `/en/` or `/ar/` reads in that language.
+- An address that does not exist under Settings shows one notice under the Settings title, where the title appeared twice.
+- The copy button of a status page's "Get updates" dialog, with Feed chosen, reads "Copy" where it showed `app_copy`.
+- The confirmation after "Forgot password?" no longer shows whoever sends the form the `raaqeb reset-password` command; it links the docs on resetting a password.
+- In a content field, the install language's input is marked "Required", and screen readers announce it as required.
+
+### Changes
+
+- An API address, such as `/health`, a feed or a badge, answers a method it does not take with `405` and an `Allow` header, and an address that does not exist under `/api/` answers a plain-text `404`. Both answered with the app's page.
+
 ## 0.2.0
 
 2026-10-14. [Release page](https://github.com/Taqanah/raaqeb/releases/tag/v0.2.0)

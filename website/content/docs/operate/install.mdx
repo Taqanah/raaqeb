@@ -113,7 +113,7 @@ Enable-ScheduledTask Raaqeb; Start-ScheduledTask Raaqeb      # start
 
 ```sh
 docker run -d --name raaqeb --restart unless-stopped \
-  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.0
+  -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.1
 ```
 
 لا تحتاج وحدة التخزين المسمّاة إلى شيء آخر. أما ضمّ مجلد فيحتاج أن تعمل الحاوية بمالك المجلد: `--user "$(id -u):$(id -g)" -v "$PWD/data:/data"`. لا صدفة في الصورة؛ يشغّل `docker exec raaqeb raaqeb <command>` الملف التنفيذي مباشرة.
