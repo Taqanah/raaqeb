@@ -47,3 +47,15 @@ describe("a catalog as the text a document carries", () => {
     expect(catalogText(en)).not.toBe(text);
   });
 });
+
+/** A size with no isolate (U+2066) opening before it. */
+const bareSize = /(?<!\u2066)\b\d+(?:\.\d+)? ?[KMGT]B\b/;
+
+describe("the Arabic messages", () => {
+  test('hold each size with its unit inside an isolate, or the bidi algorithm reads "4 GB" as "GB 4"', () => {
+    const bare = Object.entries(ar).filter(([, text]) =>
+      bareSize.test(String(text))
+    );
+    expect(bare).toEqual([]);
+  });
+});
