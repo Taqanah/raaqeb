@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { binary } from "./e2e/support/built.ts";
 import {
   arabicOrigin,
   arabicPort,
@@ -33,9 +34,10 @@ export default defineConfig({
   use: { baseURL: arabicOrigin },
   webServer: [
     {
-      // The data directory is wiped so the server starts in onboarding every run.
-      command:
-        "rm -rf test-results/data && bun run build && bun dist/server/server.js",
+      // The data directory is wiped so the server starts in onboarding every run. With RAAQEB_E2E_BINARY the binary is compiled from the build just made, and the other servers wait for this one.
+      command: binary
+        ? `rm -rf test-results/data && bun run build && bun scripts/package.ts e2e-binary && ${binary} serve`
+        : "rm -rf test-results/data && bun run build && bun dist/server/server.js",
       // The data directory lands under Playwright's output folder, never in ./data.
       env: {
         RAAQEB_DATA_DIR: "test-results/data",

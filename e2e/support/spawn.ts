@@ -11,6 +11,7 @@ import { installLanguage } from "@/server/settings/language.ts";
 import { openStorage, type Storage } from "@/server/storage/storage.ts";
 import type { Role } from "@/shared/domain/roles.ts";
 import type { Locale } from "@/shared/i18n/locale.ts";
+import { binary } from "./built.ts";
 import { operatorEmail, operatorPassword } from "./servers.ts";
 import { waitForOrigin } from "./wait.ts";
 
@@ -134,8 +135,7 @@ export async function spawnInstall(what: InstallSeed = {}): Promise<Install> {
   }
   const server = Bun.spawn(
     [
-      "bun",
-      "dist/server/server.js",
+      ...(binary ? [binary, "serve"] : ["bun", "dist/server/server.js"]),
       "--port",
       String(port),
       "--host",

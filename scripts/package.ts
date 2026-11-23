@@ -155,6 +155,22 @@ export function compileArgs(target: Target, outfile: string): string[] {
   ];
 }
 
+/** The binary the e2e suite runs when `RAAQEB_E2E_BINARY` is set: the host's target, compiled with the release's own arguments from the build in dist/. */
+async function e2eBinary(): Promise<void> {
+  const target = targets.find(
+    (each) => each.bun === `bun-${process.platform}-${process.arch}`
+  );
+  if (!target) {
+    throw new Error(
+      `no release target for ${process.platform}-${process.arch}`
+    );
+  }
+  await Bun.$`${process.execPath} ${compileArgs(target, `${binDir}/raaqeb-e2e`)}`
+    .cwd(`${repo}/dist`)
+    .quiet();
+  process.stdout.write("compiled dist/bin/raaqeb-e2e\n");
+}
+
 /** Compiles every target from the Vite build in dist/ and writes their checksums. */
 async function binaries(): Promise<void> {
   releaseVersion(await Bun.file(`${repo}/package.json`).json());
@@ -236,12 +252,16 @@ if (import.meta.main) {
   const [command] = Bun.argv.slice(2);
   if (command === "binaries") {
     await binaries();
+  } else if (command === "e2e-binary") {
+    await e2eBinary();
   } else if (command === "image") {
     await image();
   } else if (command === "push") {
     await push();
   } else {
-    process.stderr.write("usage: bun scripts/package.ts binaries|image|push\n");
+    process.stderr.write(
+      "usage: bun scripts/package.ts binaries|e2e-binary|image|push\n"
+    );
     process.exit(2);
   }
 }
