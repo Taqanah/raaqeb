@@ -526,7 +526,7 @@ const keyedApi = /^\/api\/(v1|probe)\//;
 /** The largest export an import takes. */
 const uploadLimitBytes = 4 * 1024 ** 3;
 
-/** Whether a request's body is refused before anything reads it: over its limit, or streamed with no length to judge; an import's upload streams in whole. Only a body past a stranger's limit asks `stranger`, so a stranger's small one costs no session read, and a forged cookie fails its signature before any. A body is judged by itself, not by transfer-encoding, which HTTP/2 never sends. */
+/** Whether a request's body is refused before anything reads it: over its limit, or streamed with no length to judge; an import's upload streams in whole, and a heartbeat's streams too, since the route reads a short head of it and cancels the rest. Only a body past a stranger's limit asks `stranger`, so a stranger's small one costs no session read, and a forged cookie fails its signature before any. A body is judged by itself, not by transfer-encoding, which HTTP/2 never sends. */
 async function oversized(
   request: Request,
   stranger: () => Promise<boolean>
@@ -537,7 +537,7 @@ async function oversized(
   }
   const length = request.headers.get("content-length");
   if (length === null) {
-    return request.body !== null;
+    return request.body !== null && !pathname.startsWith(heartbeatPathPrefix);
   }
   const bytes = Number(length);
   if (bytes > bodyLimitBytes) {

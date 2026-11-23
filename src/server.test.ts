@@ -654,6 +654,44 @@ describe("the raaqeb command", () => {
     }
   });
 
+  test("a heartbeat call whose body streams with no length reaches the route, whose own read stops at a kilobyte; a declared body over 8 MB is still refused there", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async (r) => new Response('read ' + (await r.arrayBuffer()).byteLength) };",
+    });
+    await withServer(
+      ["--port", "0", "--data-dir", dataDir],
+      {},
+      dir,
+      async (server) => {
+        const at = (path: string) => `http://127.0.0.1:${server.port}${path}`;
+        const chunked = () =>
+          new ReadableStream<Uint8Array>({
+            start: (controller) => {
+              controller.enqueue(new Uint8Array(10));
+              controller.close();
+            },
+          });
+        const post = (path: string, body: BodyInit) =>
+          fetch(at(path), { body, method: "POST" });
+        await Promise.all(
+          ["/api/heartbeat/abc", "/api/heartbeat/abc/fail"].map(
+            async (path) => {
+              expect(await (await post(path, chunked())).text()).toBe(
+                "read 10"
+              );
+              expect(
+                (await post(path, new Uint8Array(9 * 1024 * 1024))).status
+              ).toBe(413);
+            }
+          )
+        );
+        expect((await post("/api/heartbeats", chunked())).status).toBe(413);
+      }
+    );
+  });
+
   test("the same port speaks HTTP/2 to a client that opens with its preface, as a proxy with an HTTP/2 backend does, and HTTP/1.1 to any other", async () => {
     const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
     const dir = await serverBuild({
