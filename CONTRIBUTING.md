@@ -50,7 +50,7 @@ bun run dev            # Vite dev server on port 3000
 bun run build          # dist/client, dist/server (the entry and the handler) and dist/migrations
 bun run start          # raaqeb serve over the build; onboarding runs here, not under vite dev; boot settings in website/content/docs/operate/boot-settings.en.mdx
 bun run binaries       # the Linux, macOS and Windows binaries and their SHA256SUMS in dist/bin
-bun run image          # the amd64 and arm64 image as an OCI archive in dist/image, the host's loaded as ghcr.io/taqanah/raaqeb:<version>
+bun run image          # the amd64 and arm64 image as an OCI archive in dist/image, the host's loaded as raaqeb-build:<version>, a name no release has
 bun run image:check    # the image on an empty volume, walked through onboarding; needs Docker
 bun run upgrade:check <from-image> [<to-image>]  # an install with data from one image to the next, on SQLite and Postgres; needs Docker
 bun run install:check  # the installer on Debian with systemd and Alpine with OpenRC, in containers; needs Docker

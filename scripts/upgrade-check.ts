@@ -14,19 +14,20 @@
  * of a table the old file does not carry and the audit entries of the
  * sign-ins above; each allowed difference is printed with its reason. A start
  * after it must find nothing to migrate. The to-image is the one `bun run
- * image` loads for this checkout unless given. `--without=docker,ntfy` leaves
- * out the check types and channel kinds the old image does not know;
- * `--seed=<file>` restores an export the old image can read in place of the
- * built-in seed, for a release whose export format the built-in seed does
- * not match. Needs Docker and Playwright's Chromium, so it stays out of the
- * gate. The containers share the host's network.
+ * image` loads for this checkout unless given; two names for one image are
+ * refused, and each image's version and revision are printed.
+ * `--without=docker,ntfy` leaves out the check types and channel kinds the
+ * old image does not know; `--seed=<file>` restores an export the old image
+ * can read in place of the built-in seed, for a release whose export format
+ * the built-in seed does not match. Needs Docker and Playwright's Chromium,
+ * so it stays out of the gate. The containers share the host's network.
  */
 import { chromium, type Page } from "@playwright/test";
 import { appCode } from "@/server/auth/fixture.ts";
 import { linesOf } from "@/server/export/fixture.ts";
 import { importAnswerSchema } from "@/shared/schemas/export.ts";
 import { expectPath, freePort, must, run, until } from "./containers.ts";
-import { imageTag, releaseVersion } from "./package.ts";
+import { buildTag, releaseVersion } from "./package.ts";
 import {
   type ExportLine,
   inventory,
@@ -54,7 +55,7 @@ if (named === undefined) {
 const from: string = named;
 const to: string =
   given ??
-  imageTag(releaseVersion(await Bun.file(`${repo}/package.json`).json()));
+  buildTag(releaseVersion(await Bun.file(`${repo}/package.json`).json()));
 
 const tag = Date.now().toString(36);
 const email = "operator@example.com";
@@ -83,6 +84,25 @@ function counts(lines: readonly ExportLine[]): string {
   return Object.entries(inventory(lines))
     .map(([table, size]) => `${size} ${table}`)
     .join(", ");
+}
+
+/** The image Docker holds under a name, pulled first when it holds none, and the version and revision it was built from. */
+async function inspectImage(
+  name: string
+): Promise<{ readonly built: string; readonly id: string }> {
+  const inspect = [
+    "docker",
+    "image",
+    "inspect",
+    "--format",
+    '{{.Id}} version {{index .Config.Labels "org.opencontainers.image.version"}}, revision {{index .Config.Labels "org.opencontainers.image.revision"}}',
+    name,
+  ];
+  if ((await run(inspect)).code !== 0) {
+    await must(["docker", "pull", "--quiet", name]);
+  }
+  const [id = "", ...built] = (await must(inspect)).split(" ");
+  return { built: built.join(" "), id };
 }
 
 async function startPostgres(base: string): Promise<string> {
@@ -368,6 +388,18 @@ async function checkBackend(
 const browser = await chromium.launch();
 let failed = false;
 try {
+  const [fromImage, toImage] = await Promise.all([
+    inspectImage(from),
+    inspectImage(to),
+  ]);
+  if (fromImage.id === toImage.id) {
+    throw new Error(
+      `${from} and ${to} are one image (${fromImage.id}), so the check would compare a build with itself`
+    );
+  }
+  process.stdout.write(
+    `upgrade:check: from ${from}: ${fromImage.built}\nupgrade:check: to ${to}: ${toImage.built}\n`
+  );
   const seed =
     seedPath === undefined
       ? await seedFile(Date.now(), without)

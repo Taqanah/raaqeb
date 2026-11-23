@@ -6,7 +6,8 @@ primary_region = "<region>"
 
 [build]
   # The released image Fly pulls; change the tag to upgrade. A build of your own
-  # is `bun run image`, deployed with `fly deploy --local-only --ha=false`.
+  # is `bun run image`, deployed with `fly deploy --local-only --ha=false
+  # --image raaqeb-build:<version>`.
   image = "ghcr.io/taqanah/raaqeb:0.2.1"
 
 [env]

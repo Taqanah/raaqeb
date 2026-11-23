@@ -11,7 +11,7 @@
  * never a number: a human reads the report.
  */
 
-import { imageTag } from "../../scripts/package.ts";
+import { buildTag } from "../../scripts/package.ts";
 import { type NoiseBand, noiseBand, storable } from "./band.ts";
 import {
   alpineImage,
@@ -203,7 +203,7 @@ async function images(
   | { message: string; ok: false }
 > {
   const at = await version();
-  const wanted = flags.image ?? imageTag(at);
+  const wanted = flags.image ?? buildTag(at);
   let commit = head;
   let dirty = treeDirty;
   if (!flags.standIn) {

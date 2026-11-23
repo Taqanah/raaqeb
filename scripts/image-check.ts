@@ -13,11 +13,11 @@
 import { chromium } from "@playwright/test";
 import { fakeSmtp } from "@/server/notify/fixture.ts";
 import { expectPath, freePort, must, run, until } from "./containers.ts";
-import { imageTag, releaseVersion } from "./package.ts";
+import { buildTag, releaseVersion } from "./package.ts";
 
 const repo = `${import.meta.dir}/..`;
 const version = releaseVersion(await Bun.file(`${repo}/package.json`).json());
-const image = imageTag(version);
+const image = buildTag(version);
 const name = `raaqeb-check-${Date.now().toString(36)}`;
 const continueButton = "form button[type=submit]";
 

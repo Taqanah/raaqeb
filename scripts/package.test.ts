@@ -3,6 +3,7 @@ import { z } from "zod";
 import { inRanges } from "@/server/boot/proxies.ts";
 import { openApiDocument } from "@/shared/api/openapi.ts";
 import {
+  buildTag,
   checksums,
   compileArgs,
   imageLabels,
@@ -131,6 +132,11 @@ describe("the image labels", () => {
 
   test("the image is named in the GitHub registry under the organization, in lowercase, with the version as its tag", () => {
     expect(imageTag("0.1.0")).toBe("ghcr.io/taqanah/raaqeb:0.1.0");
+  });
+
+  test("a local build loads under a name no release has, so it never replaces a pulled release of the same version", () => {
+    expect(buildTag("0.2.0")).toBe("raaqeb-build:0.2.0");
+    expect(buildTag("0.2.0")).not.toStartWith(imageTag(""));
   });
 
   test("a tree with changes is marked on the revision, so the image never claims a commit it does not match", () => {

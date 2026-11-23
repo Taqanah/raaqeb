@@ -6,7 +6,7 @@ You need `flyctl` signed in.
 
 ## 1. The image
 
-`[build]` in `fly.toml` names a released image, `ghcr.io/taqanah/raaqeb:<version>`, which Fly pulls from the registry. To deploy a build of your own instead, run `bun run image` in a checkout with Bun on an amd64 host (Fly runs amd64 machines only, and the command loads the host's platform into the local Docker), then deploy with `--local-only` added.
+`[build]` in `fly.toml` names a released image, `ghcr.io/taqanah/raaqeb:<version>`, which Fly pulls from the registry. To deploy a build of your own instead, run `bun run image` in a checkout with Bun on an amd64 host (Fly runs amd64 machines only, and the command loads the host's platform into the local Docker as `raaqeb-build:<version>`), then deploy with `--local-only --image raaqeb-build:<version>` added.
 
 ## 2. Create the app and its addresses
 

@@ -4,7 +4,7 @@
  * each embedding the Bun runtime, the client assets and the migrations, and
  * writes their `SHA256SUMS`. `bun run image` builds the distroless image for
  * amd64 and arm64 from those binaries into an OCI archive under
- * `dist/image/` and loads the host's platform as `ghcr.io/taqanah/raaqeb:<version>`. The
+ * `dist/image/` and loads the host's platform as `raaqeb-build:<version>`. The
  * version is package.json's; publishing belongs to the release workflow.
  */
 import { isVersion } from "@/server/release/version.ts";
@@ -104,6 +104,11 @@ export function imageTag(version: string): string {
   return `ghcr.io/taqanah/raaqeb:${version}`;
 }
 
+/** The name a local build loads under, `raaqeb-build:<version>`: never a release's, which between releases carries the same version and is what `bun run upgrade:check` compares against. */
+export function buildTag(version: string): string {
+  return `raaqeb-build:${version}`;
+}
+
 /** The package's version, refused unless it is SemVer, with or without an alpha, beta or rc pre-release. */
 export function releaseVersion(pkg: unknown): string {
   const version =
@@ -191,13 +196,13 @@ const imagePlatforms = targets
 
 /**
  * Builds the image for both platforms into an OCI archive, then loads the
- * host's platform into Docker as ghcr.io/taqanah/raaqeb:<version>. Publishing is the release
- * workflow's (`push`).
+ * host's platform into Docker as raaqeb-build:<version>. Publishing is the
+ * release workflow's (`push`).
  */
 async function image(): Promise<void> {
   const version = releaseVersion(await Bun.file(`${repo}/package.json`).json());
   const labels = await labelArgs(version);
-  const tag = imageTag(version);
+  const tag = buildTag(version);
   await Bun.$`mkdir -p ${imageDir}`;
   await Bun.$`docker buildx build --platform=${imagePlatforms} ${labels} --tag=${tag} --output=type=oci,dest=${imageDir}/raaqeb-${version}.oci.tar .`.cwd(
     repo
