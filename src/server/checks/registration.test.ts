@@ -116,9 +116,10 @@ describe("the registered domain, the one name a registry is asked", () => {
   test.each([
     ["com", undefined],
     ["example", undefined],
-    ["example.example", "example.example"],
-    ["b.example.example", "example.example"],
-    ["a.b.example.example", "example.example"],
+    // The list's default rule ("*") is left out: an ending it does not name has no registered domain.
+    ["example.example", undefined],
+    ["b.example.example", undefined],
+    ["a.b.example.example", undefined],
     ["biz", undefined],
     ["domain.biz", "domain.biz"],
     ["a.b.domain.biz", "domain.biz"],
@@ -190,6 +191,52 @@ describe("a registration read over RDAP", () => {
     expect(asked).toEqual([rdapBootstrapUrl, `${verisign}google.com`]);
   });
 
+  test("a host under an ending the list does not name asks nothing at all, not even IANA", async () => {
+    const { asked, io } = world({});
+    const reader = createRegistrationReader(io);
+    for (const host of ["nas.lan", "db.corp", "printer.home"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: each read's asks are checked together after the loop
+      expect(await reader.read(host)).toEqual({
+        domain: undefined,
+        expiresAt: undefined,
+      });
+    }
+    expect(asked).toEqual([]);
+  });
+
+  test("a registered domain whose own label no registry can hold asks nothing: an underscore, a hyphen at either end, over 63 characters, or -- after anything but xn", async () => {
+    const { asked, io } = world({});
+    const reader = createRegistrationReader(io);
+    for (const host of [
+      "www.a_b.org",
+      "-ab.org",
+      "ab-.org",
+      `${"a".repeat(64)}.org`,
+      "ab--cd.org",
+    ]) {
+      // biome-ignore lint/performance/noAwaitInLoops: each read's asks are checked together after the loop
+      expect(await reader.read(host)).toEqual({
+        domain: undefined,
+        expiresAt: undefined,
+      });
+    }
+    expect(asked).toEqual([]);
+  });
+
+  test("a name under the registered domain may hold any label: a DNS monitor of _dmarc.google.com reads google.com", async () => {
+    const { asked, io } = world({
+      [`${verisign}google.com`]: await fixture("rdap/google.com.json"),
+    });
+    expect(
+      await createRegistrationReader(io).read("_dmarc.google.com")
+    ).toEqual({ domain: "google.com", expiresAt: Date.UTC(2028, 8, 14, 4) });
+    expect(asked).toEqual([rdapBootstrapUrl, `${verisign}google.com`]);
+    expect(registeredDomain(`${"a".repeat(63)}.org`)).toBe(
+      `${"a".repeat(63)}.org`
+    );
+    expect(registeredDomain("www.xn--mgbh0fb.com")).toBe("xn--mgbh0fb.com");
+  });
+
   test("a zone the registry keeps a record of is not read as the registration under it: www.rri.res.in asks rri.res.in alone", async () => {
     // NIXI holds res.in itself, with an expiry in 2035.
     const { asked, io } = world({
@@ -232,12 +279,12 @@ describe("a registration read over RDAP", () => {
     ]);
   });
 
-  test("a registry that refuses a name as a bad request holds no such name", async () => {
+  test("a registry that refuses a name as a bad request is no answer, never a name it does not hold, so a known registration stays", async () => {
+    // Asked for a registered domain alone, a registry that does not hold it answers 404; a 400 is an error.
     const { io } = world({ "https://rdap.nic.ly/domain/typo.med.ly": 400 });
-    expect(await createRegistrationReader(io).read("www.typo.med.ly")).toEqual({
-      domain: undefined,
-      expiresAt: undefined,
-    });
+    expect(
+      await createRegistrationReader(io).read("www.typo.med.ly")
+    ).toBeUndefined();
   });
 
   test("a host under a zone a ccTLD's registry runs asks for the three-label name alone", async () => {

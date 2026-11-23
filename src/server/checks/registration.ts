@@ -66,8 +66,23 @@ export function registrationReadDue(
 // A search of the text itself: a Set of the rules would hold some 800 kB of heap for the few lookups a day's reads make.
 const listed = (rule: string) => publicSuffixRules.includes(`\n${rule}\n`);
 
-/** The registered domain the host is under, the public suffix and one label more, by the Public Suffix List's algorithm; nothing for a host that is itself a public suffix. */
+/** A label a registry can hold: 1 to 63 letters, digits or hyphens, no hyphen at either end, and `--` in places 3 and 4 only in an `xn--` name. */
+const holdable = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const reservedDashes = /^(?!xn)..--/;
+
+/** The registered domain the host is under, the public suffix and one label more, by the Public Suffix List's algorithm; nothing for a host that is itself a public suffix, whose ending the list does not name, or whose registered label no registry can hold. */
 export function registeredDomain(host: string): string | undefined {
+  const name = suffixed(host);
+  const label = name?.slice(0, name.indexOf("."));
+  return label !== undefined &&
+    holdable.test(label) &&
+    !reservedDashes.test(label)
+    ? name
+    : undefined;
+}
+
+/** The public suffix and one label more, whatever that label holds. */
+function suffixed(host: string): string | undefined {
   const labels = host.split(".");
   // Longest first, so the first rule that matches is the one that prevails; an exception rule names the registered domain itself.
   for (let start = 0; start < labels.length; start += 1) {
@@ -79,8 +94,7 @@ export function registeredDomain(host: string): string | undefined {
       return start === 0 ? undefined : labels.slice(start - 1).join(".");
     }
   }
-  // No rule matches: the list's default rule takes the TLD alone as the public suffix.
-  return labels.length < 2 ? undefined : labels.slice(-2).join(".");
+  // No rule matches: an ending the list does not name is no TLD a registry runs, as far as this copy knows, so nothing is asked.
 }
 
 /** What a registry said of one name: that it holds no such name, or the registration it holds. */
@@ -156,8 +170,8 @@ export function createRegistrationReader(
 
   async function askRdap(base: string, name: string): Promise<Answer> {
     const response = await io.fetch(`${base}domain/${name}`, rdapRequest());
-    // A registry answers a name it does not hold with 404, and some a name under one of theirs with 400.
-    if (response.status === 404 || response.status === 400) {
+    // A registry answers a name it does not hold with 404; any other refusal, 400 included, is an error and no answer.
+    if (response.status === 404) {
       await response.body?.cancel();
       return notHeld;
     }

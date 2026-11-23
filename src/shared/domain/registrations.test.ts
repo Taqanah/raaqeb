@@ -58,6 +58,14 @@ describe("the host a monitor's domain registration is read for", () => {
     ).toBeUndefined();
   });
 
+  test("a name with an empty label has none, so no registry is asked for .com", () => {
+    expect(registrationHost(http("http://.com/"))).toBeUndefined();
+    expect(registrationHost(http("http://a..com/"))).toBeUndefined();
+    expect(
+      registrationHost({ host: "a..com", port: 443, type: "tcp" })
+    ).toBeUndefined();
+  });
+
   test("a monitor with the domain expiry option off has none", () => {
     expect(
       registrationHost(http("https://raaqeb.dev/", { domainExpiry: false }))

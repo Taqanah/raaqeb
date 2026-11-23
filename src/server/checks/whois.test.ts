@@ -30,6 +30,53 @@ describe("the WHOIS server IANA names for a TLD", () => {
 });
 
 describe("what a registry's WHOIS answer says of the name asked", () => {
+  test("a label padded with dots to its value, as .tg writes it, reads its domain and expiry", async () => {
+    expect(whoisAnswerOf(await captured("google.tg"))).toEqual({
+      domain: "google.tg",
+      expiresAt: Date.UTC(2027, 7, 12),
+      held: true,
+    });
+  });
+
+  test("a record in Spanish, as .bo writes it, reads its domain and expiry", async () => {
+    expect(whoisAnswerOf(await captured("google.bo"))).toEqual({
+      domain: "google.bo",
+      expiresAt: Date.UTC(2027, 0, 15),
+      held: true,
+    });
+  });
+
+  test("a domain on the line under its label, as .gg and .je write it, reads as the domain", async () => {
+    expect(whoisAnswerOf(await captured("google.gg"))).toEqual({
+      domain: "google.gg",
+      expiresAt: undefined,
+      held: true,
+    });
+  });
+
+  test("an indented line under an empty domain label is the domain only when it is one word: a rate limit or another label is not", () => {
+    expect(
+      whoisAnswerOf("Domain:\n    Query limit exceeded, try later\n")
+    ).toBeUndefined();
+    expect(
+      whoisAnswerOf(
+        "Domain:\n   Status: active\nDomain Name: example.xx\nExpiry Date: 2027-01-01\n"
+      )
+    ).toEqual({
+      domain: "example.xx",
+      expiresAt: Date.UTC(2027, 0, 1),
+      held: true,
+    });
+  });
+
+  test("a domain written with a note after it, as .bg writes it, reads as the domain alone", async () => {
+    expect(whoisAnswerOf(await captured("google.bg"))).toEqual({
+      domain: "google.bg",
+      expiresAt: undefined,
+      held: true,
+    });
+  });
+
   test.each([
     ["google.co.ma", "google.co.ma", Date.UTC(2027, 0, 29)],
     ["sa-registered", "google.com.sa", undefined],

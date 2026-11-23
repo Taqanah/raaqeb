@@ -47,7 +47,7 @@ export function registrationHost(config: MonitorConfig): string | undefined {
   return host === undefined ? undefined : registrableHost(host);
 }
 
-/** The host in lower case without a final dot, or nothing for an IP address, a name of one label, one longer than DNS allows or one under a TLD set aside for special use, which no registry holds. */
+/** The host in lower case without a final dot, or nothing for an IP address, a name of one label, one with an empty label, one longer than DNS allows or one under a TLD set aside for special use, which no registry holds. */
 export function registrableHost(host: string): string | undefined {
   const name = host.toLowerCase().replace(finalDot, "");
   const labels = name.split(".");
@@ -56,6 +56,7 @@ export function registrableHost(host: string): string | undefined {
     name.includes(":") ||
     ipv4.test(name) ||
     labels.length < 2 ||
+    labels.includes("") ||
     name.length > 253 ||
     specialUse.has(labels.at(-1) ?? "")
   ) {

@@ -37,8 +37,11 @@ const referral = /^whois:[ \t]*(\S+)/im;
 /** The phrases registries answer a name they do not hold with, as captured from them. */
 const notFound =
   /no match|not found|no data found|no entries found|no object found|object_not_found|does not exist|bad extension|no matching record/i;
-const domainLabel = /^domain(?:[ _]?name)?$/i;
+// "Dominio" is how .bo labels it.
+const domainLabel = /^(?:domain(?:[ _]?name)?|dominio)$/i;
 const finalDot = /\.$/;
+const firstWord = /^\S+/;
+const indented = /^[ \t]+(\S+)[ \t]*$/;
 
 /** What a registry's answer says of the name asked: a record, or a "not found" it recognises; nothing for anything else (a rate limit, an error, an empty reply), which is no answer at all. */
 export function whoisAnswerOf(answer: string): WhoisAnswer | undefined {
@@ -47,10 +50,14 @@ export function whoisAnswerOf(answer: string): WhoisAnswer | undefined {
     return { held: false };
   }
   let domain: string | undefined;
-  for (const line of answer.split(lineBreak)) {
-    const [, label, value] = labelled.exec(line) ?? [];
+  const lines = answer.split(lineBreak);
+  for (const [index, line] of lines.entries()) {
+    const [, label, written] = labelled.exec(line) ?? [];
+    // .gg and .je write the domain indented on the line under its label, one word alone.
+    const value = written || indented.exec(lines[index + 1] ?? "")?.[1];
     if (label !== undefined && value && domainLabel.test(label)) {
-      domain = value.toLowerCase().replace(finalDot, "");
+      // The first word alone: .bg writes the domain again in brackets after it.
+      domain = firstWord.exec(value)?.[0].toLowerCase().replace(finalDot, "");
       break;
     }
   }
@@ -65,10 +72,11 @@ export function whoisAnswerOf(answer: string): WhoisAnswer | undefined {
   };
 }
 
-/** A label of words, as a registry writes one, then a colon; `%` and `#` start a comment. */
+/** A label of words, as a registry writes one, then a colon; `%` and `#` start a comment. Dots may pad either side of the colon, as .tg writes `Expiration:.........2027-08-12`. */
 const labelled =
-  /^[ \t]*([A-Za-z][A-Za-z .\-_/]{0,59}?)[ \t.]*:[ \t]*(.*?)[ \t]*$/;
-const expiryLabel = /expir|paid-till/i;
+  /^[ \t]*([A-Za-z][A-Za-z .\-_/]{0,59}?)[ \t.]*:[ \t.]*(.*?)[ \t]*$/;
+// "Vencimiento" is how .bo labels it.
+const expiryLabel = /expir|paid-till|vencimiento/i;
 const lineBreak = /\r?\n/;
 const zoneOffset = /^([+-])(\d{2}):?(\d{2})$/;
 

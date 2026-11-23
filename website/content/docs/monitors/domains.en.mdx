@@ -13,7 +13,7 @@ The option is on the monitor form, under the target, for HTTP, TCP and DNS monit
 |---|---|---|
 | **Warn before the domain's registration expires** | Reads the domain's registration from its registry once a day and sends the domain expiring event. | On. For a domain name only. |
 
-The switch is greyed for an IP address, a name of one label such as `localhost`, a name longer than 253 characters, and a name under a TLD set aside for special use (`.test`, `.example`, `.invalid`, `.localhost`, `.local`, `.internal`, `.arpa`, `.onion`, `.alt`), since no registry holds any of them.
+The switch is greyed for an IP address, a name of one label such as `localhost`, a name longer than 253 characters, a name with an empty label such as `a..com`, and a name under a TLD set aside for special use (`.test`, `.example`, `.invalid`, `.localhost`, `.local`, `.internal`, `.arpa`, `.onion`, `.alt`), since no registry holds any of them.
 
 **Domain expiring** appears under **Events that notify** while the option is on, on by default. Switching the option off stops the reads and deletes the registration Raaqeb kept.
 
@@ -51,9 +51,10 @@ The names under the registered domain, such as an internal server's, never leave
 Some hosts read with no registration, or with no date, by this rule:
 
 - **A host under a zone an organisation runs itself,** such as `england.nhs.uk`: the registry holds the zone (`nhs.uk`) as a registration and has no record of the name under it, so the registration is unknown.
+- **A host under an ending the list does not name,** such as `nas.lan` or `db.corp`: nothing is asked, not even IANA, and the registration is unknown. A TLD created after the release's copy of the list was taken reads unknown too, until a release carries a newer copy.
 - **A host that is itself a public suffix,** such as `co.uk`: it has no registration and is never asked.
 - **A `.name` name of three labels,** such as `david.smith.name`: Raaqeb asks for `smith.name`, which the registry answers with an empty record, so the registration is unknown and its expiry is not read.
-- **A host under a zone a registry opened after the release's copy of the list was taken:** Raaqeb asks for the zone and may read the zone's own record, until a release carries a newer copy.
+- **A host under a zone the list does not name,** such as `com.mr`, or one a registry opened after the release's copy of the list was taken: Raaqeb asks for the zone, and may read the registry's own record of the zone as the registration. Such a record carries a date decades away (`com.mr`: 2099-12-31), so the card names the zone and no warning goes.
 
 Only the registry's record of the name asked, or its answer that it holds no such name, counts. A record of another name is not the registration, which is then unknown. Anything else, such as a rate limit, an error or an empty reply, is no answer, and the read is tried again an hour later.
 
@@ -67,14 +68,14 @@ Changing the monitor's host, or switching the option off, deletes the registrati
 
 ### An unknown date
 
-Many registries publish no expiry date, and some publish no WHOIS server at all. Their registrations show **Unknown**, and no warning goes for them: Raaqeb never guesses a date. Registries checked on 18 October 2026, for the Arab ccTLDs:
+Many registries publish no expiry date, and some publish no WHOIS server at all. Their registrations show **Unknown**, and no warning goes for them: Raaqeb never guesses a date. Registries checked on 18 October 2026, and `.sd` again on 24 November 2026, for the Arab ccTLDs:
 
 | TLD | Asked over | Expiry date |
 |---|---|---|
-| `.bh`, `.lb`, `.ly`, `.ye` | RDAP | Published. |
-| `.sd` | RDAP | Unknown: its server answered "not found" for every name asked. |
+| `.bh`, `.lb`, `.ly`, `.sd`, `.ye` | RDAP | Published. |
 | `.ma`, `.so` | WHOIS | Published. |
-| `.sa`, `.ae`, `.qa`, `.om`, `.jo`, `.tn`, `.dz`, `.mr` | WHOIS | Not published, so unknown. |
+| `.sa`, `.ae`, `.qa`, `.om`, `.jo`, `.tn`, `.dz` | WHOIS | Not published, so unknown. |
+| `.mr` | WHOIS | Not published for a registration, so unknown. A host under `com.mr`, `net.mr` or `org.mr` reads the registry's record of that zone, dated 2099-12-31. |
 | `.iq`, `.sy` | WHOIS | Not read: the server closed the connection, so the page shows no card and the read is tried again each hour. |
 | `.eg`, `.kw`, `.ps`, `.dj`, `.km` | none | Unknown: IANA names no WHOIS server. |
 
