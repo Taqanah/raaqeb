@@ -5,7 +5,10 @@
  * never stops the change it records: a failed write is a log line.
  */
 import { error as logError, reasonOf } from "@/server/log.ts";
-import { readRetentionDays } from "@/server/settings/retention.ts";
+import {
+  readRetentionDays,
+  retentionDefaultDays,
+} from "@/server/settings/retention.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { auditSpan, detailOf, targetOf } from "@/shared/domain/audit.ts";
 import {
@@ -88,11 +91,12 @@ export async function readAuditLog(
 
 const dayMs = 24 * 60 * 60 * 1000;
 
-/** Deletes the entries older than the install's retention; answers how many went. */
+/** Deletes the entries older than the install's retention, never younger than the default; answers how many went. */
 export async function purgeAudit(
   storage: Pick<Storage, "audit" | "settings">,
   now: number
 ): Promise<number> {
-  const days = await readRetentionDays(storage);
+  // An admin sets the retention, and the log is how an owner sees what an admin did.
+  const days = Math.max(await readRetentionDays(storage), retentionDefaultDays);
   return await storage.audit.purgeBefore(now - days * dayMs);
 }

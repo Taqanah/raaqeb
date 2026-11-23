@@ -12,6 +12,7 @@ import {
   testSecrets,
 } from "@/server/auth/fixture.ts";
 import { retentionDays } from "@/server/settings/retention.ts";
+import { saveStorageSettings } from "@/server/settings/storage.ts";
 import { auditPageSize } from "@/shared/schemas/audit.ts";
 import { purgeAudit, readAuditLog, record } from "./audit.ts";
 
@@ -199,8 +200,8 @@ describe("an audit entry", () => {
 
   test("goes once it is older than the install's retention, and not before", async () => {
     const s = await scratch();
-    await s.storage.settings.set(retentionDays, 30);
-    for (const at of [now - 31 * day, now - 29 * day]) {
+    await s.storage.settings.set(retentionDays, 120);
+    for (const at of [now - 121 * day, now - 119 * day]) {
       // biome-ignore lint/performance/noAwaitInLoops: two entries
       await record(s.storage, {
         action: "monitor.change",
@@ -213,7 +214,27 @@ describe("an audit entry", () => {
     expect(await purgeAudit(s.storage, now)).toBe(1);
     expect(
       (await readAuditLog(s.storage, {}, "UTC"))?.entries.map((one) => one.at)
-    ).toEqual([now - 29 * day]);
+    ).toEqual([now - 119 * day]);
+  });
+
+  test("outlives a retention an admin shortened to one day, so the entry recording the cut stays", async () => {
+    const s = await scratch();
+    await record(s.storage, {
+      action: "storage.change",
+      actor: owner,
+      address: undefined,
+      input: { retentionDays: 1 },
+      now,
+    });
+    expect(
+      await saveStorageSettings(s.storage, {
+        retentionDays: 1,
+        sizeBudgetBytes: undefined,
+      })
+    ).toEqual({ ok: true });
+    expect(await purgeAudit(s.storage, now + 2 * day)).toBe(0);
+    expect(await purgeAudit(s.storage, now + 90 * day)).toBe(0);
+    expect(await purgeAudit(s.storage, now + 91 * day)).toBe(1);
   });
 
   test("that cannot be written is logged, never thrown, and a log that cannot be read is nothing", async () => {

@@ -15,7 +15,7 @@ _Avoid_: token (the metrics token and the path tokens are others), API token, ac
 
 **Audit entry**:
 Arabic: مُدخل في سجل التدقيق; the page is سجل التدقيق
-One record of who did what to what, from which address and when: a change an operator made in the admin area, a sign-in, or a refused sign-in and why it was refused. It keeps what was asked, never a secret. Entries are only added, read by owners and admins, and kept for the install's retention.
+One record of who did what to what, from which address and when: a change an operator made in the admin area, a sign-in, or a refused sign-in and why it was refused. It keeps what was asked, never a secret. Entries are only added, read by owners and admins, and kept for the install's retention, never less than its default of 90 days, so an admin who shortens it cannot erase their own entries.
 _Avoid_: activity feed, history (that is a monitor's checks), event (that is a monitor's change of state), log (alone: that is the server's output)
 
 **Authenticator app**:
