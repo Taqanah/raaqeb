@@ -208,14 +208,15 @@ function overHttp2(
   });
 }
 
-/** A render pace for a test: renders `gapMs` apart, room for 100 in every lane but those named, and the checks unpaced unless given. */
+/** A render pace for a test: renders `gapMs` apart, room for 100 in every lane but those named, the checks unpaced unless given, and 100 bodies in flight unless given. */
 function testPace(
   gapMs: number,
   room: Partial<Record<RenderLane, number>>,
   checks: { readonly gapMs: number; readonly waiting: number } = {
     gapMs: 0,
     waiting: 100,
-  }
+  },
+  bodies = { perClient: 100, total: 100 }
 ): StrangerPace {
   const lanes: RenderLane[] = [
     "cold",
@@ -227,6 +228,7 @@ function testPace(
     "subscriptions",
   ];
   return {
+    bodies,
     checks: {
       burst: 1,
       gapMs: checks.gapMs,
@@ -1369,6 +1371,118 @@ describe("the raaqeb command", () => {
         [1, 2, 3].map(() => at("/admin/monitors", { cookie }))
       );
       expect(signedIn.map((each) => each.status)).toEqual([200, 200, 200]);
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a stranger's request carrying a body, past its client's share or the budget of those in flight, is answered 503 before the handler reads it; one with no body, the keyed APIs, a heartbeat and a signed-in operator's pass", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async (r) => { if (r.method === 'GET') return new Response('got'); await Bun.sleep(400); return new Response('read ' + (await r.text()).length); } };",
+    });
+    const booted = await resolveBootSettings({}, { RAAQEB_DATA_DIR: dataDir });
+    const result = await main(
+      ["--port", "0", "--data-dir", dataDir, "--trusted-proxies", "127.0.0.1"],
+      {},
+      dir,
+      { pace: testPace(0, {}, undefined, { perClient: 2, total: 3 }) }
+    );
+    if (typeof result === "number" || !result.storage || !booted.ok) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createOperatorAccount(
+        {
+          email: "operator@example.com",
+          locale: "ar",
+          password: "correct horse battery",
+          publicAddress: "http://raaqeb.test",
+        },
+        {
+          boot: booted.settings,
+          opener: databaseOpener(() => undefined),
+          storage: result.storage,
+        },
+        new Headers({ origin: "http://raaqeb.test" })
+      );
+      if (!created.ok) {
+        throw new Error("the account was not created");
+      }
+      const session = created.setCookies
+        .map((each) => each.split(";")[0])
+        .join("; ");
+      const at = (path: string, client: string, cookie?: string) =>
+        fetch(`http://127.0.0.1:${result.server.port}${path}`, {
+          body: "body",
+          headers: {
+            "x-forwarded-for": client,
+            ...(cookie ? { cookie } : {}),
+          },
+          method: "POST",
+        });
+      const [a, b, c] = ["198.51.100.1", "198.51.100.2", "2001:db8::1"];
+      const held = [at("/_serverFn/a", a), at("/api/auth/sign-in/email", a)];
+      await Bun.sleep(100);
+      const refused = await at("/_serverFn/b", a);
+      expect(refused.status).toBe(503);
+      expect(refused.headers.get("retry-after")).toBe("1");
+      expect(
+        (await at("/_serverFn/c", a, "raaqeb.session_token=forged.sig")).status
+      ).toBe(503);
+      // Another client has room while the first is at its share, until the budget is full.
+      held.push(at("/_serverFn/d", b));
+      await Bun.sleep(100);
+      expect((await at("/_serverFn/e", c)).status).toBe(503);
+      const passing = await Promise.all([
+        fetch(`http://127.0.0.1:${result.server.port}/_serverFn/f`),
+        at("/_serverFn/g", a, session),
+        at("/api/heartbeat/abc", c),
+      ]);
+      expect(await Promise.all(passing.map((each) => each.text()))).toEqual([
+        "got",
+        "read 4",
+        "read 4",
+      ]);
+      expect(
+        await Promise.all((await Promise.all(held)).map((each) => each.text()))
+      ).toEqual(["read 4", "read 4", "read 4"]);
+      // Answered, they leave the budget.
+      expect(await (await at("/_serverFn/h", a)).text()).toBe("read 4");
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a stranger's request waiting at the pace leaves the body budget, which the pace already bounds: a post to an address whose not-found is cold, waiting its render, leaves room for a subscriber", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async (r) => { if (!new URL(r.url).pathname.startsWith('/_serverFn')) { await Bun.sleep(600); return new Response('missing', { status: 404 }); } return new Response('read ' + (await r.text()).length); } };",
+    });
+    const result = await main(
+      ["--port", "0", "--data-dir", dataDir, "--trusted-proxies", "127.0.0.1"],
+      {},
+      dir,
+      { pace: testPace(0, {}, undefined, { perClient: 1, total: 1 }) }
+    );
+    if (typeof result === "number") {
+      throw new Error("expected a server");
+    }
+    try {
+      const at = (path: string, client: string) =>
+        fetch(`http://127.0.0.1:${result.server.port}${path}`, {
+          body: "body",
+          headers: { "x-forwarded-for": client },
+          method: "POST",
+        });
+      // The not-found renders for 600 ms at the pace; the budget's one place is free meanwhile.
+      const waiting = at("/nope", "198.51.100.1");
+      await Bun.sleep(150);
+      const subscriber = await at("/_serverFn/subscribe", "198.51.100.2");
+      expect(await subscriber.text()).toBe("read 4");
+      expect((await waiting).status).toBe(404);
     } finally {
       await result.stop();
     }

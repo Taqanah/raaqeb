@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { busyAnswer, createPace, type PaceLimits } from "./pace.ts";
+import {
+  busyAnswer,
+  createBodyBudget,
+  createPace,
+  type PaceLimits,
+} from "./pace.ts";
 
 /** A clock that moves only when the pace waits, so a test reads exact times; a turn's deadline passes at once when `late`, never otherwise. */
 function fakeClock(late = false) {
@@ -198,5 +203,31 @@ describe("the answer to a render with no room", () => {
     );
     expect(answer.headers.get("cache-control")).toBe("no-store");
     expect(await answer.text()).toBe("Service Unavailable");
+  });
+});
+
+describe("the body budget", () => {
+  test("gives a place while the client is under its share and the total under its own, and each place back once", () => {
+    const take = createBodyBudget({ perClient: 2, total: 4 });
+    const first = take("a");
+    const second = take("a");
+    expect(first && second).toBeDefined();
+    expect(take("a")).toBeUndefined();
+    const other = take("b");
+    expect(other).toBeDefined();
+    first?.();
+    first?.();
+    // One place back, once: the client has room for exactly one more.
+    const third = take("a");
+    expect(third).toBeDefined();
+    expect(take("a")).toBeUndefined();
+    expect(take("c")).toBeDefined();
+    expect(take("d")).toBeUndefined();
+    second?.();
+    third?.();
+    other?.();
+    expect(take("a") && take("a")).toBeDefined();
+    expect(take("d")).toBeDefined();
+    expect(take("e")).toBeUndefined();
   });
 });

@@ -40,6 +40,7 @@ import type { InstallKey } from "./server/boot/installkey.ts";
 import {
   clientAddress,
   clientAddressHeader,
+  clientNetwork,
   inRanges,
   requestOrigin,
   requestOriginHeader,
@@ -54,7 +55,10 @@ import { error as logError, info as logInfo, reasonOf } from "./server/log.ts";
 import { createPublicMemo, type RenderMissing } from "./server/memo/public.ts";
 import { onboardingStep } from "./server/onboarding/onboarding.ts";
 import {
+  type BodyBudget,
+  type BodyLimits,
   busyAnswer,
+  createBodyBudget,
   createPace,
   type Pace,
   type PaceLimits,
@@ -416,8 +420,9 @@ export type RenderLane =
   | "reset"
   | "subscriptions";
 
-/** The render pace's settings: the reads that check a made-up item before its not-found, one at a time with no gap, and the renders, taking turns between their lanes. */
+/** The render pace's settings: the reads that check a made-up item before its not-found, one at a time with no gap, the renders, taking turns between their lanes, and how many of a stranger's requests carrying a body may be in flight before the next is answered 503 unread. */
 export interface StrangerPace {
+  readonly bodies: BodyLimits;
   readonly checks: PaceLimits<"checks">;
   readonly renders: PaceLimits<RenderLane>;
 }
@@ -428,8 +433,13 @@ export interface StrangerPace {
  * a second took its available memory from 118 to 51 MB and still falling, one
  * a second held it near 75 MB. A render there takes well under a second, so
  * five seconds is a wedged one, and two may run on past it.
+ * A stranger's request carrying a body holds it, and the handler's state of
+ * 15 to 20 KB beside it, until it is answered: 64 in flight, 16 from one
+ * client network, held a 240 MB install against 4,000 slow bodies and 4,000
+ * HTTP/2 streams, and a flood from one network leaves the others room.
  */
 export const strangerPace: StrangerPace = {
+  bodies: { perClient: 16, total: 64 },
   checks: {
     burst: 1,
     gapMs: 0,
@@ -508,6 +518,31 @@ function refusedBody(request: Request, keep: () => boolean): Response {
   });
 }
 
+/** How a request leaves the body budget: at once when it carries no body a stranger may send, read before anything asks who sent it (the import, the management API and the probe API read theirs only after a live session or key, and the heartbeat reads none of its own), or when it is a session's past the budget; a stranger's past the budget or its client's share is answered 503 unread. */
+async function placeIn(
+  bodies: BodyBudget,
+  request: Request,
+  stranger: () => Promise<boolean>
+): Promise<(() => void) | Response> {
+  const none = () => undefined;
+  const { pathname } = new URL(request.url);
+  if (
+    request.body === null ||
+    pathname === importPath ||
+    keyedApi.test(pathname) ||
+    pathname.startsWith(heartbeatPathPrefix)
+  ) {
+    return none;
+  }
+  const place = bodies(
+    clientNetwork(request.headers.get(clientAddressHeader) ?? "")
+  );
+  if (place) {
+    return place;
+  }
+  return (await stranger()) ? busyAnswer() : none;
+}
+
 /**
  * Starts Bun.serve on the resolved settings with the loaded handler. Every
  * request carries the open storage, the boot settings and the database opener
@@ -546,6 +581,7 @@ export function serve(
     kept += 1;
     return kept <= keptRefusalsPerSecond;
   };
+  const bodies = createBodyBudget(paceLimits.bodies);
   // An unpublished page shows its views to the signed-in operator alone.
   const memo = createPublicMemo({
     now: Date.now,
@@ -568,18 +604,22 @@ export function serve(
       const trusted = await proxies(storage, await counter);
       const logging = await requestLog(storage, await counter);
       const resolved = withClientAddress(request, server, trusted);
+      // A place in the body budget, held until answered or until a render or check of its own waits at the pace.
+      let leaveBudget = (): void => undefined;
       const { checked, paced, stranger } = gatesFor(
         resolved,
         () => isOperator(holder.current, settings, resolved.headers),
         renders,
-        checks
+        checks,
+        () => leaveBudget()
       );
-      if (await oversized(request, stranger)) {
-        if (logging) {
-          logRequest(resolved, 413, started, undefined);
-        }
-        return refusedBody(resolved, keep);
+      const entry = (await oversized(request, stranger))
+        ? refusedBody(resolved, keep)
+        : await placeIn(bodies, resolved, stranger);
+      if (entry instanceof Response) {
+        return logged(logging, resolved, entry, started);
       }
+      leaveBudget = entry;
       const context = (publicTarget: PublicTarget | undefined) => ({
         boot: settings,
         // The entry's own request: the one Bun's idle timer belongs to.
@@ -661,6 +701,7 @@ export function serve(
         }
         throw thrown;
       } finally {
+        leaveBudget();
         // Answered: the connection's idle timer is Bun's own again, so a kept-alive socket closes as any other does.
         server.timeout(request, idleSeconds);
       }
@@ -734,12 +775,13 @@ function viewRequest(request: Request, refresh: boolean): Request {
     : new Request(request, { method: "GET" });
 }
 
-/** A request's way through the render pace: whether it is a stranger's, read once and only when it names a session cookie, and its renders and checks paced if it is; a session's run at once, and a render with no room is a 503. */
+/** A request's way through the render pace: whether it is a stranger's, read once and only when it names a session cookie, and its renders and checks paced if it is, leaving the body budget as they wait, since the pace bounds them; a session's run at once, and a render with no room is a 503. */
 function gatesFor(
   request: Request,
   signedIn: () => Promise<boolean>,
   renders: Pace<RenderLane>,
-  checks: Pace<"checks">
+  checks: Pace<"checks">,
+  leaveBudget: () => void
 ) {
   let strangerRead: Promise<boolean> | undefined;
   const stranger = (): Promise<boolean> => {
@@ -751,15 +793,23 @@ function gatesFor(
   return {
     checked: async (
       read: () => Promise<boolean>
-    ): Promise<boolean | undefined> =>
-      (await stranger()) ? await checks.run("checks", read) : await read(),
+    ): Promise<boolean | undefined> => {
+      if (!(await stranger())) {
+        return await read();
+      }
+      leaveBudget();
+      return await checks.run("checks", read);
+    },
     paced: async (
       lane: RenderLane,
       render: () => Promise<Response>
-    ): Promise<Response> =>
-      (await stranger())
-        ? ((await renders.run(lane, render)) ?? busyAnswer())
-        : await render(),
+    ): Promise<Response> => {
+      if (!(await stranger())) {
+        return await render();
+      }
+      leaveBudget();
+      return (await renders.run(lane, render)) ?? busyAnswer();
+    },
     stranger,
   };
 }
@@ -903,6 +953,19 @@ function memoAnswer(
     return;
   }
   return rendered ? "rendered" : "cached";
+}
+
+/** A refusal made before the handler, with its line in the request log when the log is on. */
+function logged(
+  logging: boolean,
+  request: Request,
+  response: Response,
+  started: number
+): Response {
+  if (logging) {
+    logRequest(request, response.status, started, undefined);
+  }
+  return response;
 }
 
 /** Writes the request log's line for a request, timed from `started` to now; a request whose client left is named closed, whatever was answered. */

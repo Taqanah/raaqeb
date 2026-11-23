@@ -165,3 +165,41 @@ export function busyAnswer(): Response {
     status: 503,
   });
 }
+
+/** How many of a stranger's requests carrying a body may be in flight at once: in all, and from one client network, so one client's flood leaves the others room. */
+export interface BodyLimits {
+  readonly perClient: number;
+  readonly total: number;
+}
+
+/** A place for one more request from `client`, with the function that gives it back, once; nothing when there is no room. */
+export type BodyBudget = (client: string) => (() => void) | undefined;
+
+/** The body budget over its limits. */
+export function createBodyBudget(limits: BodyLimits): BodyBudget {
+  let total = 0;
+  // Only clients holding a place, so the table never outgrows the total.
+  const held = new Map<string, number>();
+  return (client) => {
+    const mine = held.get(client) ?? 0;
+    if (total >= limits.total || mine >= limits.perClient) {
+      return;
+    }
+    total += 1;
+    held.set(client, mine + 1);
+    let given = false;
+    return () => {
+      if (given) {
+        return;
+      }
+      given = true;
+      total -= 1;
+      const left = (held.get(client) ?? 1) - 1;
+      if (left === 0) {
+        held.delete(client);
+      } else {
+        held.set(client, left);
+      }
+    };
+  };
+}

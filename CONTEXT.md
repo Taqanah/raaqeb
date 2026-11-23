@@ -299,7 +299,7 @@ _Avoid_: anonymous user, guest, attacker (most strangers are visitors)
 
 **Render pace**:
 Arabic: وتيرة العرض
-How often the app may start a full render for strangers: one at a time, half a second apart once the turns an idle spell saved up are spent, the kinds of page taking turns (a stale status page answer's refresh, a status page address the memo holds nothing for, the pages that are the same for everyone, a subscription's page, an open reset link, onboarding, and every other page), each with a short queue of its own. Past it a stranger is asked to try again in a second.
+How often the app may start a full render for strangers: one at a time, half a second apart once the turns an idle spell saved up are spent, the kinds of page taking turns (a stale status page answer's refresh, a status page address the memo holds nothing for, the pages that are the same for everyone, a subscription's page, an open reset link, onboarding, and every other page), each with a short queue of its own. It also bounds how many of a stranger's requests that carry a body may be in flight at once, fewer from one client network than in all. Past it a stranger is asked to try again in a second.
 _Avoid_: rate limit (that is Better Auth's count of sign-ins per address), throttle
 
 **Change counter**:

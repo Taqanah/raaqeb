@@ -5,7 +5,7 @@ description: What the proxy in front of Raaqeb must pass and allow, with tested 
 
 Raaqeb serves plain HTTP and leaves TLS to a reverse proxy. The proxy must pass the host the visitor asked for, and add `X-Forwarded-For` and `X-Forwarded-Proto`. Raaqeb believes those headers only from its trusted proxies, set on the general settings page or by `RAAQEB_TRUSTED_PROXIES`. A proxy on the same server connects from `127.0.0.1` or `::1`. Once the proxy is in place, open the setup check page under settings through it: it names the address the request came from when that address sent forwarded headers without being trusted, and says whether the public address is the address the browser is at.
 
-The trusted proxies decide the client address that the sign-in limit, the subscription sign-up limit, the sign-in log lines and a heartbeat's source address read. Without them, behind a proxy, every visitor is the proxy: everyone shares one allowance of three sign-ins in ten seconds, and five sign-ups in ten minutes close the subscribe form for all.
+The trusted proxies decide the client address that the sign-in limit, the subscription sign-up limit, the share of open requests carrying a body that one client may hold, the sign-in log lines and a heartbeat's source address read. Without them, behind a proxy, every visitor is the proxy: everyone shares one allowance of three sign-ins in ten seconds, five sign-ups in ten minutes close the subscribe form for all, and one client holding 16 such requests open makes every sign-in answer 503.
 
 Three requests need more of the proxy than a page does:
 
