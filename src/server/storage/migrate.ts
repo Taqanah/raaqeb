@@ -6,6 +6,7 @@
  */
 import { migrate as migratePostgres } from "drizzle-orm/bun-sql/postgres/migrator";
 import { migrate as migrateSqlite } from "drizzle-orm/bun-sqlite/migrator";
+import { DrizzleQueryError } from "drizzle-orm/errors";
 import type { Connection } from "./connection.ts";
 import {
   listTables,
@@ -67,12 +68,18 @@ export async function migrateDatabase(
   if (migration !== undefined) {
     try {
       await runMigrator(connection, options.migrations);
-    } catch {
-      // The stock migrator rolls the whole batch back, so the first pending is
-      // named. Its record table is created outside the transaction and stays.
+    } catch (error) {
+      // The stock migrator rolls the whole batch back. Its record table is created outside the transaction and stays.
+      const failed =
+        (await holding(
+          error,
+          pending,
+          connection.backend,
+          options.migrations
+        )) ?? migration;
       return {
-        message: `migration ${migration} failed and was rolled back; nothing of it was applied${snapshot ? ", and a snapshot was taken first" : ""}`,
-        migration,
+        message: `migration ${failed} failed and was rolled back; nothing of it was applied${snapshot ? ", and a snapshot was taken first" : ""}`,
+        migration: failed,
         ok: false,
       };
     }
@@ -87,6 +94,29 @@ export async function migrateDatabase(
     };
   }
   return { applied: pending, ok: true, snapshot };
+}
+
+/** The pending migration whose file holds the statement the migrator failed on, which Drizzle's error carries as it ran it. */
+async function holding(
+  error: unknown,
+  pending: readonly string[],
+  backend: Connection["backend"],
+  root: string | undefined
+): Promise<string | undefined> {
+  if (!(error instanceof DrizzleQueryError)) {
+    return;
+  }
+  const files = await Promise.all(
+    pending.map((name) =>
+      Bun.file(
+        `${migrationsFolder(backend, root)}/${name}/migration.sql`
+      ).text()
+    )
+  );
+  // Split as the migrator splits, so the statement matches as it ran.
+  return pending.find((_, index) =>
+    files[index]?.split("--> statement-breakpoint").includes(error.query)
+  );
 }
 
 /** Applies the folder's pending migrations with the stock migrator alone: no snapshot and no check of the tables after. */

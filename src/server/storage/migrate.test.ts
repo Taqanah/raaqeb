@@ -137,6 +137,20 @@ describe("migrating on start", () => {
     }
   });
 
+  test("a later migration that fails is the one named, and the whole batch is rolled back", async () => {
+    const connection = await fresh();
+    // A table in the way of the probes migration, the 25th of the batch.
+    await executor(connection).run(sql`CREATE TABLE probes (wrong integer)`);
+    const result = await migrateDatabase(connection);
+    expect(result).toEqual({
+      message: `migration 20261021041150_probes failed and was rolled back; nothing of it was applied${connection.backend === "sqlite" ? ", and a snapshot was taken first" : ""}`,
+      migration: "20261021041150_probes",
+      ok: false,
+    });
+    expect(await appliedMigrations(connection)).toEqual([]);
+    expect(await listTables(connection)).not.toContain("monitors");
+  });
+
   test("a snapshot that cannot be taken stops before the migration, naming it", async () => {
     const connection = await fresh();
     if (connection.backend !== "sqlite") {
