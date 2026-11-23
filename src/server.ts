@@ -81,6 +81,7 @@ import {
 } from "./server/storage/storage.ts";
 import { subscriptionView } from "./server/subscriptions/subscriptions.ts";
 import { importPath } from "./shared/schemas/export-page.ts";
+import { heartbeatPathPrefix } from "./shared/schemas/heartbeat.ts";
 import type {
   MaintenanceStage,
   MaintenanceWindow,
@@ -462,15 +463,17 @@ export const bodyLimitBytes = 8 * 1024 * 1024;
 /** The largest export an import takes. */
 const uploadLimitBytes = 4 * 1024 ** 3;
 
-/** Whether a request's body is refused before anything reads it: over the limit, or streamed with no length to judge; an import's upload streams in whole. A body is judged by itself, not by transfer-encoding, which HTTP/2 never sends. */
+/** Whether a request's body is refused before anything reads it: over the limit, or streamed with no length to judge; an import's upload streams in whole, and a heartbeat's streams too, since its route reads none of it and Bun drops what is left unread. A body is judged by itself, not by transfer-encoding, which HTTP/2 never sends. */
 function oversized(request: Request): boolean {
-  if (new URL(request.url).pathname === importPath) {
+  const { pathname } = new URL(request.url);
+  if (pathname === importPath) {
     return false;
   }
   const length = request.headers.get("content-length");
-  return length === null
-    ? request.body !== null
-    : Number(length) > bodyLimitBytes;
+  if (length === null) {
+    return request.body !== null && !pathname.startsWith(heartbeatPathPrefix);
+  }
+  return Number(length) > bodyLimitBytes;
 }
 
 /**
