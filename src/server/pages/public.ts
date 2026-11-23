@@ -229,6 +229,11 @@ export function publicTarget(
     pathname.length > 1 && pathname.endsWith("/")
       ? pathname.slice(0, -1)
       : pathname;
+  // A view's address is plain ASCII with no empty segment, its slug and ids alike: an escape or a second trailing slash spells it again, and each spelling would hold an entry of its own. A malformed escape is left to the router, whose 400 is kept by no one.
+  const escaped = path.includes("%") && decoded(path) !== undefined;
+  if (escaped || (path.length > 1 && path.endsWith("/"))) {
+    return;
+  }
   const [, first = "", ...rest] = path.split("/");
   const prefix = locales.find((each) => each === first);
   const tail = prefix ? `/${rest.join("/")}` : path;
