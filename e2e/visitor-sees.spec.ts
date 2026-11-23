@@ -296,6 +296,22 @@ async function fitsAPhone(
   await visitor.context().close();
 }
 
+test("a not-found under the prefix of its page's own language reads in that language, on an install in the other", async ({
+  browser,
+  page,
+}) => {
+  await signIn(page);
+  const slug = `arabic-${runId()}`;
+  await publishedPage(page, slug, [], "ar");
+  const visitor = await visitorOf(browser);
+  const answer = await visitor.goto(
+    `${englishOrigin}/ar/status/${slug}/no-such-page`
+  );
+  expect(answer?.status()).toBe(404);
+  await expect(visitor.locator("[data-slot=view-missing]")).toBeVisible();
+  await expect(visitor.locator("html[lang=ar][dir=rtl]")).toHaveCount(1);
+});
+
 test("in Arabic on a phone, the overview, an incident and the history are right to left and fit the screen", async ({
   browser,
   page,

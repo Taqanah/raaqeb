@@ -5,6 +5,7 @@
  * writes to its own page never touches the seeded ones other specs read.
  */
 import type { Page } from "@playwright/test";
+import type { Locale } from "@/shared/i18n/locale.ts";
 import { expect, expectPath } from "./fixtures.ts";
 import { englishOrigin, operatorEmail, operatorPassword } from "./servers.ts";
 
@@ -44,15 +45,17 @@ export async function handComponent(
   return await idOf(page, componentPath);
 }
 
-/** A new English page at `/status/<slug>` showing the components in order, published; its id. The editor stays open on it. */
+/** A new page at `/status/<slug>`, English unless `locale` says otherwise, showing the components in order, published; its id. The editor stays open on it. */
 export async function publishedPage(
   page: Page,
   slug: string,
-  componentIds: readonly string[]
+  componentIds: readonly string[],
+  locale: Locale = "en"
 ): Promise<string> {
   await page.goto(`${englishOrigin}/admin/pages/new`);
   await page.fill("input[name=title]", `Page ${slug}`);
   await page.fill("input[name=slug]", slug);
+  await page.click(`[data-name=locale] [role=radio][data-value=${locale}]`);
   await page.click("[data-slot=new-page-form] button[type=submit]");
   const id = await idOf(page, pagePath);
   for (const componentId of componentIds) {

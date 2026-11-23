@@ -1038,6 +1038,16 @@ describe("the address a frame's not-found renders at", () => {
     }
   });
 
+  test("under the prefix of its page's own language it keeps that prefix, which names no view either", () => {
+    for (const path of ["/ar/nope", "/ar/status/api/nope"]) {
+      const frame = missingView(index(), host, path);
+      const at = missingAddress(frame, "ar");
+      expect(at.startsWith("/ar/"), path).toBe(true);
+      expect(publicTarget(index(), host, at), at).toBeUndefined();
+      expect(missingView(index(), host, at), at).toEqual(frame);
+    }
+  });
+
   test("names no view, and the same page frames it", () => {
     for (const frame of [
       missingView(index(), host, "/nope"),

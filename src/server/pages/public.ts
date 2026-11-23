@@ -431,8 +431,8 @@ export function missingAddress(
   frame: PublicView | undefined,
   locale?: Locale
 ): string {
-  if (frame) {
-    return `${frame.paths.bases[frame.locale]}/history/0000-00`;
-  }
-  return `${locale ? `/${locale}` : ""}/history/0000-00`;
+  const base = frame ? frame.paths.bases[frame.locale] : "";
+  // The page's own language has no prefix in its base: keep the one asked for, which the document's language is read from.
+  const prefix = locale && pathLocale(base) !== locale ? `/${locale}` : "";
+  return `${prefix}${base}/history/0000-00`;
 }
