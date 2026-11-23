@@ -7,12 +7,21 @@ import {
   test,
 } from "bun:test";
 import { readAuditLog, record } from "@/server/audit/audit.ts";
+import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { decrypt } from "@/server/boot/installkey.ts";
 import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import { runSql } from "@/server/storage/fixture.ts";
 import type { SsoInput } from "@/shared/schemas/sso.ts";
-import { type Auth, createAuth, handleAuth, operatorName } from "./auth.ts";
 import {
+  type Auth,
+  type AuthBoot,
+  authFor,
+  createAuth,
+  handleAuth,
+  operatorName,
+} from "./auth.ts";
+import {
+  accountIdOf,
   call,
   cookiesOf,
   nextAddress,
@@ -37,8 +46,8 @@ import {
 } from "./oidc-fixture.ts";
 import { readOperator } from "./session.ts";
 import {
+  readSso,
   readSsoOffer,
-  readSsoProvider,
   readSsoView,
   type SsoProvider,
   saveSso,
@@ -102,6 +111,7 @@ async function ssoAuth(s: Scratch, sso: SsoProvider = ssoOf()): Promise<Auth> {
     mail: silentMail,
     secrets: testSecrets,
     sso,
+    ssoRequired: sso.requireSso,
   });
   await auth.api.signUpEmail({
     body: { email: testEmail, name: operatorName, password: testPassword },
@@ -203,7 +213,9 @@ describe("the provider's settings", () => {
         name: "Renamed",
       })
     ).toEqual({ ok: true });
-    expect(await readSsoProvider(s.storage, s.boot.installKey)).toMatchObject({
+    expect(
+      (await readSso(s.storage, s.boot.installKey)).provider
+    ).toMatchObject({
       clientSecret: provider.clientSecret,
       name: "Renamed",
     });
@@ -211,10 +223,14 @@ describe("the provider's settings", () => {
 
   test("give an instance no provider while it is off, and the sign-in page no button", async () => {
     const s = await scratch();
-    expect(await readSsoProvider(s.storage, s.boot.installKey)).toBeUndefined();
+    expect(
+      (await readSso(s.storage, s.boot.installKey)).provider
+    ).toBeUndefined();
     expect(await readSsoOffer(s.storage)).toBeUndefined();
     await saveSso(s.storage, s.boot.installKey, input({ enabled: false }));
-    expect(await readSsoProvider(s.storage, s.boot.installKey)).toBeUndefined();
+    expect(
+      (await readSso(s.storage, s.boot.installKey)).provider
+    ).toBeUndefined();
     expect(await readSsoOffer(s.storage)).toBeUndefined();
     await saveSso(
       s.storage,
@@ -545,6 +561,119 @@ describe("the password under single sign-on", () => {
     expect(await refused.json()).toMatchObject({ code: "SSO_REQUIRED" });
     expect(await s.storage.invitations.list()).toHaveLength(1);
   });
+});
+
+describe("required single sign-on whose provider the install cannot use", () => {
+  /** A browser's request to the install's /api/auth, through the entry every request takes. */
+  function through(s: Scratch, boot: AuthBoot, path: string, body: unknown) {
+    return handleAuth(
+      s.storage,
+      boot,
+      new Request(`${testOrigin}/api/auth${path}`, {
+        body: JSON.stringify(body),
+        headers: {
+          "content-type": "application/json",
+          origin: testOrigin,
+          [clientAddressHeader]: nextAddress(),
+        },
+        method: "POST",
+      })
+    );
+  }
+
+  /** The owner and an editor with passwords, and an open invitation for a viewer; single sign-on required with the provider as given. */
+  async function requiredInstall(over: Partial<SsoInput>): Promise<{
+    readonly s: Scratch;
+    readonly token: string;
+  }> {
+    const s = await scratch();
+    const auth = await authFor(s.storage, s.boot);
+    for (const email of [testEmail, "editor@example.com"]) {
+      // biome-ignore lint/performance/noAwaitInLoops: the first account is the owner
+      await auth.api.signUpEmail({
+        body: { email, name: operatorName, password: testPassword },
+      });
+    }
+    const token = newInvitationToken();
+    await s.storage.invitations.put({
+      createdAt: Date.now(),
+      email: "new@example.com",
+      expiresAt: Date.now() + 60_000,
+      id: "i1",
+      invitedBy: await accountIdOf(s.storage),
+      role: "viewer",
+      tokenHash: invitationTokenHash(token),
+    });
+    await saveSso(
+      s.storage,
+      s.boot.installKey,
+      input({ requireSso: true, ...over })
+    );
+    return { s, token };
+  }
+
+  const cases: readonly [
+    string,
+    Partial<SsoInput>,
+    (s: Scratch) => Promise<AuthBoot>,
+  ][] = [
+    [
+      "whose discovery document does not answer",
+      { discoveryUrl: "http://127.0.0.1:1/.well-known/openid-configuration" },
+      (s) => Promise.resolve(s.boot),
+    ],
+    [
+      "whose client secret will not open with the install key",
+      {},
+      async (s) => ({ ...s.boot, installKey: await scratchInstallKey() }),
+    ],
+    [
+      "whose stored setting no longer reads",
+      {},
+      async (s) => {
+        await runSql(
+          s.location,
+          `UPDATE settings SET value = '{"enabled":true}' WHERE key = 'sso_provider'`
+        );
+        return s.boot;
+      },
+    ],
+  ];
+  test("is lifted once single sign-on is turned off, though the setting still says required", async () => {
+    const { s } = await requiredInstall({ enabled: false });
+    const editor = await through(s, s.boot, "/sign-in/email", {
+      email: "editor@example.com",
+      password: testPassword,
+    });
+    expect(editor.status).toBe(200);
+  });
+
+  for (const [why, over, spoil] of cases) {
+    test(`${why} still refuses the password to every account but an owner's`, async () => {
+      const { s, token } = await requiredInstall(over);
+      const at = await spoil(s);
+      const editor = await through(s, at, "/sign-in/email", {
+        email: "editor@example.com",
+        password: testPassword,
+      });
+      expect(editor.status).toBe(403);
+      expect(await editor.json()).toMatchObject({ code: "SSO_REQUIRED" });
+      expect(setsSession(editor)).toBe(false);
+      const accepted = await through(s, at, "/invitation/accept", {
+        name: "Nadia",
+        password: testPassword,
+        token,
+      });
+      expect(accepted.status).toBe(403);
+      expect(await accepted.json()).toMatchObject({ code: "SSO_REQUIRED" });
+      expect(await s.storage.invitations.list()).toHaveLength(1);
+      const owner = await through(s, at, "/sign-in/email", {
+        email: testEmail,
+        password: testPassword,
+      });
+      expect(owner.status).toBe(200);
+    });
+  }
 });
 
 describe("the provider's callback route", () => {

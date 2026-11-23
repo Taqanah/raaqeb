@@ -40,7 +40,7 @@ import { parseSecrets, resolveSecrets } from "./secret.ts";
 import {
   notInvitedCode,
   passwordRefused,
-  readSsoProvider,
+  readSso,
   type SsoProvider,
   signUpRole,
   ssoCallbackPath,
@@ -130,8 +130,10 @@ export interface CreateAuthInput {
   readonly log?: (line: string) => void;
   readonly mail: AuthMail;
   readonly secrets: string;
-  /** The identity provider operators may sign in with; none while single sign-on is off. */
+  /** The identity provider operators may sign in with; none while single sign-on is off or the provider cannot be used. */
   readonly sso?: SsoProvider;
+  /** Whether only an owner signs in with a password: the owner's stored decision, in force whether or not `sso` is there. */
+  readonly ssoRequired?: boolean;
 }
 
 const day = 24 * 60 * 60;
@@ -454,6 +456,7 @@ export function createAuth(input: CreateAuthInput) {
   const log = input.log ?? logError;
   const invitations = input.invitations ?? closedGate;
   const { sso } = input;
+  const ssoRequired = input.ssoRequired === true;
   // The role each address signing up through the provider was admitted with, from the admission check to the account's creation a moment later in the same callback.
   const admitted = new Map<string, Role>();
   // The address the provider gave in a callback, for the audit entry of a sign-in it refuses.
@@ -506,7 +509,7 @@ export function createAuth(input: CreateAuthInput) {
               ctx?.path === "/sign-in/email" &&
               user &&
               "role" in user &&
-              passwordRefused(sso, String(user.role))
+              passwordRefused(ssoRequired, String(user.role))
             ) {
               throw new APIError("FORBIDDEN", {
                 code: ssoRequiredCode,
@@ -664,7 +667,9 @@ export function createAuth(input: CreateAuthInput) {
         },
         // A trusted browser lasts Better Auth's default of 30 days, pinned by a test.
       }),
-      invitationAccept(invitations, (role) => passwordRefused(sso, role)),
+      invitationAccept(invitations, (role) =>
+        passwordRefused(ssoRequired, role)
+      ),
       signInLog(log, input.audit, providerEmails),
       ...(sso ? [ssoPlugin(sso)] : []),
     ],
@@ -820,12 +825,16 @@ async function reachable(
 }
 
 async function buildFor(storage: Storage, boot: AuthBoot): Promise<Auth> {
-  const [{ address, resolved }, stored] = await Promise.all([
-    inputsOf(storage, boot),
-    // A provider that cannot be read leaves the password, so an owner still signs in.
-    readSsoProvider(storage, boot.installKey).catch(() => undefined),
-  ]);
-  const key = `${address ?? ""}\n${resolved.secrets}\n${stored ? JSON.stringify(stored) : ""}`;
+  const [{ address, resolved }, { provider: stored, required }] =
+    await Promise.all([
+      inputsOf(storage, boot),
+      // A setting that cannot be read leaves only an owner's password, as a required one would: what was refused stays refused.
+      readSso(storage, boot.installKey).catch(() => ({
+        provider: undefined,
+        required: true,
+      })),
+    ]);
+  const key = `${address ?? ""}\n${resolved.secrets}\n${required}\n${stored ? JSON.stringify(stored) : ""}`;
   const current = built.get(storage);
   if (
     current?.key === key &&
@@ -855,6 +864,7 @@ async function buildFor(storage: Storage, boot: AuthBoot): Promise<Auth> {
     ),
     secrets: resolved.secrets,
     sso,
+    ssoRequired: required,
   });
   if (sso) {
     withSso.add(auth);

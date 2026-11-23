@@ -105,17 +105,28 @@ export async function saveSso(
   }
 }
 
-/** The provider an instance is built with: nothing while it is off, never stored, or its secret will not open with this install key. */
-export async function readSsoProvider(
+/** Single sign-on as an instance is built with it: the provider, and whether the owner required it, which holds even when the provider is not there. */
+export interface StoredSso {
+  /** Nothing while single sign-on is off, never stored, or its secret will not open with this install key. */
+  readonly provider: SsoProvider | undefined;
+  readonly required: boolean;
+}
+
+/** The stored single sign-on; throws when the setting cannot be read. */
+export async function readSso(
   storage: SsoStorage,
   key: InstallKey
-): Promise<SsoProvider | undefined> {
+): Promise<StoredSso> {
   const held = await storage.settings.get(ssoSetting);
   if (!held?.enabled) {
-    return;
+    return { provider: undefined, required: false };
   }
   const clientSecret = await decrypt(key, held.clientSecret);
-  return clientSecret === undefined ? undefined : { ...held, clientSecret };
+  return {
+    provider:
+      clientSecret === undefined ? undefined : { ...held, clientSecret },
+    required: held.requireSso,
+  };
 }
 
 /** What the sign-in and invitation pages offer: nothing while single sign-on is off or cannot be read. Never throws. */
@@ -175,11 +186,8 @@ export const unverifiedCode = "EMAIL_NOT_VERIFIED";
 export const ssoRequiredCode = "SSO_REQUIRED";
 
 /** Whether the password is refused to an account of the role: once single sign-on is required, only an owner signs in with one, the way back in when the provider is down. */
-export function passwordRefused(
-  provider: SsoProvider | undefined,
-  role: string
-): boolean {
-  return provider?.requireSso === true && role !== "owner";
+export function passwordRefused(required: boolean, role: string): boolean {
+  return required && role !== "owner";
 }
 
 /** The person a sign-up through the provider is for: the address, whether the provider says it is verified, and the raw claims. */
