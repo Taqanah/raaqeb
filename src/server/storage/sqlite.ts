@@ -41,9 +41,27 @@ export function openSqlite(file: string): SqliteConnection {
 /**
  * Copies the database with `VACUUM INTO` to `<dir>/snapshots/` beside the
  * file, named by the UTC time and the first pending migration, then prunes to
- * `snapshotsKept`. Answers the snapshot's path.
+ * `snapshotsKept`, never the copy just taken. Answers the snapshot's path.
+ * The copy is written under a temporary name and renamed, so a start cut
+ * short leaves no half copy under a snapshot's name, and a second start in
+ * the same second replaces the first one's. What a start cut short left is
+ * removed once per start by `removePartialSnapshots`, never here, so snapshots
+ * taken at once do not delete each other's copy in progress.
  */
-export async function snapshotSqlite(
+export function snapshotSqlite(
+  connection: SqliteConnection,
+  label: string,
+  now: number
+): Promise<string> {
+  const run = lastSnapshot.then(() => takeSnapshot(connection, label, now));
+  lastSnapshot = run.catch(() => undefined);
+  return run;
+}
+
+// One at a time: a copy kept for being the one just taken must not outlive the pruning of a later one at once beside it.
+let lastSnapshot: Promise<unknown> = Promise.resolve();
+
+async function takeSnapshot(
   connection: SqliteConnection,
   label: string,
   now: number
@@ -51,10 +69,21 @@ export async function snapshotSqlite(
   const dir = snapshotDir(connection.file);
   await Bun.$`mkdir -p ${dir}`.quiet();
   const stamp = new Date(now).toISOString().replace(/[-:]|\.\d{3}/g, "");
-  const path = `${dir}/${snapshotPrefix}${stamp}-before-${label}${snapshotSuffix}`;
-  connection.client.run("VACUUM INTO ?", [path]);
-  await prune(dir);
-  return path;
+  const name = `${snapshotPrefix}${stamp}-before-${label}${snapshotSuffix}`;
+  connection.client.run("VACUUM INTO ?", [`${dir}/${name}.partial`]);
+  await Bun.$`mv -f ${`${dir}/${name}.partial`} ${`${dir}/${name}`}`.quiet();
+  await prune(dir, name);
+  return `${dir}/${name}`;
+}
+
+/** Removes what a start killed or out of disk mid-copy left; on a full disk it holds the space the next copy needs. */
+export async function removePartialSnapshots(file: string): Promise<void> {
+  const dir = snapshotDir(file);
+  await Bun.$`mkdir -p ${dir}`.quiet();
+  await removeAll(
+    dir,
+    await Array.fromAsync(new Bun.Glob("*.partial*").scan({ cwd: dir }))
+  );
 }
 
 /** The snapshot folder for a database file. */
@@ -63,17 +92,25 @@ export function snapshotDir(file: string): string {
   return `${slash === -1 ? "." : file.slice(0, slash)}/snapshots`;
 }
 
-/** Deletes every snapshot but the newest `snapshotsKept`; names sort by time. */
-async function prune(dir: string): Promise<void> {
+/** Deletes every snapshot but the newest `snapshotsKept` and the one just `taken`, which a clock set back sorts oldest; names sort by time. */
+async function prune(dir: string, taken: string): Promise<void> {
   const names = (
     await Array.fromAsync(
       new Bun.Glob(`${snapshotPrefix}*${snapshotSuffix}`).scan({ cwd: dir })
     )
   ).toSorted((a, b) => a.localeCompare(b));
-  const stale = names.slice(0, Math.max(0, names.length - snapshotsKept));
-  // Two snapshots taken at once prune at once; a file already gone is fine.
+  await removeAll(
+    dir,
+    names
+      .slice(0, Math.max(0, names.length - snapshotsKept))
+      .filter((name) => name !== taken)
+  );
+}
+
+/** Deletes the named files; two starts at once delete at once, and a file already gone is fine. */
+async function removeAll(dir: string, names: string[]): Promise<void> {
   await Promise.all(
-    stale.map((name) =>
+    names.map((name) =>
       Bun.file(`${dir}/${name}`)
         .delete()
         .catch(() => undefined)
