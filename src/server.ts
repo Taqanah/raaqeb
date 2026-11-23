@@ -404,7 +404,9 @@ export function maintenanceLine(window: MaintenanceWindow): string {
  * The kinds of page a stranger's renders take turns between, so a flood of
  * one kind waits behind itself alone: `refresh`, a status page answer the
  * memo keeps (a view, document, badge, feed, summary or not-found) that went
- * stale, which a visitor is answered with while it refreshes; `cold`, one it
+ * stale, which a visitor is answered with while it refreshes; `overview`,
+ * the same for an overview, the view a monitor polls, at most seven entries
+ * a page, so a flood of the other views' refreshes leaves it a turn; `cold`, one it
  * holds nothing for; `pages`, the pages everyone gets the same (sign-in,
  * forgot-password, sign-out, a reset page with no link, onboarding's language
  * and database screens); `subscriptions`, a subscription's page; `reset`, a
@@ -415,6 +417,7 @@ export type RenderLane =
   | "cold"
   | "onboarding"
   | "others"
+  | "overview"
   | "pages"
   | "refresh"
   | "reset"
@@ -456,6 +459,7 @@ export const strangerPace: StrangerPace = {
       cold: 64,
       onboarding: 8,
       others: 8,
+      overview: 16,
       pages: 16,
       refresh: 64,
       reset: 8,
@@ -658,7 +662,7 @@ export function serve(
           resolved,
           storage,
           (target, refresh) =>
-            paced(visitorLane(refresh), async () => {
+            paced(visitorLane(refresh, target), async () => {
               rendered = true;
               return await handler.fetch(viewRequest(resolved, refresh), {
                 context: context(target),
@@ -763,9 +767,16 @@ function holdWhileWaiting(
 /** The answers the memo keeps beside the views: a view's document, a badge, a feed, a summary. */
 const memoResource = /^\/api\/pages\/|\/(badge\.svg|feed\.atom|summary\.json)$/;
 
-/** A status page answer's lane: a refresh of what the memo keeps, or an address it holds nothing for. */
-function visitorLane(refresh: boolean): RenderLane {
-  return refresh ? "refresh" : "cold";
+/** A status page answer's lane: a refresh of what the memo keeps, the overview's in a lane of its own, or an address it holds nothing for. */
+function visitorLane(refresh: boolean, target?: PublicTarget): RenderLane {
+  if (!refresh) {
+    return "cold";
+  }
+  return target !== undefined &&
+    target.kind !== "resource" &&
+    target.view === "overview"
+    ? "overview"
+    : "refresh";
 }
 
 /** The request a view renders through: a HEAD as a GET, so the stored entry has its body, and a refresh the visitor may not wait for with no signal of theirs to end it. */
