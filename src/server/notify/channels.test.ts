@@ -4,6 +4,7 @@ import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { encrypt } from "@/server/boot/installkey.ts";
 import { publicAddress } from "@/server/settings/address.ts";
 import { calendar, timeZone } from "@/server/settings/clock.ts";
+import { notificationHold } from "@/server/settings/hold.ts";
 import { installLanguage } from "@/server/settings/language.ts";
 import { runSql, scratchDatabase } from "@/server/storage/fixture.ts";
 import {
@@ -441,6 +442,19 @@ describe("send test", () => {
     expect(read.ok && read.form.recent.map((send) => send.id)).toEqual([
       result.send.id,
     ]);
+  });
+
+  test("under a notification hold a test message still goes and is recorded as sent", async () => {
+    const store = await storage();
+    await store.settings.set(notificationHold, 1_760_000_000_000);
+    const channel = await created(store, {
+      ...ops,
+      values: { url: `${origin}/ok` },
+    });
+    received.length = 0;
+    const result = await sendTest(store, key, live, channel.id);
+    expect(result).toMatchObject({ ok: true, send: { status: "sent" } });
+    expect(received.map((each) => each.path)).toEqual(["/ok"]);
   });
 
   test("a receiver that answers an error is a failed test with its reason, tried once and never queued", async () => {

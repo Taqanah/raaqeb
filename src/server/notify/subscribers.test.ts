@@ -148,6 +148,16 @@ async function unpublish(s: PagesScratch, pageId: string): Promise<void> {
   );
 }
 
+/** Makes the page private: only a signed-in operator gets in. */
+async function makePrivate(s: PagesScratch, pageId: string): Promise<void> {
+  const stored = defined(await s.storage.pages.find(pageId));
+  await s.storage.pages.save(
+    pageId,
+    { ...stored, access: { addresses: [], mode: "signed_in" } },
+    await s.storage.pages.layout(pageId)
+  );
+}
+
 let addresses = 0;
 
 /** A subscription of the page in the state asked for, its webhook URL sealed as the module seals it. */
@@ -804,6 +814,58 @@ describe("announcing an event and confirming a subscription", () => {
       now + 5
     );
     expect(queued.map((each) => each.ids)).toEqual([[confirmedApi.id]]);
+  });
+
+  test("a private page's subscribers are queued its events and sent them, by email and webhook alike", async () => {
+    const w = await world();
+    const smtp = await emailChannel(w.s);
+    const reader = await subscriber(w.s, w.main, "email", "confirmed");
+    const hook = await subscriber(w.s, w.main, "webhook", "confirmed");
+    await makePrivate(w.s, w.main);
+    expect((await w.s.storage.pages.find(w.main))?.access.mode).toBe(
+      "signed_in"
+    );
+    const created = await incident(
+      w.s,
+      {
+        impact: "major",
+        statuses: [{ componentId: w.pay, status: "major_outage" }],
+        title: { ar: "توقف الدفع" },
+      },
+      now
+    );
+    const { queue, queued } = recordingQueue();
+    const subscribers = createSubscriberNotifications(w.s.storage, queue, {
+      isStopped: () => false,
+    });
+    await subscribers.announce(
+      { incidentId: created.id, type: "incident.published" },
+      now + 5
+    );
+    const toMain = defined(
+      queued.find(
+        (each) =>
+          each.payload.type !== "subscription.confirmation" &&
+          each.payload.page.id === w.main
+      )
+    );
+    expect(toMain.ids.toSorted(byText)).toEqual(
+      [reader.id, hook.id].toSorted(byText)
+    );
+    const net = receiver();
+    for (const id of [reader.id, hook.id]) {
+      expect(
+        // biome-ignore lint/performance/noAwaitInLoops: each is its own case
+        await sendToSubscriber(
+          w.s.storage,
+          key,
+          io(net.fetch),
+          queuedFor(id, toMain.payload)
+        )
+      ).toEqual({ ok: true });
+    }
+    expect(net.requests).toHaveLength(1);
+    expect(smtp.messages).toHaveLength(1);
   });
 
   test("a cancel is queued for the confirmed subscribers of the published pages the window reached, after its row is gone", async () => {

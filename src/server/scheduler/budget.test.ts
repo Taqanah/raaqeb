@@ -6,7 +6,11 @@ import type { Setting, SettingsRepository } from "@/server/storage/settings.ts";
 import { openStorage, type Storage } from "@/server/storage/storage.ts";
 import { monitorEventKinds } from "@/shared/schemas/monitor.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
-import { megabyte, reserveBytes } from "@/shared/schemas/settings.ts";
+import {
+  megabyte,
+  reserveBytes,
+  sizeBudgetMinBytes,
+} from "@/shared/schemas/settings.ts";
 import { createSizeGuard, measurePeriodMs, pressureOf } from "./budget.ts";
 
 const t0 = 1_700_006_400_000 + 5 * 3_600_000;
@@ -457,5 +461,90 @@ describe("the reserve on a nearly full file system", () => {
     );
     expect(Number(rollups?.n) === 0).toBe(sqlite);
     expect((await store.changeCounter()) > counter).toBe(sqlite);
+  });
+});
+
+describe("what the size budget keeps", () => {
+  let open: { cleanup: () => Promise<void>; storage: Storage } | undefined;
+
+  afterEach(async () => {
+    if (open) {
+      await open.storage.close();
+      await open.cleanup();
+      open = undefined;
+    }
+  });
+
+  const dayMs = 86_400_000;
+  const today = Math.floor(t0 / dayMs) * dayMs;
+
+  test("over the size budget the old history goes and a domain registration read on its oldest day stays", async () => {
+    const scratch = await scratchDatabase();
+    const opened = await openStorage(scratch.location);
+    if (!opened.ok) {
+      throw new Error(opened.message);
+    }
+    open = { cleanup: scratch.cleanup, storage: opened.storage };
+    const store = opened.storage;
+    const monitor = await store.monitors.create({
+      config: { host: "example.test", port: 443, type: "tcp" },
+      intervalMs: 60_000,
+      name: "Port",
+      retries: 0,
+      channels: [],
+      events: [...monitorEventKinds],
+      tags: [],
+      timeoutMs: 10_000,
+    });
+    for (const at of [today - 2 * dayMs, today - dayMs, today + 1000]) {
+      // biome-ignore lint/performance/noAwaitInLoops: rows in order, as the scheduler writes them
+      await store.checks.record({
+        capture: undefined,
+        check: {
+          attempts: 1,
+          bytes: 0,
+          monitorId: monitor.id,
+          reason: reasons.ok,
+          responseMs: 20,
+          result: "up",
+          startedAt: at,
+          statusCode: undefined,
+        },
+        detail: undefined,
+      });
+      if (at < today) {
+        await store.checks.seal(monitor.id, at, 120_000, []);
+      }
+    }
+    const registration = {
+      domain: "example.test",
+      expiresAt: today + 90 * dayMs,
+      monitorId: monitor.id,
+      readAt: today - 2 * dayMs + 1000,
+    };
+    await store.registrations.replace(registration);
+    await store.settings.set(sizeBudgetBytes, sizeBudgetMinBytes);
+    // Over the budget by one byte for each check before today, so the rounds go on until those are gone.
+    const older = async () =>
+      (await store.checks.range(monitor.id, 0, today)).length;
+    const guard = createSizeGuard(
+      {
+        checks: store.checks,
+        settings: store.settings,
+        size: {
+          free: () => Promise.resolve(undefined),
+          reclaim: () => store.size.reclaim(),
+          used: async () => sizeBudgetMinBytes + (await older()),
+        },
+      },
+      { bump: () => Promise.resolve() }
+    );
+    expect(await guard.admit(t0)).toBe(true);
+    const kept = await store.checks.range(monitor.id, 0, today + dayMs);
+    expect(kept.map((check) => check.startedAt)).toEqual([today + 1000]);
+    expect(await store.registrations.find(monitor.id)).toEqual({
+      ...registration,
+      warned: false,
+    });
   });
 });

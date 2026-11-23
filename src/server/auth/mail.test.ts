@@ -8,6 +8,7 @@ import {
   htmlText,
   parse,
 } from "@/server/notify/fixture.ts";
+import { notificationHold } from "@/server/settings/hold.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import {
   accountIdOf,
@@ -458,6 +459,30 @@ describe("the mail an instance sends", () => {
     await expect(mail.code(testEmail, "123456")).resolves.toBeUndefined();
     expect(lines).toHaveLength(2);
     expect(lines.join("\n")).toContain("no email channel");
+  });
+});
+
+describe("sign-in mail under a notification hold", () => {
+  test("still goes: a reset link and a code each reach the operator", async () => {
+    const s = await scratch();
+    await s.storage.settings.set(notificationHold, 1_760_000_000_000);
+    const smtp = fakeSmtp();
+    try {
+      await emailChannel(s, "Mail", smtp.port);
+      const lines: string[] = [];
+      const mail = authMailOver(s.storage, s.boot.installKey, io, (line) =>
+        lines.push(line)
+      );
+      await mail.resetLink(
+        testEmail,
+        "http://raaqeb.test/reset-password?token=abc"
+      );
+      await mail.code(testEmail, "123456");
+      expect(lines).toEqual([]);
+      expect(smtp.messages).toHaveLength(2);
+    } finally {
+      smtp.stop();
+    }
   });
 });
 
