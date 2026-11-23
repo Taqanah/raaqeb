@@ -20,9 +20,18 @@ function plain(line: string): string {
 const tokenSegment =
   /^(\/+api\/+heartbeat|\/+subscriptions|\/+api\/+auth\/+reset-password)\/+[^/]+/i;
 
-/** A request's path as a line names it: no query, and no token a path carries. */
+const percentEscape = /%[0-9a-f]{2}/gi;
+
+/** A request's path as a line names it: no query, and no token a path carries, however its words are escaped. */
 export function loggedPath(url: string): string {
-  return new URL(url).pathname.replace(tokenSegment, "$1/<token>");
+  const { pathname } = new URL(url);
+  // Each escape read as the byte it names: a word spelled with escapes is still the word, and its token a secret, whether a route answers it or not.
+  const read = pathname.replaceAll(percentEscape, (each) =>
+    String.fromCharCode(Number.parseInt(each.slice(1), 16))
+  );
+  return tokenSegment.test(read)
+    ? read.replace(tokenSegment, "$1/<token>")
+    : pathname;
 }
 
 /** Writes one line to standard output. */
