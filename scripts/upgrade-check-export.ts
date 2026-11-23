@@ -5,6 +5,11 @@
  * migrations ran once. Pure; the containers are the check's own.
  */
 import { z } from "zod";
+import {
+  fromVersion1,
+  headerSchema,
+  recordSchema,
+} from "@/shared/schemas/export.ts";
 
 /** One line of an export file, parsed. */
 export type ExportLine = Record<string, unknown>;
@@ -145,6 +150,196 @@ export function differences(
     }
   }
   return found;
+}
+
+/** A value as JSON carries it, so an encoded line compares with one read from a file. */
+function asWritten(value: unknown): ExportLine {
+  return objectSchema.parse(JSON.parse(JSON.stringify(value)));
+}
+
+/** The old export as the new version reads it on import: the header through `fromVersion1` and the header's schema, each record through its own, so a field a format step adds carries what an import gives it. */
+function readNow(lines: readonly ExportLine[]): ExportLine[] {
+  const [first, ...history] = lines;
+  const header = headerSchema.safeParse(fromVersion1(first));
+  if (!header.success) {
+    throw new Error("the new version cannot read the old export's first line");
+  }
+  return [
+    asWritten(headerSchema.encode(header.data)),
+    ...history.map((line, index) => {
+      const record = recordSchema.safeParse(line);
+      if (!record.success) {
+        throw new Error(
+          `the new version cannot read line ${index + 2} of the old export`
+        );
+      }
+      return asWritten(recordSchema.encode(record.data));
+    }),
+  ];
+}
+
+/** The differences an upgrade may make, each with its reason, and the rest. */
+export interface UpgradeDifferences {
+  readonly allowed: string[];
+  readonly found: string[];
+}
+
+/**
+ * What differs between the old version's export and the new version's of the
+ * same install, once the old one is read as the new version imports it. What
+ * reading adds to the old file and the format's named rewrites are allowed,
+ * and so are the rows of a table the old file does not carry and the audit
+ * entries made after the old export (the check's own sign-ins); each is named
+ * with its reason, as is the time the new version recorded a row reading adds.
+ * What reading loses of the old file, and anything else, is found. `read` is
+ * the old file as the new version reads it, given only by a test.
+ */
+export function upgradeDifferences(
+  before: readonly ExportLine[],
+  after: readonly ExportLine[],
+  read: readonly ExportLine[] = readNow(before)
+): UpgradeDifferences {
+  const into = readingChanges(before, read);
+  const old = objectSchema.catch({}).parse(before[0]);
+  const carried = objectSchema.catch({}).parse(old.configuration);
+  const exportedAt = Date.parse(String(old.exportedAt));
+  const was = tablesOf(before);
+  const given = tablesOf(read);
+  const [first, ...history] = after;
+  const header = objectSchema.catch({}).parse(first);
+  const configuration = Object.fromEntries(
+    Object.entries(objectSchema.catch({}).parse(header.configuration)).map(
+      ([table, rows]) => [
+        table,
+        rowsSchema
+          .catch([])
+          .parse(rows)
+          .filter((row) => {
+            if (!(table in carried)) {
+              into.allowed.push(
+                `${table} ${rowName(row)} appeared: the old file does not carry ${table}`
+              );
+              return false;
+            }
+            if (
+              table === "auditEntries" &&
+              Date.parse(String(row.at)) > exportedAt
+            ) {
+              into.allowed.push(
+                `${table} ${rowName(row)} (${String(row.action)}) appeared: written after the old export`
+              );
+              return false;
+            }
+            return true;
+          })
+          .map((row) => {
+            const name = rowName(row);
+            const stand = given.get(table)?.get(name);
+            return stand === undefined || was.get(table)?.has(name)
+              ? row
+              : restamped(into, `${table} ${name}`, row, stand, exportedAt);
+          }),
+      ]
+    )
+  );
+  return {
+    allowed: into.allowed,
+    found: [
+      ...into.found,
+      ...differences(read, [{ ...header, configuration }, ...history]),
+    ],
+  };
+}
+
+/** A row reading adds holds the time the conversion gives it, which the new version cannot match: it records the row when it upgrades, after the old export. That time alone is allowed to differ. */
+function restamped(
+  into: UpgradeDifferences,
+  name: string,
+  row: Record<string, unknown>,
+  read: Record<string, unknown>,
+  exportedAt: number
+): Record<string, unknown> {
+  if (
+    row.updatedAt === read.updatedAt ||
+    !(Date.parse(String(row.updatedAt)) > exportedAt)
+  ) {
+    return row;
+  }
+  into.allowed.push(
+    `${name} changed: updatedAt: recorded by the new version after the old export`
+  );
+  return { ...row, updatedAt: read.updatedAt };
+}
+
+const reading = "what the new version reads into the old file";
+
+/** The fields of the old file a format step rewrites, by table; any other field it had that reading changes is lost. */
+const rewritten: Readonly<Record<string, readonly string[]>> = {
+  monitors: ["events"],
+};
+
+/** Sorts what reading changed of one row into what it adds or a format step rewrites, allowed, and what it loses of the old file, found. */
+function sortChanged(
+  into: UpgradeDifferences,
+  was: Record<string, unknown>,
+  is: Record<string, unknown>,
+  rewrites: readonly string[],
+  named: (fields: string) => string
+): void {
+  const fields = changedFields(was, is);
+  const lost = fields.filter((f) => f in was && !rewrites.includes(f));
+  const added = fields.filter((f) => !lost.includes(f));
+  if (added.length > 0) {
+    into.allowed.push(`${named(added.join(", "))}: ${reading}`);
+  }
+  if (lost.length > 0) {
+    into.found.push(
+      `${named(lost.join(", "))} when the new version reads the old file`
+    );
+  }
+}
+
+/** What reading the old file changes: what it adds and the named rewrites are allowed, and what it loses of the old file is found. */
+function readingChanges(
+  before: readonly ExportLine[],
+  read: readonly ExportLine[]
+): UpgradeDifferences {
+  const into: UpgradeDifferences = { allowed: [], found: [] };
+  sortChanged(
+    into,
+    headerOf(before),
+    headerOf(read),
+    ["version"],
+    (fields) => `the header's ${fields} changed`
+  );
+  const was = tablesOf(before);
+  const is = tablesOf(read);
+  for (const table of new Set([...was.keys(), ...is.keys()])) {
+    const rowsWas = was.get(table) ?? new Map();
+    const rowsIs = is.get(table) ?? new Map();
+    for (const [name, row] of rowsWas) {
+      const now = rowsIs.get(name);
+      if (now === undefined) {
+        into.found.push(
+          `${table} ${name} is missing when the new version reads the old file`
+        );
+        continue;
+      }
+      sortChanged(
+        into,
+        row,
+        now,
+        rewritten[table] ?? [],
+        (fields) => `${table} ${name} changed: ${fields}`
+      );
+    }
+    for (const name of rowsIs.keys()) {
+      if (!rowsWas.has(name)) {
+        into.allowed.push(`${table} ${name} appeared: ${reading}`);
+      }
+    }
+  }
+  return into;
 }
 
 /** What a start logged of the database: the version it found, how many migrations it applied, and the version it left. */

@@ -237,6 +237,33 @@ describe("the export file's format", () => {
     expect(fromVersion1("not a header")).toBe("not a header");
   });
 
+  test("a version 1 monitor with an event on gets domain expiring after its own, and a silenced one stays silent", () => {
+    const { maintenanceSeries: _, ...older } = configurationSchema.encode({
+      ...empty,
+      monitors: [
+        monitor,
+        {
+          ...monitor,
+          events: "[]",
+          id: "01900000-0000-7000-8000-000000000002",
+        },
+      ],
+    });
+    const read = headerSchema.parse(
+      fromVersion1({
+        configuration: older,
+        exportedAt: "2026-09-28T12:00:00.000Z",
+        mode: "full",
+        raaqeb: "export",
+        version: 1,
+      })
+    );
+    expect(read.configuration.monitors.map((row) => row.events)).toEqual([
+      '["down","recovered","domain_expiring"]',
+      "[]",
+    ]);
+  });
+
   test("a header of another version is not this format, though its version can still be read", () => {
     const other = {
       configuration: configurationSchema.encode(empty),

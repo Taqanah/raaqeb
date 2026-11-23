@@ -372,7 +372,7 @@ export type Header = z.output<typeof headerSchema>;
 /** The versions an import reads: this one, and version 1, written before maintenance series, an HTTP monitor's own proxy, domain expiry (whose option is on when absent) and probes. */
 export const readableExportVersions: readonly number[] = [1, exportVersion];
 
-/** A first line of version 1 as this version reads it: no maintenance series, and every window of none; no probes, and every monitor checked from the main location alone with one confirmation; its monitors carry no proxy, which reads as none. Anything that is not such a line comes back as it came, for the header's schema to refuse. */
+/** A first line of version 1 as this version reads it: no maintenance series, and every window of none; no probes, and every monitor checked from the main location alone with one confirmation; its monitors carry no proxy, which reads as none; each monitor with an event on gets domain expiring after its own, as the migration did, and a silenced one stays silent. Anything that is not such a line comes back as it came, for the header's schema to refuse. */
 export function fromVersion1(first: unknown): unknown {
   const parsed = version1Schema.safeParse(first);
   if (!parsed.success) {
@@ -389,6 +389,7 @@ export function fromVersion1(first: unknown): unknown {
       monitors: configuration.monitors.map((monitor) => ({
         ...monitor,
         confirmations: 1,
+        events: withDomainExpiring(monitor.events),
         fromMain: true,
         shareCredentials: false,
       })),
@@ -401,6 +402,14 @@ export function fromVersion1(first: unknown): unknown {
     },
     version: exportVersion,
   };
+}
+
+function withDomainExpiring(events: unknown): unknown {
+  return Array.isArray(events) &&
+    events.length > 0 &&
+    !events.includes("domain_expiring")
+    ? [...events, "domain_expiring"]
+    : events;
 }
 
 /** Just enough of a version 1 first line to rewrite it; the header's schema checks the rest. */

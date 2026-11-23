@@ -9,13 +9,17 @@
  * The export the old version writes is kept. The old image stops, the new one
  * starts on the same data, and the operator signs in with the password and
  * the app's code, then with a backup code. The export the new version writes
- * must differ from the old one in nothing, and a start after it must find
- * nothing to migrate. The to-image is the one `bun run image` loads for this
- * checkout unless given. `--without=docker,ntfy` leaves out the check types
- * and channel kinds the old image does not know; `--seed=<file>` restores an
- * export the old image can read in place of the built-in seed, for a release
- * whose export format the built-in seed does not match. Needs Docker and Playwright's Chromium, so it stays
- * out of the gate. The containers share the host's network.
+ * must differ in nothing from the old one as the new version reads it on
+ * import (`fromVersion1` and the export schema's defaults), short of the rows
+ * of a table the old file does not carry and the audit entries of the
+ * sign-ins above; each allowed difference is printed with its reason. A start
+ * after it must find nothing to migrate. The to-image is the one `bun run
+ * image` loads for this checkout unless given. `--without=docker,ntfy` leaves
+ * out the check types and channel kinds the old image does not know;
+ * `--seed=<file>` restores an export the old image can read in place of the
+ * built-in seed, for a release whose export format the built-in seed does
+ * not match. Needs Docker and Playwright's Chromium, so it stays out of the
+ * gate. The containers share the host's network.
  */
 import { chromium, type Page } from "@playwright/test";
 import { appCode } from "@/server/auth/fixture.ts";
@@ -24,11 +28,11 @@ import { importAnswerSchema } from "@/shared/schemas/export.ts";
 import { expectPath, freePort, must, run, until } from "./containers.ts";
 import { imageTag, releaseVersion } from "./package.ts";
 import {
-  differences,
   type ExportLine,
   inventory,
   migrationNote,
   migrationProblems,
+  upgradeDifferences,
 } from "./upgrade-check-export.ts";
 import { seedFile } from "./upgrade-check-seed.ts";
 
@@ -274,7 +278,7 @@ async function importSeed(
   const answer = importAnswerSchema.parse(await response.json());
   if (!answer.ok) {
     throw new Error(
-      `the old version refused the seed: ${answer.reason}${answer.line === undefined ? "" : ` at line ${answer.line}`}`
+      `the old version refused the seed: ${answer.reason}${answer.line === undefined ? "" : ` at line ${answer.line}`}${answer.reason === "version" ? " (it reads an older export format: pass --seed=<an export it wrote>)" : ""}`
     );
   }
   return `${answer.monitors} monitors, ${answer.pages} pages, ${answer.records} records of history`;
@@ -330,7 +334,10 @@ async function checkBackend(
   await signIn(await open(), upgraded.origin, { backup });
   say(backend, "the operator signed in with the password and a backup code");
   const after = await exportOf(session, upgraded.origin);
-  const found = differences(before, after);
+  const { allowed, found } = upgradeDifferences(before, after);
+  for (const line of allowed) {
+    say(backend, `allowed: ${line}`);
+  }
   if (found.length > 0) {
     throw new Error(
       `the upgrade changed the install:\n- ${found.join("\n- ")}`
@@ -338,7 +345,7 @@ async function checkBackend(
   }
   say(
     backend,
-    "the new version's export differs from the old one's in nothing"
+    `the new version's export differs from the old one's in nothing else (${allowed.length} allowed)`
   );
   await stop(upgraded.name);
 

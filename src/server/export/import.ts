@@ -12,7 +12,6 @@
  * configuration is written, before the scheduler can read it, and a failure
  * takes the hold out with the rest.
  */
-import { z } from "zod";
 import { encrypt, type InstallKey } from "@/server/boot/installkey.ts";
 import { error as logError, reasonOf } from "@/server/log.ts";
 import {
@@ -56,7 +55,6 @@ import {
   type TravellingSetting,
   versionProbeSchema,
 } from "@/shared/schemas/export.ts";
-import { monitorEventKinds } from "@/shared/schemas/monitor.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
 import { pageImageMaxBytes } from "@/shared/schemas/page.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
@@ -64,25 +62,11 @@ import type { Rollup } from "@/shared/schemas/rollup.ts";
 import { forgetExportSizes } from "./export.ts";
 import { LongLineError, readLines, UnreadableFileError } from "./lines.ts";
 
-const monitorEventsSchema = z.array(z.enum(monitorEventKinds));
-
 /** Records gathered before one statement writes them. */
 const batchSize = 500;
 
 /** The imports under way, one chain per storage, so two never write at once. */
 const chains = new WeakMap<Storage, Promise<unknown>>();
-
-/** A version 1 file predates domain expiring: each monitor with an event on gets it on after its own, as the migration did to the monitors there were, and a silenced one stays silent. */
-function withDomainExpiring(
-  monitors: Configuration["monitors"]
-): Configuration["monitors"] {
-  return monitors.map((row) => {
-    const events = monitorEventsSchema.parse(JSON.parse(row.events));
-    return events.length === 0 || events.includes("domain_expiring")
-      ? row
-      : { ...row, events: JSON.stringify([...events, "domain_expiring"]) };
-  });
-}
 
 /** Reads a whole export into this install, or refuses it; with `hold`, the install it fills starts a notification hold at `now`. */
 export function importInstall(
@@ -279,14 +263,7 @@ async function importOnce(
       throw new InvalidLineError(1);
     }
     const read = header.data.configuration;
-    const configuration = {
-      ...read,
-      monitors:
-        probe.data.version === 1
-          ? withDomainExpiring(read.monitors)
-          : read.monitors,
-      pageImages,
-    };
+    const configuration = { ...read, pageImages };
     const zone = await importedTimeZone(storage, configuration);
     restored = await storage.transfer.restore(
       await sealed(key, { ...configuration, settings: [] })

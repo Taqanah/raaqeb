@@ -1,11 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import {
+  type Configuration,
+  exportVersion,
+  headerSchema,
+} from "@/shared/schemas/export.ts";
+import {
   differences,
   type ExportLine,
   inventory,
   migrationNote,
   migrationProblems,
   shiftTimes,
+  upgradeDifferences,
 } from "./upgrade-check-export.ts";
 
 const hour = 3_600_000;
@@ -295,5 +301,285 @@ describe("what an export holds", () => {
         { ...check, kind: "outage", startedAt: noon },
       ])
     ).toEqual({ check: 2, monitors: 2, outage: 1 });
+  });
+});
+
+describe("what an upgrade may change in the export", () => {
+  const exportedAt = Date.UTC(2026, 8, 28, 12);
+  const monitor: Configuration["monitors"][number] = {
+    checkType: "tcp",
+    config: '{"host":"db.example.test","port":5432,"type":"tcp"}',
+    confirmations: 1,
+    createdAt: Date.UTC(2026, 8, 1),
+    credentials: null,
+    degradedMs: null,
+    description: null,
+    events: '["down","recovered","domain_expiring"]',
+    fromMain: 1,
+    groupId: null,
+    heartbeatToken: null,
+    id: "m1",
+    intervalMs: 60_000,
+    name: "Database",
+    paused: 0,
+    pausedAt: null,
+    reminderMs: null,
+    retentionDays: null,
+    retries: 0,
+    shareCredentials: 0,
+    target: "db.example.test:5432",
+    timeoutMs: 10_000,
+    updatedAt: Date.UTC(2026, 8, 2),
+  };
+  const configuration: Configuration = {
+    auditEntries: [],
+    channels: [],
+    componentGroups: [],
+    componentMonitors: [],
+    components: [],
+    groups: [],
+    incidentStatuses: [],
+    incidentUpdates: [],
+    incidents: [],
+    maintenanceComponents: [],
+    maintenanceSeries: [],
+    maintenanceSeriesComponents: [],
+    maintenanceWindows: [],
+    monitorChannels: [],
+    monitorProbes: [],
+    monitorTags: [],
+    monitors: [monitor],
+    operatorAccounts: [],
+    pageComponents: [],
+    pageImages: [],
+    probes: [],
+    settings: [],
+    statusPages: [],
+    subscriptions: [],
+    tags: [],
+  };
+  const entry = (id: string, at: number) => ({
+    action: "sign_in.succeed",
+    actorEmail: "operator@example.com",
+    actorId: "a1",
+    address: "127.0.0.1",
+    at,
+    detail: "{}",
+    id,
+    targetId: null,
+  });
+  const owner = {
+    calendar: null,
+    clock: null,
+    createdAt: Date.UTC(2026, 8, 1),
+    deactivatedAt: null,
+    email: "operator@example.com",
+    emailVerified: 1,
+    id: "a1",
+    language: null,
+    name: "",
+    role: "owner" as const,
+    timeZone: null,
+    updatedAt: Date.UTC(2026, 8, 1),
+  };
+  const record = {
+    ...check,
+    attempts: 1,
+    bytes: 0,
+    reason: "ok",
+    responseMs: 12,
+    statusCode: null,
+  };
+  const outage = {
+    endedAt: null,
+    kind: "outage",
+    monitor: "m1",
+    reason: "timeout",
+    startedAt: "2026-09-28T09:00:00.000Z",
+  };
+
+  /** The lines the current version writes of a configuration, a check and an outage. */
+  function written(rows: Configuration, at = exportedAt + hour): ExportLine[] {
+    const first = headerSchema.encode({
+      configuration: rows,
+      exportedAt: at,
+      mode: "full",
+      raaqeb: "export",
+      version: exportVersion,
+    });
+    return [
+      JSON.parse(JSON.stringify(first)),
+      record,
+      { ...outage, acknowledgedAt: null },
+    ];
+  }
+
+  /** What version 1 wrote of the same install: none of the tables, fields and defaults version 2 added; `more` adds what version 2 no longer reads. */
+  function version1(
+    more: {
+      monitor?: Record<string, unknown>;
+      tables?: Record<string, unknown[]>;
+    } = {}
+  ): ExportLine[] {
+    const first = headerSchema.encode({
+      configuration,
+      exportedAt,
+      mode: "full",
+      raaqeb: "export",
+      version: exportVersion,
+    });
+    const {
+      auditEntries: _a,
+      maintenanceSeries: _s,
+      maintenanceSeriesComponents: _c,
+      monitorProbes: _m,
+      operatorAccounts: _o,
+      probes: _p,
+      ...older
+    } = first.configuration;
+    const {
+      confirmations: _n,
+      fromMain: _f,
+      shareCredentials: _h,
+      ...row
+    } = older.monitors[0] ?? {};
+    return [
+      JSON.parse(
+        JSON.stringify({
+          ...first,
+          configuration: {
+            ...older,
+            ...more.tables,
+            monitors: [
+              { ...row, ...more.monitor, events: ["down", "recovered"] },
+            ],
+          },
+          version: 1,
+        })
+      ),
+      record,
+      outage,
+    ];
+  }
+
+  test("a version 1 install upgraded in place differs only by what the new version reads into the file, its owner and its sign-ins, each named with its reason", () => {
+    const after = written({
+      ...configuration,
+      auditEntries: [entry("e1", exportedAt + 2 * hour)],
+      operatorAccounts: [owner],
+    });
+    expect(upgradeDifferences(version1(), after)).toEqual({
+      allowed: [
+        "the header's version changed: what the new version reads into the old file",
+        "monitors m1 changed: confirmations, events, fromMain, shareCredentials: what the new version reads into the old file",
+        "outage m1 2026-09-28T09:00:00.000Z changed: acknowledgedAt: what the new version reads into the old file",
+        "operatorAccounts a1 appeared: the old file does not carry operatorAccounts",
+        "auditEntries e1 appeared: the old file does not carry auditEntries",
+      ],
+      found: [],
+    });
+  });
+
+  test("a loss is still found after the old file is read as the new version reads it", () => {
+    const [first, , ...rest] = written({
+      ...configuration,
+      monitors: [{ ...monitor, events: '["down","recovered"]', name: "B" }],
+    });
+    expect(
+      upgradeDifferences(version1(), [first ?? {}, ...rest]).found
+    ).toEqual([
+      "monitors m1 changed: events, name",
+      `check m1 ${check.at} is missing after the upgrade`,
+    ]);
+  });
+
+  test("a field of the old file the new version no longer reads is found, beside what reading adds", () => {
+    expect(
+      upgradeDifferences(
+        version1({ monitor: { legacyField: "kept" } }),
+        written(configuration)
+      )
+    ).toEqual({
+      allowed: [
+        "the header's version changed: what the new version reads into the old file",
+        "monitors m1 changed: confirmations, events, fromMain, shareCredentials: what the new version reads into the old file",
+        "outage m1 2026-09-28T09:00:00.000Z changed: acknowledgedAt: what the new version reads into the old file",
+      ],
+      found: [
+        "monitors m1 changed: legacyField when the new version reads the old file",
+      ],
+    });
+  });
+
+  test("a table of the old file the new version no longer knows is found row by row", () => {
+    expect(
+      upgradeDifferences(
+        version1({ tables: { legacyTable: [{ id: "l1", note: "kept" }] } }),
+        written(configuration)
+      ).found
+    ).toEqual([
+      "legacyTable l1 is missing when the new version reads the old file",
+    ]);
+  });
+
+  test("a row the reading adds may carry the time the new version recorded it after the old export, and nothing else of it may differ", () => {
+    const before = written(configuration, exportedAt);
+    // The conversion's own time for the row, before the old export.
+    const added = {
+      key: "clock" as const,
+      updatedAt: exportedAt - hour,
+      value: '"24h"',
+    };
+    const read = written({ ...configuration, settings: [added] }, exportedAt);
+    const upgraded = (row: typeof added) =>
+      upgradeDifferences(
+        before,
+        written({ ...configuration, settings: [row] }),
+        read
+      );
+    expect(upgraded({ ...added, updatedAt: exportedAt + hour })).toEqual({
+      allowed: [
+        "settings clock appeared: what the new version reads into the old file",
+        "settings clock changed: updatedAt: recorded by the new version after the old export",
+      ],
+      found: [],
+    });
+    expect(
+      upgraded({ ...added, updatedAt: exportedAt + hour, value: '"12h"' }).found
+    ).toEqual(["settings clock changed: value"]);
+    expect(upgraded({ ...added, updatedAt: exportedAt }).found).toEqual([
+      "settings clock changed: updatedAt",
+    ]);
+  });
+
+  test("between two versions of one format, only the audit entries made after the old export are allowed", () => {
+    const before = written(
+      { ...configuration, auditEntries: [entry("e0", exportedAt - hour)] },
+      exportedAt
+    );
+    const after = written({
+      ...configuration,
+      auditEntries: [
+        entry("e0", exportedAt - hour),
+        entry("e1", exportedAt),
+        entry("e2", exportedAt + 1),
+      ],
+    });
+    expect(upgradeDifferences(before, after)).toEqual({
+      allowed: [
+        "auditEntries e2 (sign_in.succeed) appeared: written after the old export",
+      ],
+      found: ["auditEntries e1 appeared after the upgrade"],
+    });
+  });
+
+  test("an old export the new version cannot read stops the check", () => {
+    const [first, ...history] = version1();
+    expect(() =>
+      upgradeDifferences([{ ...first, mode: "other" }, ...history], [])
+    ).toThrow("the new version cannot read the old export's first line");
+    expect(() =>
+      upgradeDifferences([first ?? {}, { kind: "check" }], [])
+    ).toThrow("the new version cannot read line 2 of the old export");
   });
 });
