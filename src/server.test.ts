@@ -481,6 +481,44 @@ describe("the raaqeb command", () => {
     );
   });
 
+  test("an import's upload streams through the entry without the server keeping what was read, so a backup larger than the floor's memory comes in", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js": `export default { fetch: async (r) => {
+        let start;
+        for await (const chunk of r.body) start ??= (Bun.gc(true), process.memoryUsage.rss());
+        Bun.gc(true);
+        return new Response(String(process.memoryUsage.rss() - start));
+      } };`,
+    });
+    await withServer(
+      ["--port", "0", "--data-dir", dataDir],
+      {},
+      dir,
+      async (server) => {
+        const megabyte = new Uint8Array(1024 * 1024);
+        let sent = 0;
+        const upload = new ReadableStream<Uint8Array>({
+          pull: (controller) => {
+            if (sent < 256) {
+              sent += 1;
+              controller.enqueue(megabyte);
+            } else {
+              controller.close();
+            }
+          },
+        });
+        const response = await fetch(
+          `http://127.0.0.1:${server.port}/admin/import`,
+          { body: upload, method: "POST" }
+        );
+        expect(response.status).toBe(200);
+        // 256 MB went through; the floor's whole budget is 240 MB.
+        expect(Number(await response.text())).toBeLessThan(64 * 1024 * 1024);
+      }
+    );
+  });
+
   test("the same port speaks HTTP/2 to a client that opens with its preface, as a proxy with an HTTP/2 backend does, and HTTP/1.1 to any other", async () => {
     const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
     const dir = await serverBuild({

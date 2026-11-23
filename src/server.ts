@@ -967,7 +967,13 @@ export function withClientAddress(
       headers.set(name, value);
     }
   }
-  return new Request(request, { headers, signal: quietSignal(request.signal) });
+  // From its parts: a request rebuilt from a Bun request keeps every chunk its body has read until it ends, and an import's runs to 4 GB.
+  return new Request(request.url, {
+    body: request.body,
+    headers,
+    method: request.method,
+    signal: quietSignal(request.signal),
+  });
 }
 
 /** Cache-Control for a client asset: hashed Vite output is immutable, anything else revalidates. */
