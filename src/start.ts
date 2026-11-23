@@ -45,7 +45,7 @@ export async function malformedPayload(request: Request): Promise<boolean> {
     } else if (
       request.headers.get("content-type")?.includes("application/json")
     ) {
-      // ponytail: the body is parsed twice, here and by Start; payloads are small forms, capped at 8 MB by the entry.
+      // ponytail: the body is parsed twice, here and by Start; the entry caps it at 64 KiB for a stranger, at 8 MiB for a session.
       await request.clone().json();
     }
     return false;
