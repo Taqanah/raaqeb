@@ -134,8 +134,15 @@ function methodsAlike(
   return [...alike.values()];
 }
 
+/** Each document's operations, built once: a page asks for one path at a time, and building them is the whole document's work. */
+const operationsOfDocument = new WeakMap<OpenApiDocument, ApiOperation[]>();
+
 /** Every operation in the document, methods and paths that answer alike as one, each schema the document names by `$ref` written out. */
 function allOperations(named: OpenApiDocument): ApiOperation[] {
+  const known = operationsOfDocument.get(named);
+  if (known) {
+    return known;
+  }
   const doc = inlineSchemas(named);
   const operations = new Map<
     string,
@@ -170,7 +177,9 @@ function allOperations(named: OpenApiDocument): ApiOperation[] {
       }
     }
   }
-  return [...operations.values()];
+  const all = [...operations.values()];
+  operationsOfDocument.set(named, all);
+  return all;
 }
 
 /** Every operation that answers at `path`, each with the other paths that answer alike. */
@@ -181,11 +190,28 @@ export function operationsAt(
   return allOperations(doc).filter((o) => o.paths.includes(path));
 }
 
+/** Each document's webhook groups, built once for the same reason as its operations. */
+const webhookGroupsOfDocument = new WeakMap<
+  OpenApiDocument,
+  ApiWebhookGroup[]
+>();
+
 /** The webhook named `name` with the others that send the same body; undefined when the document has no such webhook. */
 export function webhookGroupOf(
   named: OpenApiDocument,
   name: string
 ): ApiWebhookGroup | undefined {
+  return allWebhookGroups(named).find((g) =>
+    g.webhooks.some((w) => w.name === name)
+  );
+}
+
+/** Every webhook in the document, those sending the same body as one group. */
+function allWebhookGroups(named: OpenApiDocument): ApiWebhookGroup[] {
+  const known = webhookGroupsOfDocument.get(named);
+  if (known) {
+    return known;
+  }
   const doc = inlineSchemas(named);
   const groups = new Map<
     string,
@@ -218,9 +244,9 @@ export function webhookGroupOf(
       }
     }
   }
-  return [...groups.values()].find((g) =>
-    g.webhooks.some((w) => w.name === name)
-  );
+  const all = [...groups.values()];
+  webhookGroupsOfDocument.set(named, all);
+  return all;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

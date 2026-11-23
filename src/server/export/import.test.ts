@@ -1183,66 +1183,79 @@ describe("an import", () => {
     empty: true,
   };
 
-  test("refuses a monitor whose interval, timeout, retries, degraded time, reminder or retention is outside what its form takes, at the header, and writes nothing", async () => {
-    const from = await source();
-    const edits: [string, number][] = [
-      ["intervalMs", 0],
-      ["intervalMs", intervalMinMs - 1],
-      ["intervalMs", intervalMaxMs + 1],
-      ["timeoutMs", 0],
-      ["timeoutMs", timeoutMaxMs + 1],
-      ["retries", retriesMax + 1],
-      ["degradedMs", 0],
-      ["reminderMs", reminderMinMs - 1],
-      ["retentionDays", 0],
-    ];
-    const answers: unknown[] = [];
-    for (const [field, value] of edits) {
-      answers.push(
-        // biome-ignore lint/performance/noAwaitInLoops: each import needs an install of its own
-        await importEdited(
-          from,
-          "monitors",
-          () => true,
-          (row) => {
-            row[field] = value;
-          }
-        )
+  // One test per edit: each needs an install of its own, and installs are what the time goes to.
+  test.each<[string, number]>([
+    ["intervalMs", 0],
+    ["intervalMs", intervalMinMs - 1],
+    ["intervalMs", intervalMaxMs + 1],
+    ["timeoutMs", 0],
+    ["timeoutMs", timeoutMaxMs + 1],
+    ["retries", retriesMax + 1],
+    ["degradedMs", 0],
+    ["reminderMs", reminderMinMs - 1],
+    ["retentionDays", 0],
+  ])(
+    "refuses a monitor whose %s is %d, outside what its form takes, at the header, and writes nothing",
+    async (field, value) => {
+      const answer = await importEdited(
+        await source(),
+        "monitors",
+        () => true,
+        (row) => {
+          row[field] = value;
+        }
       );
+      expect(answer).toEqual(refusedAtHeader);
     }
-    expect(answers).toEqual(edits.map(() => refusedAtHeader));
-  });
+  );
 
-  test("refuses a channel whose values are not what its form would store: a required one missing, one that does not fit its field, a secret in clear, a name its type does not declare", async () => {
-    const from = await source();
-    const email = (row: Row) => row.type === "email";
-    const webhook = (row: Row) => row.type === "webhook";
-    const answers = [
-      await importEdited(from, "channels", email, (row) => {
+  const email = (row: Row) => row.type === "email";
+  const webhook = (row: Row) => row.type === "webhook";
+  test.each<[string, (row: Row) => boolean, (row: Row) => void]>([
+    [
+      "a required value missing",
+      email,
+      (row) => {
         row.config = { ...values(row.config), host: undefined };
-      }),
-      await importEdited(from, "channels", email, (row) => {
+      },
+    ],
+    [
+      "a value that does not fit its field",
+      email,
+      (row) => {
         row.config = { ...values(row.config), port: "0" };
-      }),
-      await importEdited(from, "channels", webhook, (row) => {
+      },
+    ],
+    [
+      "a webhook address that is no URL",
+      webhook,
+      (row) => {
         row.credentials = { ...values(row.credentials), url: "not a url" };
-      }),
-      await importEdited(from, "channels", email, (row) => {
+      },
+    ],
+    [
+      "a secret in clear",
+      email,
+      (row) => {
         row.config = { ...values(row.config), ...values(row.credentials) };
         row.credentials = null;
-      }),
-      await importEdited(from, "channels", email, (row) => {
+      },
+    ],
+    [
+      "a name its type does not declare",
+      email,
+      (row) => {
         row.config = { ...values(row.config), extra: "x" };
-      }),
-    ];
-    expect(answers).toEqual([
-      refusedAtHeader,
-      refusedAtHeader,
-      refusedAtHeader,
-      refusedAtHeader,
-      refusedAtHeader,
-    ]);
-  });
+      },
+    ],
+  ])(
+    "refuses a channel with %s, at the header, and writes nothing",
+    async (_, pick, edit) => {
+      expect(
+        await importEdited(await source(), "channels", pick, edit)
+      ).toEqual(refusedAtHeader);
+    }
+  );
 
   /** The configuration mode's export as a file written before the images had lines of their own carries it: every image in the header. */
   async function imagesInHeader(from: Install): Promise<string> {

@@ -2773,21 +2773,26 @@ async function servingOverSqlite(command: string[]) {
   return { child, output, wal };
 }
 
+/** What a test that starts the real server may take: it waits on the child's output, and a loaded machine has stretched a start to half a minute. */
+const serverStartLimitMs = 60_000;
+
 describe("a stop by signal", () => {
-  test("SIGTERM and Ctrl+C's SIGINT each stop cleanly, the write-ahead log checkpointed into the SQLite file", async () => {
-    for (const signal of ["SIGTERM", "SIGINT"] as const) {
-      // biome-ignore lint/performance/noAwaitInLoops: one server at a time
+  // These start the real entry as a child process and wait on its output and exit, never on a clock; the limit only ends a hang, and a start that a loaded machine stretches to half a minute must not read as one.
+  test.each(["SIGTERM", "SIGINT"] as const)(
+    "%s stops the server cleanly, the write-ahead log checkpointed into the SQLite file",
+    async (signal) => {
       const { child, output, wal } = await servingOverSqlite([
         "bun",
         "src/server.ts",
       ]);
-      expect(output, signal).toContain("listening");
+      expect(output).toContain("listening");
       expect(await wal()).toBe(true);
       child.kill(signal);
-      expect(await child.exited, signal).toBe(0);
-      expect(await wal(), signal).toBe(false);
-    }
-  });
+      expect(await child.exited).toBe(0);
+      expect(await wal()).toBe(false);
+    },
+    serverStartLimitMs
+  );
 
   test("SIGHUP stops the server on Windows alone, where it means the console window closed; elsewhere SIGTERM and SIGINT", () => {
     expect(stopSignals("linux")).toEqual(["SIGTERM", "SIGINT"]);
@@ -2795,19 +2800,23 @@ describe("a stop by signal", () => {
     expect(stopSignals("win32")).toEqual(["SIGTERM", "SIGINT", "SIGHUP"]);
   });
 
-  test("a server started under nohup, with SIGHUP ignored, keeps serving when its terminal hangs up", async () => {
-    const { child, output } = await servingOverSqlite([
-      "sh",
-      "-c",
-      "trap '' HUP; exec bun src/server.ts",
-    ]);
-    expect(output).toContain("listening");
-    child.kill("SIGHUP");
-    await Bun.sleep(500);
-    expect(child.exitCode).toBeNull();
-    child.kill("SIGTERM");
-    expect(await child.exited).toBe(0);
-  });
+  test(
+    "a server started under nohup, with SIGHUP ignored, keeps serving when its terminal hangs up",
+    async () => {
+      const { child, output } = await servingOverSqlite([
+        "sh",
+        "-c",
+        "trap '' HUP; exec bun src/server.ts",
+      ]);
+      expect(output).toContain("listening");
+      child.kill("SIGHUP");
+      await Bun.sleep(500);
+      expect(child.exitCode).toBeNull();
+      child.kill("SIGTERM");
+      expect(await child.exited).toBe(0);
+    },
+    serverStartLimitMs
+  );
 });
 
 describe("the security headers of an HTML response", () => {
