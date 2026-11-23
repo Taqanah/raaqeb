@@ -239,6 +239,7 @@ function testPace(
     "cold",
     "onboarding",
     "others",
+    "overview",
     "pages",
     "refresh",
     "reset",
@@ -1146,6 +1147,57 @@ describe("the raaqeb command", () => {
       expect(cold.map((each) => each.status).toSorted((a, b) => a - b)).toEqual(
         [200, 503]
       );
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a stale overview refreshes in a lane of its own, so a flood of the page's other stale views leaves it a turn", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "let renders = 0; export default { fetch: async () => { renders += 1; await Bun.sleep(100); return new Response('render ' + renders, { headers: { 'cache-control': 'public, max-age=0, must-revalidate', 'content-type': 'text/html; charset=utf-8' } }); } };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir, {
+      pace: testPace(400, { refresh: 0 }),
+    });
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createPage(result.storage, {
+        locale: "ar",
+        slug: "main",
+        title: "Main",
+      });
+      if (!created.ok) {
+        throw new Error(created.reason);
+      }
+      await publish(result.storage, created.page.id);
+      const at = async (path: string) =>
+        await (
+          await fetch(`http://127.0.0.1:${result.server.port}${path}`)
+        ).text();
+      const others = [
+        "/history",
+        "/en/history",
+        "/status/main/history",
+        "/en/status/main/history",
+        "/status/main/incidents/none",
+        "/en/status/main/incidents/none",
+      ];
+      const before = await at("/");
+      for (const path of others) {
+        // biome-ignore lint/performance/noAwaitInLoops: one at a time, each its own render a gap apart
+        await at(path);
+      }
+      await result.storage.bump();
+      // The others' refreshes fill their lane: one renders, one waits, one has no room.
+      // The others' refreshes fill their lane; the overview's waits a turn of the lanes, not their queue.
+      await Promise.all(others.map((path) => at(path)));
+      expect(await at("/")).toBe(before);
+      await Bun.sleep(500);
+      expect(await at("/")).not.toBe(before);
     } finally {
       await result.stop();
     }
