@@ -5118,7 +5118,7 @@ msgstr "الملف من إصدار آخر من راقب لا يقرؤه هذا �
 
 #. js-lingui-explicit-id
 msgid "setting_import_too_large"
-msgstr "الملف أكبر مما يقبله الاستيراد (4 GB)."
+msgstr "الملف أكبر مما يقبله الاستيراد (⁦4 GB⁩)."
 
 #. js-lingui-explicit-id
 msgid "setting_import_line_too_large"
