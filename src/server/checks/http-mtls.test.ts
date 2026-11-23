@@ -305,3 +305,102 @@ describe("a client certificate and an https proxy", () => {
     }
   });
 });
+
+/** An https server like `serveMutualTls` that answers a token at `/token` and `ok` elsewhere, counting the token requests it gets. */
+function serveTokenAndApi(): {
+  stop: () => void;
+  tokenRequests: () => number;
+  url: string;
+} {
+  let asked = 0;
+  const listener = Bun.serve({
+    fetch: (request) => {
+      if (new URL(request.url).pathname !== "/token") {
+        return new Response("ok");
+      }
+      asked += 1;
+      return Response.json({
+        access_token: "tok-mtls",
+        expires_in: 3600,
+        token_type: "Bearer",
+      });
+    },
+    port: 0,
+    tls: {
+      ca: certs.ca,
+      cert: certs.server.cert,
+      key: certs.server.key,
+      rejectUnauthorized: true,
+      requestCert: true,
+    },
+  });
+  return {
+    stop: () => listener.stop(true),
+    tokenRequests: () => asked,
+    url: `https://127.0.0.1:${listener.port}`,
+  };
+}
+
+/** A monitor of `url` with the client certificate, and OAuth 2.0 client credentials asked of `tokenUrl`. */
+function oauthMonitor(
+  url: string,
+  tokenUrl: string,
+  config: Partial<HttpConfig> = {}
+): HttpMonitor {
+  const base = monitor({
+    config: { clientCertificate: certs.client.cert, ...config },
+    key: { key: certs.client.key },
+    url,
+  });
+  return {
+    ...base,
+    credentials: {
+      auth: {
+        clientId: "raaqeb",
+        clientSecret: "client-secret-9",
+        kind: "oauth2",
+        method: "basic",
+        tokenUrl,
+      },
+      clientKey: { key: certs.client.key },
+      headers: [],
+    },
+  };
+}
+
+describe("an OAuth 2.0 token endpoint and the monitor's own TLS", () => {
+  test("a token endpoint on the target's origin is asked with the monitor's CA and client certificate, so the check is up", async () => {
+    const both = serveTokenAndApi();
+    try {
+      const { io } = liveIo();
+      const outcome = await runHttpCheck(
+        oauthMonitor(`${both.url}/health`, `${both.url}/token`, trusted()),
+        io
+      );
+      expect(both.tokenRequests()).toBe(1);
+      expect(outcome.check.result).toBe("up");
+    } finally {
+      both.stop();
+    }
+  });
+
+  test("a token endpoint on another origin is never shown the client certificate, as a redirect there is not", async () => {
+    const target = serveTokenAndApi();
+    const other = serveTokenAndApi();
+    try {
+      const { io } = liveIo();
+      // TLS errors ignored, so only the missing certificate can end the handshake.
+      const outcome = await runHttpCheck(
+        oauthMonitor(`${target.url}/health`, `${other.url}/token`, {
+          ignoreTlsErrors: true,
+        }),
+        io
+      );
+      expect(outcome.check.reason).toBe(reasons.oauth2_token_failed);
+      expect(other.tokenRequests()).toBe(0);
+    } finally {
+      target.stop();
+      other.stop();
+    }
+  });
+});

@@ -150,7 +150,11 @@ async function attemptOnce(
         cache: io.tokens,
         fetch: io.fetch,
         grant,
-        ignoreTlsErrors: config.ignoreTlsErrors,
+        // The monitor's CA and client certificate were set for the target's origin: another stays without them, as a redirect there does.
+        tls:
+          new URL(grant.tokenUrl).origin === new URL(config.url).origin
+            ? tlsOf(config, monitor.credentials)
+            : tlsAcrossOrigins(tlsOf(config, monitor.credentials)),
         monitorId: monitor.id,
         now: io.now,
         proxy: proxyOf(config, monitor.credentials),

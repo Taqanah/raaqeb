@@ -86,11 +86,12 @@ export interface TokenRequest {
   readonly cache: TokenCache | undefined;
   readonly fetch: typeof fetch;
   readonly grant: OAuth2Grant;
-  readonly ignoreTlsErrors?: boolean;
   readonly monitorId: string;
   readonly now: () => number;
   readonly proxy?: Bun.FetchProxyOption | undefined;
   readonly signal: AbortSignal;
+  /** The `tls` the token request is made with: the target's own on its origin, what a redirect keeps elsewhere. */
+  readonly tls?: BunFetchRequestInit["tls"];
 }
 
 /** The grant as a digest: what an edit that changes any part of it changes. */
@@ -209,7 +210,7 @@ async function ask(
       // A redirect would carry the secret to another address.
       redirect: "manual",
       signal: request.signal,
-      ...(request.ignoreTlsErrors && { tls: { rejectUnauthorized: false } }),
+      tls: request.tls,
     });
   } catch (error) {
     if (request.signal.aborted) {
