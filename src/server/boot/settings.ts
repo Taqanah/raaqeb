@@ -113,14 +113,17 @@ function refuse(message: string): BootSettingsResult {
 
 /**
  * Resolves every boot setting: flag, then variable, then `config.json`, then
- * the default. Creates the data directory, and generates the install key into
- * `config.json` when no source has one. A failure message names the variable
+ * the default. With `create` (`serve`), creates the data directory and
+ * generates the install key into `config.json` when no source has one; a
+ * command that needs an existing install passes false and is refused where
+ * there is no key, writing nothing. A failure message names the variable
  * and the length of its value, never the value. The notes are lines for the
  * operator's log.
  */
 export async function resolveBootSettings(
   flags: BootValues,
-  env: Readonly<Record<string, string | undefined>>
+  env: Readonly<Record<string, string | undefined>>,
+  create = true
 ): Promise<BootSettingsResult> {
   const notes: string[] = [];
   const given = givenBy(flags, env);
@@ -155,9 +158,20 @@ export async function resolveBootSettings(
   }
 
   const dataDir = given("RAAQEB_DATA_DIR") ?? defaults.dataDir;
-  let widerThanOwner: boolean;
+  let widerThanOwner = false;
   try {
-    ({ widerThanOwner } = await ensureDataDir(dataDir));
+    // A folder that is not there is not made for a command that creates nothing.
+    if (
+      create ||
+      (await Bun.file(dataDir)
+        .stat()
+        .then(
+          () => true,
+          () => false
+        ))
+    ) {
+      ({ widerThanOwner } = await ensureDataDir(dataDir));
+    }
   } catch {
     return refuse(
       `RAAQEB_DATA_DIR cannot be created (${dataDir.length} characters)`
@@ -173,7 +187,8 @@ export async function resolveBootSettings(
     given("RAAQEB_SECRET_KEY"),
     config,
     dataDir,
-    notes
+    notes,
+    create
   );
   if (!key.ok) {
     return key;
@@ -218,6 +233,10 @@ export async function resolveBootSettings(
   };
 }
 
+/** Why a command that needs an existing install stops where no key is to be found. */
+export const noInstall =
+  "there is no install here: no install key in RAAQEB_SECRET_KEY or in config.json in the data directory; run this where the install lives or set RAAQEB_DATA_DIR, and finish onboarding first if it has not started";
+
 type InstallKeyResult =
   | { ok: true; installKey: InstallKey }
   | { ok: false; message: string };
@@ -227,7 +246,8 @@ async function resolveInstallKey(
   raw: string | undefined,
   config: ConfigFile,
   dataDir: string,
-  notes: string[]
+  notes: string[],
+  create: boolean
 ): Promise<InstallKeyResult> {
   if (raw !== undefined) {
     const installKey = await importInstallKey(raw);
@@ -252,6 +272,9 @@ async function resolveInstallKey(
           message: "config.json holds a key that is not 32 bytes in base64url",
           ok: false,
         };
+  }
+  if (!create) {
+    return { message: noInstall, ok: false };
   }
   const encoded = generateInstallKey();
   try {

@@ -11,6 +11,7 @@ import {
   type BootValues,
   type BootVariable,
   bootVariables,
+  noInstall,
   resolveAddress,
   resolveBootSettings,
   wideDirectoryNote,
@@ -515,6 +516,68 @@ describe("the data directory", () => {
     expect(message).toContain("RAAQEB_DATA_DIR");
     expect(message).toContain(String(dataDir.length));
     expect(message).not.toContain(dataDir);
+  });
+});
+
+describe("a boot that creates nothing, for a command that needs an install", () => {
+  const gone = async () => `${await scratch()}/data`;
+  const exists = (path: string) =>
+    Bun.file(path)
+      .stat()
+      .then(
+        () => true,
+        () => false
+      );
+
+  test("is refused where no key is found, and writes no folder or key", async () => {
+    const dataDir = await gone();
+    const result = await resolveBootSettings(
+      {},
+      { RAAQEB_DATA_DIR: dataDir },
+      false
+    );
+    expect(result).toEqual({ message: noInstall, ok: false });
+    expect(await exists(dataDir)).toBe(false);
+  });
+
+  test("is refused in a folder that is there but holds no key, which stays as it was", async () => {
+    const dataDir = await scratch();
+    const result = await resolveBootSettings(
+      {},
+      {
+        DATABASE_URL: "postgres://raaqeb@127.0.0.1/raaqeb",
+        RAAQEB_DATA_DIR: dataDir,
+      },
+      false
+    );
+    expect(result).toEqual({ message: noInstall, ok: false });
+    expect(await Bun.file(`${dataDir}/config.json`).exists()).toBe(false);
+  });
+
+  test("takes a key from the environment without making the folder", async () => {
+    const dataDir = await gone();
+    const result = await resolveBootSettings(
+      {},
+      { RAAQEB_DATA_DIR: dataDir, RAAQEB_SECRET_KEY: generateInstallKey() },
+      false
+    );
+    expect(result.ok).toBe(true);
+    expect(await exists(dataDir)).toBe(false);
+  });
+
+  test("takes the key in an install's config.json and tightens its folder as a start does", async () => {
+    const dataDir = `${await scratch()}/data`;
+    await resolved({}, { RAAQEB_DATA_DIR: dataDir });
+    const key = await Bun.file(`${dataDir}/config.json`).text();
+    await Bun.$`chmod 755 ${dataDir}`.quiet();
+    const result = await resolveBootSettings(
+      {},
+      { RAAQEB_DATA_DIR: dataDir },
+      false
+    );
+    expect(result.ok).toBe(true);
+    expect(await modeOf(dataDir)).toBe("700");
+    expect(await Bun.file(`${dataDir}/config.json`).text()).toBe(key);
   });
 });
 

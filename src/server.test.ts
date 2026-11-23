@@ -3,6 +3,7 @@ import { connect } from "node:http2";
 import { authFor, operatorName } from "./server/auth/auth.ts";
 import { resetPasswordCommand, type Terminal } from "./server/auth/command.ts";
 import { authEmailChannel, authEmailChannelOf } from "./server/auth/mail.ts";
+import { generateInstallKey } from "./server/boot/installkey.ts";
 import { resolveBootSettings } from "./server/boot/settings.ts";
 import { createChannel, deleteChannel } from "./server/notify/channels.ts";
 import { createOperatorAccount } from "./server/onboarding/onboarding.ts";
@@ -963,7 +964,7 @@ describe("the raaqeb command", () => {
     expect(
       await main(
         ["set-address", "https://status.example.test", "--data-dir", dataDir],
-        {},
+        { RAAQEB_SECRET_KEY: generateInstallKey() },
         await serverBuild({}),
         { terminal }
       )
@@ -2464,9 +2465,12 @@ describe("the raaqeb command", () => {
       out: () => undefined,
     };
     expect(
-      await main(["reset-password", "--data-dir", dataDir], {}, dir, {
-        terminal,
-      })
+      await main(
+        ["reset-password", "--data-dir", dataDir],
+        { RAAQEB_SECRET_KEY: generateInstallKey() },
+        dir,
+        { terminal }
+      )
     ).toBe(1);
     expect(lines.join("\n")).toContain("newer than this raaqeb knows");
   });
@@ -2565,6 +2569,62 @@ describe("the raaqeb command", () => {
     ).toBe(1);
     expect(lines.join("\n")).toContain("onboarding");
     expect(await Bun.file(`${dataDir}/raaqeb.sqlite`).exists()).toBe(false);
+  });
+
+  test("reset-password and set-address where no install lives exit 1 and create no data directory or key", async () => {
+    const parent = await clientBuild({});
+    const dataDir = `${parent}/data`;
+    const lines: string[] = [];
+    const terminal: Terminal = {
+      askHidden: () => Promise.resolve(""),
+      err: (line) => lines.push(line),
+      interactive: false,
+      out: () => undefined,
+    };
+    const dir = await build();
+    const refusedWith = async (command: string[]) => {
+      lines.length = 0;
+      expect(
+        await main([...command, "--data-dir", dataDir], {}, dir, { terminal })
+      ).toBe(1);
+      expect(lines.join("\n")).toContain("there is no install here");
+      expect(
+        (
+          await Array.fromAsync(
+            new Bun.Glob("*").scan({ cwd: parent, onlyFiles: false })
+          )
+        ).length
+      ).toBe(0);
+    };
+    await refusedWith(["reset-password"]);
+    await refusedWith(["set-address", "https://status.example.test"]);
+  });
+
+  test("a command run with a key in the environment and no database creates no data directory either", async () => {
+    const parent = await clientBuild({});
+    const lines: string[] = [];
+    const terminal: Terminal = {
+      askHidden: () => Promise.resolve(""),
+      err: (line) => lines.push(line),
+      interactive: false,
+      out: () => undefined,
+    };
+    expect(
+      await main(
+        ["reset-password", "--data-dir", `${parent}/data`],
+        { RAAQEB_SECRET_KEY: generateInstallKey() },
+        await build(),
+        { terminal }
+      )
+    ).toBe(1);
+    expect(lines.join("\n")).toContain("no database yet");
+    expect(
+      (
+        await Array.fromAsync(
+          new Bun.Glob("*").scan({ cwd: parent, onlyFiles: false })
+        )
+      ).length
+    ).toBe(0);
   });
 
   test("set-address with an address that is not an origin exits 2", async () => {

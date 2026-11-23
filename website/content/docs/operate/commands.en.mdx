@@ -8,11 +8,11 @@ The binary takes four commands:
 - `raaqeb` or `raaqeb serve` runs the server.
 - `raaqeb health` asks the server's `/health` and exits 0 when it answers 200, 1 otherwise.
 - `raaqeb reset-password` prints a reset link for the operator account; `--interactive` asks for the new password with hidden input instead. Either way it switches that account's second step off and removes its authenticator app and backup codes; turn it on again on the sign-in settings page. From 0.3.0 an install can have several accounts: `raaqeb reset-password <email>` names the account, the email may be left out when there is one, and with several accounts and no email the command lists them and exits 2. Before 0.3.0 the command takes no email, and a version that gets one answers `unexpected argument after reset-password`.
-- `raaqeb set-address <url>` stores the public address, the way back in when the stored one refuses every sign-in. It exits 0 when stored, 1 when refused or there is no database yet, 2 when the text is not an origin.
+- `raaqeb set-address <url>` stores the public address, the way back in when the stored one refuses every sign-in. It exits 0 when stored, 1 when refused or there is no install or database yet, 2 when the text is not an origin.
 
 `raaqeb --version` prints the version and `raaqeb --help` prints the commands with one line each. Both exit 0 and read nothing: no data directory is opened or created.
 
-`reset-password` and `set-address` run beside the server, on the same data directory and boot settings. Run them as the user the server runs as, so every file they write keeps its owner:
+`reset-password` and `set-address` run beside the server, on the same data directory and boot settings. From 0.3.0 they create nothing: where no install key is found, in `RAAQEB_SECRET_KEY` or in the data directory, they exit 1 without making a data directory or a key, so run them where the install lives or set `RAAQEB_DATA_DIR`. Earlier versions made the data directory and a new key there, and went on. Run them as the user the server runs as, so every file they write keeps its owner:
 
 - installer: as root, `su -s /bin/sh raaqeb -c 'set -a; . /etc/raaqeb/raaqeb.env; RAAQEB_DATA_DIR=/var/lib/raaqeb exec raaqeb reset-password'`
 - installer on a Mac: `sudo -u _raaqeb sh -c 'set -a; . /usr/local/etc/raaqeb/raaqeb.env; RAAQEB_DATA_DIR=/usr/local/var/raaqeb exec raaqeb reset-password'`

@@ -162,26 +162,23 @@ export async function main(
     return 2;
   }
   // These need no data directory and mint no install key.
-  const answered = await beforeBoot(
-    line,
-    env,
-    options.terminal ?? processTerminal()
-  );
+  const terminal = options.terminal ?? processTerminal();
+  const answered = await beforeBoot(line, env, terminal);
   if (answered !== undefined) {
     return answered;
   }
-  const booted = await resolveBootSettings(line.flags, env);
+  // Only `serve` makes a data directory and an install key; the rest need an install that is there.
+  const booted = await resolveBootSettings(
+    line.flags,
+    env,
+    line.command === "serve"
+  );
   if (!booted.ok) {
-    logError(booted.message);
+    (line.command === "serve" ? logError : terminal.err)(booted.message);
     return 1;
   }
   if (line.command === "reset-password") {
-    return await resetPassword(
-      booted.settings,
-      { email: line.email, interactive: line.interactive },
-      options.terminal ?? processTerminal(),
-      options
-    );
+    return await resetPassword(booted.settings, line, terminal, options);
   }
   if (line.command === "probe") {
     logError("the probe runs through `runCommand`, not `main`");
@@ -190,7 +187,6 @@ export async function main(
   // The command line refuses set-address without an origin.
   if (line.command === "set-address" && line.address !== undefined) {
     const { address } = line;
-    const terminal = options.terminal ?? processTerminal();
     return await besideServer(booted.settings, terminal, options, (storage) =>
       setAddressCommand(storage, address, terminal)
     );
@@ -284,7 +280,7 @@ function portIsFree(settings: BootSettings): boolean {
   }
 }
 
-/** The commands that answer before the boot settings resolve: the version, the help and `health`, which needs only the address. Nothing for the rest. */
+/** The commands that answer before the boot settings resolve: the version, the help and `health`, which needs only the address, and a line the terminal cannot serve. Nothing for the rest. */
 async function beforeBoot(
   line: Extract<CommandLine, { ok: true }>,
   env: Readonly<Record<string, string | undefined>>,
@@ -297,6 +293,15 @@ async function beforeBoot(
         : helpText(currentVersion)
     );
     return 0;
+  }
+  // Refused before the boot settings, so a line the terminal cannot serve touches no folder.
+  if (
+    line.command === "reset-password" &&
+    line.interactive &&
+    !terminal.interactive
+  ) {
+    terminal.err(needsTerminal);
+    return 2;
   }
   if (line.command !== "health") {
     return;
@@ -320,11 +325,6 @@ async function resetPassword(
   terminal: Terminal,
   options: OpenStorageOptions
 ): Promise<number> {
-  if (reset.interactive && !terminal.interactive) {
-    // Refused before the database opens, so a pipe cannot migrate anything.
-    terminal.err(needsTerminal);
-    return 2;
-  }
   return await besideServer(settings, terminal, options, (storage) =>
     resetPasswordCommand(storage, settings, reset, terminal)
   );
