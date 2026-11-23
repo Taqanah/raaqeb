@@ -101,6 +101,7 @@ async function recover(): Promise<void> {
 
 let held: { readonly file: string; readonly original: string } | undefined;
 let testRun: Bun.Subprocess | undefined;
+let interrupted = false;
 
 /** Kills the test run and every process it started: they share its process group. */
 function stopTests(): void {
@@ -128,8 +129,15 @@ async function release(): Promise<void> {
     .catch(() => undefined);
 }
 
+// The loop below is the one writer of the file: a handler that put it back itself would race the loop's next write.
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
-  process.on(signal, () => release().finally(() => process.exit(2)));
+  process.on(signal, () => {
+    if (!held) {
+      process.exit(2);
+    }
+    interrupted = true;
+    stopTests();
+  });
 }
 
 /** Writes the flipped source, runs the tests, puts the original back, and reads the run. */
@@ -147,6 +155,9 @@ async function trial(
     stdout: "pipe",
   });
   testRun = run;
+  if (interrupted) {
+    stopTests();
+  }
   let timedOut = false;
   // A flipped loop condition can hang a test forever, so the run is killed at the deadline.
   const deadline = setTimeout(() => {
@@ -365,10 +376,16 @@ try {
 held = { file: filePath, original: source };
 const results: Verdict[] = [];
 for (const each of planned) {
+  if (interrupted) {
+    break;
+  }
   // biome-ignore lint/performance/noAwaitInLoops: one flip on disk at a time
   results.push(await trial(filePath, source, each.flipped, runArgs));
 }
 await release();
+if (interrupted) {
+  process.exit(2);
+}
 const [only] = results;
 process.exit(
   sweeping
