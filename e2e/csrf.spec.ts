@@ -7,6 +7,7 @@
 // origin, else Referer, and with none of the three the request fails closed.
 
 import { expect, test } from "./support/fixtures.ts";
+import { spawnInstall } from "./support/spawn.ts";
 
 test("a server function call forged from another site is refused before the handler; the same-origin call reaches it", async ({
   context,
@@ -89,4 +90,37 @@ test("an error that escapes Start's handler answers 500, not Bun's empty fallbac
     headers: { "sec-fetch-site": "same-origin", "x-tsr-serverfn": "true" },
   });
   expect(response.status()).toBe(500);
+});
+
+test("a server function payload that is JSON but no payload Start can read is one log line, with no stack and no path of the install", async ({
+  page,
+}) => {
+  const install = await spawnInstall();
+  let lines: string[] = [];
+  try {
+    await page.goto(`${install.origin}/onboarding/database`);
+    await page.click(
+      "[role=radiogroup][data-name=backend] [role=radio][data-value=postgres]"
+    );
+    await page.fill("input[name=url]", "postgres://u:p@127.0.0.1:1/raaqeb");
+    const [captured] = await Promise.all([
+      page.waitForRequest((request) => request.url().includes("/_serverFn/")),
+      page.click("button[name=test]"),
+    ]);
+    const unreadable = await page.request.post(captured.url(), {
+      data: '{"data":1}',
+      headers: {
+        "content-type": "application/json",
+        origin: install.origin,
+        "x-tsr-serverfn": "true",
+      },
+    });
+    expect(unreadable.status()).toBe(500);
+  } finally {
+    lines = await install.stop();
+  }
+  expect(lines.filter((line) => line.includes("Seroval Error"))).toEqual([
+    "raaqeb: a server function failed: Seroval Error (step: 3)",
+  ]);
+  expect(lines.filter((line) => line.includes("dist/server"))).toEqual([]);
 });
