@@ -150,11 +150,15 @@ describe("an import", () => {
       now
     );
     const written = await records(from);
+    const images = written.filter(
+      (line) => z.object({ kind: z.literal("image") }).safeParse(line).success
+    );
+    expect(images).toHaveLength(1);
     expect(answer).toEqual({
       monitors: 3,
       ok: true,
       pages: 2,
-      records: written.length - 1,
+      records: written.length - 1 - images.length,
     });
     expect(await records(into)).toEqual(written);
   });
@@ -722,9 +726,10 @@ describe("an import", () => {
   test("of a version 1 file, a 0.1 or 0.2 backup with no proxy on any monitor, imports as it always did", async () => {
     const from = await source();
     const into = await target();
-    const lines = await exportLines(from, "configuration");
-    const header = JSON.parse(lines[0] ?? "{}");
+    // Such a backup carries its page images in the header.
+    const header = JSON.parse(await imagesInHeader(from));
     expect(header.version).toBe(2);
+    expect(header.configuration.pageImages).toHaveLength(1);
     const result = await importInstall(
       into.storage,
       into.key,
@@ -735,6 +740,7 @@ describe("an import", () => {
     const api = await into.storage.monitors.find(from.ids.api);
     expect(api?.config).not.toHaveProperty("proxy");
     expect(await count(into, "monitors")).toBe(await count(from, "monitors"));
+    expect(await count(into, "page_images")).toBe(1);
   });
 
   test("of a file of version 1, written before maintenance series, imports its windows with no series", async () => {
@@ -899,6 +905,8 @@ describe("an import", () => {
     const lines = await exportLines(from);
     const header = JSON.parse(lines[0] ?? "{}");
     header.mode = "configuration";
+    // The page image on line 2 belongs to the configuration; the history after it does not.
+    expect(lines[1]).toContain('"kind":"image"');
     expect(
       await importInstall(
         into.storage,
@@ -906,7 +914,7 @@ describe("an import", () => {
         fileOf([JSON.stringify(header), ...lines.slice(1)]),
         now
       )
-    ).toEqual({ line: 2, ok: false, reason: "invalid" });
+    ).toEqual({ line: 3, ok: false, reason: "invalid" });
     expect(await empty(into)).toBe(true);
   });
 
@@ -1180,15 +1188,28 @@ describe("an import", () => {
     ]);
   });
 
-  /** The configuration's header with its one page image's type and bytes replaced, and the image's page. */
+  /** The configuration mode's export as a file written before the images had lines of their own carries it: every image in the header. */
+  async function imagesInHeader(from: Install): Promise<string> {
+    const [first, ...images] = (await exportLines(from, "configuration")).map(
+      (line) => JSON.parse(line)
+    );
+    first.configuration.pageImages = images.map(
+      ({ image, kind: _, page, ...row }) => ({
+        ...row,
+        kind: image,
+        pageId: page,
+      })
+    );
+    return JSON.stringify(first);
+  }
+
+  /** The configuration's header, images in it, with its one page image's type and bytes replaced, and the image's page. */
   async function withImage(
     from: Install,
     contentType: string,
     body: Uint8Array
   ): Promise<{ header: string; pageId: string }> {
-    const header = JSON.parse(
-      (await exportLines(from, "configuration"))[0] ?? "{}"
-    );
+    const header = JSON.parse(await imagesInHeader(from));
     const [image] = header.configuration.pageImages;
     image.contentType = contentType;
     image.body = body.toBase64();
@@ -1264,6 +1285,58 @@ describe("an import", () => {
     expect(await empty(into)).toBe(true);
   });
 
+  test("refuses an image line whose bytes are no image of its kind, or whose page the file does not hold, at its line, writing nothing and logging nothing", async () => {
+    const from = await source();
+    const into = await target();
+    const lines = await exportLines(from);
+    const image = JSON.parse(lines[1] ?? "{}");
+    const edited = [
+      {
+        ...image,
+        body: new TextEncoder()
+          .encode("<!doctype html><script>alert(1)</script>")
+          .toBase64(),
+      },
+      { ...image, page: "no-such-page" },
+    ];
+    // Refused as a file that is not an export, never as a write the database turned down, which the log reports.
+    const log = spyOn(process.stderr, "write");
+    try {
+      for (const line of edited) {
+        expect(
+          // biome-ignore lint/performance/noAwaitInLoops: one import after another into one install
+          await importInstall(
+            into.storage,
+            into.key,
+            fileOf([lines[0] ?? "", JSON.stringify(line), ...lines.slice(2)]),
+            now
+          )
+        ).toEqual({ line: 2, ok: false, reason: "invalid" });
+        expect(await empty(into)).toBe(true);
+        expect(await count(into, "page_images")).toBe(0);
+      }
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  test("refuses an image line given twice, and takes out the image it wrote", async () => {
+    const from = await source();
+    const into = await target();
+    const lines = await exportLines(from);
+    expect(
+      await importInstall(
+        into.storage,
+        into.key,
+        fileOf([lines[0] ?? "", lines[1] ?? "", ...lines.slice(1)]),
+        now
+      )
+    ).toEqual({ line: 3, ok: false, reason: "invalid" });
+    expect(await empty(into)).toBe(true);
+    expect(await count(into, "page_images")).toBe(0);
+  });
+
   test("refuses a line past 8 MB as too large to read, by its number, and writes nothing", async () => {
     const into = await target();
     expect(
@@ -1277,13 +1350,10 @@ describe("an import", () => {
     expect(await empty(into)).toBe(true);
   });
 
-  test("takes a header as large as a real one comes: a page's three images at their size limits", async () => {
+  test("takes a header as large as an older version wrote one: a page's three images at their size limits", async () => {
     const from = await source();
     const into = await target();
-    const header = JSON.parse(
-      (await exportLines(from, "configuration"))[0] ?? "{}"
-    );
-    const { pageId } = header.configuration.pageImages[0];
+    const [{ id: pageId } = { id: "" }] = await from.storage.pages.list();
     for (const kind of pageImageKinds) {
       const body = new Uint8Array(pageImageMaxBytes[kind]);
       body.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -1300,11 +1370,52 @@ describe("an import", () => {
         await importInstall(
           into.storage,
           into.key,
-          fileOf(await exportLines(from, "configuration")),
+          fileOf([await imagesInHeader(from)]),
           now
         )
       ).ok
     ).toBe(true);
+  });
+
+  test("takes back the export of four pages, each with its three images at their size limits", async () => {
+    const from = await source();
+    const into = await target();
+    const pages = await from.storage.pages.list();
+    const [, english] = pages;
+    for (const slug of ["third", "fourth"]) {
+      if (english) {
+        // biome-ignore lint/performance/noAwaitInLoops: two pages, one after another
+        pages.push(await from.storage.pages.create({ ...english, slug }));
+      }
+    }
+    for (const [index, page] of pages.entries()) {
+      for (const kind of pageImageKinds) {
+        const body = new Uint8Array(pageImageMaxBytes[kind]).fill(index);
+        body.set(pngBytes);
+        // biome-ignore lint/performance/noAwaitInLoops: one image after another
+        await from.storage.pages.setImage(page.id, {
+          body,
+          contentType: "image/png",
+          hash: new Bun.CryptoHasher("sha256").update(body).digest("hex"),
+          kind,
+        });
+      }
+    }
+    expect(pages).toHaveLength(4);
+    expect(
+      await importInstall(
+        into.storage,
+        into.key,
+        fileOf(await exportLines(from)),
+        now
+      )
+    ).toMatchObject({ ok: true, pages: 4 });
+    for (const page of pages) {
+      // biome-ignore lint/performance/noAwaitInLoops: one page after another
+      expect(await into.storage.pages.images(page.id)).toEqual(
+        await from.storage.pages.images(page.id)
+      );
+    }
   });
 
   test("refuses a blank line among the records, by its number", async () => {

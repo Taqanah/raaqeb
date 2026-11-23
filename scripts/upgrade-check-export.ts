@@ -81,7 +81,7 @@ function recordName(row: Record<string, unknown>): string {
   return `${String(row.monitor)} ${String(row.at ?? row.startedAt)}`;
 }
 
-/** The rows of an export by table: the header's configuration tables, then the history by kind. */
+/** The rows of an export by table: the header's configuration tables with the page image lines, then the history by kind. */
 function tablesOf(
   lines: readonly ExportLine[]
 ): Map<string, Map<string, Record<string, unknown>>> {
@@ -95,6 +95,22 @@ function tablesOf(
     tables.set(table, new Map(rows.map((row) => [rowName(row), row])));
   }
   for (const line of history) {
+    if (line.kind === "image") {
+      // A page image's line replaced its row in the header, so it compares as that row.
+      const { body, contentType, hash, image, page, updatedAt } = line;
+      const row = {
+        pageId: page,
+        kind: image,
+        contentType,
+        body,
+        hash,
+        updatedAt,
+      };
+      const rows = tables.get("pageImages") ?? new Map();
+      rows.set(rowName(row), row);
+      tables.set("pageImages", rows);
+      continue;
+    }
     const kind = String(line.kind);
     const rows = tables.get(kind) ?? new Map();
     rows.set(recordName(line), line);

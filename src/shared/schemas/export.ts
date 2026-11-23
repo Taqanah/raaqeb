@@ -1,8 +1,9 @@
 /**
  * The export file (CONTEXT.md "Export", "Import"): `raaqeb-export.jsonl.zst`, JSON Lines compressed with zstd. The
  * first line is the header with the install's configuration, one list per
- * stored table in the table's own columns; in the full mode each following
- * line is one record of history, tagged with its kind and its monitor. The
+ * stored table in the table's own columns; each page image follows on a line
+ * of its own, so no line outgrows what a reader takes; in the full mode each
+ * line after them is one record of history, tagged with its kind and its monitor. The
  * schemas here are codecs: decoding a line gives what storage holds (times
  * in UTC milliseconds, flags as 0 or 1, JSON columns as text, bytes as
  * bytes), and encoding it back gives the file's JSON (times as ISO 8601,
@@ -228,6 +229,7 @@ export const configurationSchema = z.object({
       position: count,
     })
   ),
+  // A file written before the images had lines of their own carries them here; this version writes none.
   pageImages: z.array(
     z.object({
       pageId: id,
@@ -439,8 +441,17 @@ const rollupFields = {
   degraded: count,
 };
 
-/** One line of history: a check (sealed days decoded), an hourly or daily rollup, or an outage. */
+/** One line after the header: a page image, or a line of history: a check (sealed days decoded), an hourly or daily rollup, or an outage. */
 export const recordSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("image"),
+    page: id,
+    image: pageImageKindSchema,
+    contentType: plain,
+    body: bytesCodec,
+    hash: plain,
+    updatedAt: timeCodec,
+  }),
   z.object({
     kind: z.literal("check"),
     monitor: id,
@@ -465,6 +476,8 @@ export const recordSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 export type ExportRecord = z.output<typeof recordSchema>;
+/** A line of history: every record but a page image. */
+export type HistoryRecord = Exclude<ExportRecord, { kind: "image" }>;
 
 /** Why an import was refused. */
 export const importRefusals = [

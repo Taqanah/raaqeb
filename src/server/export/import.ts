@@ -2,7 +2,8 @@
  * Import (CONTEXT.md "Import"): an export
  * read as a stream into an install that holds no monitors, status pages or
  * components. The header's configuration is written in one transaction
- * with every credential sealed again with this install's key; the history
+ * with every credential sealed again with this install's key; each page
+ * image line is written as it is read; the history
  * follows a batch at a time, each monitor's closed days sealed once its
  * records end, and a day that came as hourly rollups gets its daily one
  * summed from them. The settings are written last, then the change counter
@@ -48,6 +49,7 @@ import {
   type Configuration,
   type ExportRecord,
   fromVersion1,
+  type HistoryRecord,
   headerSchema,
   type ImportAnswer,
   readableExportVersions,
@@ -219,6 +221,21 @@ async function importedTimeZone(
   return parsed.success ? parsed.data : (await readClock(storage)).timeZone;
 }
 
+/** Writes an image line's image as an upload would take it, refused at its line when it is no image of its kind or its page is not the file's. */
+async function writeImage(
+  storage: Storage,
+  record: Extract<ExportRecord, { kind: "image" }>,
+  pages: ReadonlySet<string>,
+  line: number
+): Promise<void> {
+  const { page, image, ...row } = record;
+  const taken = takenImages([{ ...row, kind: image, pageId: page }]);
+  if (!(taken && pages.has(page))) {
+    throw new InvalidLineError(line);
+  }
+  await storage.transfer.writeImages(taken);
+}
+
 async function importOnce(
   storage: Storage,
   key: InstallKey,
@@ -275,6 +292,7 @@ async function importOnce(
       await storage.settings.set(notificationHold, now);
     }
     const monitors = new Set(configuration.monitors.map((row) => row.id));
+    const pages = new Set(configuration.statusPages.map((row) => row.id));
     const history = historyWriter(storage, {
       monitors: await storage.monitors.list(),
       now,
@@ -284,6 +302,10 @@ async function importOnce(
     // biome-ignore lint/performance/noAwaitInLoops: the file is read one line after another, each record written before the next is read
     for (let text = await next(); text !== undefined; text = await next()) {
       const record = recordSchema.safeParse(parseJson(text));
+      if (record.data?.kind === "image") {
+        await writeImage(storage, record.data, pages, line);
+        continue;
+      }
       if (
         mode === "configuration" ||
         !record.success ||
@@ -402,7 +424,7 @@ function historyWriter(storage: Storage, options: HistoryOptions) {
 
   return {
     finish: finishMonitor,
-    take: async (record: ExportRecord) => {
+    take: async (record: HistoryRecord) => {
       if (record.monitor !== monitor) {
         await finishMonitor();
         ({ monitor } = record);

@@ -231,6 +231,40 @@ describe("what differs between the exports of one install", () => {
       ])
     ).toEqual(["the header's mode, version changed"]);
   });
+
+  const image = {
+    contentType: "image/png",
+    body: "iVBORw0KGgo=",
+    hash: "h1",
+    updatedAt: noon,
+  };
+  const logo = { ...image, image: "logo", kind: "image", page: "p1" };
+  const cover = { ...logo, image: "cover" };
+
+  test("a page image on a line of its own is the header's page image row it replaced", () => {
+    const [first, ...history] = before;
+    expect(
+      differences(
+        [
+          {
+            ...first,
+            configuration: {
+              // In the order the export writes a row's fields.
+              pageImages: [{ pageId: "p1", kind: "logo", ...image }],
+            },
+          },
+          ...history,
+        ],
+        [{ ...first, configuration: { pageImages: [] } }, ...history, logo]
+      )
+    ).toEqual([]);
+  });
+
+  test("a page image line missing after the upgrade is named by its page and kind", () => {
+    expect(differences([...before, logo, cover], [...before, cover])).toEqual([
+      'pageImages {"pageId":"p1","kind":"logo","contentType":"image/png","body":"iVBORw0KGgo=","hash":"h1","updatedAt":"2026-09-28T12:00:00.000Z"} is missing after the upgrade',
+    ]);
+  });
 });
 
 describe("what a start logs of the database", () => {

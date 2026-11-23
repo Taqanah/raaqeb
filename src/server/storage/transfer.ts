@@ -67,6 +67,8 @@ export interface TransferRepository {
   restore: (configuration: Configuration) => Promise<Restored | undefined>;
   /** Stores checks as head rows, a few hundred to a statement; a check already stored is kept. */
   writeChecks: (checks: readonly Check[]) => Promise<void>;
+  /** Stores page images as their rows are, after `restore` wrote their pages; one already stored refuses the write. */
+  writeImages: (images: Configuration["pageImages"]) => Promise<void>;
   /** Stores outages; an outage already stored is kept. */
   writeOutages: (outages: readonly Outage[]) => Promise<void>;
   /** Stores rollups of one span, replacing any at the same monitor and time. */
@@ -499,6 +501,7 @@ export function transferRepository(executor: Executor): TransferRepository {
           tags: idsOf(written.tags),
         };
       }),
+    writeImages: (rows) => insert(executor, "pageImages", rows),
     writeChecks: async (rows) => {
       for (const batch of batches(rows, 8)) {
         // biome-ignore lint/performance/noAwaitInLoops: one statement after another, oldest first

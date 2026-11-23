@@ -3,7 +3,7 @@ import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { encrypt } from "@/server/boot/installkey.ts";
 import { runSql } from "@/server/storage/fixture.ts";
 import type { Storage } from "@/server/storage/storage.ts";
-import type { ExportRecord } from "@/shared/schemas/export.ts";
+import type { HistoryRecord } from "@/shared/schemas/export.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import {
   exportInstall,
@@ -192,10 +192,14 @@ describe("an export", () => {
     }
   });
 
-  test("in the configuration mode is the header alone", async () => {
+  test("in the configuration mode is the header, then each page image on a line of its own", async () => {
     const lines = await exported(await source(), "configuration");
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatchObject({ mode: "configuration" });
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toMatchObject({
+      configuration: { pageImages: [] },
+      mode: "configuration",
+    });
+    expect(lines[1]).toMatchObject({ image: "logo", kind: "image" });
   });
 
   test("in the full mode follows each monitor's outages with its days oldest first, each day in the finest kind it still has", async () => {
@@ -449,7 +453,7 @@ describe("an export", () => {
 describe("one monitor's history", () => {
   test("is the export's records of that monitor alone inside the span", async () => {
     const install = await source();
-    const records: ExportRecord[] = [];
+    const records: HistoryRecord[] = [];
     for await (const record of historyRecords(
       install.storage,
       install.ids.api,
@@ -503,7 +507,7 @@ describe("one monitor's history", () => {
     const install = await source();
     const from = today - day + 6 * hour;
     const to = today - day + 12 * hour;
-    const records: ExportRecord[] = [];
+    const records: HistoryRecord[] = [];
     for await (const record of historyRecords(
       install.storage,
       install.ids.api,

@@ -1,8 +1,9 @@
 /**
  * Export (CONTEXT.md "Export"): the
  * install as one streamed `raaqeb-export.jsonl.zst`. The header line holds
- * the configuration with every credential opened with the install key;
- * in the full mode each monitor's history follows, its outages first and
+ * the configuration with every credential opened with the install key, and
+ * each page image follows on a line of its own; in the full mode each
+ * monitor's history follows, its outages first and
  * then its days oldest first, each day in the finest kind it still has:
  * checks (sealed days decoded), else hourly rollups, else the daily one.
  * The stream pulls one monitor-day of checks at a time, so the history never
@@ -25,6 +26,7 @@ import {
   type ExportMode,
   type ExportRecord,
   exportVersion,
+  type HistoryRecord,
   headerSchema,
   recordSchema,
 } from "@/shared/schemas/export.ts";
@@ -191,10 +193,15 @@ async function exportLines(
     return { ok: false, reason: "unavailable" };
   }
   let header: string;
+  let images: string[];
   try {
+    // Each image on a line of its own: four pages' images at their size limits would pass the line a reader takes.
+    images = configuration.pageImages.map(({ pageId, kind, ...image }) =>
+      lineOf({ ...image, image: kind, kind: "image", page: pageId })
+    );
     header = JSON.stringify(
       headerSchema.encode({
-        configuration,
+        configuration: { ...configuration, pageImages: [] },
         exportedAt: now,
         mode,
         raaqeb: "export",
@@ -213,6 +220,7 @@ async function exportLines(
   }
   async function* lines(): AsyncGenerator<string> {
     yield header;
+    yield* images;
     if (mode === "configuration") {
       return;
     }
@@ -435,7 +443,7 @@ function nameOf(
 }
 
 /** An outage as a line of history, with when it was acknowledged or null. */
-function outageRecord(outage: Outage): ExportRecord {
+function outageRecord(outage: Outage): HistoryRecord {
   return {
     acknowledgedAt: outage.acknowledgedAt ?? null,
     endedAt: outage.endedAt ?? null,
@@ -455,7 +463,7 @@ export async function* historyRecords(
   monitorId: string,
   from: number,
   to: number
-): AsyncGenerator<ExportRecord> {
+): AsyncGenerator<HistoryRecord> {
   // ponytail: one monitor's outages, hourly rollups (90 days at most) and daily rollups are read whole; outages are never purged, so a monitor that flaps for years holds them all while its records stream. Page them when the benchmark shows one.
   const outages = await storage.outages.list(monitorId, from);
   for (const outage of outages.reverse()) {
@@ -465,7 +473,7 @@ export async function* historyRecords(
   }
   const first = utcDayStart(from);
   const checked = new Set(await storage.checks.days(monitorId, first, to));
-  const hours = new Map<number, ExportRecord[]>();
+  const hours = new Map<number, HistoryRecord[]>();
   for (const rollup of await storage.checks.rollups(
     monitorId,
     "hour",
@@ -480,7 +488,7 @@ export async function* historyRecords(
       ]);
     }
   }
-  const days = new Map<number, ExportRecord>();
+  const days = new Map<number, HistoryRecord>();
   for (const rollup of await storage.checks.rollups(
     monitorId,
     "day",
@@ -515,7 +523,7 @@ export async function* historyRecords(
 }
 
 /** A check as a line of history. */
-function checkRecord(check: Check, monitorId: string): ExportRecord {
+function checkRecord(check: Check, monitorId: string): HistoryRecord {
   return {
     at: check.startedAt,
     attempts: check.attempts,

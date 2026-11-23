@@ -6,10 +6,11 @@
  */
 
 /**
- * The longest line a reader takes, in bytes: the header carries a page's
- * three images in base64 (2 MB at their size limits) and the configuration.
- * Parsing a line costs about eight times its size, so this keeps an import
- * near the memory floor; anything longer is not an export.
+ * The longest line a reader takes, in bytes: an image line is 1.4 MB at the
+ * cover's size limit, and a file written before images had lines of their own
+ * carries them all in the header. Parsing a line costs about eight times its
+ * size, so this keeps an import near the memory floor; anything longer is not
+ * an export.
  */
 export const maxLineBytes = 8 * 1024 * 1024;
 
