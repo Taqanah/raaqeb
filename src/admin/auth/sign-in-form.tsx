@@ -8,7 +8,7 @@
  * the origin check, it shows the command that makes this address the public
  * address, the way back in for an operator who means it.
  */
-import { Link } from "@tanstack/react-router";
+import { Link, useHydrated } from "@tanstack/react-router";
 import {
   type ReactNode,
   type SubmitEvent,
@@ -58,6 +58,8 @@ const forgotPasswordPath = "/forgot-password";
 export function SignInForm({ email, onSignedIn }: SignInFormProps): ReactNode {
   const { t } = useMessages();
   const [pending, setPending] = useState(false);
+  // Before hydration a press would post the form natively and come back empty, losing what was typed.
+  const hydrated = useHydrated();
   const [failure, setFailure] = useState<SignInFailure | undefined>();
   // The second step is due: the app's code is asked, or whether the first emailed code went out.
   const [secondStep, setSecondStep] = useState<
@@ -173,7 +175,7 @@ export function SignInForm({ email, onSignedIn }: SignInFormProps): ReactNode {
             <FieldError>{t(failureMessage[failure])}</FieldError>
           ) : null}
           {failure === "origin_refused" ? <SetAddressCommand /> : null}
-          <Button disabled={pending} type="submit">
+          <Button disabled={pending || !hydrated} type="submit">
             {pending ? t("auth_signing_in") : t("auth_sign_in")}
           </Button>
           <Link

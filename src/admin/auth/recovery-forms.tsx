@@ -4,7 +4,7 @@
  * and the set-new-password form the reset link opens. No sign-in follows a
  * reset; the operator signs in with the new password.
  */
-import { Link } from "@tanstack/react-router";
+import { Link, useHydrated } from "@tanstack/react-router";
 import {
   type ReactNode,
   type SubmitEvent,
@@ -86,6 +86,8 @@ function ResetCommand(): ReactNode {
 export function ForgotForm(): ReactNode {
   const { locale, t } = useMessages();
   const [pending, setPending] = useState(false);
+  // Before hydration a press would post the form natively and come back empty, losing what was typed.
+  const hydrated = useHydrated();
   const [sent, setSent] = useState(false);
   const [failure, setFailure] = useState<ResetRequestFailure | undefined>();
   // A new object per refused submit, so each one moves the focus to the field.
@@ -161,7 +163,7 @@ export function ForgotForm(): ReactNode {
             {failure ? (
               <FieldError>{t(requestFailures[failure])}</FieldError>
             ) : null}
-            <Button disabled={pending} type="submit">
+            <Button disabled={pending || !hydrated} type="submit">
               {pending ? t("auth_sending") : t("auth_forgot_submit")}
             </Button>
             <BackToSignIn />
@@ -200,6 +202,8 @@ export interface ResetFormProps {
 export function ResetForm({ open, token }: ResetFormProps): ReactNode {
   const { t } = useMessages();
   const [pending, setPending] = useState(false);
+  // Before hydration a press would post the form natively and come back empty, losing what was typed.
+  const hydrated = useHydrated();
   const [done, setDone] = useState(false);
   const [failure, setFailure] = useState<ResetFailure | undefined>(
     open && token !== "" ? undefined : "invalid_link"
@@ -300,7 +304,7 @@ export function ResetForm({ open, token }: ResetFormProps): ReactNode {
           {failure ? (
             <FieldError>{t(resetFailures[failure])}</FieldError>
           ) : null}
-          <Button disabled={pending} type="submit">
+          <Button disabled={pending || !hydrated} type="submit">
             {pending ? t("app_saving") : t("auth_reset_submit")}
           </Button>
           <BackToSignIn />

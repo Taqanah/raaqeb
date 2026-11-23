@@ -6,6 +6,7 @@
  * stored is the locale this document is rendered in, which the language
  * screen chose and the switcher may have changed.
  */
+import { useHydrated } from "@tanstack/react-router";
 import {
   type ChangeEvent,
   type ReactNode,
@@ -65,6 +66,8 @@ export function AccountForm({
 }: AccountFormProps): ReactNode {
   const { locale, t } = useMessages();
   const [pending, setPending] = useState(false);
+  // Before hydration a press would post the form natively and come back empty, losing what was typed.
+  const hydrated = useHydrated();
   const [failure, setFailure] = useState<AccountRefusal | undefined>();
   const [address, setAddress] = useState(suggestedAddress);
   const [confirmed, setConfirmed] = useState(false);
@@ -211,7 +214,10 @@ export function AccountForm({
           {failure && !elsewhere ? (
             <FieldError>{t(refusalMessage[failure])}</FieldError>
           ) : null}
-          <Button disabled={pending || (elsewhere && !confirmed)} type="submit">
+          <Button
+            disabled={pending || !hydrated || (elsewhere && !confirmed)}
+            type="submit"
+          >
             {pending
               ? t("onboarding_account_creating")
               : t("onboarding_account_create")}
