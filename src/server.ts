@@ -50,7 +50,7 @@ import {
   resolveBootSettings,
 } from "./server/boot/settings.ts";
 import { liveIo } from "./server/checks/io.ts";
-import { error as logError, info as logInfo } from "./server/log.ts";
+import { error as logError, info as logInfo, reasonOf } from "./server/log.ts";
 import { createPublicMemo, type RenderMissing } from "./server/memo/public.ts";
 import { onboardingStep } from "./server/onboarding/onboarding.ts";
 import {
@@ -1052,7 +1052,20 @@ export function stopSignals(
     : ["SIGTERM", "SIGINT"];
 }
 
+/** Start writes a server function call that failed, a payload it could not read included, as `console.error("Server Fn Error!", error)`: a stack with the install's paths that any stranger can repeat. It becomes one line, as `escaped` in `src/start.ts` makes h3's. */
+function oneLineServerFnErrors(): void {
+  const write = console.error;
+  console.error = (...parts: unknown[]) => {
+    if (parts[0] === "Server Fn Error!") {
+      logError(`a server function failed: ${reasonOf(parts[1])}`);
+      return;
+    }
+    write(...parts);
+  };
+}
+
 if (import.meta.main) {
+  oneLineServerFnErrors();
   const result = await main(Bun.argv.slice(2), process.env, ownBuildDir());
   if (typeof result === "number") {
     process.exit(result);
