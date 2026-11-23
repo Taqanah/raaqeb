@@ -236,7 +236,7 @@ export type SecondStepRefusal =
 export interface SecondStepView {
   /** An authenticator app is set up: its first code was entered. */
   readonly app: boolean;
-  /** The channel auth mail goes through: the chosen one, else the oldest; nothing without an email channel. */
+  /** The channel auth mail goes through: the one an owner chose, while it exists; nothing otherwise. */
   readonly channel: string | undefined;
   /** Every email channel, oldest first. */
   readonly channels: readonly { readonly id: string; readonly name: string }[];

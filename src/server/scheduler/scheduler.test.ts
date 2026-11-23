@@ -1,4 +1,5 @@
 import { afterEach, beforeAll, describe, expect, spyOn, test } from "bun:test";
+import { authEmailChannel } from "@/server/auth/mail.ts";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { encrypt } from "@/server/boot/installkey.ts";
 import { type LiveIo, liveIo } from "@/server/checks/io.ts";
@@ -3082,7 +3083,7 @@ describe("subscriber notifications on the scheduler", () => {
   async function subscribed(h: Harness) {
     await h.storage.settings.set(publicAddress, "https://status.example.test");
     mailServer = fakeSmtp();
-    await h.storage.channels.create(
+    const mail = await h.storage.channels.create(
       {
         appliesToNew: false,
         config: {
@@ -3098,6 +3099,7 @@ describe("subscriber notifications on the scheduler", () => {
       },
       undefined
     );
+    await h.storage.settings.set(authEmailChannel, mail.id);
     const web = await h.storage.components.create({
       description: undefined,
       monitorIds: [],

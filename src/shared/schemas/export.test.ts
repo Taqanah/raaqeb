@@ -172,7 +172,6 @@ describe("the export file's format", () => {
       "public_address",
       "better_auth_secrets",
       "operator_language",
-      "auth_email_channel",
       "auth_email_tested",
       "release_check_result",
     ]) {
@@ -262,6 +261,52 @@ describe("the export file's format", () => {
       '["down","recovered","domain_expiring"]',
       "[]",
     ]);
+  });
+
+  test("a header of version 1 reads with its oldest email channel as the sign-in mail choice, and none without one", () => {
+    const channel = {
+      appliesToNew: 0,
+      config: "{}",
+      credentials: null,
+      locale: null,
+      name: "Mail",
+      type: "email" as const,
+      updatedAt: Date.UTC(2026, 8, 1),
+    };
+    const encoded = configurationSchema.encode({
+      ...empty,
+      channels: [
+        { ...channel, createdAt: Date.UTC(2026, 8, 2), id: "newer" },
+        {
+          ...channel,
+          createdAt: Date.UTC(2026, 8, 3),
+          id: "webhook",
+          type: "webhook",
+        },
+        { ...channel, createdAt: Date.UTC(2026, 8, 1), id: "older" },
+      ],
+    });
+    const { maintenanceSeries: _, ...older } = encoded;
+    const read = (configuration: typeof older) =>
+      headerSchema.parse(
+        fromVersion1({
+          configuration,
+          exportedAt: "2026-09-28T12:00:00.000Z",
+          mode: "full",
+          raaqeb: "export",
+          version: 1,
+        })
+      ).configuration.settings;
+    expect(read(older)).toEqual([
+      {
+        key: "auth_email_channel",
+        updatedAt: Date.UTC(2026, 8, 28, 12),
+        value: '"older"',
+      },
+    ]);
+    expect(read({ ...older, channels: older.channels.slice(1, 2) })).toEqual(
+      []
+    );
   });
 
   test("a header of another version is not this format, though its version can still be read", () => {

@@ -14,6 +14,7 @@
  * never throw.
  */
 
+import { authEmailChannelOf } from "@/server/auth/mail.ts";
 import { decrypt, encrypt, type InstallKey } from "@/server/boot/installkey.ts";
 import { clientNetwork } from "@/server/boot/proxies.ts";
 import {
@@ -91,7 +92,7 @@ export function createSignUpLimiter(
   };
 }
 
-/** The channels a page offers: those its customization shows, email only while an email channel exists. */
+/** The channels a page offers: those its customization shows, email only while sign-in mail has its channel, which sends subscriber email. */
 export function offeredChannels(
   page: Pick<StatusPage, "customization">,
   emailChannel: boolean
@@ -133,9 +134,9 @@ export async function subscribe(
     return { ok: false, reason: "limited" };
   }
   try {
-    const [page, channels] = await Promise.all([
+    const [page, mail] = await Promise.all([
       storage.pages.find(input.pageId),
-      storage.channels.list(),
+      authEmailChannelOf(storage),
     ]);
     // An unpublished page takes no sign-up.
     if (!page?.published) {
@@ -148,10 +149,7 @@ export async function subscribe(
     ) {
       return notFound;
     }
-    const offered = offeredChannels(
-      page,
-      channels.some((channel) => channel.type === "email")
-    );
+    const offered = offeredChannels(page, mail !== undefined);
     if (!offered.includes(input.channel)) {
       return { ok: false, reason: "not_offered" };
     }

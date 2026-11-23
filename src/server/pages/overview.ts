@@ -8,6 +8,7 @@
  * as JSON, so the HTML and the API cannot disagree. Reads never throw.
  */
 
+import { authEmailChannelOf } from "@/server/auth/mail.ts";
 import { dayView } from "@/server/monitors/days.ts";
 import { readClock } from "@/server/settings/clock.ts";
 import type { BarDay } from "@/server/status/uptime.ts";
@@ -148,7 +149,7 @@ export async function readOverview(
       incidents,
       windows,
       series,
-      channels,
+      mail,
     ] = await Promise.all([
       storage.pages.layout(pageId),
       storage.pages.images(pageId),
@@ -156,7 +157,7 @@ export async function readOverview(
       storage.incidents.open(),
       storage.maintenance.unfinished(),
       storage.maintenance.listSeries(),
-      storage.channels.list(),
+      authEmailChannelOf(storage),
     ]);
     const byId = new Map(components.map((each) => [each.id, each]));
     // A deleted component has left the layout with its row.
@@ -223,10 +224,7 @@ export async function readOverview(
           new Map(series.map((each) => [each.id, each.recurrence.days]))
         ),
         page: pageOf(page, images),
-        subscribe: offeredChannels(
-          page,
-          channels.some((channel) => channel.type === "email")
-        ),
+        subscribe: offeredChannels(page, mail !== undefined),
         timeZone: time.timeZone,
       },
       ok: true,

@@ -139,7 +139,8 @@ export interface Storage {
 }
 
 export type OpenStorageResult =
-  | { ok: true; storage: Storage; notes: string[] }
+  /** `applied` names the migrations this open ran, oldest first. */
+  | { ok: true; storage: Storage; notes: string[]; applied: readonly string[] }
   | { ok: false; message: string };
 
 /**
@@ -156,14 +157,17 @@ export interface DatabaseOpener {
 
 /** The opener over this module's `openStorage`, handing an opened storage to `attach`. */
 export function databaseOpener(
-  attach: (storage: Storage) => void,
+  attach: (
+    storage: Storage,
+    applied: readonly string[]
+  ) => Promise<void> | void,
   options: OpenStorageOptions = {}
 ): DatabaseOpener {
   return {
     open: async (location) => {
       const opened = await openStorage(location, options);
       if (opened.ok) {
-        attach(opened.storage);
+        await attach(opened.storage, opened.applied);
       }
       return opened;
     },
@@ -211,6 +215,7 @@ export async function openStorage(
   }
   const { connection } = connected;
   const notes: string[] = [];
+  let applied: readonly string[] = [];
   try {
     const verdict = await inspectDatabase(connection, options.migrations);
     const refusal = refusalFor(verdict);
@@ -226,7 +231,8 @@ export async function openStorage(
       await closeConnection(connection);
       return { message: migrated.message, ok: false };
     }
-    notes.push(noteFor(verdict, migrated.applied.length));
+    ({ applied } = migrated);
+    notes.push(noteFor(verdict, applied.length));
     if (migrated.snapshot) {
       notes.push(
         "snapshot taken before migrating; see snapshots/ in the data directory"
@@ -242,6 +248,7 @@ export async function openStorage(
   const run = executor(connection);
   const now = options.now ?? Date.now;
   return {
+    applied,
     notes,
     ok: true,
     storage: {

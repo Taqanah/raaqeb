@@ -1,7 +1,7 @@
 /**
  * Auth mail: the reset link, the one-time code and the test
  * message, sent at once to the operator account's address through one email
- * channel, the one chosen on the auth settings screen or else the oldest. Not an operator notification and not queued: the
+ * channel, the one an owner chose on the auth settings screen. Not an operator notification and not queued: the
  * caller must know whether the message went, and a code retried later is
  * useless. The channel's own delivery path reports the failure.
  */
@@ -17,7 +17,6 @@ import { emailChannel, sendMail } from "@/server/notify/email.ts";
 import { mailHtml } from "@/server/notify/html.ts";
 import { channelValues, unreadableSecrets } from "@/server/notify/secrets.ts";
 import { plainText } from "@/server/notify/text.ts";
-import { readSetting } from "@/server/settings/clock.ts";
 import { loadCatalog } from "@/server/settings/language.ts";
 import { readOperatorLanguage } from "@/server/settings/operator.ts";
 import { defineSetting, type Setting } from "@/server/storage/settings.ts";
@@ -34,7 +33,7 @@ import {
 import type { SendFailure } from "@/shared/schemas/notification.ts";
 import type { AuthMail } from "./auth.ts";
 
-/** The id of the email channel that sends auth mail; unset means the oldest email channel. */
+/** The id of the email channel that sends auth mail; never set means no choice was made yet, see `keepAuthEmailChannel`. */
 export const authEmailChannel: Setting<string> = defineSetting(
   "auth_email_channel",
   z.string()
@@ -89,24 +88,53 @@ export type AuthMailResult =
       readonly failure: SendFailure;
     };
 
-/** The email channel auth mail goes through: the chosen one while it exists and is an email channel, otherwise the oldest email channel, or nothing. */
+/** The email channel auth mail goes through: the chosen one while it exists and is an email channel, or nothing. Never another channel: an admin may make one. Throws when the database does not answer, so a caller fails closed. */
 export async function authEmailChannelOf(
   storage: Pick<Storage, "channels" | "settings">
 ): Promise<Channel | undefined> {
-  const [channels, chosen] = await Promise.all([
-    storage.channels.list(),
-    readSetting(storage, authEmailChannel, undefined),
-  ]);
-  const email = channels.filter((channel) => channel.type === "email");
-  return email.find((channel) => channel.id === chosen) ?? email[0];
+  const chosen = await storage.settings.get(authEmailChannel);
+  const channel =
+    chosen === undefined ? undefined : await storage.channels.find(chosen);
+  return channel?.type === "email" ? channel : undefined;
+}
+
+/**
+ * Records the oldest email channel as the chosen one while no choice was
+ * ever stored: on an install from before the choice, or after an owner made
+ * or imported the first email channel. An admin's email channel is never the
+ * oldest then, since an admin may make one only while a choice is in force.
+ * A choice that was stored and deleted stays, so an owner chooses again;
+ * except on data from before operator accounts, which fell back to the
+ * oldest channel, or to none, and had one operator to make every channel.
+ */
+export async function keepAuthEmailChannel(
+  storage: Pick<Storage, "channels" | "settings">,
+  oneOperator = false
+): Promise<void> {
+  const stored = await storage.settings.get(authEmailChannel);
+  if (
+    stored !== undefined &&
+    !(oneOperator && (await authEmailChannelOf(storage)) === undefined)
+  ) {
+    return;
+  }
+  const oldest = (await storage.channels.list()).find(
+    (channel) => channel.type === "email"
+  );
+  if (oldest) {
+    await storage.settings.set(authEmailChannel, oldest.id);
+  } else if (stored !== undefined) {
+    // Data from before operator accounts with no email channel left: none chosen, so the owner's next one is recorded.
+    await storage.settings.remove(authEmailChannel);
+  }
 }
 
 /**
  * Whether the operator may make, edit or delete the channel.
  * Auth mail carries reset links, one-time codes and invitations, so whoever
  * controls the email channel it goes through could take an owner's account:
- * that channel, and a first email channel made while none carries auth
- * mail, are an owner's alone. Never throws: a database that cannot answer
+ * that channel, and every email channel while none carries auth mail,
+ * are an owner's alone. Never throws: a database that cannot answer
  * allows nothing.
  */
 export async function mayChangeChannel(
@@ -121,7 +149,10 @@ export async function mayChangeChannel(
   try {
     const inForce = await authEmailChannelOf(storage);
     if ("id" in change) {
-      return change.id !== inForce?.id;
+      // While none is in force, whichever email channel gets recorded next must be an owner's.
+      return inForce === undefined
+        ? (await storage.channels.find(change.id))?.type !== "email"
+        : change.id !== inForce.id;
     }
     return change.type !== "email" || inForce !== undefined;
   } catch {

@@ -5,6 +5,7 @@
  * Not product code.
  */
 
+import { authEmailChannel } from "@/server/auth/mail.ts";
 import { betterAuthSecrets } from "@/server/auth/secret.ts";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import type { InstallKey } from "@/server/boot/installkey.ts";
@@ -364,6 +365,7 @@ export async function sourceInstall(): Promise<Install & { ids: SourceIds }> {
   await storage.settings.set(retentionDays, 120);
   await storage.settings.set(sizeBudgetBytes, 512 * 1024 * 1024);
   await storage.settings.set(releaseCheckEnabled, false);
+  await storage.settings.set(authEmailChannel, email.id);
   await storage.settings.set(publicAddress, "https://source.example.test");
   await storage.settings.set(
     betterAuthSecrets,

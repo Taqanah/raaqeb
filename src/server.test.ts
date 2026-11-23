@@ -2,7 +2,9 @@ import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { connect } from "node:http2";
 import { authFor, operatorName } from "./server/auth/auth.ts";
 import { resetPasswordCommand, type Terminal } from "./server/auth/command.ts";
+import { authEmailChannel, authEmailChannelOf } from "./server/auth/mail.ts";
 import { resolveBootSettings } from "./server/boot/settings.ts";
+import { createChannel, deleteChannel } from "./server/notify/channels.ts";
 import { createOperatorAccount } from "./server/onboarding/onboarding.ts";
 import { publish } from "./server/pages/fixture.ts";
 import { createPage, savePage } from "./server/pages/pages.ts";
@@ -11,11 +13,15 @@ import { publicAddress } from "./server/settings/address.ts";
 import { saveGeneralSettings } from "./server/settings/general.ts";
 import { trustedProxies } from "./server/settings/proxies.ts";
 import { requestLogEnabled } from "./server/settings/request-log.ts";
-import { runSql } from "./server/storage/fixture.ts";
+import { channelsRepository } from "./server/storage/channels.ts";
+import { closeConnection, executor } from "./server/storage/connection.ts";
+import { connectTo, runSql } from "./server/storage/fixture.ts";
+import { runMigrator } from "./server/storage/migrate.ts";
 import {
   localMigrations,
   migrationsFolder,
 } from "./server/storage/migrationfiles.ts";
+import { settingsRepository } from "./server/storage/settings.ts";
 import {
   databaseOpener,
   locateDatabase,
@@ -569,6 +575,165 @@ describe("the raaqeb command", () => {
       // Any other path renders as before, outside the memo.
       const other = await fetch(`http://127.0.0.1:${result.server.port}/admin`);
       expect(await other.text()).toBe("render 2 of undefined");
+    } finally {
+      await result.stop();
+    }
+  });
+
+  /** A data directory whose database holds two email channels, or none left with `deleted: "both"`, migrated up to `count` migrations, with the sign-in mail choice a deleted channel, the newer one, or none stored. */
+  async function withEmailChannels(
+    count: number,
+    chosen?: "deleted" | "newer",
+    deleted?: "both"
+  ): Promise<{ dataDir: string; newer: string; oldest: string }> {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const earlier = await clientBuild({});
+    await carryMigrations(earlier, count);
+    // The migrator alone: an earlier version's database rightly lacks later tables, which `openStorage` checks for.
+    const connection = await connectTo({
+      backend: "sqlite",
+      file: `${dataDir}/raaqeb.sqlite`,
+    });
+    await runMigrator(connection, `${earlier}/migrations`);
+    const run = executor(connection);
+    const channels = channelsRepository(run, Date.now);
+    const email = (name: string) =>
+      channels.create({
+        appliesToNew: false,
+        config: { from: "raaqeb@example.test", host: "smtp.example.test" },
+        locale: undefined,
+        name,
+        type: "email",
+      });
+    const oldest = await email("Oldest");
+    const newer = await email("Newer");
+    if (chosen !== undefined) {
+      await settingsRepository(run, Date.now).set(
+        authEmailChannel,
+        chosen === "newer" ? newer.id : "a deleted channel"
+      );
+    }
+    if (deleted === "both") {
+      await channels.remove(oldest.id);
+      await channels.remove(newer.id);
+    }
+    await closeConnection(connection);
+    return { dataDir, newer: newer.id, oldest: oldest.id };
+  }
+
+  async function bootOver(dataDir: string) {
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: () => new Response('render') };",
+    });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir);
+    if (typeof result === "number" || !result.storage) {
+      throw new Error("expected a server over a database");
+    }
+    return { ...result, storage: result.storage };
+  }
+
+  test("an install that never stored the sign-in mail choice boots with its oldest email channel as the choice; once an owner deletes it, a restart chooses none", async () => {
+    const { dataDir, oldest } = await withEmailChannels(
+      Number.POSITIVE_INFINITY
+    );
+    const first = await bootOver(dataDir);
+    try {
+      expect(await first.storage.settings.get(authEmailChannel)).toBe(oldest);
+      expect(await deleteChannel(first.storage, oldest)).toEqual({ ok: true });
+    } finally {
+      await first.stop();
+    }
+    const second = await bootOver(dataDir);
+    try {
+      expect(await authEmailChannelOf(second.storage)).toBeUndefined();
+    } finally {
+      await second.stop();
+    }
+  });
+
+  test("an install from before operator accounts boots with the channel its one operator chose, or the oldest email channel it fell back to when that one was deleted", async () => {
+    const before = (await localMigrations("sqlite")).findIndex((name) =>
+      name.endsWith("_operator_accounts")
+    );
+    const deleted = await withEmailChannels(before, "deleted");
+    const fellBack = await bootOver(deleted.dataDir);
+    try {
+      expect((await authEmailChannelOf(fellBack.storage))?.id).toBe(
+        deleted.oldest
+      );
+    } finally {
+      await fellBack.stop();
+    }
+    const kept = await withEmailChannels(before, "newer");
+    const chose = await bootOver(kept.dataDir);
+    try {
+      expect((await authEmailChannelOf(chose.storage))?.id).toBe(kept.newer);
+    } finally {
+      await chose.stop();
+    }
+  });
+
+  test("an install from before operator accounts whose operator deleted every email channel boots with no choice, so the owner's next email channel carries sign-in mail", async () => {
+    const before = (await localMigrations("sqlite")).findIndex((name) =>
+      name.endsWith("_operator_accounts")
+    );
+    const { dataDir } = await withEmailChannels(before, "deleted", "both");
+    const booted = await resolveBootSettings({}, { RAAQEB_DATA_DIR: dataDir });
+    const result = await bootOver(dataDir);
+    try {
+      expect(
+        await result.storage.settings.get(authEmailChannel)
+      ).toBeUndefined();
+      if (!booted.ok) {
+        throw new Error(booted.message);
+      }
+      const created = await createChannel(
+        result.storage,
+        booted.settings.installKey,
+        {
+          appliesToNew: false,
+          name: "Owner's mail",
+          type: "email",
+          values: {
+            from: "raaqeb@example.test",
+            host: "127.0.0.1",
+            port: "2525",
+            security: "none",
+            to: "team@example.test",
+          },
+        }
+      );
+      expect((await authEmailChannelOf(result.storage))?.id).toBe(
+        created.ok ? created.channel.id : "not created"
+      );
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("a command that opens an install from before operator accounts first keeps the email channel it fell back to, as the boot would", async () => {
+    const before = (await localMigrations("sqlite")).findIndex((name) =>
+      name.endsWith("_operator_accounts")
+    );
+    const { dataDir, oldest } = await withEmailChannels(before, "deleted");
+    const terminal: Terminal = {
+      askHidden: () => Promise.resolve(""),
+      err: () => undefined,
+      interactive: false,
+      out: () => undefined,
+    };
+    expect(
+      await main(
+        ["set-address", "https://status.example.test", "--data-dir", dataDir],
+        {},
+        await serverBuild({}),
+        { terminal }
+      )
+    ).toBe(0);
+    const result = await bootOver(dataDir);
+    try {
+      expect((await authEmailChannelOf(result.storage))?.id).toBe(oldest);
     } finally {
       await result.stop();
     }

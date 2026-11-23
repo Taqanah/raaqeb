@@ -1,4 +1,5 @@
-import { afterAll, afterEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, spyOn, test } from "bun:test";
+import { authEmailChannelOf } from "@/server/auth/mail.ts";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { encrypt } from "@/server/boot/installkey.ts";
 import { publicAddress } from "@/server/settings/address.ts";
@@ -628,6 +629,38 @@ const mail = (values: Readonly<Record<string, string>>): ChannelInput => ({
 });
 
 describe("an email channel", () => {
+  test("its page says whether sign-in mail goes through it, so deleting it warns: the first one made does, a later one does not", async () => {
+    const store = await storage();
+    const first = await created(store, mail({}));
+    const later = await created(store, mail({}));
+    const signIn = async (id: string) => {
+      const read = await readChannelForm(store, key, id, Date.now());
+      return read.ok ? read.form.signIn : undefined;
+    };
+    expect(await signIn(first.id)).toBe(true);
+    expect(await signIn(later.id)).toBe(false);
+  });
+
+  test("is made even when its choice for sign-in mail cannot be recorded: sign-in mail goes through none until the next start records it", async () => {
+    const store = await storage();
+    const unrecorded: Storage = {
+      ...store,
+      settings: {
+        ...store.settings,
+        set: () => Promise.reject(new Error("database gone")),
+      },
+    };
+    const log = spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      const made = await createChannel(unrecorded, key, mail({}));
+      expect(made.ok && made.channel.name).toBe(mail({}).name);
+      expect(log).toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
+    expect(await authEmailChannelOf(store)).toBeUndefined();
+  });
+
   test("its password is unreadable in the database and readable through the repository; its server stays in clear", async () => {
     const store = await storage();
     const channel = await created(

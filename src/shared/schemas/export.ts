@@ -62,6 +62,8 @@ export const travellingSettings = [
   "retention_days",
   "size_budget_bytes",
   "release_check_enabled",
+  // Kept with its channel's id, so a restore never makes an admin's email channel carry an owner's reset link.
+  "auth_email_channel",
 ] as const;
 export type TravellingSetting = (typeof travellingSettings)[number];
 
@@ -374,7 +376,7 @@ export type Header = z.output<typeof headerSchema>;
 /** The versions an import reads: this one, and version 1, written before maintenance series, an HTTP monitor's own proxy, domain expiry (whose option is on when absent) and probes. */
 export const readableExportVersions: readonly number[] = [1, exportVersion];
 
-/** A first line of version 1 as this version reads it: no maintenance series, and every window of none; no probes, and every monitor checked from the main location alone with one confirmation; its monitors carry no proxy, which reads as none; each monitor with an event on gets domain expiring after its own, as the migration did, and a silenced one stays silent. Anything that is not such a line comes back as it came, for the header's schema to refuse. */
+/** A first line of version 1 as this version reads it: no maintenance series, and every window of none; no probes, and every monitor checked from the main location alone with one confirmation; its monitors carry no proxy, which reads as none; each monitor with an event on gets domain expiring after its own, as the migration did, and a silenced one stays silent; its oldest email channel is the sign-in mail choice. Anything that is not such a line comes back as it came, for the header's schema to refuse. */
 export function fromVersion1(first: unknown): unknown {
   const parsed = version1Schema.safeParse(first);
   if (!parsed.success) {
@@ -396,6 +398,11 @@ export function fromVersion1(first: unknown): unknown {
         shareCredentials: false,
       })),
       probes: [],
+      settings: withAuthEmailChannel(
+        configuration.settings,
+        configuration.channels,
+        parsed.data.exportedAt
+      ),
       maintenanceWindows: configuration.maintenanceWindows.map((window) => ({
         ...window,
         seriesId: null,
@@ -414,12 +421,43 @@ function withDomainExpiring(events: unknown): unknown {
     : events;
 }
 
+/** A version 1 file carries no sign-in mail choice; its one operator made every channel, so its oldest email channel is theirs, as an upgrade keeps it. */
+function withAuthEmailChannel(
+  settings: { key: unknown }[],
+  channels: { createdAt: unknown; id: unknown; type: unknown }[],
+  exportedAt: unknown
+): unknown[] {
+  const [oldest] = channels
+    .filter((channel) => channel.type === "email")
+    .toSorted(
+      (a, b) =>
+        String(a.createdAt).localeCompare(String(b.createdAt)) ||
+        String(a.id).localeCompare(String(b.id))
+    );
+  return oldest === undefined ||
+    settings.some((row) => row.key === "auth_email_channel")
+    ? settings
+    : [
+        ...settings,
+        { key: "auth_email_channel", updatedAt: exportedAt, value: oldest.id },
+      ];
+}
+
 /** Just enough of a version 1 first line to rewrite it; the header's schema checks the rest. */
 const version1Schema = z.looseObject({
   configuration: z.looseObject({
+    channels: z.array(
+      z.looseObject({
+        createdAt: z.unknown(),
+        id: z.unknown(),
+        type: z.unknown(),
+      })
+    ),
     maintenanceWindows: z.array(z.looseObject({})),
     monitors: z.array(z.looseObject({})),
+    settings: z.array(z.looseObject({ key: z.unknown() })),
   }),
+  exportedAt: z.unknown(),
   version: z.literal(1),
 });
 

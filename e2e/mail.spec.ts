@@ -163,7 +163,7 @@ test("the sign-in email test goes through the channel picked on the page, before
   try {
     await signIn(page, origin);
     await expectPath(page, "/admin/monitors");
-    // The oldest email channel is the one in force until another is saved.
+    // The first email channel is the chosen one until another is saved.
     await addEmailChannel(page, origin, smtp, "Works");
     await addEmailChannel(page, origin, refusing, "Refuses");
     await page.goto(`${origin}/admin/settings/sign-in`);
@@ -262,6 +262,38 @@ test("the authenticator app gives new backup codes and turns off, a pending sign
   await signIn(page, origin);
   await expectPath(page, "/admin/monitors");
   expect(smtp.messages.length).toBe(sent);
+});
+
+test("deleting the channel sign-in mail goes through warns first; then no other email channel takes its place, and forgot password offers the reset command", async ({
+  install,
+  page,
+  smtp,
+}) => {
+  const { origin } = install;
+  await signIn(page, origin);
+  await expectPath(page, "/admin/monitors");
+  // The first email channel is the chosen one; a later one is not.
+  await addEmailChannel(page, origin, smtp, "Chosen");
+  const chosen = new URL(page.url()).pathname;
+  await addEmailChannel(page, origin, smtp, "Later");
+  await expect(page.locator("[data-slot=channel-form]")).toBeVisible();
+  await page.click("[data-slot=delete-channel]");
+  await expect(page.locator("[data-slot=confirm-delete]")).toBeVisible();
+  await expect(page.locator("[data-slot=delete-sign-in]")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  await page.goto(`${origin}${chosen}`);
+  await expect(page.locator("[data-slot=channel-form]")).toBeVisible();
+  await page.click("[data-slot=delete-channel]");
+  await expect(page.locator("[data-slot=delete-sign-in]")).toBeVisible();
+  await page.click("[data-slot=confirm-delete]");
+  await expectPath(page, "/admin/channels");
+  await signOut(page, origin);
+
+  await page.goto(`${origin}/forgot-password`);
+  await expect(page.locator("[data-slot=reset-command]")).toBeVisible();
+  await expect(page.locator("input[name=email]")).toHaveCount(0);
+  expect(smtp.messages).toHaveLength(0);
 });
 
 test("a reset link from the mail sets a new password once, refuses a short one first, and a second use is told to ask for a new link", async ({

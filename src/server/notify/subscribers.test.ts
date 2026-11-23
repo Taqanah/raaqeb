@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { authEmailChannel } from "@/server/auth/mail.ts";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { encrypt } from "@/server/boot/installkey.ts";
 import { createIncident, postUpdate } from "@/server/incidents/incidents.ts";
@@ -1512,10 +1513,10 @@ afterEach(() => {
   mailServer = undefined;
 });
 
-/** An email channel over the scripted SMTP server, stored as the channels module stores it; the server's messages are what it was sent. */
+/** An email channel over the scripted SMTP server, stored and chosen for sign-in mail as the channels module does for a first one; the server's messages are what it was sent. */
 async function emailChannel(s: PagesScratch): Promise<FakeSmtp> {
   mailServer = fakeSmtp();
-  await s.storage.channels.create(
+  const channel = await s.storage.channels.create(
     {
       appliesToNew: false,
       config: {
@@ -1531,6 +1532,7 @@ async function emailChannel(s: PagesScratch): Promise<FakeSmtp> {
     },
     undefined
   );
+  await s.storage.settings.set(authEmailChannel, channel.id);
   return mailServer;
 }
 

@@ -380,7 +380,11 @@ export function ChannelForm({
             />
           ) : null}
           {remove && !form?.locked ? (
-            <DeleteChannel onRemoved={onRemoved} remove={remove} />
+            <DeleteChannel
+              onRemoved={onRemoved}
+              remove={remove}
+              signIn={form?.signIn ?? false}
+            />
           ) : null}
         </div>
         {form && test ? (
@@ -672,13 +676,15 @@ function TestResult({
   );
 }
 
-/** Delete, after the operator confirms. */
+/** Delete, after the operator confirms; the channel sign-in mail goes through says that mail stops. */
 function DeleteChannel({
   onRemoved,
   remove,
+  signIn,
 }: {
   readonly onRemoved: (() => void) | undefined;
   readonly remove: () => Promise<ChannelDeleteResult | undefined>;
+  readonly signIn: boolean;
 }): ReactNode {
   const { t } = useMessages();
   const [open, setOpen] = useState(false);
@@ -715,6 +721,12 @@ function DeleteChannel({
             <AlertDialogTitle>{t("channel_delete_title")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("channel_delete_description")}
+              {/* One description, so the dialog announces both sentences. */}
+              {signIn ? (
+                <span className="mt-2 block" data-slot="delete-sign-in">
+                  {t("channel_delete_sign_in")}
+                </span>
+              ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

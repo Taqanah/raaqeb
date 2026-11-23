@@ -33,6 +33,7 @@ import {
   type Terminal,
 } from "./server/auth/command.ts";
 import { readInvitation } from "./server/auth/invitation.ts";
+import { keepAuthEmailChannel } from "./server/auth/mail.ts";
 import { carriesSession, isOperator } from "./server/auth/session.ts";
 import {
   type CommandLine,
@@ -206,7 +207,8 @@ export async function main(
   const routes = await preloadAssets(`${dir}/client`);
   const location = await locateDatabase(booted.settings);
   const holder: StorageHolder = { current: undefined, scheduler: undefined };
-  const attach = (storage: Storage) => {
+  const attach = async (storage: Storage, applied: readonly string[]) => {
+    await keepSignInMail(storage, applied);
     holder.current = storage;
     holder.scheduler = startScheduler(storage, booted.settings.installKey);
   };
@@ -219,7 +221,7 @@ export async function main(
     for (const note of opened.notes) {
       logInfo(note);
     }
-    attach(opened.storage);
+    await attach(opened.storage, opened.applied);
   } else {
     logInfo("no database yet; onboarding will choose one");
   }
@@ -345,10 +347,28 @@ async function besideServer(
     return 1;
   }
   try {
+    // A command may be the first to open an upgraded install.
+    await keepSignInMail(opened.storage, opened.applied);
     return await run(opened.storage);
   } finally {
     await opened.storage.close();
   }
+}
+
+/** The migration that made the one operator an owner: data it runs on had no admin to make a channel. */
+const operatorAccountsMigration = "20261021042422_operator_accounts";
+
+/** Before any request or command reads it: an install from before the sign-in mail choice keeps the channel it used. Logs a failure, never throws. */
+async function keepSignInMail(
+  storage: Storage,
+  applied: readonly string[]
+): Promise<void> {
+  await keepAuthEmailChannel(
+    storage,
+    applied.includes(operatorAccountsMigration)
+  ).catch(() =>
+    logError("the email channel sign-in mail goes through could not be kept")
+  );
 }
 
 /**

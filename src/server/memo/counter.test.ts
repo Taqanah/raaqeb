@@ -17,6 +17,7 @@
  * - the five-minute refresh, "the five-minute refresh of the public figures".
  */
 import { afterEach, describe, expect, test } from "bun:test";
+import { chooseAuthEmailChannel } from "@/server/auth/second-step.ts";
 import { saveSso } from "@/server/auth/sso.ts";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import type { InstallKey } from "@/server/boot/installkey.ts";
@@ -352,6 +353,14 @@ const writes: readonly (readonly [string, Write, Setup?])[] = [
     async (w) => {
       const [mail] = await w.s.storage.channels.list();
       return deleteChannel(w.s.storage, mail?.id ?? "");
+    },
+    (w) => createChannel(w.s.storage, w.key, mailChannel),
+  ],
+  [
+    "the channel sign-in mail goes through chosen, since the subscribe form offers email only while one is",
+    async (w) => {
+      const [mail] = await w.s.storage.channels.list();
+      return chooseAuthEmailChannel(w.s.storage, mail?.id ?? "");
     },
     (w) => createChannel(w.s.storage, w.key, mailChannel),
   ],

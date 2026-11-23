@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createChannel } from "@/server/notify/channels.ts";
+import { createChannel, deleteChannel } from "@/server/notify/channels.ts";
 import {
   bodyText,
   decodeWords,
@@ -21,13 +21,14 @@ import {
   authEmailChannelOf,
   authMailOver,
   emailChangeNoticeOver,
+  keepAuthEmailChannel,
   mayChangeChannel,
   sendAuthMail,
 } from "./mail.ts";
 
 // Auth mail: the reset link, the code
 // and the test message go at once to the operator's address through one
-// email channel, the chosen one or else the oldest, in the operator language.
+// email channel, the one an owner chose, in the operator language.
 
 let open: Scratch | undefined;
 async function scratch(): Promise<Scratch> {
@@ -127,6 +128,33 @@ describe("who changes the channel auth mail goes through", () => {
     ).toBe(true);
   });
 
+  test("while none is chosen an admin changes no email channel, an existing one included, and still a webhook", async () => {
+    const s = await scratch();
+    const email = await emailChannel(s, "Imported", 2525);
+    const hook = await createChannel(s.storage, s.boot.installKey, {
+      appliesToNew: false,
+      name: "Ops webhook",
+      type: "webhook",
+      values: { url: "https://example.com/hook" },
+    });
+    // As an import of a file with no choice leaves it: an email channel, none in force.
+    await s.storage.settings.remove(authEmailChannel);
+    expect(await authEmailChannelOf(s.storage)).toBeUndefined();
+    expect(
+      await mayChangeChannel(s.storage, { role: "admin" }, { id: email })
+    ).toBe(false);
+    expect(
+      await mayChangeChannel(s.storage, { role: "owner" }, { id: email })
+    ).toBe(true);
+    expect(
+      await mayChangeChannel(
+        s.storage,
+        { role: "admin" },
+        { id: hook.ok ? hook.channel.id : "" }
+      )
+    ).toBe(true);
+  });
+
   test("is never an owner's API key: the channel in force, nor a first email channel", async () => {
     const s = await scratch();
     const ownerKey = {
@@ -155,7 +183,7 @@ describe("who changes the channel auth mail goes through", () => {
 });
 
 describe("the channel auth mail goes through", () => {
-  test("is the chosen email channel, else the oldest email channel, and nothing without one", async () => {
+  test("is the email channel an owner chose, the first one made while none was ever chosen, and nothing without one", async () => {
     const s = await scratch();
     expect(await authEmailChannelOf(s.storage)).toBeUndefined();
     await createChannel(s.storage, s.boot.installKey, {
@@ -172,11 +200,18 @@ describe("the channel auth mail goes through", () => {
     expect((await authEmailChannelOf(s.storage))?.id).toBe(second);
   });
 
-  test("a chosen channel that was deleted, or is not email, gives way to the oldest email channel", async () => {
+  test("a chosen channel that was deleted, or is not email, is none: no other email channel takes its place, and an admin may make no email channel", async () => {
     const s = await scratch();
     const first = await emailChannel(s, "First", 2525);
-    await s.storage.settings.set(authEmailChannel, "gone");
+    await emailChannel(s, "Second", 2526);
     expect((await authEmailChannelOf(s.storage))?.id).toBe(first);
+    expect(await deleteChannel(s.storage, first)).toEqual({ ok: true });
+    expect(await authEmailChannelOf(s.storage)).toBeUndefined();
+    await emailChannel(s, "Third", 2527);
+    expect(await authEmailChannelOf(s.storage)).toBeUndefined();
+    expect(
+      await mayChangeChannel(s.storage, { role: "admin" }, { type: "email" })
+    ).toBe(false);
     const hook = await createChannel(s.storage, s.boot.installKey, {
       appliesToNew: false,
       name: "Ops webhook",
@@ -187,7 +222,48 @@ describe("the channel auth mail goes through", () => {
       authEmailChannel,
       hook.ok ? hook.channel.id : ""
     );
+    expect(await authEmailChannelOf(s.storage)).toBeUndefined();
+  });
+
+  test("an install that never stored a choice keeps its oldest email channel, recorded once", async () => {
+    const s = await scratch();
+    await keepAuthEmailChannel(s.storage);
+    expect(await s.storage.settings.get(authEmailChannel)).toBeUndefined();
+    const first = await emailChannel(s, "First", 2525);
+    await emailChannel(s, "Second", 2526);
+    // As an install from before the choice holds them.
+    await s.storage.settings.remove(authEmailChannel);
+    expect(await authEmailChannelOf(s.storage)).toBeUndefined();
+    await keepAuthEmailChannel(s.storage);
     expect((await authEmailChannelOf(s.storage))?.id).toBe(first);
+    expect(await deleteChannel(s.storage, first)).toEqual({ ok: true });
+    await keepAuthEmailChannel(s.storage);
+    expect(await authEmailChannelOf(s.storage)).toBeUndefined();
+  });
+
+  test("once an owner deletes the channel sign-in mail goes through, a reset link goes through no other email channel, an admin's included", async () => {
+    const s = await scratch();
+    await englishOperator(s.storage);
+    const owners = fakeSmtp();
+    const admins = fakeSmtp();
+    const lines: string[] = [];
+    try {
+      const chosen = await emailChannel(s, "Owner's mail", owners.port);
+      await s.storage.settings.set(authEmailChannel, chosen);
+      expect(
+        await mayChangeChannel(s.storage, { role: "admin" }, { type: "email" })
+      ).toBe(true);
+      await emailChannel(s, "Admin's mail", admins.port);
+      expect(await deleteChannel(s.storage, chosen)).toEqual({ ok: true });
+      await authMailOver(s.storage, s.boot.installKey, io, (line) =>
+        lines.push(line)
+      ).resetLink(testEmail, "http://raaqeb.test/reset-password?token=abc");
+      expect(lines).toEqual(["the reset link was not sent: no email channel"]);
+      expect(admins.messages).toEqual([]);
+    } finally {
+      owners.stop();
+      admins.stop();
+    }
   });
 });
 

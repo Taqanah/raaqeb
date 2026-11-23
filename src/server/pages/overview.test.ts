@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { authEmailChannel } from "@/server/auth/mail.ts";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { createIncident, postUpdate } from "@/server/incidents/incidents.ts";
 import { createWindow } from "@/server/maintenance/maintenance.ts";
@@ -643,13 +644,13 @@ describe("edges of the overview document", () => {
 });
 
 describe("the subscribe form's channels in the overview document", () => {
-  test("are the ones the page shows, email only while an email channel exists", async () => {
+  test("are the ones the page shows, email only while sign-in mail has its chosen channel, which sends subscriber email", async () => {
     const s = await opened();
     const both = await page(s, []);
     const hooks = await page(s, [], { subscriptions: ["webhook"] }, "hooks");
     const none = await page(s, [], { subscriptions: [] }, "none");
     expect((await overview(s, both)).subscribe).toEqual(["webhook"]);
-    await s.storage.channels.create({
+    const mail = await s.storage.channels.create({
       appliesToNew: false,
       config: {
         from: "status@example.test",
@@ -659,6 +660,9 @@ describe("the subscribe form's channels in the overview document", () => {
       name: "mail",
       type: "email",
     });
+    // Stored but not chosen, as one an admin made is once the chosen one is deleted.
+    expect((await overview(s, both)).subscribe).toEqual(["webhook"]);
+    await s.storage.settings.set(authEmailChannel, mail.id);
     expect((await overview(s, both)).subscribe).toEqual(["email", "webhook"]);
     expect((await overview(s, hooks)).subscribe).toEqual(["webhook"]);
     expect((await overview(s, none)).subscribe).toEqual([]);

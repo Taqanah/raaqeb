@@ -11,7 +11,12 @@
  * sends and writes nothing.
  */
 
+import {
+  authEmailChannelOf,
+  keepAuthEmailChannel,
+} from "@/server/auth/mail.ts";
 import type { InstallKey } from "@/server/boot/installkey.ts";
+import { error as logError } from "@/server/log.ts";
 import { readPublicAddress } from "@/server/settings/address.ts";
 import { readClock } from "@/server/settings/clock.ts";
 import { readInstallLanguage } from "@/server/settings/language.ts";
@@ -79,7 +84,7 @@ export async function listChannels(
   }
 }
 
-/** The channel page's read: the channel, its generated values, the names of its kept secrets, its notification preview at `now` and its recent sends. */
+/** The channel page's read: the channel, its generated values, the names of its kept secrets, its notification preview at `now`, its recent sends and whether sign-in mail goes through it. */
 export async function readChannelForm(
   storage: ChannelStorage,
   key: InstallKey,
@@ -92,13 +97,15 @@ export async function readChannelForm(
       return notFound;
     }
     const { fields } = channelDeclarations[channel.type];
-    const [values, recent, locale, time, publicAddress] = await Promise.all([
-      storedValues(storage, key, channel),
-      storage.notifications.recent(id, recentShown),
-      readInstallLanguage(storage),
-      readClock(storage),
-      readPublicAddress(storage),
-    ]);
+    const [values, recent, locale, time, publicAddress, signIn] =
+      await Promise.all([
+        storedValues(storage, key, channel),
+        storage.notifications.recent(id, recentShown),
+        readInstallLanguage(storage),
+        readClock(storage),
+        readPublicAddress(storage),
+        authEmailChannelOf(storage),
+      ]);
     const preview = await previewNotifications(
       channel.type,
       { locale: channel.locale ?? locale, publicAddress, time },
@@ -125,6 +132,7 @@ export async function readChannelForm(
         locked: false,
         preview,
         recent,
+        signIn: signIn?.id === id,
         summary: values
           ? channelDeclarations[channel.type].summary(values)
           : "",
@@ -186,6 +194,12 @@ export async function createChannel(
       fieldsOf(input, config),
       await sealSecrets(key, secrets)
     );
+    if (channel.type === "email") {
+      // The channel is made; a failed record leaves no choice, which fails closed and the next start records.
+      await keepAuthEmailChannel(storage).catch(() =>
+        logError("the email channel sign-in mail goes through was not recorded")
+      );
+    }
     await movedPublicPage(storage, channel.type);
     return { channel, ok: true };
   } catch {

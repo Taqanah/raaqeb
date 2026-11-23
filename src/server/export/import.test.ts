@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { z } from "zod";
+import { authEmailChannel } from "@/server/auth/mail.ts";
 import { decrypt } from "@/server/boot/installkey.ts";
 import {
   openCredentials,
@@ -107,9 +108,10 @@ async function empty(install: Install): Promise<boolean> {
   return true;
 }
 
-/** A version 2 first line rewritten as version 1 wrote it: no maintenance series, and no window of one. */
+/** A version 2 first line rewritten as version 1 wrote it: no maintenance series, no window of one, and no sign-in mail channel. */
 function asVersion1(header: {
   configuration: {
+    settings: { key: string }[];
     maintenanceComponents: { windowId: string }[];
     maintenanceSeries?: unknown;
     maintenanceSeriesComponents?: unknown;
@@ -122,6 +124,9 @@ function asVersion1(header: {
   header.configuration.operatorAccounts = undefined;
   header.configuration.maintenanceSeries = undefined;
   header.configuration.maintenanceSeriesComponents = undefined;
+  header.configuration.settings = header.configuration.settings.filter(
+    (row) => row.key !== "auth_email_channel"
+  );
   // A version 1 window has no series, so the series' occurrence goes with it.
   header.configuration.maintenanceWindows =
     header.configuration.maintenanceWindows
@@ -422,6 +427,57 @@ describe("an import", () => {
     expect(await into.storage.settings.get(calendar)).toBe("hijri");
     expect(await into.storage.settings.get(publicAddress)).toBe(
       "https://target.example.test"
+    );
+  });
+
+  test("carries the channel the source chose for sign-in mail, never its oldest email channel, and no choice when the source made none", async () => {
+    const from = await source();
+    // An owner rotated mail: the older "Ops mail" may be an admin's, the newer one is chosen.
+    const ops = await from.storage.channels.find(from.ids.email);
+    const chosen = await from.storage.channels.create(
+      {
+        ...(ops ?? { config: {}, locale: undefined }),
+        appliesToNew: false,
+        name: "Owner's new mail",
+        type: "email",
+      },
+      await from.storage.channels.credentialsOf(from.ids.email)
+    );
+    await from.storage.settings.remove(authEmailChannel);
+    const unchosen = fileOf(await exportLines(from));
+    await from.storage.settings.set(authEmailChannel, chosen.id);
+    const carried = await target();
+    await importInstall(
+      carried.storage,
+      carried.key,
+      fileOf(await exportLines(from)),
+      now
+    );
+    expect(await carried.storage.settings.get(authEmailChannel)).toBe(
+      chosen.id
+    );
+    const none = await target();
+    await importInstall(none.storage, none.key, unchosen, now);
+    expect(await none.storage.settings.get(authEmailChannel)).toBeUndefined();
+  });
+
+  test("of a version 1 file, from an install whose one operator made every channel, makes its oldest email channel the choice, as a version 2 file carries its own", async () => {
+    const from = await source();
+    const header = JSON.stringify(
+      asVersion1(
+        JSON.parse((await exportLines(from, "configuration"))[0] ?? "{}")
+      )
+    );
+    const fresh = await target();
+    await importInstall(fresh.storage, fresh.key, fileOf([header]), now);
+    expect(await fresh.storage.settings.get(authEmailChannel)).toBe(
+      from.ids.email
+    );
+    const chose = await target();
+    await chose.storage.settings.set(authEmailChannel, "a deleted channel");
+    await importInstall(chose.storage, chose.key, fileOf([header]), now);
+    expect(await chose.storage.settings.get(authEmailChannel)).toBe(
+      from.ids.email
     );
   });
 

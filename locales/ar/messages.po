@@ -671,6 +671,10 @@ msgid "channel_delete_description"
 msgstr "تُزال من كل مراقبة تستخدمها، وتُحذف آخر إشعاراتها. لا يمكن التراجع عن الحذف."
 
 #. js-lingui-explicit-id
+msgid "channel_delete_sign_in"
+msgstr "تمر رسائل تسجيل الدخول عبر هذه القناة: بعد حذفها تتوقف روابط إعادة التعيين والرموز المؤقتة ورسائل المشتركين حتى يختار مالك قناة أخرى في إعدادات تسجيل الدخول."
+
+#. js-lingui-explicit-id
 msgid "channel_section_test"
 msgstr "إرسال تجريبي"
 

@@ -13,6 +13,7 @@
  * configuration is written, before the scheduler can read it, and a failure
  * takes the hold out with the rest.
  */
+import { authEmailChannel } from "@/server/auth/mail.ts";
 import { encrypt, type InstallKey } from "@/server/boot/installkey.ts";
 import { error as logError, reasonOf } from "@/server/log.ts";
 import {
@@ -121,6 +122,7 @@ const travelling: Readonly<Record<TravellingSetting, Setting<unknown>>> = {
   appearance_font_size: appearanceFontSize,
   appearance_radius: appearanceRadius,
   appearance_theme: appearanceTheme,
+  auth_email_channel: authEmailChannel,
   calendar,
   clock,
   install_language: installLanguage,

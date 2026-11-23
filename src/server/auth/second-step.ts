@@ -43,7 +43,7 @@ import {
 
 export type SecondStepStorage = Pick<
   Storage,
-  "channels" | "operatorAccounts" | "settings"
+  "bump" | "channels" | "operatorAccounts" | "settings"
 >;
 
 /** An owner requires a second step of every operator (CONTEXT.md "Second step"); off unless set. */
@@ -108,7 +108,7 @@ export async function readSecondStep(
   };
 }
 
-/** Chooses the email channel auth mail goes through; refused when the id is not an email channel's. */
+/** Chooses the email channel auth mail goes through; refused when the id is not an email channel's. Moves the change counter: the subscribe form offers email only while one is chosen. */
 export async function chooseAuthEmailChannel(
   storage: SecondStepStorage,
   channelId: string
@@ -119,6 +119,7 @@ export async function chooseAuthEmailChannel(
       return { ok: false, reason: "invalid" };
     }
     await storage.settings.set(authEmailChannel, channel.id);
+    await storage.bump();
     return { ok: true };
   } catch {
     return { ok: false, reason: "unavailable" };

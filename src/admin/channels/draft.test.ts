@@ -24,6 +24,7 @@ const stored: ChannelForm = {
   locked: false,
   preview: [],
   recent: [],
+  signIn: false,
   summary: "hooks.example.test",
   withheld: [],
 };

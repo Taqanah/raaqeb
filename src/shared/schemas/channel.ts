@@ -560,6 +560,8 @@ export interface ChannelForm {
   readonly preview: readonly NotificationPreview[];
   /** Newest first. */
   readonly recent: readonly Notification[];
+  /** Sign-in mail goes through the channel: deleting it stops sign-in mail until an owner chooses another. */
+  readonly signIn: boolean;
   readonly summary: string;
   /** The generated values stored and not shown, to a role that does not edit channels. */
   readonly withheld: readonly string[];

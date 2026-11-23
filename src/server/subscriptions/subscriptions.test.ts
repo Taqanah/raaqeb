@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { authEmailChannel } from "@/server/auth/mail.ts";
 import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { decrypt } from "@/server/boot/installkey.ts";
 import type { HostLookup } from "@/server/notify/destination.ts";
@@ -84,8 +85,9 @@ async function page(
   return created.page.id;
 }
 
+/** An email channel, chosen for sign-in mail as the channels module does for a first one. */
 async function emailChannel(s: PagesScratch): Promise<void> {
-  await s.storage.channels.create({
+  const mail = await s.storage.channels.create({
     appliesToNew: false,
     config: {
       from: "status@example.test",
@@ -98,6 +100,7 @@ async function emailChannel(s: PagesScratch): Promise<void> {
     name: "mail",
     type: "email",
   });
+  await s.storage.settings.set(authEmailChannel, mail.id);
 }
 
 async function world() {

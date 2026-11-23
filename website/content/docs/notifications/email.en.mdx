@@ -5,7 +5,7 @@ description: How the email channel sends notifications through your SMTP server,
 
 An email channel sends each notification as one message, with a plain-text part and an HTML part, through an SMTP server you set, to up to 10 recipients. Raaqeb does not deliver mail itself: any mail service that takes SMTP works, including a provider's relay, your own mail server, or a relay on the same host.
 
-An email channel also has two other uses. Sign-in mail (reset links and one-time codes) and subscriber notifications go through the email channel chosen under **Email channel** on the **Sign-in email** card in settings, or the oldest email channel when none is chosen. A status page offers email subscriptions only while an email channel exists. See [Subscriptions](/en/docs/status-pages/subscriptions).
+An email channel also has two other uses. Sign-in mail (reset links and one-time codes) and subscriber notifications go through the email channel an owner chose under **Email channel** on the **Sign-in email** card in settings. The first email channel an owner adds is chosen for them. Deleting the chosen channel stops this mail until an owner chooses another; no other channel takes its place. A status page offers email subscriptions only while a channel is chosen. See [Subscriptions](/en/docs/status-pages/subscriptions).
 
 ## What you need first
 
