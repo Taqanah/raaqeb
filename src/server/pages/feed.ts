@@ -12,7 +12,7 @@ import { readClock } from "@/server/settings/clock.ts";
 import { loadCatalog } from "@/server/settings/language.ts";
 import { affectedComponents } from "@/shared/domain/incidents.ts";
 import { nextOccurrencesOnly } from "@/shared/domain/series.ts";
-import { formatDateTimeWithZone, intlLocale } from "@/shared/i18n/format.ts";
+import { formatDateTimeWithZone, joinNames } from "@/shared/i18n/format.ts";
 import { directionOf, type Locale } from "@/shared/i18n/locale.ts";
 import { createMessages } from "@/shared/i18n/messages.ts";
 import { type Content, contentIn } from "@/shared/schemas/content.ts";
@@ -88,7 +88,6 @@ export async function readFeed(
     const names = new Map(components.map((each) => [each.id, text(each.name)]));
     // A deleted component has left the layout with its row.
     const shown = componentsOf(layout).filter((id) => names.has(id));
-    const list = new Intl.ListFormat(intlLocale(locale));
     /** The page's components among `ids`, in its order, as one line; nothing when none. */
     const affected = (ids: readonly string[]) => {
       const named = shown
@@ -96,7 +95,7 @@ export async function readFeed(
         .map((id) => names.get(id) ?? "");
       return named.length === 0
         ? undefined
-        : line(t("public_affected"), xmlText(list.format(named)));
+        : line(t("public_affected"), xmlText(joinNames(locale, named)));
     };
     const address = (suffix: string) => {
       const path = viewPath(paths, locale, suffix);

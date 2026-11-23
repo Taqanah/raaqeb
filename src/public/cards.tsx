@@ -8,7 +8,7 @@
  * timeline, the window's page.
  */
 import type { ReactNode } from "react";
-import { intlLocale } from "@/shared/i18n/format.ts";
+import { joinNames } from "@/shared/i18n/format.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import { repeatWords } from "@/shared/i18n/recurrence.ts";
@@ -111,7 +111,8 @@ export function IncidentRow({
 }): ReactNode {
   const { locale, t } = useMessages();
   const shown = useContent();
-  const touched = new Intl.ListFormat(intlLocale(locale)).format(
+  const touched = joinNames(
+    locale,
     incident.components.map((id) => shown(names.get(id)).text)
   );
   return (

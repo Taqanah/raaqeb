@@ -13,6 +13,7 @@ import {
   formatDateTimeWithZone,
   formatDuration,
   formatUnit,
+  joinNames,
 } from "@/shared/i18n/format.ts";
 import { createMessages, type MessageId } from "@/shared/i18n/messages.ts";
 import type { NotificationLink } from "@/shared/schemas/channel.ts";
@@ -132,12 +133,7 @@ export async function notificationText(
     const names = notification.data.locations.map(
       (location) => location.name ?? messages._("monitor_location_main")
     );
-    lines.push(
-      line(
-        "channel_line_locations",
-        new Intl.ListFormat(locale, { type: "conjunction" }).format(names)
-      )
-    );
+    lines.push(line("channel_line_locations", joinNames(locale, names)));
   }
   if ("failure" in notification.data && notification.data.failure) {
     const { exitCode, message } = notification.data.failure;

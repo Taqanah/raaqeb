@@ -20,6 +20,7 @@ import {
   formatWhen,
   intlLocale,
   isoTimestamp,
+  joinNames,
   normalizeDigits,
   relativeTime,
   weekdayNames,
@@ -607,5 +608,16 @@ describe("the days of the week", () => {
       "الجمعة",
       "السبت",
     ]);
+  });
+});
+
+describe("a list of names an operator wrote", () => {
+  test('is joined by the locale\'s comma, never an Arabic "and" glued onto a Latin name', () => {
+    expect(joinNames("ar", ["الموقع", "API", "الدفع"])).toBe(
+      "الموقع، API، الدفع"
+    );
+    expect(joinNames("en", ["Site", "API", "Pay"])).toBe("Site, API, Pay");
+    expect(joinNames("ar", ["API"])).toBe("API");
+    expect(joinNames("ar", [])).toBe("");
   });
 });

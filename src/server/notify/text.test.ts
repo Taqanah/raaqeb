@@ -70,10 +70,10 @@ describe("a notification as text", () => {
       type: "monitor.down",
     };
     expect((await notificationText(sent(located, "en", utc))).lines).toContain(
-      "Seen down from: Main and Frankfurt"
+      "Seen down from: Main, Frankfurt"
     );
     expect((await notificationText(sent(located))).lines).toContain(
-      "رُصدت متعطّلة من: الرئيسي وFrankfurt"
+      "رُصدت متعطّلة من: الرئيسي، Frankfurt"
     );
     expect(
       (await notificationText(sent(down, "en", utc))).lines.some((each) =>

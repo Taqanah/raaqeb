@@ -9,11 +9,12 @@
 import {
   type ChangeEvent,
   createContext,
+  Fragment,
   type ReactNode,
   useCallback,
   useContext,
 } from "react";
-import { intlLocale } from "@/shared/i18n/format.ts";
+import { nameSeparator } from "@/shared/i18n/format.ts";
 import {
   defaultLocale,
   directionOf,
@@ -69,7 +70,7 @@ export function ContentText({
   return <bdi className={className}>{useContentIn()(content)}</bdi>;
 }
 
-/** Several pieces of content as one list in the page's language ("A, B and C"), each isolated in its own direction. */
+/** Several pieces of content as one list in the page's language ("A, B, C"), each isolated in its own direction. */
 export function ContentList({
   contents,
 }: {
@@ -77,18 +78,14 @@ export function ContentList({
 }): ReactNode {
   const { locale } = useMessages();
   const text = useContentIn();
-  const parts = new Intl.ListFormat(intlLocale(locale)).formatToParts(
-    contents.map((each) => text(each))
-  );
-  // The parts never reorder, so their place is their identity.
-  return parts.map((part, place) =>
-    part.type === "element" ? (
-      // biome-ignore lint/suspicious/noArrayIndexKey: a list's parts keep their order
-      <bdi key={place}>{part.value}</bdi>
-    ) : (
-      part.value
-    )
-  );
+  // The list never reorders, so a place is an identity.
+  return contents.map((each, place) => (
+    // biome-ignore lint/suspicious/noArrayIndexKey: a list's items keep their order
+    <Fragment key={place}>
+      {place > 0 && nameSeparator[locale]}
+      <bdi>{text(each)}</bdi>
+    </Fragment>
+  ));
 }
 
 const markWords = {
