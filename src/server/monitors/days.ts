@@ -17,18 +17,13 @@ import {
   monitorObservedDays,
   type ResponseDay,
 } from "@/server/status/uptime.ts";
+import type { DayTally } from "@/server/storage/checks.ts";
 import { ComponentShapeError } from "@/server/storage/components.ts";
 import { MaintenanceShapeError } from "@/server/storage/maintenance.ts";
 import { OutageShapeError } from "@/server/storage/outages.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { utcDayStart } from "@/shared/domain/retention.ts";
-import { bucketsOf } from "@/shared/domain/rollup.ts";
-import {
-  coverageOf,
-  displayedUptime,
-  type Span,
-} from "@/shared/domain/uptime.ts";
-import type { Check } from "@/shared/schemas/check.ts";
+import { displayedUptime, type Span } from "@/shared/domain/uptime.ts";
 import type { Monitor } from "@/shared/schemas/monitor.ts";
 import type { OverviewDay } from "@/shared/schemas/overview.ts";
 import type { Rollup } from "@/shared/schemas/rollup.ts";
@@ -87,9 +82,15 @@ export async function readMonitorHistories(
       )
     );
   }
-  const checks = await storage.checks.ranges(
+  const summaries = await storage.checks.summaries(
     new Map(
-      [...coverageFroms].map(([id, at]) => [id, at - (limits.get(id) ?? 0)])
+      monitors.map((monitor) => [
+        monitor.id,
+        {
+          from: coverageFroms.get(monitor.id) ?? from,
+          limitMs: limits.get(monitor.id) ?? 0,
+        },
+      ])
     ),
     now
   );
@@ -98,16 +99,13 @@ export async function readMonitorHistories(
     const limit = limits.get(monitor.id) ?? 0;
     const coverageFrom = coverageFroms.get(monitor.id) ?? from;
     const days = rollups.get(monitor.id) ?? [];
-    const own = checks.get(monitor.id) ?? [];
+    const summary = summaries.get(monitor.id);
     const excluded = covered.get(monitor.id) ?? [];
     read.set(monitor.id, {
       history: {
         covered: excluded,
         observed: monitorObservedDays({
-          coverage: coverageOf(
-            own.map((check) => check.startedAt),
-            limit
-          ),
+          coverage: summary?.coverage,
           coverageFrom,
           days,
           excluded,
@@ -117,18 +115,17 @@ export async function readMonitorHistories(
         }),
         outages: outages.get(monitor.id) ?? [],
       },
-      response: responseOf(days, own, coverageFrom, now),
+      response: responseOf(days, summary?.days, coverageFrom),
     });
   }
   return read;
 }
 
-/** A monitor's mean response time by UTC day start: from its daily rollups before `coverageFrom`, from its checks after. */
+/** A monitor's mean response time by UTC day start: from its daily rollups before `coverageFrom`, from its checks' day tallies after. */
 function responseOf(
   days: readonly Rollup[],
-  checks: readonly Check[],
-  coverageFrom: number,
-  now: number
+  tallies: ReadonlyMap<number, DayTally> | undefined,
+  coverageFrom: number
 ): Map<number, ResponseDay> {
   const response = new Map<number, ResponseDay>();
   for (const each of days) {
@@ -139,18 +136,11 @@ function responseOf(
       });
     }
   }
-  const tail = bucketsOf({
-    bucketMs: dayMs,
-    checks,
-    from: coverageFrom,
-    rollups: [],
-    to: now,
-  });
-  for (const each of tail) {
-    if (each.averageMs !== undefined) {
-      response.set(each.at, {
-        averageMs: each.averageMs,
-        timed: each.checks - each.down,
+  for (const [at, tally] of tallies ?? []) {
+    if (tally.timed > 0) {
+      response.set(at, {
+        averageMs: tally.totalMs / tally.timed,
+        timed: tally.checks - tally.down,
       });
     }
   }

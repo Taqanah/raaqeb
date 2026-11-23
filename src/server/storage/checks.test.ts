@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { coverageOf } from "@/shared/domain/uptime.ts";
 import type { Check, CheckOutcome } from "@/shared/schemas/check.ts";
 import type { MonitorInput } from "@/shared/schemas/monitor.ts";
 import { monitorEventKinds } from "@/shared/schemas/monitor.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
-import { type ChecksRepository, checksRepository } from "./checks.ts";
+import {
+  type CheckSummary,
+  type ChecksRepository,
+  checksRepository,
+  type DayTally,
+  type SummaryRead,
+} from "./checks.ts";
 import {
   type Connection,
   closeConnection,
@@ -829,6 +836,215 @@ describe("sealed days", () => {
     expect(await checks.ranges(new Map(), d + dayMs)).toEqual(new Map());
   });
 
+  /** What `summaries` must answer for one monitor, summed from its checks the plain way: the coverage from `limitMs` before `from`, the day tallies from `from`. */
+  async function summedFrom(
+    checks: ChecksRepository,
+    monitorId: string,
+    read: SummaryRead,
+    to: number
+  ): Promise<CheckSummary | undefined> {
+    const rows = await checks.range(monitorId, read.from - read.limitMs, to);
+    const days = new Map<number, DayTally>();
+    for (const row of rows.filter((each) => each.startedAt >= read.from)) {
+      const at = Math.floor(row.startedAt / dayMs) * dayMs;
+      const before = days.get(at) ?? {
+        checks: 0,
+        down: 0,
+        timed: 0,
+        totalMs: 0,
+      };
+      const timed = row.result !== "down" && row.responseMs !== undefined;
+      days.set(at, {
+        checks: before.checks + 1,
+        down: before.down + (row.result === "down" ? 1 : 0),
+        timed: before.timed + (timed ? 1 : 0),
+        totalMs: before.totalMs + (timed ? (row.responseMs ?? 0) : 0),
+      });
+    }
+    const coverage = coverageOf(
+      rows.map((each) => each.startedAt),
+      read.limitMs
+    );
+    return coverage ? { coverage, days } : undefined;
+  }
+
+  test("a summary is what summing the monitor's checks says, the sealed day before the head's and the long gaps between them included", async () => {
+    const { checks, monitors } = await repositories();
+    const a = await monitors.create(site);
+    const b = await monitors.create({ ...site, name: "Other" });
+    const quiet = await monitors.create({ ...site, name: "Quiet" });
+    // A sealed day, then an open day with a gap of an hour in the middle; `b` has the open day alone, checked as the limit allows.
+    const openRows = [
+      ...every(a.id, d + dayMs + 5 * minuteMs, 4, 20 * minuteMs),
+      ...every(a.id, d + dayMs + 3 * hourMs, 6, 20 * minuteMs),
+    ];
+    await recorded(checks, [
+      ...every(a.id, d, 72, 20 * minuteMs),
+      ...openRows,
+      ...every(b.id, d + dayMs, 30, 40 * minuteMs),
+    ]);
+    await checks.seal(a.id, d, limit, []);
+    const to = d + dayMs + 6 * hourMs;
+    const reads = new Map<string, SummaryRead>([
+      [a.id, { from: d + dayMs, limitMs: limit }],
+      [b.id, { from: d + dayMs, limitMs: 40 * minuteMs }],
+      [quiet.id, { from: d, limitMs: limit }],
+    ]);
+    const read = await checks.summaries(reads, to);
+    expect([...read.keys()].toSorted()).toEqual([a.id, b.id].toSorted());
+    expect(read.get(a.id)).toEqual(
+      await summedFrom(checks, a.id, { from: d + dayMs, limitMs: limit }, to)
+    );
+    expect(read.get(b.id)).toEqual(
+      await summedFrom(
+        checks,
+        b.id,
+        { from: d + dayMs, limitMs: 40 * minuteMs },
+        to
+      )
+    );
+    // The coverage starts at the sealed day's 23:20 check, the limit before the open day, and the hour without checks is one gap.
+    expect(read.get(a.id)?.coverage?.first).toBe(
+      d + 23 * hourMs + 20 * minuteMs
+    );
+    expect(read.get(a.id)?.coverage?.gaps).toHaveLength(1);
+    expect(await checks.summaries(new Map(), to)).toEqual(new Map());
+  });
+
+  test("two monitors checked at the same times keep each its own gap limit", async () => {
+    const { checks, monitors } = await repositories();
+    const a = await monitors.create(site);
+    const b = await monitors.create({ ...site, name: "Other" });
+    const at = [0, 10, 40, 50].map((minute) => d + minute * minuteMs);
+    await recorded(checks, [
+      ...at.map((time) => up(a.id, time)),
+      ...at.map((time) => up(b.id, time)),
+    ]);
+    const read = await checks.summaries(
+      new Map([
+        [a.id, { from: d, limitMs: 20 * minuteMs }],
+        [b.id, { from: d, limitMs: 30 * minuteMs }],
+      ]),
+      d + hourMs
+    );
+    // Strictly longer than the limit: 30 minutes is a gap of 20 and none of 30.
+    expect(read.get(a.id)?.coverage?.gaps).toEqual([
+      { from: d + 10 * minuteMs, to: d + 40 * minuteMs },
+    ]);
+    expect(read.get(b.id)?.coverage?.gaps).toEqual([]);
+  });
+
+  test("the time between the last sealed check and the first head row is a gap when longer than the limit, and none at the limit", async () => {
+    const { checks, monitors } = await repositories();
+    const a = await monitors.create(site);
+    const b = await monitors.create({ ...site, name: "Other" });
+    // The sealed day's last check is at 23:40; `a` is next checked 41 minutes after it, `b` exactly 40.
+    await recorded(checks, [
+      ...every(a.id, d, 72, 20 * minuteMs),
+      ...every(b.id, d, 72, 20 * minuteMs),
+      up(a.id, d + dayMs + 21 * minuteMs),
+      up(b.id, d + dayMs + 20 * minuteMs),
+    ]);
+    await checks.seal(a.id, d, limit, []);
+    await checks.seal(b.id, d, limit, []);
+    const read = { from: d + dayMs, limitMs: limit };
+    const to = d + dayMs + hourMs;
+    const summaries = await checks.summaries(
+      new Map([
+        [a.id, read],
+        [b.id, read],
+      ]),
+      to
+    );
+    expect(summaries.get(a.id)?.coverage?.gaps).toEqual([
+      { from: d + dayMs - 20 * minuteMs, to: d + dayMs + 21 * minuteMs },
+    ]);
+    expect(summaries.get(b.id)?.coverage?.gaps).toEqual([]);
+    expect(summaries.get(a.id)).toEqual(
+      await summedFrom(checks, a.id, read, to)
+    );
+    expect(summaries.get(b.id)).toEqual(
+      await summedFrom(checks, b.id, read, to)
+    );
+  });
+
+  test("a long gap before the read's start is no gap of the read: its first check has no check before it in the read", async () => {
+    const { checks, monitors } = await repositories();
+    const a = await monitors.create(site);
+    await recorded(
+      checks,
+      [-300, -290, -10, 10, 20, 30].map((minute) =>
+        up(a.id, d + dayMs + minute * minuteMs)
+      )
+    );
+    const read = { from: d + dayMs, limitMs: 20 * minuteMs };
+    const summary = (
+      await checks.summaries(new Map([[a.id, read]]), d + 2 * dayMs)
+    ).get(a.id);
+    expect(summary?.coverage).toEqual({
+      first: d + dayMs - 10 * minuteMs,
+      gaps: [],
+      last: d + dayMs + 30 * minuteMs,
+    });
+    // The check 10 minutes before the read's day covers its start and is no part of the day's tally.
+    expect([...(summary?.days.keys() ?? [])]).toEqual([d + dayMs]);
+    expect(summary).toEqual(
+      await summedFrom(checks, a.id, read, d + 2 * dayMs)
+    );
+  });
+
+  test("a closed day left in the head while a later one is sealed, and a late check on a sealed day, are summed as their checks are", async () => {
+    const { checks, monitors } = await repositories();
+    const a = await monitors.create(site);
+    const b = await monitors.create({ ...site, name: "Other" });
+    // `a`: day d stays in the head, the day after is sealed, the open day has two checks. `b`: day d is sealed, then a late check lands on it.
+    await recorded(checks, [
+      ...every(a.id, d, 20, hourMs),
+      ...every(a.id, d + dayMs, 20, hourMs),
+      up(a.id, d + 2 * dayMs + hourMs),
+      ...every(b.id, d, 20, hourMs),
+    ]);
+    await checks.seal(a.id, d + dayMs, limit, []);
+    await checks.seal(b.id, d, limit, []);
+    await recorded(checks, [up(b.id, d + 21 * hourMs, 777)]);
+    const to = d + 3 * dayMs;
+    const reads = {
+      a: { from: d, limitMs: 2 * hourMs },
+      b: { from: d, limitMs: 2 * hourMs },
+    };
+    const read = await checks.summaries(
+      new Map([
+        [a.id, reads.a],
+        [b.id, reads.b],
+      ]),
+      to
+    );
+    expect(read.get(a.id)).toEqual(await summedFrom(checks, a.id, reads.a, to));
+    expect(read.get(b.id)).toEqual(await summedFrom(checks, b.id, reads.b, to));
+    expect(read.get(b.id)?.days.get(d)?.checks).toBe(21);
+  });
+
+  test("more monitors than one read takes are all summarised", async () => {
+    const { checks, monitors } = await repositories();
+    const made: Awaited<ReturnType<typeof monitors.create>>[] = [];
+    for (let index = 0; index < 260; index += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: monitors one after another, as the form creates them
+      made.push(await monitors.create({ ...site, name: `M${index}` }));
+    }
+    await recorded(
+      checks,
+      made.flatMap((monitor, index) => [up(monitor.id, d + index * minuteMs)])
+    );
+    const read = await checks.summaries(
+      new Map(made.map((monitor) => [monitor.id, { from: d, limitMs: limit }])),
+      d + dayMs
+    );
+    expect(read.size).toBe(260);
+    expect(read.get(made[259]?.id ?? "")?.coverage?.first).toBe(
+      d + 259 * minuteMs
+    );
+  });
+
   test("deleting a monitor deletes its sealed days and rollups", async () => {
     const { checks, location, monitors } = await repositories();
     const a = await monitors.create(site);
@@ -1092,6 +1308,25 @@ describe("sealed days", () => {
       gaps: [{ from: d + 100 * minuteMs, to: d + dayMs + 5 }],
       last: d + dayMs + 50 * minuteMs,
     });
+  });
+
+  test("a day sealed while a summary is under way is counted once, not twice and not lost", async () => {
+    const { checks, monitors } = await repositories();
+    if (!open) {
+      return;
+    }
+    const a = await monitors.create(site);
+    await recorded(checks, every(a.id, d, 6, 20 * minuteMs));
+    const read = { from: d, limitMs: limit };
+    const seal = () => checks.seal(a.id, d, limit, []);
+    const during = await midRead(executor(open.connection), seal).summaries(
+      new Map([[a.id, read]]),
+      d + dayMs
+    );
+    expect(during.get(a.id)).toEqual(
+      await summedFrom(checks, a.id, read, d + dayMs)
+    );
+    expect(during.get(a.id)?.days.get(d)?.checks).toBe(6);
   });
 
   /** Every row count of the history tables, by table. */

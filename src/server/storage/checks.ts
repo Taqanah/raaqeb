@@ -21,6 +21,7 @@ import {
   type Check,
   type CheckOutcome,
   captureHeadersSchema,
+  checkResults,
   type FailureDetail,
   failureDetailAssertionSchema,
   failureDetailParamsSchema,
@@ -28,7 +29,11 @@ import {
   resultOf,
 } from "@/shared/schemas/check.ts";
 import type { ChartTier, ResponseBucket } from "@/shared/schemas/detail.ts";
-import { type ReasonCode, reasonName } from "@/shared/schemas/reason.ts";
+import {
+  type ReasonCode,
+  reasonName,
+  reasons,
+} from "@/shared/schemas/reason.ts";
 import {
   type Rollup,
   type RollupSpan,
@@ -61,6 +66,30 @@ export interface UnsealedDay {
   /** The day's start, UTC milliseconds. */
   readonly day: number;
   readonly monitorId: string;
+}
+
+/** What one monitor's read of `summaries` asks. */
+export interface SummaryRead {
+  /** The UTC day the day tallies start at; the coverage reads from `limitMs` before it, so a check just before covers its start. */
+  readonly from: number;
+  /** The gap limit: a gap between two consecutive checks longer than this is no data. */
+  readonly limitMs: number;
+}
+
+/** A UTC day's checks summed: how many, how many down, and the response times of the others. */
+export interface DayTally {
+  readonly checks: number;
+  readonly down: number;
+  /** How many response times `totalMs` sums. */
+  readonly timed: number;
+  readonly totalMs: number;
+}
+
+/** What a monitor's checks say over a read, without a row per check. */
+export interface CheckSummary {
+  readonly coverage: CheckCoverage | undefined;
+  /** The days from the read's `from` on that have a check, by UTC day start. */
+  readonly days: ReadonlyMap<number, DayTally>;
 }
 
 export interface ChecksRepository {
@@ -147,6 +176,17 @@ export interface ChecksRepository {
     bucketMs: number,
     tier: ChartTier
   ) => Promise<ResponseBucket[]>;
+  /**
+   * The coverage and the day tallies of many monitors up to `to`, by monitor
+   * id, summed where the checks are: the head rows are never read one by
+   * one, so a list's bars cost no memory per check. Same answer as reading
+   * each monitor's checks from `ranges` and summing them. A monitor with no
+   * check is left out.
+   */
+  summaries: (
+    reads: ReadonlyMap<string, SummaryRead>,
+    to: number
+  ) => Promise<Map<string, CheckSummary>>;
   /** Every monitor's days before `before` that still have head rows, oldest first. */
   unsealed: (before: number) => Promise<UnsealedDay[]>;
 }
@@ -193,6 +233,27 @@ interface SealedRow {
   chunk: Uint8Array;
   day: number;
   monitor_id: string;
+}
+
+/** One monitor's head rows of one UTC day, summed, as the driver answers it; counts come back as numbers or, on Postgres, as text. */
+interface TallyRow {
+  check_count: number | string;
+  day: number | string;
+  down_count: number | string;
+  first_at: number | string;
+  last_at: number | string;
+  monitor_id: string;
+  timed_count: number | string;
+  total_ms: number | string;
+  /** The first check of the day with a result or reason code this version does not know; none when all are known. */
+  unknown_at: number | string | null;
+}
+
+/** A head row that follows a gap, with the check before it, as the driver answers it. */
+interface GapRow {
+  monitor_id: string;
+  prev_at: number | string | null;
+  started_at: number | string;
 }
 
 /** A rollup as the driver answers it. */
@@ -257,43 +318,53 @@ export function checksRepository(executor: Executor): ChecksRepository {
       sql`SELECT ${sealedColumns} FROM ${sealedDays} WHERE ${sealedDays.monitorId} = ${monitorId} AND ${sealedDays.day} >= ${from} AND ${sealedDays.day} < ${to} ORDER BY ${sealedDays.day}`
     );
 
-  /** The checks of a few monitors, each from its own start to `to`, from their sealed days and head rows, oldest first, each once. */
-  const mergedOf = async (
+  /** One condition per distinct value, holding for the monitors that have it: their ids in an IN, which both planners seek once per monitor, where an OR of one term per monitor costs a multi-index union or a long CASE per row. */
+  const perValue = (
+    monitorId: SQLWrapper,
+    values: readonly (readonly [string, number])[],
+    holds: (value: number) => SQL
+  ) => {
+    const ids = new Map<number, string[]>();
+    for (const [id, value] of values) {
+      ids.set(value, [...(ids.get(value) ?? []), id]);
+    }
+    return sql.join(
+      [...ids].map(
+        ([value, own]) =>
+          sql`(${monitorId} IN (${sql.join(
+            own.map((id) => sql`${id}`),
+            sql`, `
+          )}) AND ${holds(value)})`
+      ),
+      sql` OR `
+    );
+  };
+
+  /** The monitors' own starts as one condition on a table's monitor and time columns. */
+  const startsOf = (
+    monitorId: SQLWrapper,
+    at: SQLWrapper,
+    starts: readonly (readonly [string, number])[]
+  ) => perValue(monitorId, starts, (start) => sql`${at} >= ${start}`);
+
+  /** The checks of a few monitors' sealed days, each from its own start to `to`, by monitor id. */
+  const sealedChecksOf = async (
     from: readonly (readonly [string, number])[],
     to: number
   ): Promise<Map<string, Check[]>> => {
-    const ranges = (
-      monitorId: SQLWrapper,
-      at: SQLWrapper,
-      start: (at: number) => number
-    ) =>
-      sql.join(
-        from.map(
-          ([id, each]) =>
-            sql`(${monitorId} = ${id} AND ${at} >= ${start(each)})`
-        ),
-        sql` OR `
-      );
-    // The head first: a day sealed between the two reads is then read twice and kept once, never missed.
-    const head = await executor.rows<CheckRow>(
-      sql`SELECT ${columns} FROM ${checks} WHERE (${ranges(checks.monitorId, checks.startedAt, (at) => at)}) AND ${checks.startedAt} < ${to}`
-    );
-    const sealed = await executor.rows<SealedRow>(
-      sql`SELECT ${sealedColumns} FROM ${sealedDays} WHERE (${ranges(sealedDays.monitorId, sealedDays.day, dayOf)}) AND ${sealedDays.day} < ${to}`
+    const rows = await executor.rows<SealedRow>(
+      sql`SELECT ${sealedColumns} FROM ${sealedDays} WHERE (${startsOf(
+        sealedDays.monitorId,
+        sealedDays.day,
+        from.map(([id, start]) => [id, dayOf(start)])
+      )}) AND ${sealedDays.day} < ${to}`
     );
     const starts = new Map(from);
-    const read = new Map<string, { head: Check[]; sealed: Check[] }>();
-    const of = (id: string) => {
-      let lists = read.get(id);
-      if (!lists) {
-        lists = { head: [], sealed: [] };
-        read.set(id, lists);
-      }
-      return lists;
-    };
-    for (const row of sealed) {
+    const read = new Map<string, Check[]>();
+    for (const row of rows) {
       const start = starts.get(row.monitor_id) ?? to;
-      const list = of(row.monitor_id).sealed;
+      const list = read.get(row.monitor_id) ?? [];
+      read.set(row.monitor_id, list);
       const day = columnsOf(row);
       // Only the checks in range become objects: a day read for a few minutes before its end holds thousands.
       day.startedAt.forEach((at, index) => {
@@ -307,17 +378,160 @@ export function checksRepository(executor: Executor): ChecksRepository {
         list.push(check);
       });
     }
+    return read;
+  };
+
+  /** The checks of a few monitors, each from its own start to `to`, from their sealed days and head rows, oldest first, each once. */
+  const mergedOf = async (
+    from: readonly (readonly [string, number])[],
+    to: number
+  ): Promise<Map<string, Check[]>> => {
+    // The head first: a day sealed between the two reads is then read twice and kept once, never missed.
+    const head = await executor.rows<CheckRow>(
+      sql`SELECT ${columns} FROM ${checks} WHERE (${startsOf(checks.monitorId, checks.startedAt, from)}) AND ${checks.startedAt} < ${to}`
+    );
+    const sealed = await sealedChecksOf(from, to);
+    const heads = new Map<string, Check[]>();
     for (const row of head) {
-      of(row.monitor_id).head.push(checkOf(row));
+      const list = heads.get(row.monitor_id) ?? [];
+      list.push(checkOf(row));
+      heads.set(row.monitor_id, list);
     }
     const merged = new Map<string, Check[]>();
-    for (const [id, lists] of read) {
-      const each = union(lists.sealed, lists.head);
+    for (const id of new Set([...sealed.keys(), ...heads.keys()])) {
+      const each = union(sealed.get(id) ?? [], heads.get(id) ?? []);
       if (each.length > 0) {
         merged.set(id, each);
       }
     }
     return merged;
+  };
+
+  /** The checks of many monitors, each from its own start to `to`, one batch of monitors at a time. */
+  const rangesOf = async (
+    from: ReadonlyMap<string, number>,
+    to: number
+  ): Promise<Map<string, Check[]>> => {
+    const all = [...from];
+    const read = new Map<string, Check[]>();
+    for (let index = 0; index < all.length; index += rangesPerRead) {
+      // biome-ignore lint/performance/noAwaitInLoops: one batch after another holds one connection, not the pool
+      const batch = await mergedOf(all.slice(index, index + rangesPerRead), to);
+      for (const [id, each] of batch) {
+        read.set(id, each);
+      }
+    }
+    return read;
+  };
+
+  /** The checks that follow a gap, on SQLite, with the check before each: a check with none within its monitor's limit before it, the previous one looked up for those few rows alone. A `LAG` over every row ran twice as slow here, and the same `NOT EXISTS` is a hash anti join on Postgres, quadratic in the day's rows. */
+  const gapEndsSqlite = (
+    where: SQL,
+    batch: readonly (readonly [string, SummaryRead])[]
+  ): SQL => {
+    const near = sql.identifier("near");
+    const earlier = sql.identifier("earlier");
+    const started = sql.identifier("started_at");
+    const monitor = sql.identifier("monitor_id");
+    const afterGap = perValue(
+      checks.monitorId,
+      batch.map(([id, read]) => [id, read.limitMs]),
+      (limit) =>
+        sql`NOT EXISTS (SELECT 1 FROM ${checks} AS ${near} WHERE ${near}.${monitor} = ${checks.monitorId} AND ${near}.${started} < ${checks.startedAt} AND ${near}.${started} >= ${checks.startedAt} - CAST(${limit} AS BIGINT))`
+    );
+    return sql`SELECT ${checks.monitorId} AS monitor_id, ${checks.startedAt} AS started_at, (SELECT MAX(${earlier}.${started}) FROM ${checks} AS ${earlier} WHERE ${earlier}.${monitor} = ${checks.monitorId} AND ${earlier}.${started} < ${checks.startedAt}) AS prev_at FROM ${checks} WHERE ${where} AND (${afterGap}) ORDER BY ${checks.monitorId}, ${checks.startedAt}`;
+  };
+
+  /** The same on Postgres: a `LAG` over the primary key's order, one ordered pass. */
+  const gapEndsPostgres = (
+    where: SQL,
+    batch: readonly (readonly [string, SummaryRead])[]
+  ): SQL => {
+    const longer = perValue(
+      sql`monitor_id`,
+      batch.map(([id, read]) => [id, read.limitMs]),
+      (limit) => sql`started_at - prev_at > CAST(${limit} AS BIGINT)`
+    );
+    return sql`SELECT monitor_id, prev_at, started_at FROM (SELECT ${checks.monitorId} AS monitor_id, ${checks.startedAt} AS started_at, LAG(${checks.startedAt}) OVER (PARTITION BY ${checks.monitorId} ORDER BY ${checks.startedAt}) AS prev_at FROM ${checks} WHERE ${where}) AS spaced WHERE prev_at IS NOT NULL AND (${longer}) ORDER BY monitor_id, started_at`;
+  };
+
+  /** The monitors' head rows of the batch summed: per UTC day the counts and the response times, and the gaps between consecutive checks longer than each monitor's limit. */
+  const headSummariesOf = async (
+    batch: readonly (readonly [string, SummaryRead])[],
+    to: number
+  ) => {
+    const where = sql`(${startsOf(
+      checks.monitorId,
+      checks.startedAt,
+      batch.map(([id, read]) => [id, read.from - read.limitMs])
+    )}) AND ${checks.startedAt} < ${to}`;
+    const day = sql`(${checks.startedAt} / CAST(${dayMs} AS BIGINT)) * CAST(${dayMs} AS BIGINT)`;
+    const failed = resultCode("down");
+    // The head rows are never built one by one here, so a code this version does not know is found in the same scan.
+    const unknown = sql`${checks.result} NOT IN (${sql.join(
+      checkResults.map((result) => sql`${resultCode(result)}`),
+      sql`, `
+    )}) OR ${checks.reason} NOT IN (${sql.join(
+      Object.values(reasons).map((code) => sql`${code}`),
+      sql`, `
+    )})`;
+    const tallies = await executor.rows<TallyRow>(
+      sql`SELECT ${checks.monitorId} AS monitor_id, ${day} AS ${sql.identifier("day")}, COUNT(*) AS check_count, SUM(CASE WHEN ${checks.result} = ${failed} THEN 1 ELSE 0 END) AS down_count, COUNT(CASE WHEN ${checks.result} <> ${failed} THEN ${checks.responseMs} END) AS timed_count, COALESCE(SUM(CASE WHEN ${checks.result} <> ${failed} THEN ${checks.responseMs} END), 0) AS total_ms, MIN(${checks.startedAt}) AS first_at, MAX(${checks.startedAt}) AS last_at, MIN(CASE WHEN ${unknown} THEN ${checks.startedAt} END) AS unknown_at FROM ${checks} WHERE ${where} GROUP BY ${checks.monitorId}, ${sql.identifier("day")}`
+    );
+    const gaps = await executor.rows<GapRow>(
+      executor.backend === "sqlite"
+        ? gapEndsSqlite(where, batch)
+        : gapEndsPostgres(where, batch)
+    );
+    return headSummaryOf(
+      tallies,
+      gaps,
+      new Map(batch.map(([id, read]) => [id, read.from - read.limitMs]))
+    );
+  };
+
+  /** The summaries of a batch of monitors: the head rows summed in the database, the sealed days' few checks near the start summed here. */
+  const summarisedOf = async (
+    batch: readonly (readonly [string, SummaryRead])[],
+    to: number
+  ): Promise<Map<string, CheckSummary>> => {
+    // The head first, as in `mergedOf`.
+    const head = await headSummariesOf(batch, to);
+    const sealed = await sealedChecksOf(
+      batch.map(([id, read]) => [id, read.from - read.limitMs]),
+      to
+    );
+    // A monitor whose sealed days reach past its first head row (a closed day left unsealed while a later one was sealed, or a day sealed between the two reads) is read check by check: the head's sums can neither order nor dedupe them.
+    const apart = new Map<string, SummaryRead>();
+    const summaries = new Map<string, CheckSummary>();
+    for (const [id, read] of batch) {
+      const own = sealed.get(id) ?? [];
+      const headed = head.get(id);
+      if (headed && own.some((check) => check.startedAt >= headed.first)) {
+        apart.set(id, read);
+        continue;
+      }
+      const summary = summaryOf(own, headed, read);
+      if (summary) {
+        summaries.set(id, summary);
+      }
+    }
+    const starts = new Map(
+      [...apart].map(([id, read]) => [id, read.from - read.limitMs])
+    );
+    for (const [id, each] of await rangesOf(starts, to)) {
+      const read = apart.get(id);
+      if (read) {
+        summaries.set(id, {
+          coverage: coverageOf(
+            each.map((check) => check.startedAt),
+            read.limitMs
+          ),
+          days: tallyDays(each, read.from),
+        });
+      }
+    }
+    return summaries;
   };
 
   /** The rollups of many monitors over one span with `from <= at < to`, oldest first, by monitor id. */
@@ -442,7 +656,7 @@ export function checksRepository(executor: Executor): ChecksRepository {
         sql`SELECT ${sealedColumns} FROM ${sealedDays} WHERE ${sealedDays.day} = (SELECT MAX(${sql.identifier("day")}) FROM ${sealedDays} AS ${sql.identifier("newest")} WHERE ${sql.identifier("newest")}.${sql.identifier("monitor_id")} = ${sealedDays.monitorId}) AND NOT EXISTS (SELECT 1 FROM ${checks} WHERE ${checks.monitorId} = ${sealedDays.monitorId} AND ${checks.startedAt} >= ${sealedDays.day} + CAST(${dayMs} AS BIGINT))`
       );
       const newest = new Map(head.map((check) => [check.monitorId, check]));
-      for (const check of sealed.flatMap((row) => checksOfDay(row).slice(-1))) {
+      for (const check of sealed.flatMap((row) => lastCheckOfDay(row))) {
         const seen = newest.get(check.monitorId);
         if (!seen || seen.startedAt < check.startedAt) {
           newest.set(check.monitorId, check);
@@ -566,21 +780,7 @@ export function checksRepository(executor: Executor): ChecksRepository {
           );
         }
       }),
-    ranges: async (from, to) => {
-      const all = [...from];
-      const read = new Map<string, Check[]>();
-      for (let index = 0; index < all.length; index += rangesPerRead) {
-        // biome-ignore lint/performance/noAwaitInLoops: one batch after another holds one connection, not the pool
-        const batch = await mergedOf(
-          all.slice(index, index + rangesPerRead),
-          to
-        );
-        for (const [id, each] of batch) {
-          read.set(id, each);
-        }
-      }
-      return read;
-    },
+    ranges: rangesOf,
     rollups: async (monitorId, span, from, to) =>
       (await rollupsOf([monitorId], span, from, to)).get(monitorId) ?? [],
     rollupsOf: (monitorIds, span, from, to) =>
@@ -656,6 +856,21 @@ export function checksRepository(executor: Executor): ChecksRepository {
         rollups: rollups.map(rollupOfRow),
         to,
       });
+    },
+    summaries: async (reads, to) => {
+      const all = [...reads];
+      const read = new Map<string, CheckSummary>();
+      for (let index = 0; index < all.length; index += rangesPerRead) {
+        // biome-ignore lint/performance/noAwaitInLoops: one batch after another holds one connection, not the pool
+        const batch = await summarisedOf(
+          all.slice(index, index + rangesPerRead),
+          to
+        );
+        for (const [id, each] of batch) {
+          read.set(id, each);
+        }
+      }
+      return read;
     },
     unsealed: async (before) => {
       const day = sql`(${checks.startedAt} / CAST(${dayMs} AS BIGINT)) * CAST(${dayMs} AS BIGINT)`;
@@ -750,6 +965,20 @@ function checksOfDay(row: SealedRow): Check[] {
   });
 }
 
+/** The last check of a sealed day, as a list of one: only it becomes an object, not the day's thousand. */
+function lastCheckOfDay(row: SealedRow): Check[] {
+  const columns = columnsOf(row);
+  const index = columns.startedAt.length - 1;
+  if (index < 0) {
+    return [];
+  }
+  const check = checkAt(columns, index, row.monitor_id);
+  if (!check) {
+    throw new CheckShapeError(row.monitor_id, columns.startedAt[index] ?? 0);
+  }
+  return [check];
+}
+
 /** Two lists of one monitor's checks as one, oldest first; a check in both is kept once, the later list's copy. */
 function union(first: readonly Check[], second: readonly Check[]): Check[] {
   const byTime = new Map<number, Check>();
@@ -774,6 +1003,120 @@ function checkOf(row: CheckRow): Check {
     startedAt: row.started_at,
     statusCode: row.status_code ?? undefined,
   };
+}
+
+/** What a monitor's head rows say, summed in the database. */
+interface HeadSummary {
+  readonly days: Map<number, DayTally>;
+  readonly first: number;
+  readonly gaps: Span[];
+  readonly last: number;
+}
+
+/** The head rows' sums of each monitor, by monitor id; `starts` is where each monitor's read starts. */
+function headSummaryOf(
+  tallies: readonly TallyRow[],
+  gaps: readonly GapRow[],
+  starts: ReadonlyMap<string, number>
+): Map<string, HeadSummary> {
+  const read = new Map<string, HeadSummary>();
+  for (const row of tallies) {
+    if (row.unknown_at !== null) {
+      throw new CheckShapeError(row.monitor_id, Number(row.unknown_at));
+    }
+    const first = Number(row.first_at);
+    const last = Number(row.last_at);
+    const seen = read.get(row.monitor_id);
+    const own: HeadSummary = {
+      days: seen?.days ?? new Map<number, DayTally>(),
+      first: Math.min(first, seen?.first ?? first),
+      gaps: [],
+      last: Math.max(last, seen?.last ?? last),
+    };
+    read.set(row.monitor_id, own);
+    addTally(own.days, Number(row.day), {
+      checks: Number(row.check_count),
+      down: Number(row.down_count),
+      timed: Number(row.timed_count),
+      totalMs: Number(row.total_ms),
+    });
+  }
+  for (const row of gaps) {
+    // The read's first check has no check before it within the read, or none at all: no gap.
+    const from = row.prev_at === null ? undefined : Number(row.prev_at);
+    if (from !== undefined && from >= (starts.get(row.monitor_id) ?? from)) {
+      read.get(row.monitor_id)?.gaps.push({ from, to: Number(row.started_at) });
+    }
+  }
+  return read;
+}
+
+/** A monitor's summary from its sealed checks, all before its head rows, and its head's sums; nothing without a check. The gap from the last sealed check to the first head row counts like any other. */
+function summaryOf(
+  sealed: readonly Check[],
+  head: HeadSummary | undefined,
+  read: SummaryRead
+): CheckSummary | undefined {
+  const times = Float64Array.from(sealed, (check) => check.startedAt).sort();
+  const before = coverageOf(times, read.limitMs);
+  const days = tallyDays(sealed, read.from);
+  if (!head) {
+    return before && { coverage: before, days };
+  }
+  for (const [at, tally] of head.days) {
+    // The head also holds the checks within the limit before `from`, which only the coverage reads.
+    if (at >= read.from) {
+      addTally(days, at, tally);
+    }
+  }
+  const bridge =
+    before && head.first - before.last > read.limitMs
+      ? [{ from: before.last, to: head.first }]
+      : [];
+  return {
+    coverage: {
+      first: before?.first ?? head.first,
+      gaps: [...(before?.gaps ?? []), ...bridge, ...head.gaps],
+      last: head.last,
+    },
+    days,
+  };
+}
+
+/** A day's tally with another's added. */
+function addTally(
+  days: Map<number, DayTally>,
+  day: number,
+  tally: DayTally
+): void {
+  const before = days.get(day);
+  days.set(day, {
+    checks: (before?.checks ?? 0) + tally.checks,
+    down: (before?.down ?? 0) + tally.down,
+    timed: (before?.timed ?? 0) + tally.timed,
+    totalMs: (before?.totalMs ?? 0) + tally.totalMs,
+  });
+}
+
+/** The checks from `from` on summed by UTC day. */
+function tallyDays(
+  checks: readonly Check[],
+  from: number
+): Map<number, DayTally> {
+  const days = new Map<number, DayTally>();
+  for (const check of checks) {
+    if (check.startedAt < from) {
+      continue;
+    }
+    const timed = check.result !== "down" && check.responseMs !== undefined;
+    addTally(days, dayOf(check.startedAt), {
+      checks: 1,
+      down: check.result === "down" ? 1 : 0,
+      timed: timed ? 1 : 0,
+      totalMs: timed ? (check.responseMs ?? 0) : 0,
+    });
+  }
+  return days;
 }
 
 /** Parsed JSON, or nothing for text that is not JSON; the schema decides after. */
