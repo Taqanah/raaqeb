@@ -107,6 +107,30 @@ describe("a request's path in a line", () => {
     );
   });
 
+  test("a token is masked however the path's words or slashes are escaped", () => {
+    expect(loggedPath("http://h/api/%68eartbeat/hb_secret")).toBe(
+      "/api/heartbeat/<token>"
+    );
+    expect(loggedPath("http://h/api/heartbeat%2Fhb_secret/fail")).toBe(
+      "/api/heartbeat/<token>/fail"
+    );
+    expect(loggedPath("http://h/%73ubscriptions/sub_secret/confirm")).toBe(
+      "/subscriptions/<token>/confirm"
+    );
+    expect(loggedPath("http://h/api/auth/%72eset-password/reset_secret")).toBe(
+      "/api/auth/reset-password/<token>"
+    );
+    expect(
+      loggedPath("http://h/api%2fAuth%2F%52eset-Password/reset_secret")
+    ).toBe("/api/Auth/Reset-Password/<token>");
+  });
+
+  test("a path with an escape and no token is kept as it came", () => {
+    expect(loggedPath("http://h/status/%D8%AD/history")).toBe(
+      "/status/%D8%AD/history"
+    );
+  });
+
   test("any other path is kept whole, without its query", () => {
     expect(loggedPath("http://h/_serverFn/abc?token=secret")).toBe(
       "/_serverFn/abc"
