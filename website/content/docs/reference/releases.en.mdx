@@ -7,6 +7,37 @@ Releases are published at [github.com/Taqanah/raaqeb/releases](https://github.co
 
 This page lists each release, newest first, with its release notes.
 
+## 0.2.2
+
+2026-11-23. [Release page](https://github.com/Taqanah/raaqeb/releases/tag/v0.2.2)
+
+Fixes for 0.2.1, chiefly to memory: with 200 monitors late in the UTC day, opening the monitor list or a status page with many components no longer runs the install out of memory. Raaqeb still belongs behind a reverse proxy: reached directly from the internet, an install can still be run out of memory by clients that open many connections and never read the answer.
+
+### Before you upgrade
+
+- A request from someone who is not signed in may carry a body of at most 64 KiB; a larger one is answered `413` before Raaqeb reads it. The forms visitors send are a few kilobytes, and a signed-in operator's requests, heartbeats and imports keep their limits. Behind a reverse proxy, some of these answers can reach the client as `502`.
+- When many requests that carry a body arrive at once from people who are not signed in, such as sign-ins, subscriptions and any other form they send, those past 64 open at once, or past 16 from one client, are answered `503` with `Retry-After: 1`. Heartbeats and a signed-in operator are never held back. A few IP addresses that hold such requests open can keep people who are not signed in from signing in or subscribing for as long as they keep at it; the install stays up meanwhile.
+- Behind a reverse proxy, set **Trusted proxies** in the general settings, or `RAAQEB_TRUSTED_PROXIES`: without them every visitor reaches Raaqeb as the proxy, and all of them share one client's 16.
+- HTTP checks send `User-Agent: raaqeb/0.2.2` where they sent `raaqeb/0.2.1`. A rule on a monitored site or a firewall written for the whole value no longer matches: write it for the name before the slash, `raaqeb/`, so the next release matches too.
+- A status page address written with percent-escapes (`%61` for `a`), or ending in a second slash, answers `404` where it showed the page. Raaqeb's own links never take that form.
+
+### Fixes
+
+- With 200 monitors late in the UTC day, the first load of the monitor list, or of a status page with 200 components, ran an install out of memory at 240 MB. Each now loads in about a second within it, and on a smaller install they load a little faster and use less memory.
+- A few large requests, or many slow ones, from people who are not signed in no longer run an install out of memory.
+- A flood of a status page's addresses, real ones or one address spelled many ways, no longer makes its overview answer `503` or wait a minute: the overview stays in memory and is refreshed ahead of the page's other addresses.
+- A heartbeat posted with a body that has no length, such as `curl -X POST -T -` or a fetch of a stream, is recorded, where it got `413` and its monitor read down.
+- Restoring a backup larger than the install's memory no longer runs it out of memory.
+- Exporting an install whose status pages hold many images no longer runs it out of memory, and the file is the same as before. A limit stays: when the images of all status pages come to more than about 6 MB, the export is written but no version of Raaqeb can import it yet, so keep a copy of the data directory too.
+- The request log hides a heartbeat's or a password reset's token however its address is escaped; some escaped forms showed it in full.
+- A sign-in, password reset or onboarding form sent before the page has finished loading keeps what was typed: its button waits until the page is ready, where the form came back empty.
+- In Arabic, the refusal of an import over the limit shows its size with the number before the unit, where the unit came first, and a list of names separates every name with the Arabic comma, a Latin name included, where an Arabic "and" was glued onto a Latin name.
+
+### Changes
+
+- English lists of names, such as the components an incident affects, read "A, B" where they read "A and B": on the status page, in the feed and in the admin.
+- A server function call that fails writes one log line, `raaqeb: a server function failed: <reason>`, where it wrote a stack trace with the install's file paths.
+
 ## 0.2.1
 
 2026-11-22. [Release page](https://github.com/Taqanah/raaqeb/releases/tag/v0.2.1)

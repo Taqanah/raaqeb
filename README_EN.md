@@ -27,7 +27,7 @@ irm https://raaqeb.dev/install.ps1 | iex
 Or with Docker:
 
 ```sh
-docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.1
+docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.2
 ```
 
 ## What it watches
