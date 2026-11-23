@@ -11,6 +11,7 @@ import {
 import { createPage, savePage } from "@/server/pages/pages.ts";
 import type { PublicTarget, ViewTarget } from "@/server/pages/public.ts";
 import { publicAddress } from "@/server/settings/address.ts";
+import { memoCap } from "./memo.ts";
 import { createPublicMemo } from "./public.ts";
 
 let scratch: PagesScratch | undefined;
@@ -150,6 +151,56 @@ describe("the memo in front of the public page", () => {
     await s.storage.bump();
     const again = await memo.answer(request("/"), s.storage, route.render);
     expect(await again?.text()).toBe("page 2");
+  });
+
+  test("the overview at each of its addresses, and its document, stays in memory however many other addresses a stranger cycles", async () => {
+    const { pageId, s } = await withDefaultPage();
+    const saved = await savePage(s.storage, pageId, {
+      customDomain: "status.shop.test",
+      customization: (await import("@/shared/schemas/page.ts"))
+        .defaultCustomization,
+      isDefault: true,
+      layout: [],
+      locale: "ar",
+      published: true,
+      slug: "main",
+      title: { ar: "Main" },
+    });
+    expect(saved.ok).toBe(true);
+    const memo = createPublicMemo({ now: () => now });
+    const route = renders();
+    const onDomain = (path: string) =>
+      new Request(`http://status.shop.test${path}`, {
+        headers: { [requestOriginHeader]: "https://status.shop.test" },
+      });
+    const overviews = [
+      () => request("/"),
+      () => request("/en"),
+      () => request("/status/main"),
+      () => request("/en/status/main"),
+      () => request(`/api/pages/${pageId}/overview`),
+      () => onDomain("/"),
+      () => onDomain("/en"),
+    ];
+    for (const overview of overviews) {
+      // biome-ignore lint/performance/noAwaitInLoops: each address stored before the next
+      await memo.answer(overview(), s.storage, route.render);
+    }
+    expect(route.targets).toHaveLength(overviews.length);
+    for (let month = 1; month <= 60; month += 1) {
+      const path = `/history/${2020 + Math.floor(month / 12)}-${String((month % 12) + 1).padStart(2, "0")}`;
+      // biome-ignore lint/performance/noAwaitInLoops: a stranger's addresses, one after another
+      await memo.answer(request(path), s.storage, route.render);
+    }
+    const rendered = route.targets.length;
+    for (const overview of overviews) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time
+      const answer = await memo.answer(overview(), s.storage, route.render);
+      expect(answer?.status).toBe(200);
+    }
+    expect(route.targets).toHaveLength(rendered);
+    // Kept out of the cap, not on top of it.
+    expect(memo.size()).toBe(memoCap(1));
   });
 
   test("the next UTC day renders the page again with the counter unchanged", async () => {

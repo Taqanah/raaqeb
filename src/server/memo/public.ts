@@ -195,6 +195,9 @@ async function lacks(
   }
 }
 
+/** A page's overview entries: each locale at its plain address, at `/status/<slug>` and on its custom domain, and its document. */
+const overviewsPerPage = locales.length * 3 + 1;
+
 /** The public memo over the clock the UTC day is read from. `operator` tells whether a request carries the operator's session, which alone sees an unpublished page's views and documents, rendered outside the memo; with none, no one does. */
 export function createPublicMemo(options: {
   readonly now: () => number;
@@ -203,7 +206,13 @@ export function createPublicMemo(options: {
   let index: PublicIndex = { pages: [], publicAddress: undefined };
   /** The change counter the index was read at; a move means a page or the public address may have changed. */
   let indexedAt: number | undefined;
-  const memo = createMemo(() => memoCap(index.pages.length));
+  // The overview is what a monitor polls: kept apart, so no other address a stranger cycles evicts it, out of the cap rather than on top of it.
+  const overviews = createMemo(
+    () => Math.max(1, index.pages.length) * overviewsPerPage
+  );
+  const memo = createMemo(() => memoCap(index.pages.length) - overviews.size());
+  const memoOf = (target: PublicTarget) =>
+    target.kind !== "resource" && target.view === "overview" ? overviews : memo;
   const operator = options.operator ?? (() => Promise.resolve(false));
   const targetOf = (request: Request) =>
     publicTarget(index, resolvedHost(request), new URL(request.url).pathname);
@@ -379,7 +388,7 @@ export function createPublicMemo(options: {
         return await shown(false);
       }
       const validity = { counter, day: utcDayStart(options.now()) };
-      return await memo.respond(request, target.key, validity, shown);
+      return await memoOf(target).respond(request, target.key, validity, shown);
     },
     notFound: async (request, storage, renderMissing, counted, gone) => {
       const counter = storage ? await (counted ?? read(storage)) : noDatabase;
@@ -436,7 +445,7 @@ export function createPublicMemo(options: {
       missingView(index, resolvedHost(request), new URL(request.url).pathname),
     publicAddress: () => index.publicAddress,
     read,
-    size: memo.size,
+    size: () => memo.size() + overviews.size(),
     unpublished: (request) => targetOf(request)?.published === false,
   };
 }
