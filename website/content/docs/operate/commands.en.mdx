@@ -7,7 +7,7 @@ The binary takes four commands:
 
 - `raaqeb` or `raaqeb serve` runs the server.
 - `raaqeb health` asks the server's `/health` and exits 0 when it answers 200, 1 otherwise.
-- `raaqeb reset-password <email>` prints a reset link for the operator account with that email; on an install with one account the email may be left out. `raaqeb reset-password <email> --interactive` asks for the new password with hidden input instead. Either way it switches that account's second step off and removes its authenticator app and backup codes; turn it on again on the sign-in settings page. With several accounts and no email, it lists them and exits 2.
+- `raaqeb reset-password` prints a reset link for the operator account; `--interactive` asks for the new password with hidden input instead. Either way it switches that account's second step off and removes its authenticator app and backup codes; turn it on again on the sign-in settings page. From 0.3.0 an install can have several accounts: `raaqeb reset-password <email>` names the account, the email may be left out when there is one, and with several accounts and no email the command lists them and exits 2. Before 0.3.0 the command takes no email, and a version that gets one answers `unexpected argument after reset-password`.
 - `raaqeb set-address <url>` stores the public address, the way back in when the stored one refuses every sign-in. It exits 0 when stored, 1 when refused or there is no database yet, 2 when the text is not an origin.
 
 `raaqeb --version` prints the version and `raaqeb --help` prints the commands with one line each. Both exit 0 and read nothing: no data directory is opened or created.
