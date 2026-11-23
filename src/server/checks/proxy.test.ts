@@ -10,7 +10,7 @@ import type { Credentials } from "@/shared/schemas/credentials.ts";
 import type { HttpConfig } from "@/shared/schemas/monitor.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import { requestDocker } from "./docker-io.ts";
-import { proxyFor, proxyOf } from "./http.ts";
+import { environmentProxySecrets, proxyFor, proxyOf } from "./http.ts";
 import { liveIo } from "./io.ts";
 import {
   deadProxyUrl,
@@ -143,6 +143,60 @@ describe("the install's proxy environment on an HTTP check", () => {
     expect((await check(http({ url }))).result).toBe("up");
     expect(seen.requests).toEqual([]);
   });
+  test.each(["HTTP_PROXY", "ALL_PROXY"] as const)(
+    "a sign-in written into %s that the proxy repeats is in neither the capture nor the detail, decoded or as written",
+    async (variable) => {
+      // The URL carries the password percent-encoded; the platform sends it decoded.
+      const password = "env@pass-77";
+      const pair = btoa(`ops:${password}`);
+      const echoing = proxy(() => ({
+        body: `you sent Basic ${pair}, that is ops:${password} from ops:env%40pass-77`,
+        headers: { "x-echo": `Basic ${pair}` },
+        status: 200,
+      }));
+      restore = setProxyEnvironment({
+        [variable]: echoing.url.replace("//", "//ops:env%40pass-77@"),
+      });
+      const outcome = await runCheck(
+        http({
+          assertions: [{ kind: "body_contains", text: "never" }],
+          captureMode: "always",
+        }),
+        liveIo()
+      );
+      expect(echoing.requests[0]?.headers["proxy-authorization"]).toBe(
+        `Basic ${pair}`
+      );
+      const written = JSON.stringify({
+        ...outcome,
+        body: new TextDecoder().decode(outcome?.capture?.body),
+      });
+      expect(written).toContain("you sent Basic");
+      expect(written).toContain("x-echo");
+      expect(written).not.toContain(pair);
+      expect(written).not.toContain(password);
+      expect(written).not.toContain("env%40pass-77");
+    }
+  );
+});
+
+describe("the sign-in of the environment's proxy, as masked", () => {
+  test.each([
+    // A user alone still sends the pair, with an empty password.
+    { expected: ["b3BzOg=="], value: "http://ops@127.0.0.1:3128" },
+    { expected: [], value: "http://127.0.0.1:3128" },
+    // Not a URL, as a proxy written without its scheme is: nothing, and nothing thrown.
+    { expected: [], value: "127.0.0.1:3128" },
+    // A malformed escape: Bun sends no sign-in, but the password as written is still a secret.
+    { expected: ["pa%zz"], value: "http://ops:pa%zz@127.0.0.1:3128" },
+  ] satisfies { expected: string[]; value: string }[])(
+    "$value gives $expected",
+    ({ expected, value }) => {
+      expect(environmentProxySecrets({ HTTP_PROXY: value })).toStrictEqual(
+        expected
+      );
+    }
+  );
 });
 
 describe("an HTTP monitor's own proxy", () => {

@@ -10,7 +10,7 @@
  */
 
 import { reasonForError } from "@/server/checks/errors.ts";
-import { proxyFor } from "@/server/checks/http.ts";
+import { environmentProxySecrets, proxyFor } from "@/server/checks/http.ts";
 import type { TimeOptions } from "@/shared/i18n/format.ts";
 import type { Locale } from "@/shared/i18n/locale.ts";
 import type {
@@ -233,7 +233,9 @@ export async function attempt(
     await send(transport);
     return { ok: true };
   } catch (error) {
-    return { failure: failureOf(error, target, secrets), ok: false };
+    // The proxy's sign-in from the environment rides on every proxied post, so a proxy's answer may repeat it.
+    const all = [...secrets, ...environmentProxySecrets(process.env)];
+    return { failure: failureOf(error, target, all), ok: false };
   }
 }
 

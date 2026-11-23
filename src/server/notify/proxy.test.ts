@@ -180,6 +180,32 @@ describe("a channel's send the install's proxy fails", () => {
     expect(!outcome.ok && outcome.failure.error).toBe("ok");
   });
 
+  test("a sign-in written into HTTP_PROXY that the proxy repeats in its refusal is not in the delivery failure, decoded or as written", async () => {
+    const password = "env@pass-77";
+    const pair = btoa(`ops:${password}`);
+    seen = startProxy(() => ({
+      body: `you sent Basic ${pair}, that is ops:${password} from ops:env%40pass-77`,
+      status: 407,
+    }));
+    restore = setProxyEnvironment({
+      HTTP_PROXY: seen.url.replace("//", "//ops:env%40pass-77@"),
+    });
+    const outcome = await deliver(
+      notificationChannels.webhook,
+      { secret, url: "http://hook.example.test:9000/hook" },
+      sampleSend(sampleDown, "en"),
+      live
+    );
+    expect(seen.requests[0]?.headers["proxy-authorization"]).toBe(
+      `Basic ${pair}`
+    );
+    const error = outcome.ok ? "" : (outcome.failure.error ?? "");
+    expect(error).toContain("you sent Basic");
+    expect(error).not.toContain(pair);
+    expect(error).not.toContain(password);
+    expect(error).not.toContain("env%40pass-77");
+  });
+
   test("a 407 from a destination reached with no proxy between is the destination's own status", async () => {
     const server = Bun.serve({
       fetch: () => new Response("", { status: 407 }),

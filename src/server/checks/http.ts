@@ -298,6 +298,43 @@ export function proxyFor(
     : undefined;
 }
 
+const proxyVariables = [
+  "HTTP_PROXY",
+  "http_proxy",
+  "HTTPS_PROXY",
+  "https_proxy",
+  "ALL_PROXY",
+  "all_proxy",
+];
+
+/** The sign-in each proxy of the environment sends, as Bun 1.4.4 sends it: the Basic pair of the percent-decoded user and password, the decoded password, and the password as written. Empty values are left out. */
+export function environmentProxySecrets(
+  env: Readonly<Record<string, string | undefined>>
+): string[] {
+  return proxyVariables
+    .flatMap((name) => {
+      const value = env[name];
+      if (!(value && URL.canParse(value))) {
+        return [];
+      }
+      const { password, username } = new URL(value);
+      try {
+        const decoded = decodeURIComponent(password);
+        return username || password
+          ? [
+              basicPair(decodeURIComponent(username), decoded),
+              decoded,
+              password,
+            ]
+          : [];
+      } catch {
+        // A malformed escape: Bun sends no sign-in, but a text may still repeat the password as written.
+        return [password];
+      }
+    })
+    .filter((secret) => secret !== "");
+}
+
 /** Whether the monitor's requests go through an https proxy: its own, or the install's from the environment when the target is one the proxy applies to. */
 export function viaHttpsProxy(
   config: HttpConfig,
@@ -543,11 +580,12 @@ const standardHeaders = [
   "user-agent",
 ];
 
-/** Every credential value as the request carried it: the proxy's base64 pair and password; each custom header's value as the platform sends it, trimmed, but a standard header's; the auth field's token or base64 pair after its scheme; the basic password inside the pair. Headers the platform refuses send nothing. */
+/** Every credential value as the request carried it: the proxy's base64 pair and password, the own proxy's and the environment's; each custom header's value as the platform sends it, trimmed, but a standard header's; the auth field's token or base64 pair after its scheme; the basic password inside the pair. Headers the platform refuses send nothing. */
 function sentValues(credentials: Credentials | undefined): string[] {
   const proxy = credentials?.proxyAuth;
   return [
     ...(proxy ? [basicPair(proxy.user, proxy.password), proxy.password] : []),
+    ...environmentProxySecrets(process.env),
     ...requestValues(credentials),
   ];
 }
