@@ -15,7 +15,7 @@ import {
   recordedMigrations,
 } from "./inspect.ts";
 import { localMigrations, migrationsFolder } from "./migrationfiles.ts";
-import { snapshotSqlite } from "./sqlite.ts";
+import { removePartialSnapshots, snapshotSqlite } from "./sqlite.ts";
 
 export type MigrateResult =
   | { ok: true; applied: string[]; snapshot: string | undefined }
@@ -51,6 +51,7 @@ export async function migrateDatabase(
   let snapshot: string | undefined;
   if (migration !== undefined && connection.backend === "sqlite") {
     try {
+      await removePartialSnapshots(connection.file);
       snapshot = await snapshotSqlite(
         connection,
         migration,

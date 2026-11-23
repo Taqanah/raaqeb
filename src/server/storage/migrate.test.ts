@@ -3,9 +3,9 @@ import { type SQL, sql } from "drizzle-orm";
 import { type Connection, closeConnection, executor } from "./connection.ts";
 import { connectTo, scratchDatabase } from "./fixture.ts";
 import { listTables, raaqebTables } from "./inspect.ts";
-import { appliedMigrations, migrateDatabase } from "./migrate.ts";
+import { appliedMigrations, migrateDatabase, runMigrator } from "./migrate.ts";
 import { localMigrations, migrationsFolder } from "./migrationfiles.ts";
-import { snapshotDir } from "./sqlite.ts";
+import { openSqlite, snapshotDir } from "./sqlite.ts";
 
 const drizzleKitName = /^\d{14}_[a-z0-9_]+$/;
 
@@ -216,6 +216,145 @@ describe("the published switch arriving on an install that has pages", () => {
       ]);
     } finally {
       await Bun.$`rm -rf ${root}`.quiet();
+    }
+  });
+});
+
+describe("starts on SQLite that fail after the snapshot", () => {
+  const minute = 60_000;
+  const at = Date.UTC(2026, 10, 22, 9, 30, 15);
+
+  /** A database at the next-to-last migration, with a folder of every migration whose last one fails, and a start that opens, migrates and closes it as a boot does. */
+  async function upgradeThatFails() {
+    const dir = (await Bun.$`mktemp -d`.text()).trim();
+    const file = `${dir}/raaqeb.sqlite`;
+    const local = await localMigrations("sqlite");
+    const last = local.at(-1) ?? "";
+    await Promise.all(
+      local.map(async (name) => {
+        const text = await Bun.file(
+          `${migrationsFolder("sqlite")}/${name}/migration.sql`
+        ).text();
+        if (name !== last) {
+          await Bun.write(`${dir}/earlier/sqlite/${name}/migration.sql`, text);
+        }
+        await Bun.write(
+          `${dir}/broken/sqlite/${name}/migration.sql`,
+          name === last
+            ? `${text}\n--> statement-breakpoint\nSELECT * FROM no_such_table;`
+            : text
+        );
+      })
+    );
+    const earlier = openSqlite(file);
+    await runMigrator(earlier, `${dir}/earlier`);
+    await closeConnection(earlier);
+    const failure = `migration ${last} failed and was rolled back; nothing of it was applied, and a snapshot was taken first`;
+    return {
+      cleanup: () => Bun.$`rm -rf ${dir}`.quiet(),
+      failure,
+      file,
+      last,
+      /** The snapshot files, by name. */
+      kept: async () =>
+        (
+          await Array.fromAsync(
+            new Bun.Glob("*").scan({ cwd: snapshotDir(file) })
+          )
+        ).toSorted(),
+      start: async (now: number) => {
+        const connection = openSqlite(file);
+        try {
+          const result = await migrateDatabase(connection, {
+            migrations: `${dir}/broken`,
+            now: () => now,
+          });
+          return result.ok ? "migrated" : result.message;
+        } finally {
+          await closeConnection(connection);
+        }
+      },
+      /** A write between two starts, as the older release running in between would make. */
+      write: async () => {
+        const connection = openSqlite(file);
+        await executor(connection).run(sql`CREATE TABLE note (n integer)`);
+        await closeConnection(connection);
+      },
+    };
+  }
+
+  test("a start in the same second after the data changed goes on to the migration, and the snapshot holds the newer data", async () => {
+    const upgrade = await upgradeThatFails();
+    try {
+      expect(await upgrade.start(at)).toBe(upgrade.failure);
+      await upgrade.write();
+      expect(await upgrade.start(at)).toBe(upgrade.failure);
+      const kept = await upgrade.kept();
+      expect(kept).toHaveLength(1);
+      const copy = openSqlite(`${snapshotDir(upgrade.file)}/${kept[0]}`);
+      const tables = await listTables(copy);
+      await closeConnection(copy);
+      expect(tables).toContain("note");
+    } finally {
+      await upgrade.cleanup();
+    }
+  });
+
+  test("a crash loop takes a copy at every start and keeps the newest three", async () => {
+    const upgrade = await upgradeThatFails();
+    try {
+      for (const now of [at, at + minute, at + 2 * minute, at + 3 * minute]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one start after another
+        expect(await upgrade.start(now)).toBe(upgrade.failure);
+      }
+      expect(await upgrade.kept()).toEqual(
+        ["093115", "093215", "093315"].map(
+          (time) => `raaqeb-20261122T${time}Z-before-${upgrade.last}.sqlite`
+        )
+      );
+    } finally {
+      await upgrade.cleanup();
+    }
+  });
+
+  test("a copy a killed or full-disk start left half written is removed by the next start", async () => {
+    const upgrade = await upgradeThatFails();
+    try {
+      await upgrade.start(at);
+      const [first = ""] = await upgrade.kept();
+      const cut = `${snapshotDir(upgrade.file)}/raaqeb-20261122T090000Z-before-${upgrade.last}.sqlite.partial`;
+      await Bun.write(cut, "cut short");
+      await Bun.write(`${cut}-journal`, "cut short");
+      expect(await upgrade.start(at + minute)).toBe(upgrade.failure);
+      const kept = await upgrade.kept();
+      expect(kept).toHaveLength(2);
+      expect(kept[0]).toBe(first);
+      expect(kept.every((name) => name.endsWith(".sqlite"))).toBe(true);
+    } finally {
+      await upgrade.cleanup();
+    }
+  });
+
+  test("a start whose clock is behind the snapshots already taken keeps its own", async () => {
+    const upgrade = await upgradeThatFails();
+    try {
+      for (const now of [at, at + minute, at + 2 * minute]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one start after another
+        await upgrade.start(now);
+      }
+      await upgrade.write();
+      expect(await upgrade.start(at - 60 * minute)).toBe(upgrade.failure);
+      const kept = await upgrade.kept();
+      // The three newest by name, and the one just taken until the next start prunes it.
+      expect(kept).toHaveLength(4);
+      const behind = `raaqeb-20261122T083015Z-before-${upgrade.last}.sqlite`;
+      expect(kept).toContain(behind);
+      const copy = openSqlite(`${snapshotDir(upgrade.file)}/${behind}`);
+      const tables = await listTables(copy);
+      await closeConnection(copy);
+      expect(tables).toContain("note");
+    } finally {
+      await upgrade.cleanup();
     }
   });
 });
