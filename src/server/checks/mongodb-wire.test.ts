@@ -97,6 +97,17 @@ describe("the framer", () => {
     expect(frame(both)).toEqual([one, two]);
   });
 
+  // A server sending a byte at a time made the framer copy all it held per byte: seconds of CPU for a quarter of the cap.
+  test("frames a reply a server sends a byte at a time with work linear in its length", () => {
+    const long = reply(1, encodeDocument({ pad: "x".repeat(262_144) }));
+    const frame = messageFramer();
+    const messages: Uint8Array[] = [];
+    for (let at = 0; at < long.length; at += 1) {
+      messages.push(...frame(long.subarray(at, at + 1)));
+    }
+    expect(messages).toEqual([long]);
+  }, 1000);
+
   test("refuses a message whose length is past the cap before it arrives", () => {
     const header = new Uint8Array(4);
     new DataView(header.buffer).setInt32(0, replyBytesMax + 1, true);

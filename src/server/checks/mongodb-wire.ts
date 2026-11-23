@@ -40,35 +40,42 @@ export function encodeMessage(requestId: number, body: Uint8Array): Uint8Array {
 /**
  * Collects a socket's chunks into whole messages: each call answers the
  * messages the chunk completed, in order. Throws when a message announces a
- * length below the smallest OP_MSG or above `maxBytes`.
+ * length below the smallest OP_MSG or above `maxBytes`. Chunks are copied into
+ * one buffer that doubles when full, so a server that sends a byte at a time
+ * costs no more copying than one that sends its reply whole.
  */
 export function messageFramer(
   maxBytes: number = replyBytesMax
 ): (chunk: Uint8Array) => Uint8Array[] {
-  let pending = new Uint8Array(0);
+  let buffer = new Uint8Array(0);
+  let held = 0;
   return (chunk) => {
-    const joined = new Uint8Array(pending.length + chunk.length);
-    joined.set(pending);
-    joined.set(chunk, pending.length);
+    if (held + chunk.length > buffer.length) {
+      const grown = new Uint8Array(
+        Math.max(held + chunk.length, buffer.length * 2)
+      );
+      grown.set(buffer.subarray(0, held));
+      buffer = grown;
+    }
+    buffer.set(chunk, held);
+    held += chunk.length;
     const messages: Uint8Array[] = [];
     let at = 0;
-    while (joined.length - at >= 4) {
-      const length = new DataView(
-        joined.buffer,
-        joined.byteOffset + at
-      ).getInt32(0, true);
+    while (held - at >= 4) {
+      const length = new DataView(buffer.buffer, at).getInt32(0, true);
       if (length < messageBytesMin || length > maxBytes) {
         throw new RangeError(
           `a message of ${length} bytes is outside ${messageBytesMin} to ${maxBytes}`
         );
       }
-      if (joined.length - at < length) {
+      if (held - at < length) {
         break;
       }
-      messages.push(joined.slice(at, at + length));
+      messages.push(buffer.slice(at, at + length));
       at += length;
     }
-    pending = joined.slice(at);
+    buffer.copyWithin(0, at, held);
+    held -= at;
     return messages;
   };
 }
