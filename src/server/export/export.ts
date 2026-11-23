@@ -13,6 +13,7 @@ import { z } from "zod";
 import { decrypt, type InstallKey } from "@/server/boot/installkey.ts";
 import { error as logError, reasonOf } from "@/server/log.ts";
 import type { Storage } from "@/server/storage/storage.ts";
+import type { StoredConfiguration } from "@/server/storage/transfer.ts";
 import { utcDayStart } from "@/shared/domain/retention.ts";
 import type { Check } from "@/shared/schemas/check.ts";
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/shared/schemas/detail.ts";
 import {
   type Configuration,
+  configurationSchema,
   type ExportMode,
   type ExportRecord,
   exportVersion,
@@ -35,7 +37,7 @@ import type {
 import type { Outage } from "@/shared/schemas/outage.ts";
 import { type ReasonCode, reasonName } from "@/shared/schemas/reason.ts";
 import { rollupSpanMs } from "@/shared/schemas/rollup.ts";
-import { compressLines } from "./lines.ts";
+import { compressLines, type Line } from "./lines.ts";
 
 const dayMs = rollupSpanMs.day;
 
@@ -62,8 +64,8 @@ class UnreadableCredentialsError extends Error {
 /** Every sealed credential of the configuration opened with the install key. */
 async function opened(
   key: InstallKey,
-  configuration: Configuration
-): Promise<Configuration> {
+  configuration: StoredConfiguration
+): Promise<StoredConfiguration> {
   const open = async <Row extends { id: string; credentials: string | null }>(
     row: Row
   ): Promise<Row> => {
@@ -85,7 +87,10 @@ async function opened(
 }
 
 /** The record a stored row this version cannot write names: the row's id where it has one, else its table. */
-function recordOf(configuration: Configuration, error: z.ZodError): string {
+function recordOf(
+  configuration: StoredConfiguration,
+  error: z.ZodError
+): string {
   const [, table, index] = error.issues[0]?.path ?? [];
   if (typeof table !== "string" || typeof index !== "number") {
     return "configuration";
@@ -143,9 +148,9 @@ const downloading = new WeakSet<Storage>();
 
 /** The lines, then `done` once they end, fail or are cancelled; a generator's `finally` would not run on a cancel before its first line. */
 function until(
-  lines: AsyncGenerator<string>,
+  lines: AsyncGenerator<Line>,
   done: () => void
-): AsyncIterableIterator<string> {
+): AsyncIterableIterator<Line> {
   return {
     next: () =>
       lines.next().then(
@@ -177,10 +182,10 @@ async function exportLines(
   mode: ExportMode,
   now: number
 ): Promise<
-  | { readonly ok: true; readonly lines: AsyncGenerator<string> }
+  | { readonly ok: true; readonly lines: AsyncGenerator<Line> }
   | Extract<ExportStart, { ok: false }>
 > {
-  let configuration: Configuration;
+  let configuration: StoredConfiguration;
   try {
     configuration = await opened(key, await storage.transfer.configuration());
   } catch (error) {
@@ -190,17 +195,28 @@ async function exportLines(
     logError(`the export could not read the configuration: ${reasonOf(error)}`);
     return { ok: false, reason: "unavailable" };
   }
-  let header: string;
-  try {
-    header = JSON.stringify(
+  const headerWith = (pageImages: Configuration["pageImages"]) =>
+    JSON.stringify(
       headerSchema.encode({
-        configuration,
+        configuration: { ...configuration, pageImages },
         exportedAt: now,
         mode,
         raaqeb: "export",
         version: exportVersion,
       })
     );
+  let head: string | undefined;
+  let tail: string | undefined;
+  try {
+    // Every row is checked before the first byte, each image without its bytes, which are read one at a time as the line is written.
+    headerWith(
+      configuration.pageImages.map((row) => ({
+        ...row,
+        body: new Uint8Array(),
+      }))
+    );
+    // The key's quotes are bare only as a key: inside a string JSON escapes them.
+    [head, tail] = headerWith([]).split('"pageImages":[]');
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
@@ -211,8 +227,23 @@ async function exportLines(
     }
     throw error;
   }
-  async function* lines(): AsyncGenerator<string> {
-    yield header;
+  /** The header line, each page image read as it is written, so one is held at a time. */
+  async function* header(): AsyncGenerator<string> {
+    yield `${head}"pageImages":[`;
+    let comma = "";
+    for (const { kind, pageId } of configuration.pageImages) {
+      // biome-ignore lint/performance/noAwaitInLoops: one image at a time, so one is held
+      const image = await storage.transfer.image(pageId, kind);
+      // One removed since the configuration was read is left out, as if it had gone before.
+      if (image) {
+        yield `${comma}${JSON.stringify(imageRow.encode(image))}`;
+        comma = ",";
+      }
+    }
+    yield `]${tail}`;
+  }
+  async function* lines(): AsyncGenerator<Line> {
+    yield header();
     if (mode === "configuration") {
       return;
     }
@@ -230,6 +261,8 @@ async function exportLines(
   }
   return { lines: lines(), ok: true };
 }
+
+const imageRow = configurationSchema.shape.pageImages.element;
 
 /** A record as its line in the file. */
 function lineOf(record: ExportRecord): string {

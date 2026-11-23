@@ -4,6 +4,11 @@ import { encrypt } from "@/server/boot/installkey.ts";
 import { runSql } from "@/server/storage/fixture.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import type { ExportRecord } from "@/shared/schemas/export.ts";
+import {
+  pageCustomizationSchema,
+  pageImageKinds,
+  pageImageMaxBytes,
+} from "@/shared/schemas/page.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import {
   exportInstall,
@@ -398,6 +403,63 @@ describe("an export", () => {
     const next = await nextDownload(install);
     await next.body.cancel();
   });
+
+  test("holds one page image at a time while it streams, so forty pages of full-size images export within the floor", async () => {
+    const install = await source();
+    let imageBytes = 0;
+    for (let page = 0; page < 40; page += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: one page after another
+      const { id } = await install.storage.pages.create({
+        customDomain: undefined,
+        customization: pageCustomizationSchema.parse({}),
+        isDefault: false,
+        locale: "en",
+        published: true,
+        slug: `page-${page}`,
+        title: { en: `Page ${page}` },
+      });
+      for (const kind of pageImageKinds) {
+        // Random bytes, which zstd cannot shrink, as it cannot a real photo.
+        const body = crypto.getRandomValues(
+          new Uint8Array(pageImageMaxBytes[kind])
+        );
+        imageBytes += body.length;
+        // biome-ignore lint/performance/noAwaitInLoops: one image after another
+        await install.storage.pages.setImage(id, {
+          body,
+          contentType: "image/png",
+          hash: new Bun.CryptoHasher("sha256").update(body).digest("hex"),
+          kind,
+        });
+      }
+    }
+    const held = () => {
+      Bun.gc(true);
+      const { external, heapUsed } = process.memoryUsage();
+      return heapUsed + external;
+    };
+    const before = held();
+    const started = await exportInstall(
+      install.storage,
+      install.key,
+      "configuration",
+      now
+    );
+    if (!started.ok) {
+      throw new Error(`the export did not start: ${started.reason}`);
+    }
+    let most = held() - before;
+    let written = 0;
+    for await (const chunk of started.body) {
+      written += chunk.length;
+      most = Math.max(most, held() - before);
+    }
+    // Every image is in the file: random bytes compress to no fewer.
+    expect(written).toBeGreaterThan(imageBytes);
+    expect(imageBytes).toBe(60 * 1024 * 1024);
+    expect(most).toBeLessThan(imageBytes / 3);
+    // A full collection after each of 120 chunks: 0.7 s alone, 5.2 s in a loaded gate, 20 s beside 20 busy loops; 5 s leaves no room.
+  }, 60_000);
 });
 
 describe("one monitor's history", () => {

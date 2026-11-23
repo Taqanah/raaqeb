@@ -16,32 +16,63 @@ export const maxLineBytes = 8 * 1024 * 1024;
 /** How much text one chunk into the compressor gathers, so millions of short lines are not millions of chunks. */
 const chunkChars = 64 * 1024;
 
+/** A line, or a line in pieces, written as they come so a long line is never held whole. */
+export type Line = string | AsyncIterable<string>;
+
 /** The lines, each ended by a line break, compressed. */
 export function compressLines(
-  lines: Iterable<string> | AsyncIterable<string>
+  lines: Iterable<string> | AsyncIterable<Line>
 ): ReadableStream<Uint8Array> {
   const iterator =
     Symbol.asyncIterator in lines
       ? lines[Symbol.asyncIterator]()
       : lines[Symbol.iterator]();
+  // The line being written in pieces, kept across pulls so each pull writes one chunk.
+  let pieces: AsyncIterator<string> | undefined;
+  /** The next text: a piece of the line in pieces, its line break once it ends, else the next line with its own; nothing once the lines end. A piece that fails ends the lines. */
+  const nextText = async (): Promise<string | undefined> => {
+    if (pieces) {
+      try {
+        const piece = await pieces.next();
+        if (!piece.done) {
+          return piece.value;
+        }
+      } catch (error) {
+        await iterator.return?.();
+        throw error;
+      }
+      pieces = undefined;
+      return "\n";
+    }
+    const next = await iterator.next();
+    if (next.done) {
+      return;
+    }
+    if (typeof next.value === "string") {
+      return `${next.value}\n`;
+    }
+    pieces = next.value[Symbol.asyncIterator]();
+    return "";
+  };
   return (
     new ReadableStream<string>({
       cancel: async () => {
+        await pieces?.return?.();
         await iterator.return?.();
       },
       pull: async (controller) => {
         let text = "";
         while (text.length < chunkChars) {
           // biome-ignore lint/performance/noAwaitInLoops: the lines come one after another
-          const next = await iterator.next();
-          if (next.done) {
+          const next = await nextText();
+          if (next === undefined) {
             if (text !== "") {
               controller.enqueue(text);
             }
             controller.close();
             return;
           }
-          text += `${next.value}\n`;
+          text += next;
         }
         controller.enqueue(text);
       },

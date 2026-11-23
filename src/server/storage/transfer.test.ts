@@ -20,6 +20,7 @@ import { pageCustomizationSchema } from "@/shared/schemas/page.ts";
 import { reasons } from "@/shared/schemas/reason.ts";
 import { tables } from "./connection.ts";
 import { runSql } from "./fixture.ts";
+import type { Storage } from "./storage.ts";
 import type { HistoryCount } from "./transfer.ts";
 
 const cleanups: (() => Promise<void>)[] = [];
@@ -37,6 +38,20 @@ async function target() {
   const install = await targetInstall();
   cleanups.push(install.cleanup);
   return install;
+}
+
+/** The configuration with each page image's bytes, as a restore takes it. */
+async function withImages(storage: Storage): Promise<Configuration> {
+  const configuration = await storage.transfer.configuration();
+  const pageImages = await Promise.all(
+    configuration.pageImages.map(({ kind, pageId }) =>
+      storage.transfer.image(pageId, kind)
+    )
+  );
+  return {
+    ...configuration,
+    pageImages: pageImages.filter((image) => image !== undefined),
+  };
 }
 
 async function count(
@@ -97,7 +112,12 @@ describe("the transfer repository", () => {
     expect(configuration.settings.map((row) => row.key).sort()).toEqual(
       [...travellingSettings].sort()
     );
-    expect(configuration.pageImages[0]?.body).toBeInstanceOf(Uint8Array);
+    const [image] = configuration.pageImages;
+    expect(image?.contentType).toBe("image/png");
+    expect(image).not.toHaveProperty("body");
+    expect(
+      image && (await storage.transfer.image(image.pageId, image.kind))?.body
+    ).toBeInstanceOf(Uint8Array);
     for (const name of Object.keys(configuration) as ConfigurationTable[]) {
       expect({ name, rows: configuration[name].length }).not.toEqual({
         name,
@@ -109,16 +129,16 @@ describe("the transfer repository", () => {
   test("writes a configuration back with its ids and times as they were", async () => {
     const from = await source();
     const into = await target();
-    const configuration = await from.storage.transfer.configuration();
+    const configuration = await withImages(from.storage);
     await into.storage.transfer.restore(configuration);
     await into.storage.transfer.writeSettings(configuration.settings);
-    expect(await into.storage.transfer.configuration()).toEqual(configuration);
+    expect(await withImages(into.storage)).toEqual(configuration);
   });
 
   test("reads each table's rows in the order of their keys, whatever order they were written in", async () => {
     const from = await source();
     const into = await target();
-    const configuration = await from.storage.transfer.configuration();
+    const configuration = await withImages(from.storage);
     const reversed = Object.fromEntries(
       Object.entries(configuration).map(([name, rows]) => [
         name,
@@ -127,7 +147,7 @@ describe("the transfer repository", () => {
     ) as unknown as Configuration;
     await into.storage.transfer.restore(reversed);
     await into.storage.transfer.writeSettings(reversed.settings);
-    expect(await into.storage.transfer.configuration()).toEqual(configuration);
+    expect(await withImages(into.storage)).toEqual(configuration);
   });
 
   test("an install holding a monitor, a status page or a component holds content, and one with channels alone does not", async () => {
@@ -172,9 +192,7 @@ describe("the transfer repository", () => {
   test("deleting every component takes the incidents and windows that named only them, so the install holds no content", async () => {
     const from = await source();
     const into = await target();
-    await into.storage.transfer.restore(
-      await from.storage.transfer.configuration()
-    );
+    await into.storage.transfer.restore(await withImages(from.storage));
     await into.storage.monitors.remove([
       from.ids.api,
       from.ids.backup,
@@ -202,7 +220,7 @@ describe("the transfer repository", () => {
       name: { ar: "Web" },
       status: "operational",
     });
-    const configuration = await from.storage.transfer.configuration();
+    const configuration = await withImages(from.storage);
     expect(await into.storage.transfer.restore(configuration)).toBeUndefined();
     expect(await count(into, "monitors")).toBe(0);
     expect(await count(into, "channels")).toBe(0);
@@ -212,7 +230,7 @@ describe("the transfer repository", () => {
   test("keeps a channel the install already has under the same id as the install has it, and does not count it as written", async () => {
     const from = await source();
     const into = await target();
-    const configuration = await from.storage.transfer.configuration();
+    const configuration = await withImages(from.storage);
     const nothing = Object.fromEntries(
       Object.keys(configurationSchema.shape).map((name) => [name, []])
     ) as unknown as Configuration;
@@ -244,7 +262,7 @@ describe("the transfer repository", () => {
       type: "webhook",
     });
     const written = await into.storage.transfer.restore(
-      await from.storage.transfer.configuration()
+      await withImages(from.storage)
     );
     await into.storage.transfer.writeChecks([check(from.ids.api, now - hour)]);
     await into.storage.transfer.writeOutages([
@@ -285,9 +303,7 @@ describe("the transfer repository", () => {
   test("writes checks as head rows a few hundred to a statement and keeps a check already stored", async () => {
     const from = await source();
     const into = await target();
-    await into.storage.transfer.restore(
-      await from.storage.transfer.configuration()
-    );
+    await into.storage.transfer.restore(await withImages(from.storage));
     await into.storage.checks.record({
       capture: undefined,
       check: { ...check(from.ids.dns, today), attempts: 3 },
@@ -309,9 +325,7 @@ describe("the transfer repository", () => {
   test("writes rollups of a span, replacing one at the same monitor and time", async () => {
     const from = await source();
     const into = await target();
-    await into.storage.transfer.restore(
-      await from.storage.transfer.configuration()
-    );
+    await into.storage.transfer.restore(await withImages(from.storage));
     const rollup = {
       at: today - 50 * day,
       averageMs: 100,
@@ -349,9 +363,7 @@ describe("the transfer repository", () => {
   test("writes outages and keeps one already stored", async () => {
     const from = await source();
     const into = await target();
-    await into.storage.transfer.restore(
-      await from.storage.transfer.configuration()
-    );
+    await into.storage.transfer.restore(await withImages(from.storage));
     const outage = {
       endedAt: now - hour,
       monitorId: from.ids.api,
@@ -368,9 +380,7 @@ describe("the transfer repository", () => {
   test("writes outages past the parameters one statement may bind, counting the five each carries", async () => {
     const from = await source();
     const into = await target();
-    await into.storage.transfer.restore(
-      await from.storage.transfer.configuration()
-    );
+    await into.storage.transfer.restore(await withImages(from.storage));
     // 13,200 outages of five parameters bind 66,000, over Postgres's 65,535 if one statement took them all.
     const many = Array.from({ length: 13_200 }, (_, index) => ({
       acknowledgedAt: now - 2 * index * 1000 - 500,
