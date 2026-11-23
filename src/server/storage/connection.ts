@@ -137,7 +137,8 @@ function sqliteExecutor(db: SQLiteBunDatabase): Executor {
 export function postgresExecutor(
   db: PostgresPool,
   runner: PostgresRunner,
-  limitMs: number | undefined
+  limitMs: number | undefined,
+  now: () => number = Date.now
 ): Executor {
   // A database that missed one answer is treated as down for one more limit, so a request fails at once instead of waiting again for each of its reads; the first statement after it asks again.
   let silentUntil = 0;
@@ -147,7 +148,7 @@ export function postgresExecutor(
     if (limitMs === undefined) {
       return await start();
     }
-    if (Date.now() < silentUntil) {
+    if (now() < silentUntil) {
       throw new NoAnswerError(limitMs);
     }
     const pending = start();
@@ -157,7 +158,7 @@ export function postgresExecutor(
       if (thrown instanceof NoAnswerError) {
         // A statement left waiting (on a lock, a slow plan) would hold its pool connection, and the reads Bun queues behind it, until the server answers.
         pending.cancel?.();
-        silentUntil = Date.now() + limitMs;
+        silentUntil = now() + limitMs;
       }
       throw thrown;
     }

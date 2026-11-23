@@ -84,8 +84,12 @@ let open:
 
 /** A local target whose answer the test flips, the open storage, and the live I/O on a clock the test moves. */
 async function harness(options: OpenStorageOptions = {}): Promise<Harness> {
+  // A fixed base, so time moves only when the test advances it; the checks and the storage share it.
+  const base = Date.now();
+  let offset = 0;
+  const now = () => base + offset;
   const scratch = await scratchDatabase();
-  const opened = await openStorage(scratch.location, options);
+  const opened = await openStorage(scratch.location, { ...options, now });
   if (!opened.ok) {
     throw new Error(opened.message);
   }
@@ -97,7 +101,7 @@ async function harness(options: OpenStorageOptions = {}): Promise<Harness> {
     fetch: async (request) => {
       seen.push(request.headers);
       if (mode === "slow") {
-        await Bun.sleep(slow);
+        offset += slow;
       }
       if (mode === "held") {
         await hold.promise;
@@ -115,11 +119,10 @@ async function harness(options: OpenStorageOptions = {}): Promise<Harness> {
     throw new Error("the local target has no port");
   }
   const { port } = server;
-  let offset = 0;
   const live = liveIo();
   const io: LiveIo = {
     ...live,
-    now: () => Date.now() + offset,
+    now,
     sleep: () => Promise.resolve(),
   };
   return {
@@ -349,14 +352,12 @@ describe("the scheduler over three monitors and a local target", () => {
     await s.tick();
     await s.idle();
     expect(await h.storage.outages.ongoing()).toHaveLength(1);
-    const before = Date.now();
+    h.advance(1000);
     expect(await pauseMonitors(h.storage, [id])).toEqual({
       count: 1,
       ok: true,
     });
-    const endedAt = (await h.storage.outages.list(id))[0]?.endedAt;
-    expect(endedAt).toBeGreaterThanOrEqual(before);
-    expect(endedAt).toBeLessThanOrEqual(Date.now());
+    expect((await h.storage.outages.list(id))[0]?.endedAt).toBe(h.io.now());
     h.advance(20_000);
     await s.tick();
     await s.idle();
@@ -561,17 +562,13 @@ describe("the scheduler over three monitors and a local target", () => {
     expect(s.lastTickAt()).toBeUndefined();
     const before = h.io.now();
     await s.tick();
-    const ticked = s.lastTickAt();
-    expect(ticked).toBeGreaterThanOrEqual(before);
-    expect(ticked).toBeLessThanOrEqual(h.io.now());
-    // The harness clock is real time plus an offset, so the bound is approached with a second to spare.
-    h.advance(exitAfterMs - 1000);
+    expect(s.lastTickAt()).toBe(before);
+    h.advance(exitAfterMs - 1);
     s.watch();
     expect(stale).toEqual([]);
-    h.advance(1000);
+    h.advance(1);
     s.watch();
-    expect(stale).toHaveLength(1);
-    expect(stale[0]).toBeGreaterThanOrEqual(exitAfterMs);
+    expect(stale).toEqual([exitAfterMs]);
   });
 
   test("stopping drops a check still in flight", async () => {
@@ -676,8 +673,8 @@ describe("the scheduler over three monitors and a local target", () => {
     h.setMode("error");
     await s.tick();
     await requested.promise;
-    // The storage stamps the pause with the real clock, so it must land in a later millisecond than the check's start.
-    await Bun.sleep(2);
+    // The pause lands one millisecond after the check's start.
+    h.advance(1);
     // The check is in flight; the operator pauses and resumes before it settles down.
     await pauseMonitors(h.storage, [id]);
     await h.storage.monitors.resume([id]);
@@ -1496,8 +1493,6 @@ describe("heartbeat monitors", () => {
     const s = scheduler(h);
     await s.tick();
     h.advance(window - 1000);
-    // The storage stamps the edit with the real clock: a create and an edit in one millisecond would not move updatedAt.
-    await Bun.sleep(2);
     await editMonitor(h.storage, key, b.id, input("Backup", everyMinute));
     await s.tick();
     h.advance(1000);
@@ -1542,7 +1537,7 @@ describe("heartbeat monitors", () => {
     const s = scheduler(h);
     await s.tick();
     await b.send();
-    await Bun.sleep(2);
+    h.advance(1);
     await resumeMonitors(h.storage, [b.id]);
     h.advance(1000);
     await s.tick();
@@ -2038,13 +2033,10 @@ describe("the scheduler hands monitor events to the operator notifications", () 
         reason: "unexpected_status",
       },
     });
-    // The harness clock is real time plus an offset, so the outage spans one interval and the few milliseconds the check took.
     const first = (await h.storage.outages.list(id)).at(-1);
-    const downtime = (first?.endedAt ?? 0) - (first?.startedAt ?? 0);
-    expect(downtime).toBeGreaterThanOrEqual(20_000);
-    expect(downtime).toBeLessThan(21_000);
+    expect((first?.endedAt ?? 0) - (first?.startedAt ?? 0)).toBe(20_000);
     expect(queued[1]?.payload).toMatchObject({
-      data: { downtimeMs: downtime },
+      data: { downtimeMs: 20_000 },
     });
     await s.stop();
   });
@@ -3489,17 +3481,6 @@ describe("the scheduler over a monitor checked from several locations", () => {
     statusCode: result === "up" ? 200 : undefined,
   });
 
-  /** The storage's clock moves with the checks' clock, so a monitor's change time and a probe's results share one time line. */
-  let skew = 0;
-  const clocked = () => {
-    skew = 0;
-    return harness({ now: () => Date.now() + skew });
-  };
-  const advance = (h: Harness, ms: number) => {
-    h.advance(ms);
-    skew += ms;
-  };
-
   async function located(h: Harness, overrides: Partial<MonitorInput> = {}) {
     const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
     const site = await h.storage.monitors.create(
@@ -3510,7 +3491,7 @@ describe("the scheduler over a monitor checked from several locations", () => {
       })
     );
     // The probes' results below are of checks that ran after the monitor was saved.
-    advance(h, 60_000);
+    h.advance(60_000);
     return { probe, site };
   }
 
@@ -3520,13 +3501,13 @@ describe("the scheduler over a monitor checked from several locations", () => {
   }
 
   test("one location seeing it down opens no outage while two must agree, and the check carries the agreeing probe's figures", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { probe, site } = await located(h);
     const s = scheduler(h);
     await run(s);
     h.setMode("error");
     s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
-    advance(h, 20_000);
+    h.advance(20_000);
     await run(s);
     const checks = await h.storage.checks.range(
       site.id,
@@ -3539,16 +3520,16 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a second location agreeing brings the next check forward and opens the outage, naming both locations", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { probe, site } = await located(h);
     const s = scheduler(h);
     await run(s);
     h.setMode("error");
-    advance(h, 20_000);
+    h.advance(20_000);
     s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
     await run(s);
     expect(await h.storage.outages.ongoing()).toEqual([]);
-    advance(h, 1000);
+    h.advance(1000);
     s.report(probe.id, [probeSaw(site.id, "down")], h.io.now());
     await run(s);
     const [outage] = await h.storage.outages.ongoing();
@@ -3561,24 +3542,24 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("the outage closes once fewer locations than needed still see it down", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { probe, site } = await located(h);
     const s = scheduler(h);
     await run(s);
     h.setMode("error");
-    advance(h, 20_000);
+    h.advance(20_000);
     s.report(probe.id, [probeSaw(site.id, "down")], h.io.now());
     await run(s);
     expect((await h.storage.outages.ongoing()).length).toBe(1);
     h.setMode("ok");
-    advance(h, 20_000);
+    h.advance(20_000);
     await run(s);
     expect(await h.storage.outages.ongoing()).toEqual([]);
     expect(h.events.map((event) => event.kind)).toContain("recovered");
   });
 
   test("after a restart, the main location alone opens no outage that the confirmation count was holding back, until its probes had their time to answer", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { probe, site } = await located(h);
     h.setMode("error");
     const s = scheduler(h);
@@ -3586,21 +3567,21 @@ describe("the scheduler over a monitor checked from several locations", () => {
     expect(await h.storage.outages.ongoing()).toEqual([]);
     expect(h.events.filter((event) => event.kind === "down")).toEqual([]);
     // The probe answers within its interval and disagrees: still no outage.
-    advance(h, 5000);
+    h.advance(5000);
     s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
-    advance(h, 20_000);
+    h.advance(20_000);
     await run(s);
     expect(await h.storage.outages.ongoing()).toEqual([]);
   });
 
   test("a silent probe leaves the main location to decide alone, so a real outage still opens", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { site } = await located(h);
     const s = scheduler(h);
     h.setMode("error");
     await run(s);
     // Past the wait after boot, in which the probe would have answered.
-    advance(h, 60_000);
+    h.advance(60_000);
     await run(s);
     const [outage] = await h.storage.outages.ongoing();
     expect(outage?.monitorId).toBe(site.id);
@@ -3611,12 +3592,12 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a monitor checked from probes alone is never requested by the install, and its check is the probes' verdict", async () => {
-    const h = await clocked();
+    const h = await harness();
     const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
     const site = await h.storage.monitors.create(
       input("Site", http(h.port), { locations: [probe.id] })
     );
-    advance(h, 60_000);
+    h.advance(60_000);
     const s = scheduler(h);
     await run(s);
     expect(await h.count(site.id)).toBe(0);
@@ -3636,7 +3617,7 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a result for a monitor the probe is not assigned is dropped", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { site } = await located(h);
     const other = await h.storage.probes.create("Riyadh", "e".repeat(64));
     const s = scheduler(h);
@@ -3653,7 +3634,7 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a result no newer than the one held is dropped", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { probe, site } = await located(h);
     const s = scheduler(h);
     await run(s);
@@ -3667,7 +3648,7 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a result of a check that started as the monitor last changed counts", async () => {
-    const h = await clocked();
+    const h = await harness();
     const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
     const site = await h.storage.monitors.create(
       input("Site", http(h.port), { locations: [mainLocation, probe.id] })
@@ -3683,7 +3664,7 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("each location's state shows on the monitor, named, and becomes unknown once it is old", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { probe, site } = await located(h);
     const s = scheduler(h);
     await run(s);
@@ -3696,14 +3677,14 @@ describe("the scheduler over a monitor checked from several locations", () => {
       [probe.id, "Frankfurt", "up"],
     ]);
     expect(states?.[1]?.responseMs).toBe(42);
-    advance(h, 10 * 60_000);
+    h.advance(10 * 60_000);
     const later = s.locationStates(site.id);
     expect(later?.map((state) => state.result)).toEqual([undefined, undefined]);
     expect(later?.[1]?.startedAt).toBeDefined();
   });
 
   test("a monitor checked from the main location alone has no location states", async () => {
-    const h = await clocked();
+    const h = await harness();
     const site = await h.storage.monitors.create(input("Site", http(h.port)));
     const s = scheduler(h);
     await run(s);
@@ -3711,7 +3692,7 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a probe's assignments are its own unpaused monitors, with credentials only where they are shared", async () => {
-    const h = await clocked();
+    const h = await harness();
     const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
     const other = await h.storage.probes.create("Riyadh", "e".repeat(64));
     const sealed = await sealCredentials(key, {
@@ -3758,7 +3739,7 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a shared monitor's assignment carries only the credentials its check type sends", async () => {
-    const h = await clocked();
+    const h = await harness();
     const privateKey =
       "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n";
     const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
@@ -3846,15 +3827,15 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a probe silent for two minutes tells the channels of the monitors it checks once, and again when it reports", async () => {
-    const h = await clocked();
+    const h = await harness();
     const channel = await webhookChannel(h);
     const { probe, site } = await located(h, { channels: [channel] });
     const s = scheduler(h);
     await run(s);
     s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
-    advance(h, probeSilentAfterMs + 1000);
+    h.advance(probeSilentAfterMs + 1000);
     await run(s);
-    advance(h, 10_000);
+    h.advance(10_000);
     await run(s);
     const types = async () =>
       (await queuedFor(h, channel)).map((each) => each.payload.type);
@@ -3869,7 +3850,7 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a probe that never reported is told silent to the channels of the unpaused monitors it checks, and to no others", async () => {
-    const h = await clocked();
+    const h = await harness();
     const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
     const watching = await webhookChannel(h);
     const stopped = await webhookChannel(h);
@@ -3890,10 +3871,10 @@ describe("the scheduler over a monitor checked from several locations", () => {
     await h.storage.monitors.create(
       input("Local", http(h.port), { channels: [elsewhere] })
     );
-    advance(h, 60_000);
+    h.advance(60_000);
     const s = scheduler(h);
     await run(s);
-    advance(h, probeSilentAfterMs + 1000);
+    h.advance(probeSilentAfterMs + 1000);
     await run(s);
     const told = async (channel: string) =>
       (await queuedFor(h, channel)).filter(
@@ -3907,44 +3888,44 @@ describe("the scheduler over a monitor checked from several locations", () => {
   });
 
   test("a monitor checked from probes alone has no recent result once none is fresh, and check now says so at once", async () => {
-    const h = await clocked();
+    const h = await harness();
     const probe = await h.storage.probes.create("Frankfurt", "f".repeat(64));
     const site = await h.storage.monitors.create(
       input("Site", http(h.port), { locations: [probe.id] })
     );
-    advance(h, 60_000);
+    h.advance(60_000);
     const s = scheduler(h);
     await run(s);
     s.report(probe.id, [probeSaw(site.id, "up")], h.io.now());
     await run(s);
     expect(s.checkNow(site.id).answer).toBe("queued");
-    advance(h, 120_000);
+    h.advance(120_000);
     expect(s.checkNow(site.id).answer).toBe("unknown");
   });
 
   test("a probe's result from before a pause opens no outage after the resume", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { probe, site } = await located(h, { confirmations: 1 });
     const s = scheduler(h);
     await run(s);
-    advance(h, 1000);
+    h.advance(1000);
     s.report(probe.id, [probeSaw(site.id, "down")], h.io.now());
     await run(s);
     expect((await h.storage.outages.ongoing()).length).toBe(1);
-    advance(h, 1000);
+    h.advance(1000);
     await h.storage.monitors.pause([site.id]);
     await h.storage.bump();
     await run(s);
-    advance(h, 1000);
+    h.advance(1000);
     await h.storage.monitors.resume([site.id]);
     await h.storage.bump();
-    advance(h, 1000);
+    h.advance(1000);
     await run(s);
     expect(await h.storage.outages.ongoing()).toEqual([]);
   });
 
   test("a deleted probe's results count for nothing once the monitors are read again", async () => {
-    const h = await clocked();
+    const h = await harness();
     const { probe, site } = await located(h, { confirmations: 1 });
     const s = scheduler(h);
     await run(s);

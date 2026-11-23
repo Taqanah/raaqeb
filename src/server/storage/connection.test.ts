@@ -181,12 +181,21 @@ describe("a statement the Postgres database does not answer", () => {
 
   test("once the limit has passed again the database is asked, and a database that is back is read as before", async () => {
     const database: { back: boolean } = { back: false };
-    const flaky = () => (database.back ? Promise.resolve([]) : silent());
-    const run = postgresExecutor(poolOf(flaky), poolOf(flaky), 30);
+    let asked = 0;
+    const flaky = () => {
+      asked += 1;
+      return database.back ? Promise.resolve([]) : silent();
+    };
+    let at = 1_700_000_000_000;
+    const run = postgresExecutor(poolOf(flaky), poolOf(flaky), 30, () => at);
     await expect(run.rows(sql`SELECT 1`)).rejects.toThrow("did not answer");
     database.back = true;
-    await Bun.sleep(40);
+    at += 29;
+    await expect(run.rows(sql`SELECT 1`)).rejects.toThrow("did not answer");
+    expect(asked).toBe(1);
+    at += 1;
     expect(await run.rows(sql`SELECT 1`)).toEqual([]);
+    expect(asked).toBe(2);
   });
 
   test("a slow statement inside a transaction is left to finish", async () => {
@@ -233,7 +242,13 @@ describe.if(postgresUrl !== undefined)(
       if (connection.backend !== "postgres") {
         throw new Error("the Postgres run opens Postgres");
       }
-      const run = postgresExecutor(connection.db, poolRunner(connection), 300);
+      let at = 1_700_000_000_000;
+      const run = postgresExecutor(
+        connection.db,
+        poolRunner(connection),
+        300,
+        () => at
+      );
       await run.run(sql`CREATE TABLE held (id integer)`);
       // One client holds the lock on a reserved connection; the other watches the server.
       const holder = new BunSql({ max: 2, url: postgresUrl ?? "" });
@@ -270,7 +285,7 @@ describe.if(postgresUrl !== undefined)(
         }
         expect(left).toBe(0);
         // Past the silent window, a read that needs no lock gets a connection and answers.
-        await Bun.sleep(320);
+        at += 300;
         expect(await run.rows(sql`SELECT 1 AS one`)).toEqual([{ one: 1 }]);
         await lock`ROLLBACK`;
         expect(
