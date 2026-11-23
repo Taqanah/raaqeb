@@ -15,6 +15,7 @@ import {
   travellingSettings,
 } from "@/shared/schemas/export.ts";
 import type { Outage } from "@/shared/schemas/outage.ts";
+import type { PageImageKind } from "@/shared/schemas/page.ts";
 import {
   type Rollup,
   type RollupSpan,
@@ -49,13 +50,23 @@ export interface HistoryCount {
   readonly hourly: number;
 }
 
+/** A page image's row as the configuration carries it. */
+export type ImageRow = Configuration["pageImages"][number];
+
+/** The configuration as stored, each page image without its bytes, which `image` reads. */
+export type StoredConfiguration = Omit<Configuration, "pageImages"> & {
+  readonly pageImages: Omit<ImageRow, "body">[];
+};
+
 export interface TransferRepository {
-  /** Every table the configuration carries, read as one transaction; the settings only those that travel. Credentials are sealed as stored. */
-  configuration: () => Promise<Configuration>;
+  /** Every table the configuration carries, read as one transaction; the settings only those that travel. Credentials are sealed as stored, and page images come without their bytes, so the configuration stays small however many pages hold images. */
+  configuration: () => Promise<StoredConfiguration>;
   /** Each monitor's history as the full export writes it, counted without reading it, by monitor id; a monitor with none is left out. */
   historyCounts: () => Promise<Map<string, HistoryCount>>;
   /** Whether the install holds a monitor, a status page or a component, which refuses an import; an incident or a window an older version left with no component counts too. */
   holdsContent: () => Promise<boolean>;
+  /** One page image's row with its bytes, as the configuration carries it; nothing once it is gone. */
+  image: (pageId: string, kind: PageImageKind) => Promise<ImageRow | undefined>;
   /** Deletes what an import wrote; the history goes with its monitors. */
   remove: (restored: Restored) => Promise<void>;
   /**
@@ -149,6 +160,7 @@ export function transferRepository(executor: Executor): TransferRepository {
     maintenanceWindows,
     monitors,
     outages,
+    pageImages,
     probes,
     sealedDays,
     settings,
@@ -158,18 +170,25 @@ export function transferRepository(executor: Executor): TransferRepository {
   const column = (name: string) => sql.identifier(name);
   const dayMs = sql`CAST(${rollupSpanMs.day} AS BIGINT)`;
 
+  /** A table's columns under their property names, but the one left out. */
+  const columnsOf = (
+    table: Executor["tables"][ConfigurationTable],
+    omit = ""
+  ) =>
+    sql.join(
+      Object.entries(getTableColumns(table))
+        .filter(([property]) => property !== omit)
+        .map(([property, each]) => sql`${each} AS ${column(property)}`),
+      sql`, `
+    );
+
   /** One table's rows under their columns' property names; the settings only those that travel. */
   const read = async <Name extends ConfigurationTable>(
     run: Executor,
     name: Name
   ): Promise<Configuration[Name][number][]> => {
     const table = run.tables[name];
-    const select = sql.join(
-      Object.entries(getTableColumns(table)).map(
-        ([property, each]) => sql`${each} AS ${column(property)}`
-      ),
-      sql`, `
-    );
+    const select = columnsOf(table);
     const where =
       name === "settings"
         ? sql` WHERE ${settings.key} IN (${sql.join(
@@ -390,7 +409,11 @@ export function transferRepository(executor: Executor): TransferRepository {
           statusPages: await read(tx, "statusPages"),
           componentGroups: await read(tx, "componentGroups"),
           pageComponents: await read(tx, "pageComponents"),
-          pageImages: await read(tx, "pageImages"),
+          pageImages: inKeyOrder(
+            await tx.rows<Omit<ImageRow, "body">>(
+              sql`SELECT ${columnsOf(pageImages, "body")} FROM ${pageImages}`
+            )
+          ),
           incidents: await read(tx, "incidents"),
           incidentUpdates: await read(tx, "incidentUpdates"),
           incidentStatuses: await read(tx, "incidentStatuses"),
@@ -437,6 +460,12 @@ export function transferRepository(executor: Executor): TransferRepository {
       return counts;
     },
     holdsContent: () => holds(executor),
+    image: async (pageId, kind) => {
+      const [row] = await executor.rows<ImageRow>(
+        sql`SELECT ${columnsOf(pageImages)} FROM ${pageImages} WHERE ${pageImages.pageId} = ${pageId} AND ${pageImages.kind} = ${kind}`
+      );
+      return row;
+    },
     remove: (restored) =>
       executor.transaction(async (tx) => {
         await removeIds(tx, monitors, restored.monitors);

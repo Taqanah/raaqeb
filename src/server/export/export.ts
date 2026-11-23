@@ -14,6 +14,7 @@ import { z } from "zod";
 import { decrypt, type InstallKey } from "@/server/boot/installkey.ts";
 import { error as logError, reasonOf } from "@/server/log.ts";
 import type { Storage } from "@/server/storage/storage.ts";
+import type { StoredConfiguration } from "@/server/storage/transfer.ts";
 import { utcDayStart } from "@/shared/domain/retention.ts";
 import type { Check } from "@/shared/schemas/check.ts";
 import {
@@ -22,7 +23,6 @@ import {
   chartRangeMs,
 } from "@/shared/schemas/detail.ts";
 import {
-  type Configuration,
   type ExportMode,
   type ExportRecord,
   exportVersion,
@@ -64,8 +64,8 @@ class UnreadableCredentialsError extends Error {
 /** Every sealed credential of the configuration opened with the install key. */
 async function opened(
   key: InstallKey,
-  configuration: Configuration
-): Promise<Configuration> {
+  configuration: StoredConfiguration
+): Promise<StoredConfiguration> {
   const open = async <Row extends { id: string; credentials: string | null }>(
     row: Row
   ): Promise<Row> => {
@@ -87,7 +87,10 @@ async function opened(
 }
 
 /** The record a stored row this version cannot write names: the row's id where it has one, else its table. */
-function recordOf(configuration: Configuration, error: z.ZodError): string {
+function recordOf(
+  configuration: StoredConfiguration,
+  error: z.ZodError
+): string {
   const [, table, index] = error.issues[0]?.path ?? [];
   if (typeof table !== "string" || typeof index !== "number") {
     return "configuration";
@@ -182,7 +185,7 @@ async function exportLines(
   | { readonly ok: true; readonly lines: AsyncGenerator<string> }
   | Extract<ExportStart, { ok: false }>
 > {
-  let configuration: Configuration;
+  let configuration: StoredConfiguration;
   try {
     configuration = await opened(key, await storage.transfer.configuration());
   } catch (error) {
@@ -193,12 +196,17 @@ async function exportLines(
     return { ok: false, reason: "unavailable" };
   }
   let header: string;
-  let images: string[];
   try {
-    // Each image on a line of its own: four pages' images at their size limits would pass the line a reader takes.
-    images = configuration.pageImages.map(({ pageId, kind, ...image }) =>
-      lineOf({ ...image, image: kind, kind: "image", page: pageId })
-    );
+    // Every image is checked before the first byte, without its bytes, which are read one at a time as its line is written.
+    for (const { pageId, kind, ...image } of configuration.pageImages) {
+      lineOf({
+        ...image,
+        body: new Uint8Array(),
+        image: kind,
+        kind: "image",
+        page: pageId,
+      });
+    }
     header = JSON.stringify(
       headerSchema.encode({
         configuration: { ...configuration, pageImages: [] },
@@ -220,7 +228,16 @@ async function exportLines(
   }
   async function* lines(): AsyncGenerator<string> {
     yield header;
-    yield* images;
+    // Each image on a line of its own, read as it is written, so one is held at a time.
+    for (const { kind, pageId } of configuration.pageImages) {
+      // biome-ignore lint/performance/noAwaitInLoops: one image at a time, so one is held
+      const image = await storage.transfer.image(pageId, kind);
+      // One removed since the configuration was read is left out, as if it had gone before.
+      if (image) {
+        const { pageId: page, kind: imageKind, ...row } = image;
+        yield lineOf({ ...row, image: imageKind, kind: "image", page });
+      }
+    }
     if (mode === "configuration") {
       return;
     }
