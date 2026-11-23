@@ -26,6 +26,8 @@ export interface OperatorAccountsRepository {
   appOff: (id: string) => Promise<void>;
   /** Sets the account deactivated at the time and ends every session of it, in one transaction; false when there is no such account. */
   deactivate: (id: string, at: number) => Promise<boolean>;
+  /** Ends every session not opened through the identity provider, of every account but an owner's. */
+  endPasswordSessions: () => Promise<void>;
   /** Ends one session of the account; false when it has no such session. */
   endSession: (id: string, sessionId: string) => Promise<boolean>;
   /** Ends every session of the account. */
@@ -149,6 +151,12 @@ export function operatorAccountsRepository(
       (await executor.run(
         sql`DELETE FROM ${authSession} WHERE ${authSession.userId} = ${id} AND ${authSession.id} = ${sessionId}`
       )) > 0,
+    endPasswordSessions: async () => {
+      // A session from before the method was recorded counts as a password's.
+      await executor.run(
+        sql`DELETE FROM ${authSession} WHERE (${authSession.method} IS NULL OR ${authSession.method} <> 'oidc') AND ${authSession.userId} IN (SELECT ${authUser.id} FROM ${authUser} WHERE ${authUser.role} <> 'owner')`
+      );
+    },
     endSessions: async (id) => {
       await executor.run(
         sql`DELETE FROM ${authSession} WHERE ${authSession.userId} = ${id}`

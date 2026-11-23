@@ -57,6 +57,16 @@ const ssoSetting = defineSetting(
   ssoInputSchema.extend({ clientSecret: z.string() })
 );
 
+/** Whether only an owner may hold a password session; a setting that cannot be read counts as required, so what was refused stays refused. */
+export async function ssoRequired(storage: SsoStorage): Promise<boolean> {
+  try {
+    const held = await storage.settings.get(ssoSetting);
+    return held?.enabled === true && held.requireSso;
+  } catch {
+    return true;
+  }
+}
+
 /** The settings page's read; nothing before a provider is stored. */
 export async function readSsoView(
   storage: SsoStorage,
@@ -77,9 +87,9 @@ export async function readSsoView(
   };
 }
 
-/** Stores the provider, sealing a new client secret and keeping the stored one when none is given. */
+/** Stores the provider, sealing a new client secret and keeping the stored one when none is given; a required one ends the non-owners' password sessions. */
 export async function saveSso(
-  storage: Pick<Storage, "bump" | "settings">,
+  storage: Pick<Storage, "bump" | "operatorAccounts" | "settings">,
   key: InstallKey,
   input: SsoInput
 ): Promise<SsoSaveResult> {
@@ -97,6 +107,10 @@ export async function saveSso(
       return { ok: false, reason: "secret_required" };
     }
     await storage.settings.set(ssoSetting, { ...rest, clientSecret: sealed });
+    // "Required" counts only while enabled, as `ssoRequired` does; then only owners use a password, so the password sessions already open end too.
+    if (rest.enabled && rest.requireSso) {
+      await storage.operatorAccounts.endPasswordSessions();
+    }
     // The sign-in page the public memo keeps shows the provider's button, or no longer does.
     await storage.bump();
     return { ok: true };

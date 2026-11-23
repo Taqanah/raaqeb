@@ -13,7 +13,7 @@ import {
 } from "@/server/auth/oidc-fixture.ts";
 import { expect, expectPath, test } from "./support/fixtures.ts";
 import { operatorEmail, operatorPassword } from "./support/servers.ts";
-import { type Install, spawnInstall } from "./support/spawn.ts";
+import { type Install, seedAccount, spawnInstall } from "./support/spawn.ts";
 
 test.describe("single sign-on", () => {
   let provider: OidcProviderFixture | undefined;
@@ -91,5 +91,72 @@ test.describe("single sign-on", () => {
     await page.click("[data-slot=sso-sign-in]");
     await expectPath(page, "/sign-in");
     await expect(page.locator("[data-failure=sso_not_invited]")).toBeVisible();
+  });
+});
+
+test.describe("required single sign-on", () => {
+  let provider: OidcProviderFixture | undefined;
+  let install: Install | undefined;
+  test.beforeAll(async () => {
+    provider = await startOidcProvider();
+    install = await spawnInstall({
+      account: true,
+      language: "en",
+      records: (storage) =>
+        seedAccount(storage, {
+          email: "heir@example.com",
+          name: "Heir",
+          password: "an admin's password",
+          role: "admin",
+        }),
+    });
+  });
+  test.afterAll(async () => {
+    await install?.stop();
+    provider?.stop();
+  });
+
+  test("an owner who hands ownership on from a password session is signed out, the password no longer lets them in, and the hand-over is in the audit log", async ({
+    page,
+  }) => {
+    const origin = install?.origin ?? "";
+    const signIn = async () => {
+      await page.goto(`${origin}/sign-in`);
+      await page.fill("input[name=email]", operatorEmail);
+      await page.fill("input[name=password]", operatorPassword);
+      await page.click("form button[type=submit]");
+    };
+    await signIn();
+    await expectPath(page, "/admin/monitors");
+    await page.goto(`${origin}/admin/settings/single-sign-on`);
+    await page.fill("input[name=name]", "Company login");
+    await page.fill("input[name=discoveryUrl]", provider?.discoveryUrl ?? "");
+    await page.fill("input[name=clientId]", provider?.clientId ?? "");
+    await page.fill("input[name=clientSecret]", provider?.clientSecret ?? "");
+    await page.click("label[for=enabled]");
+    await page.click("label[for=requireSso]");
+    await page.click("[data-slot=save-sso]");
+    await expect(page.locator("[data-slot=save-sso]")).toBeDisabled();
+
+    await page.goto(`${origin}/admin/team`);
+    const heir = page.locator("[data-slot=team-member][data-role=admin]");
+    await heir.locator("[data-slot=team-actions]").click();
+    await page.click("[data-action=transfer]");
+    await page.fill("input[name=password]", operatorPassword);
+    await page.click("[role=dialog] button[type=submit]");
+    await expectPath(page, "/sign-in");
+
+    await signIn();
+    await expect(page.locator("[data-failure=sso_required]")).toBeVisible();
+
+    // The hand-over answered and was recorded although its session ended with it.
+    await page.fill("input[name=email]", "heir@example.com");
+    await page.fill("input[name=password]", "an admin's password");
+    await page.click("form button[type=submit]");
+    await expectPath(page, "/admin/monitors");
+    await page.goto(`${origin}/admin/audit`);
+    await expect(
+      page.locator("[data-slot=audit-entry][data-action='ownership.change']")
+    ).toHaveCount(1);
   });
 });

@@ -19,6 +19,7 @@ import {
   newInvitationToken,
 } from "@/server/auth/invitation.ts";
 import { authEmailChannelOf, sendAuthMail } from "@/server/auth/mail.ts";
+import { ssoRequired } from "@/server/auth/sso.ts";
 import type { InstallKey } from "@/server/boot/installkey.ts";
 import type { DeliverIo } from "@/server/notify/channel.ts";
 import { readPublicAddress } from "@/server/settings/address.ts";
@@ -482,7 +483,7 @@ export function remove(
   );
 }
 
-/** Makes the account an owner and the signed-in owner an admin, after their password; the owner stays signed in. */
+/** Makes the account an owner and the signed-in owner an admin, after their password; the owner stays signed in, unless single sign-on is required and they signed in with a password. */
 export function transferOwnership(
   storage: TeamStorage,
   actor: Actor,
@@ -514,10 +515,15 @@ export function transferOwnership(
       if (unproven) {
         return refused(unproven);
       }
+      const required = await ssoRequired(storage);
       // The new owner first, so the install never has none.
       await storage.operatorAccounts.setRole(account.id, "owner");
       await storage.operatorAccounts.setRole(by.id, "admin");
       await revokeSentBeyond(storage, by.id, "admin");
+      if (required) {
+        // Now an admin, under a rule that leaves no non-owner a password session.
+        await storage.operatorAccounts.endPasswordSessions();
+      }
       return { ok: true };
     } catch {
       return refused("unavailable");

@@ -11,6 +11,7 @@ import { scratchInstallKey } from "@/server/boot/fixture.ts";
 import { decrypt } from "@/server/boot/installkey.ts";
 import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import { runSql } from "@/server/storage/fixture.ts";
+import { transferOwnership } from "@/server/team/team.ts";
 import type { SsoInput } from "@/shared/schemas/sso.ts";
 import {
   type Auth,
@@ -52,6 +53,7 @@ import {
   type SsoProvider,
   saveSso,
   ssoCallbackPath,
+  ssoRequired,
   testDiscovery,
 } from "./sso.ts";
 
@@ -621,6 +623,135 @@ describe("a provider whose id tokens cannot be checked", () => {
 });
 
 describe("the password under single sign-on", () => {
+  test("ends the sessions a non-owner opened with a password once an owner requires it, and keeps the owner's and the provider's", async () => {
+    const s = await scratch();
+    const auth = await ssoAuth(s);
+    await auth.api.signUpEmail({
+      body: { email: "editor@example.com", name: "", password: testPassword },
+    });
+    const editor = await call(auth, "/sign-in/email", {
+      body: { email: "editor@example.com", password: testPassword },
+    });
+    const owner = await call(auth, "/sign-in/email", {
+      body: { email: testEmail, password: testPassword },
+    });
+    await invite(s, "new@example.com", "editor");
+    const { response: throughProvider } = await ssoSignIn(auth, person());
+    const read = (signedIn: Response) =>
+      readOperator(auth, new Headers({ cookie: cookiesOf(signedIn) }));
+    const before = await call(auth, "/sign-in/email", {
+      body: { email: "editor@example.com", password: testPassword },
+    });
+    // A session from before the method was recorded.
+    await runSql(
+      s.location,
+      `UPDATE auth_session SET method = NULL WHERE token = '${decodeURIComponent(cookiesOf(before).split("=")[1] ?? "").split(".")[0]}'`
+    );
+    await saveSso(s.storage, s.boot.installKey, input());
+    expect(await read(editor)).toBeDefined();
+    expect(await read(before)).toBeDefined();
+    expect(
+      await saveSso(s.storage, s.boot.installKey, input({ requireSso: true }))
+    ).toEqual({ ok: true });
+    expect(await read(editor)).toBeUndefined();
+    expect(await read(before)).toBeUndefined();
+    expect(await read(owner)).toBeDefined();
+    expect(await read(throughProvider)).toBeDefined();
+  });
+  test("keeps the password sessions open when single sign-on is saved off with Require still switched on", async () => {
+    const s = await scratch();
+    const auth = await ssoAuth(s);
+    await auth.api.signUpEmail({
+      body: { email: "editor@example.com", name: "", password: testPassword },
+    });
+    const editor = await call(auth, "/sign-in/email", {
+      body: { email: "editor@example.com", password: testPassword },
+    });
+    const read = () =>
+      readOperator(auth, new Headers({ cookie: cookiesOf(editor) }));
+    expect(await read()).toBeDefined();
+    expect(
+      await saveSso(
+        s.storage,
+        s.boot.installKey,
+        input({ enabled: false, requireSso: true })
+      )
+    ).toEqual({ ok: true });
+    expect(await ssoRequired(s.storage)).toBe(false);
+    expect(await read()).toBeDefined();
+  });
+
+  test("ends the password session of an owner who hands ownership on while it is required, who is then an admin", async () => {
+    const s = await scratch();
+    const auth = await ssoAuth(s);
+    await auth.api.signUpEmail({
+      body: { email: "next@example.com", name: "", password: testPassword },
+    });
+    const owner = await call(auth, "/sign-in/email", {
+      body: { email: testEmail, password: testPassword },
+    });
+    const read = () =>
+      readOperator(auth, new Headers({ cookie: cookiesOf(owner) }));
+    expect(
+      await saveSso(s.storage, s.boot.installKey, input({ requireSso: true }))
+    ).toEqual({ ok: true });
+    expect(await read()).toBeDefined();
+    expect(
+      await transferOwnership(
+        s.storage,
+        {
+          id:
+            (await s.storage.operatorAccounts.findByEmail(testEmail))?.id ?? "",
+          role: "owner",
+        },
+        {
+          id:
+            (await s.storage.operatorAccounts.findByEmail("next@example.com"))
+              ?.id ?? "",
+          password: testPassword,
+        },
+        () => Promise.resolve("right")
+      )
+    ).toEqual({ ok: true });
+    expect(await read()).toBeUndefined();
+  });
+
+  test("counts as required at a hand-over of ownership when its stored setting no longer reads", async () => {
+    const s = await scratch();
+    const auth = await ssoAuth(s);
+    await auth.api.signUpEmail({
+      body: { email: "next@example.com", name: "", password: testPassword },
+    });
+    const owner = await call(auth, "/sign-in/email", {
+      body: { email: testEmail, password: testPassword },
+    });
+    await saveSso(s.storage, s.boot.installKey, input());
+    await runSql(
+      s.location,
+      "UPDATE settings SET value = '{\"enabled\":' WHERE key = 'sso_provider'"
+    );
+    expect(
+      await transferOwnership(
+        s.storage,
+        {
+          id:
+            (await s.storage.operatorAccounts.findByEmail(testEmail))?.id ?? "",
+          role: "owner",
+        },
+        {
+          id:
+            (await s.storage.operatorAccounts.findByEmail("next@example.com"))
+              ?.id ?? "",
+          password: testPassword,
+        },
+        () => Promise.resolve("right")
+      )
+    ).toEqual({ ok: true });
+    expect(
+      await readOperator(auth, new Headers({ cookie: cookiesOf(owner) }))
+    ).toBeUndefined();
+  });
+
   test("is refused to an operator who is not an owner once single sign-on is required, after the password was checked", async () => {
     const s = await scratch();
     const auth = await ssoAuth(s, ssoOf({ requireSso: true }));
