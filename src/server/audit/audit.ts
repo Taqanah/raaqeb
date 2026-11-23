@@ -5,10 +5,7 @@
  * never stops the change it records: a failed write is a log line.
  */
 import { error as logError, reasonOf } from "@/server/log.ts";
-import {
-  readRetentionDays,
-  retentionDefaultDays,
-} from "@/server/settings/retention.ts";
+import { readRetentionDays } from "@/server/settings/retention.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import { auditSpan, detailOf, targetOf } from "@/shared/domain/audit.ts";
 import {
@@ -16,6 +13,7 @@ import {
   type AuditView,
   auditPageSize,
 } from "@/shared/schemas/audit.ts";
+import { retentionDefaultDays } from "@/shared/schemas/monitor.ts";
 
 export type AuditStorage = Pick<Storage, "audit">;
 

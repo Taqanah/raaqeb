@@ -16,12 +16,14 @@ import {
 import {
   dayMs,
   formatDateTime,
+  formatUnit,
   type TimeOptions,
 } from "@/shared/i18n/format.ts";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { useMessages } from "@/shared/i18n/react.tsx";
 import { wallTime } from "@/shared/i18n/timezone.ts";
 import type { AuditEntry, AuditView } from "@/shared/schemas/audit.ts";
+import { retentionDefaultDays } from "@/shared/schemas/monitor.ts";
 import { Alert, AlertDescription } from "@/shared/ui/alert.tsx";
 import { Button } from "@/shared/ui/button.tsx";
 import { Checkbox } from "@/shared/ui/checkbox.tsx";
@@ -123,7 +125,7 @@ export function AuditPage({
   search,
   view,
 }: AuditPageProps): ReactNode {
-  const { t } = useMessages();
+  const { locale, t } = useMessages();
   const onActor = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) =>
       onFilter({ actor: event.currentTarget.value || undefined }),
@@ -178,7 +180,11 @@ export function AuditPage({
   }
   return (
     <Page title={t("audit_title")}>
-      <p className="text-muted-foreground text-sm">{t("audit_intro")}</p>
+      <p className="text-muted-foreground text-sm">
+        {t("audit_intro", {
+          days: formatUnit(locale, retentionDefaultDays, "day", "long"),
+        })}
+      </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Field className="sm:w-64">
           <FieldLabel htmlFor="audit-actor">

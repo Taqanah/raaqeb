@@ -6420,7 +6420,7 @@ msgstr "Audit log"
 
 #. js-lingui-explicit-id
 msgid "audit_intro"
-msgstr "Every change an operator made, and every sign-in and refused attempt, newest first. Entries past the retention period are deleted."
+msgstr "Every change an operator made, and every sign-in and refused attempt, newest first. Entries are kept for the retention period, and never less than {days}."
 
 #. js-lingui-explicit-id
 msgid "audit_unavailable"

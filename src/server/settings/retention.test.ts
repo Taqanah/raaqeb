@@ -3,11 +3,11 @@ import { z } from "zod";
 import { scratchDatabase } from "@/server/storage/fixture.ts";
 import { defineSetting } from "@/server/storage/settings.ts";
 import { openStorage, type Storage } from "@/server/storage/storage.ts";
+import { retentionDefaultDays } from "@/shared/schemas/monitor.ts";
 import {
   readRetentionDays,
   readSizeBudgetBytes,
   retentionDays,
-  retentionDefaultDays,
   sizeBudgetBytes,
 } from "./retention.ts";
 

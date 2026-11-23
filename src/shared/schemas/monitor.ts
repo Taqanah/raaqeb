@@ -100,6 +100,8 @@ export const channelsMax = 100;
 /** A monitor's retention override in days; absent follows the install default. */
 export const retentionDaysMin = 1;
 export const retentionDaysMax = 3650;
+/** The retention an install starts with, and the least an audit entry is kept. */
+export const retentionDefaultDays = 90;
 
 /** A name a person typed: trimmed, one line, never empty. */
 const label = (max: number) => z.string().trim().min(1).max(max);

@@ -11,14 +11,13 @@ import type { Storage } from "@/server/storage/storage.ts";
 import {
   retentionDaysMax,
   retentionDaysMin,
+  retentionDefaultDays,
 } from "@/shared/schemas/monitor.ts";
 import {
   sizeBudgetMaxBytes,
   sizeBudgetMinBytes,
 } from "@/shared/schemas/settings.ts";
 import { readSetting } from "./clock.ts";
-
-export const retentionDefaultDays = 90;
 
 export const retentionDays: Setting<number> = defineSetting(
   "retention_days",
