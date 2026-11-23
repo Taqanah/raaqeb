@@ -449,7 +449,7 @@ describe("the raaqeb command", () => {
     );
   });
 
-  test("a request body over 8 MB, or one with no length, is refused before the handler, except an import's, which streams in whole", async () => {
+  test("a request body over 64 KiB with no live session, or one with no length, is refused before the handler; the key-guarded APIs and the heartbeat take 8 MB, and an import streams in whole", async () => {
     const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
     const dir = await serverBuild({
       "server/handler.js":
@@ -471,11 +471,35 @@ describe("the raaqeb command", () => {
               controller.close();
             },
           });
-        expect((await post("/sign-in", large)).status).toBe(413);
-        const limit = new Uint8Array(8 * 1024 * 1024);
-        expect(await (await post("/sign-in", limit)).text()).toBe(
-          `read ${limit.length}`
-        );
+        // A stranger reaches each of these with a body that is read in whole before any check of who sent it.
+        const limit = new Uint8Array(65_536);
+        const over = new Uint8Array(65_537);
+        for (const path of [
+          "/_serverFn/any",
+          "/api/auth/sign-in/email",
+          "/sign-in",
+        ]) {
+          // biome-ignore lint/performance/noAwaitInLoops: one request at a time, each judged alone
+          expect(await (await post(path, limit)).text()).toBe(
+            `read ${limit.length}`
+          );
+          const refused = await post(path, over);
+          expect(refused.status).toBe(413);
+          // Read and dropped, so a proxy still streaming it gets this answer.
+          expect(refused.headers.get("connection")).not.toBe("close");
+        }
+        const keyed = new Uint8Array(8 * 1024 * 1024);
+        for (const path of [
+          "/api/v1/monitors",
+          "/api/probe/v1/results",
+          "/api/heartbeat/token",
+        ]) {
+          // biome-ignore lint/performance/noAwaitInLoops: one request at a time, each judged alone
+          expect(await (await post(path, keyed)).text()).toBe(
+            `read ${keyed.length}`
+          );
+          expect((await post(path, large)).status).toBe(413);
+        }
         expect((await post("/sign-in", chunked())).status).toBe(413);
         expect(await (await post("/sign-in", "small")).text()).toBe("read 5");
         expect(await (await post("/admin/import", large)).text()).toBe(
@@ -491,6 +515,140 @@ describe("the raaqeb command", () => {
         );
       }
     );
+  });
+
+  test("a refused body's connection is kept, Bun dropping the rest of the body, so the next request on it is answered, even sent in the same packet; one declared past 64 MiB, or past four refusals a second, closes its connection", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async (r) => new Response('read ' + (await r.arrayBuffer()).byteLength) };",
+    });
+    await withServer(
+      ["--port", "0", "--data-dir", dataDir],
+      {},
+      dir,
+      async (server) => {
+        /** What the server writes back to `sent` on one connection, until it closes it or a second's quiet. */
+        const exchange = (sent: string) =>
+          new Promise<{ closed: boolean; text: string }>((resolve) => {
+            let text = "";
+            let quiet: Timer | undefined;
+            const settle = (closed: boolean) => {
+              clearTimeout(quiet);
+              resolve({ closed, text });
+            };
+            Bun.connect({
+              hostname: "127.0.0.1",
+              port: server.port ?? 0,
+              socket: {
+                close: () => settle(true),
+                data: (socket, chunk) => {
+                  text += chunk.toString();
+                  clearTimeout(quiet);
+                  quiet = setTimeout(() => {
+                    socket.end();
+                    settle(false);
+                  }, 1000);
+                },
+                open: (socket) => {
+                  socket.write(sent);
+                },
+              },
+            });
+          });
+        const post = (length: number, body: string) =>
+          `POST /_serverFn/any HTTP/1.1\r\nhost: raaqeb.test\r\ncontent-length: ${length}\r\n\r\n${body}`;
+        const followed = await exchange(
+          `${post(65_537, "a".repeat(65_537))}${post(5, "small")}`
+        );
+        expect(followed.text).toContain("HTTP/1.1 413");
+        expect(followed.text).toContain("read 5");
+        const largest = await exchange(post(64 * 1024 * 1024, "a"));
+        expect(largest.text).toContain("HTTP/1.1 413");
+        expect(largest.text.toLowerCase()).not.toContain("connection: close");
+        const unread = await exchange(post(64 * 1024 * 1024 + 1, "a"));
+        expect(unread.text).toContain("HTTP/1.1 413");
+        expect(unread.text.toLowerCase()).toContain("connection: close");
+        expect(unread.closed).toBe(true);
+        // Four refusals a second keep their connection; a fifth closes its own.
+        const burst = await Promise.all(
+          [1, 2, 3, 4, 5].map(() => exchange(post(65_537, "a")))
+        );
+        expect(
+          burst.filter((each) =>
+            each.text.toLowerCase().includes("connection: close")
+          ).length
+        ).toBe(1);
+      }
+    );
+  });
+
+  test("a live session carries a body up to 8 MiB, past the monitor form at its caps in the serializer's widest character; a forged session cookie carries no more than a stranger", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async (r) => new Response('read ' + (await r.arrayBuffer()).byteLength) };",
+    });
+    const booted = await resolveBootSettings({}, { RAAQEB_DATA_DIR: dataDir });
+    const result = await main(["--port", "0", "--data-dir", dataDir], {}, dir);
+    if (typeof result === "number" || !result.storage || !booted.ok) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createOperatorAccount(
+        {
+          email: "operator@example.com",
+          locale: "ar",
+          name: "Nadia",
+          password: "correct horse battery",
+          publicAddress: "http://raaqeb.test",
+        },
+        {
+          boot: booted.settings,
+          opener: databaseOpener(() => undefined),
+          storage: result.storage,
+        },
+        new Headers({ origin: "http://raaqeb.test" })
+      );
+      if (!created.ok) {
+        throw new Error("the account was not created");
+      }
+      const live = created.setCookies
+        .map((each) => each.split(";")[0])
+        .join("; ");
+      const post = (path: string, body: BodyInit, cookie: string) =>
+        fetch(`http://127.0.0.1:${result.server.port}${path}`, {
+          body,
+          headers: { cookie },
+          method: "POST",
+        });
+      // The monitor edit form with every capped text full of U+2028, which seroval and JSON write as 7 bytes each.
+      const form = new Uint8Array(2_553_815);
+      const limit = new Uint8Array(8 * 1024 * 1024);
+      for (const path of ["/_serverFn/any", "/api/auth/update-user"]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one request at a time, each judged alone
+        expect(await (await post(path, form, live)).text()).toBe(
+          `read ${form.length}`
+        );
+        expect(await (await post(path, limit, live)).text()).toBe(
+          `read ${limit.length}`
+        );
+        expect(
+          (await post(path, new Uint8Array(limit.length + 1), live)).status
+        ).toBe(413);
+        expect(
+          (
+            await post(
+              path,
+              new Uint8Array(65_537),
+              "raaqeb.session_token=forged"
+            )
+          ).status
+        ).toBe(413);
+      }
+    } finally {
+      await result.stop();
+    }
   });
 
   test("the same port speaks HTTP/2 to a client that opens with its preface, as a proxy with an HTTP/2 backend does, and HTTP/1.1 to any other", async () => {
@@ -515,7 +673,7 @@ describe("the raaqeb command", () => {
     );
   });
 
-  test("over HTTP/2 a body over 8 MB, or one with no length, is refused before the handler, as over HTTP/1.1; an import's streams in whole", async () => {
+  test("over HTTP/2 a body over the limit, or one with no length, is refused before the handler, as over HTTP/1.1; an import's streams in whole", async () => {
     const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
     const dir = await serverBuild({
       "server/handler.js":

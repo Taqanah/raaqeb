@@ -86,6 +86,7 @@ import {
 } from "./server/storage/storage.ts";
 import { subscriptionView } from "./server/subscriptions/subscriptions.ts";
 import { importPath } from "./shared/schemas/export-page.ts";
+import { heartbeatPathPrefix } from "./shared/schemas/heartbeat.ts";
 import type {
   MaintenanceStage,
   MaintenanceWindow,
@@ -496,21 +497,55 @@ export const strangerPace: StrangerPace = {
 /** Bun's own idle timeout, when the entry is given none. */
 const bunIdleSeconds = 10;
 
-/** The largest body a request other than an import may carry: Start reads a server function's whole body before any check, and the largest one the admin sends is a 1 MB cover image. */
+/** The largest body a request with no live session may carry: Start parses a server function's body, and Better Auth its JSON, before either asks who sent it, and a stranger's real ones (the subscribe form, sign-in, a reset) are a few kilobytes. Bounding one body bounds its parse; 200 at once held a 240 MB install. */
+export const strangerBodyLimitBytes = 64 * 1024;
+
+/** The largest body any other request may carry: a live session's, or one to an address that reads its body only after a live key (the management and probe APIs) or only its head (the heartbeat). A session's form has no largest: the monitor form's assertions take any number of texts of any length, and its capped fields alone come to 2,553,815 bytes with every character U+2028, which seroval and JSON write as 7 bytes. So it keeps the limit every request had before strangers had their own. */
 export const bodyLimitBytes = 8 * 1024 * 1024;
+
+/** A refused body's connection is kept, and Bun reads the rest of the body and drops it, so a proxy still streaming it gets the 413 rather than a broken pipe it answers 502. Until Bun has read it, the rest sits in the kernel's buffers, charged past the install's memory limit: 200 refused 1.1 MB bodies at once on kept connections took 77 to 91 MB. So a few a second keep their connection, and the rest, or one too large to be worth reading, close it. */
+const keptRefusalsPerSecond = 4;
+const keptRefusalLimitBytes = 64 * 1024 * 1024;
+
+const keyedApi = /^\/api\/(v1|probe)\//;
 
 /** The largest export an import takes. */
 const uploadLimitBytes = 4 * 1024 ** 3;
 
-/** Whether a request's body is refused before anything reads it: over the limit, or streamed with no length to judge; an import's upload streams in whole. A body is judged by itself, not by transfer-encoding, which HTTP/2 never sends. */
-function oversized(request: Request): boolean {
-  if (new URL(request.url).pathname === importPath) {
+/** Whether a request's body is refused before anything reads it: over its limit, or streamed with no length to judge; an import's upload streams in whole. Only a body past a stranger's limit asks `stranger`, so a stranger's small one costs no session read, and a forged cookie fails its signature before any. A body is judged by itself, not by transfer-encoding, which HTTP/2 never sends. */
+async function oversized(
+  request: Request,
+  stranger: () => Promise<boolean>
+): Promise<boolean> {
+  const { pathname } = new URL(request.url);
+  if (pathname === importPath) {
     return false;
   }
   const length = request.headers.get("content-length");
-  return length === null
-    ? request.body !== null
-    : Number(length) > bodyLimitBytes;
+  if (length === null) {
+    return request.body !== null;
+  }
+  const bytes = Number(length);
+  if (bytes > bodyLimitBytes) {
+    return true;
+  }
+  return (
+    bytes > strangerBodyLimitBytes &&
+    !keyedApi.test(pathname) &&
+    !pathname.startsWith(heartbeatPathPrefix) &&
+    (await stranger())
+  );
+}
+
+/** The 413 for a body refused unread, its connection kept when `keep` has room and the body has a length worth reading. */
+function refusedBody(request: Request, keep: () => boolean): Response {
+  const length = request.headers.get("content-length");
+  const kept =
+    length !== null && Number(length) <= keptRefusalLimitBytes && keep();
+  return new Response("Payload Too Large", {
+    headers: kept ? {} : { connection: "close" },
+    status: 413,
+  });
 }
 
 /**
@@ -539,6 +574,18 @@ export function serve(
   const renders = createPace(paceLimits.renders);
   const idleSeconds = idleTimeoutSeconds ?? bunIdleSeconds;
   const checks = createPace(paceLimits.checks);
+  // Refused bodies whose connection was kept this second.
+  let keptSince = 0;
+  let kept = 0;
+  const keep = (): boolean => {
+    const now = performance.now();
+    if (now - keptSince >= 1000) {
+      keptSince = now;
+      kept = 0;
+    }
+    kept += 1;
+    return kept <= keptRefusalsPerSecond;
+  };
   // An unpublished page shows its views to the signed-in operator alone.
   const memo = createPublicMemo({
     key: settings.installKey,
@@ -570,11 +617,17 @@ export function serve(
       const trusted = await proxies(storage, await counter);
       const logging = await requestLog(storage, await counter);
       const resolved = withClientAddress(request, server, trusted);
-      if (oversized(request)) {
+      const { checked, paced, stranger } = gatesFor(
+        resolved,
+        () => isOperator(holder.current, settings, resolved.headers),
+        renders,
+        checks
+      );
+      if (await oversized(request, stranger)) {
         if (logging) {
           logRequest(resolved, 413, started, undefined);
         }
-        return new Response("Payload Too Large", { status: 413 });
+        return refusedBody(resolved, keep);
       }
       // One render: a nonce of its own, named by its answer's policy, so a body the memo keeps is answered under the policy it was rendered for.
       const render = async (
@@ -618,12 +671,6 @@ export function serve(
       let memoised: Response | undefined;
       let response: Response;
       holdWhileWaiting(server, request);
-      const { checked, paced, stranger } = gatesFor(
-        resolved,
-        () => isOperator(holder.current, settings, resolved.headers),
-        renders,
-        checks
-      );
       // A not-found the memo keeps still: its stylesheet linked, since the document is served at every address of its frame.
       const renderMissing: RenderMissing = (address, target, refresh) =>
         paced(
@@ -696,7 +743,7 @@ export function serve(
     idleTimeout: idleTimeoutSeconds,
     // HTTP/2 to a client that opens with its preface, as a proxy with an HTTP/2 backend does (Fly's h2_backend); HTTP/1.1 to any other.
     http2: true,
-    // An import streams its upload, so only Bun's own limit bounds it; every other body stops at `bodyLimitBytes`.
+    // An import streams its upload, so only Bun's own limit bounds it; every other body stops at its limit in `oversized`.
     maxRequestBodySize: uploadLimitBytes,
     port: settings.port,
     // With development false Bun sets SO_REUSEPORT unless told not to, and a

@@ -365,3 +365,21 @@ test("an image over the request size limit is refused as too large, not as a ser
     page.locator("[data-image=cover] [data-slot=field-error]")
   ).toHaveAttribute("data-reason", "too_large");
 });
+
+test("a cover at its full size uploads, the largest body the admin sends", async ({
+  page,
+}) => {
+  const run = runId();
+  await signIn(page);
+  await publishedPage(page, `full-${run}`, []);
+  const cover = Buffer.alloc(1_048_576);
+  png.copy(cover);
+  await page.setInputFiles("input[name=image-cover]", {
+    buffer: cover,
+    mimeType: "image/png",
+    name: "cover.png",
+  });
+  await expect(
+    page.locator("[data-image=cover] [data-slot=page-image-preview]")
+  ).toBeVisible();
+});
