@@ -451,7 +451,7 @@ _Avoid_: draft, live, visible, private (that is a published page with page acces
 
 **Render pace**:
 Arabic: وتيرة العرض
-How often the app may start a full render for strangers: one at a time, spaced apart, each kind of page with a short queue of its own. Past it a stranger is asked to try again.
+How often the app may start a full render for strangers: one at a time, spaced apart, each kind of page with a short queue of its own. It also bounds how many of a stranger's requests that carry a body may be in flight at once, fewer from one client network than in all. Past it a stranger is asked to try again.
 _Avoid_: rate limit (that is Better Auth's count of sign-ins per address), throttle
 
 **Status level**:
