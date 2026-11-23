@@ -390,6 +390,113 @@ describe("signing in through the provider", () => {
     );
   });
 
+  test("that lands in an account whose address nobody confirmed ends its password and its sessions, which whoever accepted the invitation may hold", async () => {
+    const s = await scratch();
+    const auth = await ssoAuth(s);
+    // Whoever holds the link accepts it: here the sender, not the person at the address.
+    const token = newInvitationToken();
+    await s.storage.invitations.put({
+      createdAt: Date.now(),
+      email: "boss@example.com",
+      expiresAt: Date.now() + 60_000,
+      id: "i-boss",
+      invitedBy:
+        (await s.storage.operatorAccounts.findByEmail(testEmail))?.id ?? null,
+      role: "editor",
+      tokenHash: invitationTokenHash(token),
+    });
+    const planted = await call(auth, "/invitation/accept", {
+      body: { name: "Boss", password: testPassword, token },
+    });
+    expect(setsSession(planted)).toBe(true);
+    const made =
+      await s.storage.operatorAccounts.findByEmail("boss@example.com");
+    const { location, response } = await ssoSignIn(
+      auth,
+      person({ email: "boss@example.com", sub: "the-boss" })
+    );
+    expect(location).toBe(`${testOrigin}/admin`);
+    const session = await readOperator(
+      auth,
+      new Headers({ cookie: cookiesOf(response) })
+    );
+    expect(session?.operator).toMatchObject({ id: made?.id, role: "editor" });
+    const password = await call(auth, "/sign-in/email", {
+      body: { email: "boss@example.com", password: testPassword },
+    });
+    expect(setsSession(password)).toBe(false);
+    expect(
+      await readOperator(auth, new Headers({ cookie: cookiesOf(planted) }))
+    ).toBeUndefined();
+    // An owner reads in the audit log why the password stopped working.
+    const view = await readAuditLog(s.storage, { kind: "password" }, "UTC");
+    expect(
+      view?.entries.map(({ action, actorEmail, detail, targetId }) => ({
+        action,
+        actorEmail,
+        detail,
+        targetId,
+      }))
+    ).toEqual([
+      {
+        action: "password.delete",
+        actorEmail: "boss@example.com",
+        detail: { id: made?.id ?? "", method: "provider" },
+        targetId: made?.id ?? "",
+      },
+    ]);
+  });
+
+  test("that is refused to a deactivated account still ends a password nobody confirmed, and says so in the audit log", async () => {
+    const s = await scratch();
+    const auth = await ssoAuth(s);
+    await auth.api.signUpEmail({
+      body: { email: "boss@example.com", name: "", password: testPassword },
+    });
+    const made =
+      await s.storage.operatorAccounts.findByEmail("boss@example.com");
+    await s.storage.operatorAccounts.deactivate(made?.id ?? "", Date.now());
+    const { location } = await ssoSignIn(
+      auth,
+      person({ email: "boss@example.com", sub: "the-boss" })
+    );
+    expect(location).toContain("error=ACCOUNT_DEACTIVATED");
+    const view = await readAuditLog(s.storage, { kind: "password" }, "UTC");
+    expect(view?.entries.map((one) => one.action)).toEqual(["password.delete"]);
+  });
+
+  test("that links an owner, or an account whose address an emailed code confirmed, keeps its password", async () => {
+    const s = await scratch();
+    const auth = await ssoAuth(s);
+    const token = newInvitationToken();
+    await s.storage.invitations.put({
+      createdAt: Date.now(),
+      email: "huda@example.com",
+      expiresAt: Date.now() + 60_000,
+      id: "i-huda",
+      invitedBy:
+        (await s.storage.operatorAccounts.findByEmail(testEmail))?.id ?? null,
+      role: "editor",
+      tokenHash: invitationTokenHash(token),
+    });
+    await call(auth, "/invitation/accept", {
+      body: { name: "Huda", password: testPassword, token },
+    });
+    await runSql(
+      s.location,
+      "UPDATE auth_user SET email_verified = 1 WHERE email = 'huda@example.com'"
+    );
+    await ssoSignIn(auth, person({ email: "huda@example.com", sub: "huda" }));
+    await ssoSignIn(auth, person({ email: testEmail, sub: "the-operator" }));
+    for (const email of ["huda@example.com", testEmail]) {
+      // biome-ignore lint/performance/noAwaitInLoops: two accounts
+      const again = await call(auth, "/sign-in/email", {
+        body: { email, password: testPassword },
+      });
+      expect(setsSession(again)).toBe(true);
+    }
+  });
+
   test("of a deactivated account is refused as such", async () => {
     const s = await scratch();
     const auth = await ssoAuth(s);

@@ -490,6 +490,44 @@ export function createAuth(input: CreateAuthInput) {
     baseURL: input.baseURL,
     database: input.database,
     databaseHooks: {
+      account: {
+        create: {
+          // The provider proved the address and nothing here did: whoever accepted the invitation set the password, so it and its sessions go. An owner keeps theirs; only an owner makes one.
+          after: async (account, ctx) => {
+            if (ctx?.path !== callbackPath) {
+              return;
+            }
+            const adapter = ctx.context.internalAdapter;
+            const user = await adapter.findUserById(account.userId);
+            if (
+              !user ||
+              user.emailVerified ||
+              ("role" in user && user.role === "owner")
+            ) {
+              return;
+            }
+            const password = (await adapter.findAccounts(user.id)).find(
+              (one) => one.providerId === "credential"
+            );
+            if (!password) {
+              return;
+            }
+            await adapter.deleteAccount(password.id);
+            await adapter.deleteUserSessions(user.id);
+            log(
+              "a password was removed: the provider confirmed an address its account never had confirmed"
+            );
+            // Even a sign-in refused after this, a deactivated account's, has ended the password: the entry says why it stopped working.
+            await input.audit?.({
+              action: "password.delete",
+              actor: { email: user.email, id: user.id },
+              address:
+                ctx.request?.headers.get(clientAddressHeader) ?? undefined,
+              input: { id: user.id, method: "provider" },
+            });
+          },
+        },
+      },
       session: {
         create: {
           // A deactivated account makes no session, whichever way it signs in; the password was checked before this.
