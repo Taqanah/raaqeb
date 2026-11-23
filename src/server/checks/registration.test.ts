@@ -5,6 +5,7 @@ import {
   ianaWhoisServer,
   type RegistrationIo,
   rdapBootstrapUrl,
+  registeredDomain,
   registrationReadDue,
 } from "./registration.ts";
 
@@ -24,6 +25,9 @@ const bootstrap = JSON.stringify({
     [["ly"], ["https://rdap.nic.ly/"]],
     [["uk"], ["https://rdap.nominet.uk/uk/"]],
     [["bh"], ["https://rdap.bhregistry.bh/rdap/"]],
+    [["in"], ["https://rdap.nixiregistry.in/rdap/"]],
+    [["br"], ["https://rdap.registro.br/"]],
+    [["name"], ["https://tld-rdap.verisign.com/name/v1/"]],
     [["dev"], ["https://pubapi.registry.google/rdap"]],
   ],
   version: "1.0",
@@ -85,49 +89,162 @@ function world(
 }
 
 const verisign = "https://rdap.verisign.com/com/v1/domain/";
+const nixi = "https://rdap.nixiregistry.in/rdap/domain/";
+const registroBr = "https://rdap.registro.br/domain/";
+
+describe("the registered domain, the one name a registry is asked", () => {
+  test("the public suffix and one label more: nothing under it leaves the install", () => {
+    expect(registeredDomain("jenkins.corp.acme.com")).toBe("acme.com");
+    expect(registeredDomain("www.rri.res.in")).toBe("rri.res.in");
+    expect(registeredDomain("www.camara.leg.br")).toBe("camara.leg.br");
+    expect(registeredDomain("www.example.co.uk")).toBe("example.co.uk");
+    expect(registeredDomain("www.google.it")).toBe("google.it");
+    expect(registeredDomain("raaqeb.dev")).toBe("raaqeb.dev");
+  });
+
+  test("a host that is itself a public suffix has none", () => {
+    expect(registeredDomain("co.uk")).toBeUndefined();
+    expect(registeredDomain("res.in")).toBeUndefined();
+  });
+
+  test("the list's private section is left out: its names are registrations a registry holds", () => {
+    expect(registeredDomain("raaqeb.github.io")).toBe("github.io");
+    expect(registeredDomain("a.b.example.uk.com")).toBe("uk.com");
+  });
+
+  // The list's own test vectors (publicsuffix/list, tests/tests.txt), in the lower case, punycode shape a host arrives in.
+  test.each([
+    ["com", undefined],
+    ["example", undefined],
+    ["example.example", "example.example"],
+    ["b.example.example", "example.example"],
+    ["a.b.example.example", "example.example"],
+    ["biz", undefined],
+    ["domain.biz", "domain.biz"],
+    ["a.b.domain.biz", "domain.biz"],
+    ["example.com", "example.com"],
+    ["a.b.example.com", "example.com"],
+    ["test.ac", "test.ac"],
+    ["mm", undefined],
+    ["c.mm", undefined],
+    ["b.c.mm", "b.c.mm"],
+    ["a.b.c.mm", "b.c.mm"],
+    ["jp", undefined],
+    ["test.jp", "test.jp"],
+    ["www.test.jp", "test.jp"],
+    ["ac.jp", undefined],
+    ["test.ac.jp", "test.ac.jp"],
+    ["www.test.ac.jp", "test.ac.jp"],
+    ["kyoto.jp", undefined],
+    ["test.kyoto.jp", "test.kyoto.jp"],
+    ["ide.kyoto.jp", undefined],
+    ["b.ide.kyoto.jp", "b.ide.kyoto.jp"],
+    ["a.b.ide.kyoto.jp", "b.ide.kyoto.jp"],
+    ["c.kobe.jp", undefined],
+    ["b.c.kobe.jp", "b.c.kobe.jp"],
+    ["a.b.c.kobe.jp", "b.c.kobe.jp"],
+    ["city.kobe.jp", "city.kobe.jp"],
+    ["www.city.kobe.jp", "city.kobe.jp"],
+    ["ck", undefined],
+    ["test.ck", undefined],
+    ["b.test.ck", "b.test.ck"],
+    ["a.b.test.ck", "b.test.ck"],
+    ["www.ck", "www.ck"],
+    ["www.www.ck", "www.ck"],
+    ["us", undefined],
+    ["test.us", "test.us"],
+    ["www.test.us", "test.us"],
+    ["ak.us", undefined],
+    ["test.ak.us", "test.ak.us"],
+    ["www.test.ak.us", "test.ak.us"],
+    ["k12.ak.us", undefined],
+    ["test.k12.ak.us", "test.k12.ak.us"],
+    ["www.test.k12.ak.us", "test.k12.ak.us"],
+    ["xn--85x722f.com.cn", "xn--85x722f.com.cn"],
+    ["xn--85x722f.xn--55qx5d.cn", "xn--85x722f.xn--55qx5d.cn"],
+    ["www.xn--85x722f.xn--55qx5d.cn", "xn--85x722f.xn--55qx5d.cn"],
+    ["shishi.xn--55qx5d.cn", "shishi.xn--55qx5d.cn"],
+    ["xn--55qx5d.cn", undefined],
+    ["xn--85x722f.xn--fiqs8s", "xn--85x722f.xn--fiqs8s"],
+    ["www.xn--85x722f.xn--fiqs8s", "xn--85x722f.xn--fiqs8s"],
+    ["shishi.xn--fiqs8s", "shishi.xn--fiqs8s"],
+    ["xn--fiqs8s", undefined],
+  ])("%s is under %s", (host, domain) => {
+    expect(registeredDomain(host)).toBe(domain);
+  });
+});
 
 describe("a registration read over RDAP", () => {
-  test("the names are asked longest first, and the first the registry holds is the registration", async () => {
+  test("no name under the registered domain leaves the install: an internal host under a .com domain asks for the domain alone", async () => {
     const { asked, io } = world({
-      [`${verisign}www.google.com`]: 404,
+      [`${verisign}jenkins.corp.google.com`]: 404,
+      [`${verisign}corp.google.com`]: 404,
       [`${verisign}google.com`]: await fixture("rdap/google.com.json"),
     });
-    expect(await createRegistrationReader(io).read("www.google.com")).toEqual({
+    expect(
+      await createRegistrationReader(io).read("jenkins.corp.google.com")
+    ).toEqual({
       domain: "google.com",
       expiresAt: Date.UTC(2028, 8, 14, 4),
     });
-    expect(asked).toEqual([
-      rdapBootstrapUrl,
-      `${verisign}www.google.com`,
-      `${verisign}google.com`,
-    ]);
+    expect(asked).toEqual([rdapBootstrapUrl, `${verisign}google.com`]);
   });
 
-  test("a registry that refuses a name under a domain as a bad request is asked for the next name", async () => {
-    const { io } = world({
-      "https://pubapi.registry.google/rdap/domain/status.raaqeb.dev": 400,
-      "https://pubapi.registry.google/rdap/domain/raaqeb.dev": JSON.stringify({
+  test("a zone the registry keeps a record of is not read as the registration under it: www.rri.res.in asks rri.res.in alone", async () => {
+    // NIXI holds res.in itself, with an expiry in 2035.
+    const { asked, io } = world({
+      [`${nixi}res.in`]: await fixture("rdap/res.in.json"),
+      [`${nixi}rri.res.in`]: await fixture("rdap/rri.res.in.json"),
+    });
+    expect(await createRegistrationReader(io).read("www.rri.res.in")).toEqual({
+      domain: "rri.res.in",
+      expiresAt: Date.UTC(2028, 1, 28, 5),
+    });
+    expect(asked).toEqual([rdapBootstrapUrl, `${nixi}rri.res.in`]);
+  });
+
+  test("a category zone of registro.br is not read as the registration under it: www.camara.leg.br asks camara.leg.br alone", async () => {
+    const { asked, io } = world({
+      [`${registroBr}leg.br`]: await fixture("rdap/leg.br.json"),
+      [`${registroBr}camara.leg.br`]: await fixture("rdap/camara.leg.br.json"),
+    });
+    expect(
+      await createRegistrationReader(io).read("www.camara.leg.br")
+    ).toEqual({ domain: "camara.leg.br", expiresAt: undefined });
+    expect(asked).toEqual([rdapBootstrapUrl, `${registroBr}camara.leg.br`]);
+  });
+
+  test("a host under a zone the list names asks the name directly under the zone, and nothing longer", async () => {
+    const { asked, io } = world({
+      "https://rdap.nic.ly/domain/shop.med.ly": JSON.stringify({
         events: [
-          { eventAction: "registration", eventDate: "2026-10-07T07:33:06Z" },
-          { eventAction: "expiration", eventDate: "2027-10-07T07:33:06.332Z" },
+          { eventAction: "expiration", eventDate: "2027-01-01T00:00:00Z" },
         ],
-        ldhName: "raaqeb.dev",
-        objectClassName: "domain",
+        ldhName: "shop.med.ly",
       }),
     });
     expect(
-      await createRegistrationReader(io).read("status.raaqeb.dev")
-    ).toEqual({
-      domain: "raaqeb.dev",
-      expiresAt: Date.parse("2027-10-07T07:33:06.332Z"),
+      await createRegistrationReader(io).read("api.www.shop.med.ly")
+    ).toEqual({ domain: "shop.med.ly", expiresAt: Date.UTC(2027, 0, 1) });
+    expect(asked).toEqual([
+      rdapBootstrapUrl,
+      "https://rdap.nic.ly/domain/shop.med.ly",
+    ]);
+  });
+
+  test("a registry that refuses a name as a bad request holds no such name", async () => {
+    const { io } = world({ "https://rdap.nic.ly/domain/typo.med.ly": 400 });
+    expect(await createRegistrationReader(io).read("www.typo.med.ly")).toEqual({
+      domain: undefined,
+      expiresAt: undefined,
     });
   });
 
-  test("a registry that answers a name under a domain with the domain's record sends the walk on to that domain, which is read as itself", async () => {
-    const bh = await fixture("rdap/www.google.com.bh.json");
+  test("a host under a zone a ccTLD's registry runs asks for the three-label name alone", async () => {
     const { asked, io } = world({
-      "https://rdap.bhregistry.bh/rdap/domain/www.google.com.bh": bh,
-      "https://rdap.bhregistry.bh/rdap/domain/google.com.bh": bh,
+      "https://rdap.bhregistry.bh/rdap/domain/google.com.bh": await fixture(
+        "rdap/www.google.com.bh.json"
+      ),
     });
     expect(
       await createRegistrationReader(io).read("www.google.com.bh")
@@ -137,9 +254,38 @@ describe("a registration read over RDAP", () => {
     });
     expect(asked).toEqual([
       rdapBootstrapUrl,
-      "https://rdap.bhregistry.bh/rdap/domain/www.google.com.bh",
       "https://rdap.bhregistry.bh/rdap/domain/google.com.bh",
     ]);
+  });
+
+  test("a record that names no domain is no registration: .name answers smith.name, a shared second level, with an empty record", async () => {
+    const { asked, io } = world({
+      "https://tld-rdap.verisign.com/name/v1/domain/smith.name": await fixture(
+        "rdap/smith.name.json"
+      ),
+    });
+    expect(await createRegistrationReader(io).read("david.smith.name")).toEqual(
+      { domain: undefined, expiresAt: undefined }
+    );
+    expect(asked).toEqual([
+      rdapBootstrapUrl,
+      "https://tld-rdap.verisign.com/name/v1/domain/smith.name",
+    ]);
+  });
+
+  test("a record that names another domain than the one asked is no registration: only a name the host is under is ever stored", async () => {
+    const { io } = world({
+      [`${verisign}google.com`]: JSON.stringify({
+        events: [
+          { eventAction: "expiration", eventDate: "2027-01-01T00:00:00Z" },
+        ],
+        ldhName: "Text Of The Server's Choosing",
+      }),
+    });
+    expect(await createRegistrationReader(io).read("www.google.com")).toEqual({
+      domain: undefined,
+      expiresAt: undefined,
+    });
   });
 
   test("a registration whose registry gives no expiry date has an unknown date", async () => {
@@ -168,6 +314,25 @@ describe("a registration read over RDAP", () => {
     expect(await createRegistrationReader(io).read("lapsed.ly")).toEqual({
       domain: "lapsed.ly",
       expiresAt: undefined,
+    });
+  });
+
+  test("an expiry date exactly 90 days gone is kept", async () => {
+    const expiresAt = now - 90 * day;
+    const { io } = world({
+      "https://rdap.nic.ly/domain/lapsed.ly": JSON.stringify({
+        events: [
+          {
+            eventAction: "expiration",
+            eventDate: new Date(expiresAt).toISOString(),
+          },
+        ],
+        ldhName: "lapsed.ly",
+      }),
+    });
+    expect(await createRegistrationReader(io).read("lapsed.ly")).toEqual({
+      domain: "lapsed.ly",
+      expiresAt,
     });
   });
 
@@ -204,7 +369,6 @@ describe("a registration read over RDAP", () => {
 
   test("a host no registry holds a name of has neither a domain nor a date", async () => {
     const { io } = world({
-      [`${verisign}www.nowhere-raaqeb.com`]: 404,
       [`${verisign}nowhere-raaqeb.com`]: 404,
     });
     expect(
@@ -212,14 +376,17 @@ describe("a registration read over RDAP", () => {
     ).toEqual({ domain: undefined, expiresAt: undefined });
   });
 
-  test("a registry that fails is no answer, and the names after it are not asked", async () => {
+  test("a registry that fails is no answer", async () => {
     const { asked, io } = world({
-      [`${verisign}www.google.com`]: 503,
+      "https://rdap.nic.ly/domain/gob.ly": 503,
     });
     expect(
-      await createRegistrationReader(io).read("www.google.com")
+      await createRegistrationReader(io).read("shop.gob.ly")
     ).toBeUndefined();
-    expect(asked).toEqual([rdapBootstrapUrl, `${verisign}www.google.com`]);
+    expect(asked).toEqual([
+      rdapBootstrapUrl,
+      "https://rdap.nic.ly/domain/gob.ly",
+    ]);
   });
 
   test("a registry that cannot be reached, or answers what is not JSON, is no answer", async () => {
@@ -245,15 +412,12 @@ describe("a registration read over RDAP", () => {
 });
 
 describe("a registration read over WHOIS, for a TLD with no RDAP server", () => {
-  test("IANA names the TLD's WHOIS server, which is asked longest first until an answer gives an expiry", async () => {
+  test("IANA names the TLD's WHOIS server, which is asked for the registered name alone", async () => {
     const { asked, io } = world(
       {},
       {
         [`${ianaWhoisServer} ma`]:
           "refer:        whois.registre.ma\n\ndomain:       MA\n\nwhois:        whois.registre.ma\n",
-        "whois.registre.ma www.google.co.ma": await fixture(
-          "whois/www.google.co.ma.txt"
-        ),
         "whois.registre.ma google.co.ma": await fixture(
           "whois/google.co.ma.txt"
         ),
@@ -268,19 +432,15 @@ describe("a registration read over WHOIS, for a TLD with no RDAP server", () => 
     expect(asked).toEqual([
       rdapBootstrapUrl,
       `whois ${ianaWhoisServer} ma`,
-      "whois whois.registre.ma www.google.co.ma",
       "whois whois.registre.ma google.co.ma",
     ]);
   });
 
-  test("a registry that publishes no expiry date gives its record's domain with an unknown date, and the walk stops there", async () => {
+  test("a registry that publishes no expiry date gives its record's domain with an unknown date", async () => {
     const { asked, io } = world(
       {},
       {
         [`${ianaWhoisServer} qa`]: await fixture("whois/iana-qa.txt"),
-        // What .qa answers for a name it does not hold, as it did for com.qa.
-        "whois.registry.qa www.google.com.qa":
-          await fixture("whois/com.qa.txt"),
         "whois.registry.qa google.com.qa": await fixture(
           "whois/google.com.qa.txt"
         ),
@@ -289,7 +449,7 @@ describe("a registration read over WHOIS, for a TLD with no RDAP server", () => 
     expect(
       await createRegistrationReader(io).read("www.google.com.qa")
     ).toEqual({ domain: "google.com.qa", expiresAt: undefined });
-    expect(asked).toHaveLength(4);
+    expect(asked).toHaveLength(3);
   });
 
   test("a host the registry does not hold, under a zone it runs, is unknown: the registry's own record of the zone is never read", async () => {
@@ -313,35 +473,47 @@ describe("a registration read over WHOIS, for a TLD with no RDAP server", () => 
     ]);
   });
 
-  test("an answer that is neither a record nor a not-found is no answer, and no name above it is asked", async () => {
+  test("a host under a zone .qa runs, which holds no record of the zone (com.qa), asks the name under the zone alone", async () => {
     const { asked, io } = world(
       {},
       {
-        [`${ianaWhoisServer} ma`]:
-          "domain:       MA\nwhois:        whois.registre.ma\n",
-        "whois.registre.ma www.google.co.ma":
-          "% Query rate limit exceeded. Please wait 60 seconds.\n",
-        "whois.registre.ma google.co.ma": await fixture(
-          "whois/google.co.ma.txt"
+        [`${ianaWhoisServer} qa`]: await fixture("whois/iana-qa.txt"),
+        "whois.registry.qa google.com.qa": await fixture(
+          "whois/google.com.qa.txt"
         ),
       }
     );
     expect(
-      await createRegistrationReader(io).read("www.google.co.ma")
+      await createRegistrationReader(io).read("www.google.com.qa")
+    ).toEqual({ domain: "google.com.qa", expiresAt: undefined });
+    expect(asked).toEqual([
+      rdapBootstrapUrl,
+      `whois ${ianaWhoisServer} qa`,
+      "whois whois.registry.qa google.com.qa",
+    ]);
+  });
+
+  test("an answer that is neither a record nor a not-found is no answer", async () => {
+    const { asked, io } = world(
+      {},
+      {
+        [`${ianaWhoisServer} qa`]: await fixture("whois/iana-qa.txt"),
+        "whois.registry.qa google.com.qa":
+          "% Query rate limit exceeded. Please wait 60 seconds.\n",
+      }
+    );
+    expect(
+      await createRegistrationReader(io).read("www.google.com.qa")
     ).toBeUndefined();
     expect(asked).toHaveLength(3);
   });
 
-  test("a WHOIS record of another name than the one asked sends the walk on to that name", async () => {
+  test("a host under a domain asks for the domain alone, whose record is read as itself", async () => {
     const { asked, io } = world(
       {},
       {
         [`${ianaWhoisServer} de`]:
           "domain:       DE\nwhois:        whois.denic.de\n",
-        // DENIC answers a name under a domain with the domain's record.
-        "whois.denic.de www.google.de": await fixture(
-          "whois/www.google.de.txt"
-        ),
         "whois.denic.de google.de": await fixture("whois/google.de.txt"),
       }
     );
@@ -349,7 +521,11 @@ describe("a registration read over WHOIS, for a TLD with no RDAP server", () => 
       domain: "google.de",
       expiresAt: undefined,
     });
-    expect(asked).toHaveLength(4);
+    expect(asked).toEqual([
+      rdapBootstrapUrl,
+      `whois ${ianaWhoisServer} de`,
+      "whois whois.denic.de google.de",
+    ]);
   });
 
   test("an IANA answer that is no record of the TLD is no answer, and the next read asks IANA again", async () => {
@@ -371,7 +547,7 @@ describe("a registration read over WHOIS, for a TLD with no RDAP server", () => 
     ).toHaveLength(2);
   });
 
-  test("an expiry line whose date does not read stops the walk with an unknown date", async () => {
+  test("an expiry line whose date does not read gives an unknown date", async () => {
     const { asked, io } = world(
       {},
       {

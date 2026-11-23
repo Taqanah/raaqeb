@@ -13,7 +13,7 @@ The option is on the monitor form, under the target, for HTTP, TCP and DNS monit
 |---|---|---|
 | **Warn before the domain's registration expires** | Reads the domain's registration from its registry once a day and sends the domain expiring event. | On. For a domain name only. |
 
-The switch is greyed for an IP address, a name of one label such as `localhost`, and a name under a TLD set aside for special use (`.test`, `.example`, `.invalid`, `.localhost`, `.local`, `.internal`, `.arpa`, `.onion`, `.alt`), since no registry holds any of them.
+The switch is greyed for an IP address, a name of one label such as `localhost`, a name longer than 253 characters, and a name under a TLD set aside for special use (`.test`, `.example`, `.invalid`, `.localhost`, `.local`, `.internal`, `.arpa`, `.onion`, `.alt`), since no registry holds any of them.
 
 **Domain expiring** appears under **Events that notify** while the option is on, on by default. Switching the option off stops the reads and deletes the registration Raaqeb kept.
 
@@ -37,9 +37,25 @@ Raaqeb asks the domain's registry, never a third party:
 2. A TLD with an RDAP server is asked over RDAP, for the expiration date the registry publishes.
 3. A TLD with no RDAP server is asked over WHOIS, on port 43, at the server IANA's own WHOIS names for it. Raaqeb reads the expiry date from a line whose label says so, in a form that reads one way only, such as `2027-01-29` or `29-Jan-2027`. A date like `04/03/2027`, where the day and month could be either, is read as unknown.
 
-Raaqeb asks for the host first, then each parent name, until the registry answers for one: a registry holds what was registered and not the names under it, so no list of public suffixes is needed. For `www.shop.example.co.uk` it asks `www.shop.example.co.uk`, then `shop.example.co.uk`, then `example.co.uk`, and stops there. It never asks for a zone a country's registry runs for others to register under, such as `co.uk`, `com.mx` or `gov.qa`: the registry's own record of the zone is no one's registration.
+Raaqeb asks for one name, the registered domain: the host's public suffix and one label more, by the ICANN section of the [Public Suffix List](https://publicsuffix.org/), a copy of which ships inside Raaqeb. A public suffix is a TLD, or a zone a registry runs for others to register under, such as `co.uk`, `com.mx` or `leg.br`.
 
-Only the registry's record of a name, or its answer that it holds no such name, counts. A record of another name, such as the domain above the name asked, is read when the walk reaches that name. Anything else, such as a rate limit, an error or an empty reply, is no answer: nothing above the name is asked in its place, and the read is tried again an hour later.
+| Host | Name asked |
+|---|---|
+| `jenkins.corp.example.com` | `example.com` |
+| `www.shop.example.co.uk` | `example.co.uk` |
+| `www.camara.leg.br` | `camara.leg.br` |
+| `you.github.io` | `github.io` |
+
+The names under the registered domain, such as an internal server's, never leave the install. A zone the list names is never asked: the registry's own record of a zone is no one's registration. Names a company hands out under its own domain, as GitHub does under `github.io`, read as the company's domain.
+
+Some hosts read with no registration, or with no date, by this rule:
+
+- **A host under a zone an organisation runs itself,** such as `england.nhs.uk`: the registry holds the zone (`nhs.uk`) as a registration and has no record of the name under it, so the registration is unknown.
+- **A host that is itself a public suffix,** such as `co.uk`: it has no registration and is never asked.
+- **A `.name` name of three labels,** such as `david.smith.name`: Raaqeb asks for `smith.name`, which the registry answers with an empty record, so the registration is unknown and its expiry is not read.
+- **A host under a zone a registry opened after the release's copy of the list was taken:** Raaqeb asks for the zone and may read the zone's own record, until a release carries a newer copy.
+
+Only the registry's record of the name asked, or its answer that it holds no such name, counts. A record of another name is not the registration, which is then unknown. Anything else, such as a rate limit, an error or an empty reply, is no answer, and the read is tried again an hour later.
 
 - A monitor with no registration is read within about a minute of saving.
 - After that, every registration is read again on the first minute of each UTC day.
@@ -72,7 +88,7 @@ A warning is sent only when the monitor is not paused, the **Domain expiring** e
 
 ## Privacy
 
-Each read sends the monitor's host name, and the names above it, to the domain's registry, and the TLD to IANA. Switch the option off for a host you would rather no registry hear of.
+Each read sends the registered domain alone to its registry, and the TLD to IANA. Switch the option off for a domain you would rather no registry hear of.
 
 ## Related pages
 

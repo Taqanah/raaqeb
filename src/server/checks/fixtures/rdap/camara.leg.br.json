@@ -1,0 +1,227 @@
+{
+  "objectClassName": "domain",
+  "handle": "camara.leg.br",
+  "ldhName": "camara.leg.br",
+  "nameservers": [
+    {
+      "objectClassName": "nameserver",
+      "ldhName": "hypatia.camara.leg.br",
+      "ipAddresses": {
+        "v4": ["200.219.133.20"]
+      },
+      "events": [
+        {
+          "eventAction": "delegation check",
+          "eventDate": "2026-11-20T08:15:50Z",
+          "status": ["ns aa"]
+        },
+        {
+          "eventAction": "last correct delegation check",
+          "eventDate": "2026-11-20T08:15:50Z"
+        }
+      ]
+    },
+    {
+      "objectClassName": "nameserver",
+      "ldhName": "melissa.camara.leg.br",
+      "ipAddresses": {
+        "v4": ["200.219.133.21"]
+      },
+      "events": [
+        {
+          "eventAction": "delegation check",
+          "eventDate": "2026-11-20T08:15:50Z",
+          "status": ["ns aa"]
+        },
+        {
+          "eventAction": "last correct delegation check",
+          "eventDate": "2026-11-20T08:15:50Z"
+        }
+      ]
+    },
+    {
+      "objectClassName": "nameserver",
+      "ldhName": "melissa2.camara.leg.br",
+      "ipAddresses": {
+        "v4": ["200.198.213.192"]
+      },
+      "events": [
+        {
+          "eventAction": "delegation check",
+          "eventDate": "2026-11-20T08:15:50Z",
+          "status": ["ns aa"]
+        },
+        {
+          "eventAction": "last correct delegation check",
+          "eventDate": "2026-11-20T08:15:50Z"
+        }
+      ]
+    }
+  ],
+  "secureDNS": {
+    "delegationSigned": true,
+    "dsData": [
+      {
+        "keyTag": 27661,
+        "algorithm": 5,
+        "digest": "954B743B6A210A92F4BD0566C2F5D1B4C7E51DFF",
+        "digestType": 1,
+        "events": [
+          {
+            "eventAction": "registration",
+            "eventDate": "2012-03-09T12:30:44Z"
+          },
+          {
+            "eventAction": "delegation sign check",
+            "eventDate": "2026-11-20T08:15:50Z",
+            "status": ["ds ok"]
+          },
+          {
+            "eventAction": "last correct delegation sign check",
+            "eventDate": "2026-11-20T08:15:50Z"
+          }
+        ]
+      }
+    ]
+  },
+  "nicbr_arbitration": true,
+  "links": [
+    {
+      "value": "https://rdap.registro.br/domain/camara.leg.br",
+      "rel": "self",
+      "href": "https://rdap.registro.br/domain/camara.leg.br",
+      "type": "application/rdap+json"
+    },
+    {
+      "value": "https://rdap.registro.br/domain/camara.leg.br",
+      "rel": "archives",
+      "href": "https://rdap.registro.br/domain/camara.leg.br?ticket=9601836",
+      "type": "application/rdap+json"
+    }
+  ],
+  "entities": [
+    {
+      "objectClassName": "entity",
+      "handle": "00530352000159",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["kind", {}, "text", "org"],
+          ["fn", {}, "text", "Camara dos Deputados"],
+          ["adr", {}, "text", ["", "", "", "", "", "", "BR"]]
+        ]
+      ],
+      "roles": ["registrant"],
+      "publicIds": [
+        {
+          "type": "cnpj",
+          "identifier": "00.530.352/0001-59"
+        }
+      ],
+      "entities": [
+        {
+          "objectClassName": "entity",
+          "handle": "SSG50",
+          "vcardArray": [
+            "vcard",
+            [
+              ["version", {}, "text", "4.0"],
+              ["kind", {}, "text", "individual"],
+              ["fn", {}, "text", "S S G"],
+              ["email", {}, "text", "seseg@camara.leg.br"],
+              ["lang", {}, "language-tag", "pt"],
+              ["adr", {}, "text", ["", "", "", "", "", "", "BR"]]
+            ]
+          ],
+          "roles": ["administrative"],
+          "events": [
+            {
+              "eventAction": "registration",
+              "eventDate": "2004-04-02T12:00:00Z"
+            },
+            {
+              "eventAction": "last changed",
+              "eventDate": "2020-02-07T13:36:33Z"
+            }
+          ]
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventDate": "1998-02-19T12:00:00Z"
+        },
+        {
+          "eventAction": "last changed",
+          "eventDate": "2016-07-15T19:07:54Z"
+        }
+      ],
+      "links": [
+        {
+          "value": "https://rdap.registro.br/entity/00530352000159",
+          "rel": "self",
+          "href": "https://rdap.registro.br/entity/00530352000159",
+          "type": "application/rdap+json"
+        }
+      ],
+      "legalRepresentative": "Sebastião Neiva Filho"
+    },
+    {
+      "objectClassName": "entity",
+      "handle": "SSG50",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["kind", {}, "text", "individual"],
+          ["fn", {}, "text", "S S G"],
+          ["email", {}, "text", "seseg@camara.leg.br"],
+          ["lang", {}, "language-tag", "pt"],
+          ["adr", {}, "text", ["", "", "", "", "", "", "BR"]]
+        ]
+      ],
+      "roles": ["technical"],
+      "events": [
+        {
+          "eventAction": "registration",
+          "eventDate": "2004-04-02T12:00:00Z"
+        },
+        {
+          "eventAction": "last changed",
+          "eventDate": "2020-02-07T13:36:33Z"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "eventAction": "registration",
+      "eventDate": "2012-03-09T12:30:44Z"
+    },
+    {
+      "eventAction": "last changed",
+      "eventDate": "2023-06-07T18:43:13Z"
+    }
+  ],
+  "status": ["active"],
+  "notices": [
+    {
+      "title": "Use and Privacy Policy",
+      "description": [
+        "Copyright (c) Nic.br - Use of this data is governed by the Use and Privacy Policy. Distribution, commercialization, reproduction, and use for advertising or similar purposes are expressly prohibited.",
+        "2026-11-23T17:26:46-03:00 - 2001:16a2:44f3:bb00:87ec:326b:5baa:8dc0"
+      ],
+      "links": [
+        {
+          "value": "https://rdap.registro.br/domain/camara.leg.br",
+          "rel": "alternate",
+          "href": "https://registro.br/upp",
+          "type": "text/html"
+        }
+      ]
+    }
+  ],
+  "rdapConformance": ["rdap_level_0", "nicbr_level_0"],
+  "port43": "whois.registro.br"
+}

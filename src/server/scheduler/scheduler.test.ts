@@ -2435,10 +2435,7 @@ describe("the scheduler hands monitor events to the operator notifications", () 
     });
     expect(
       asked.filter((url) => url.startsWith("https://rdap.registry.test/"))
-    ).toEqual([
-      "https://rdap.registry.test/domain/status.raaqeb.dev",
-      "https://rdap.registry.test/domain/raaqeb.dev",
-    ]);
+    ).toEqual(["https://rdap.registry.test/domain/raaqeb.dev"]);
   });
 });
 

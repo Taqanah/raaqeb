@@ -1,0 +1,24 @@
+{
+  "objectClassName": "domain",
+  "handle": "leg.br",
+  "ldhName": "leg.br",
+  "notices": [
+    {
+      "title": "Use and Privacy Policy",
+      "description": [
+        "Copyright (c) Nic.br - Use of this data is governed by the Use and Privacy Policy. Distribution, commercialization, reproduction, and use for advertising or similar purposes are expressly prohibited.",
+        "2026-11-23T17:26:46-03:00 - 2001:16a2:44f3:bb00:87ec:326b:5baa:8dc0"
+      ],
+      "links": [
+        {
+          "value": "https://rdap.registro.br/domain/leg.br",
+          "rel": "alternate",
+          "href": "https://registro.br/upp",
+          "type": "text/html"
+        }
+      ]
+    }
+  ],
+  "rdapConformance": ["rdap_level_0", "nicbr_level_0"],
+  "port43": "whois.registro.br"
+}

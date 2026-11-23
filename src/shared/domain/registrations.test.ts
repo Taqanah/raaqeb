@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MonitorConfig } from "@/shared/schemas/monitor.ts";
 import {
-  registrationCandidates,
   registrationExpiring,
   registrationHost,
   registrationWarningDue,
@@ -47,6 +46,16 @@ describe("the host a monitor's domain registration is read for", () => {
     expect(
       registrationHost({ host: "raaqeb.dev", port: 443, type: "tcp" })
     ).toBe("raaqeb.dev");
+  });
+
+  test("a name longer than DNS allows, 253 characters, has none, so no lookup runs over it", () => {
+    const longest = `${"a.".repeat(125)}com`;
+    expect(registrationHost(http(`https://${longest}/`))).toBe(longest);
+    expect(registrationHost(http(`https://${longest}./`))).toBe(longest);
+    expect(registrationHost(http(`https://b${longest}/`))).toBeUndefined();
+    expect(
+      registrationHost(http(`https://${"a.".repeat(20_000)}com/`))
+    ).toBeUndefined();
   });
 
   test("a monitor with the domain expiry option off has none", () => {
@@ -109,46 +118,6 @@ describe("the host a monitor's domain registration is read for", () => {
         type: "heartbeat",
       })
     ).toBeUndefined();
-  });
-});
-
-describe("the names a registry is asked for a host", () => {
-  test("the host comes first, then each parent down to two labels", () => {
-    expect(registrationCandidates("a.b.example.dev")).toEqual([
-      "a.b.example.dev",
-      "b.example.dev",
-      "example.dev",
-    ]);
-  });
-
-  test("a zone a ccTLD's registry runs for others, such as co.uk or com.mx, is never asked", () => {
-    expect(registrationCandidates("a.b.example.co.uk")).toEqual([
-      "a.b.example.co.uk",
-      "b.example.co.uk",
-      "example.co.uk",
-    ]);
-    for (const zone of [
-      "com.mx",
-      "com.ly",
-      "net.lb",
-      "org.bh",
-      "gov.qa",
-      "ac.ma",
-      "edu.eg",
-    ]) {
-      expect(registrationCandidates(`typo.${zone}`)).toEqual([`typo.${zone}`]);
-    }
-  });
-
-  test("a two-label name under a generic TLD is asked, whatever its first label", () => {
-    expect(registrationCandidates("www.com.dev")).toEqual([
-      "www.com.dev",
-      "com.dev",
-    ]);
-  });
-
-  test("a host of two labels is the only name asked", () => {
-    expect(registrationCandidates("raaqeb.dev")).toEqual(["raaqeb.dev"]);
   });
 });
 

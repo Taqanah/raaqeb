@@ -1,0 +1,1315 @@
+{
+  "rdapConformance": [
+    "rdap_level_0",
+    "icann_rdap_response_profile_1",
+    "icann_rdap_technical_implementation_guide_1",
+    "redacted"
+  ],
+  "notices": [
+    {
+      "title": "Terms of Service",
+      "description": [
+        "The WHOIS information provided in this page has been redacted",
+        "in compliance with ICANN's Temporary Specification for gTLD",
+        "Registration Data.",
+        "",
+        "The data in this record is provided by Tucows Registry for informational",
+        "purposes only, and it does not guarantee its accuracy. Tucows Registry is",
+        "authoritative for whois information in top-level domains it operates",
+        "under contract with the Internet Corporation for Assigned Names and",
+        "Numbers. Whois information from other top-level domains is provided by",
+        "a third-party under license to Tucows Registry.",
+        "",
+        "This service is intended only for query-based access. By using this",
+        "service, you agree that you will use any data presented only for lawful",
+        "purposes and that, under no circumstances will you use (a) data",
+        "acquired for the purpose of allowing, enabling, or otherwise supporting",
+        "the transmission by e-mail, telephone, facsimile or other",
+        "communications mechanism of mass  unsolicited, commercial advertising",
+        "or solicitations to entities other than your existing  customers; or",
+        "(b) this service to enable high volume, automated, electronic processes",
+        "that send queries or data to the systems of any Registrar or any",
+        "Registry except as reasonably necessary to register domain names or",
+        "modify existing domain name registrations.",
+        "",
+        "Tucows Registry reserves the right to modify these terms at any time. By",
+        "submitting this query, you agree to abide by this policy. All rights",
+        "reserved."
+      ],
+      "links": [
+        {
+          "value": "https://rdap.nixiregistry.in/rdap/domain/res.in",
+          "rel": "terms-of-service",
+          "href": "https://rdap.nixiregistry.in/",
+          "type": "text/html"
+        }
+      ]
+    },
+    {
+      "title": "Status Codes",
+      "description": [
+        "For more information on domain status codes, please visit https://icann.org/epp"
+      ],
+      "links": [
+        {
+          "value": "https://rdap.nixiregistry.in/rdap/domain/res.in",
+          "rel": "glossary",
+          "href": "https://icann.org/epp",
+          "type": "text/html"
+        }
+      ]
+    },
+    {
+      "title": "RDDS Inaccuracy Complaint Form",
+      "description": [
+        "URL of the ICANN RDDS Inaccuracy Complaint Form: https://icann.org/wicf"
+      ],
+      "links": [
+        {
+          "value": "https://rdap.nixiregistry.in/rdap/domain/res.in",
+          "rel": "help",
+          "href": "https://icann.org/wicf",
+          "type": "text/html"
+        }
+      ]
+    }
+  ],
+  "redacted": [
+    {
+      "name": {
+        "type": "Registry Registrant ID"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='registrant')].handle",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registrant Email"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[0]=='email')]",
+      "replacementPath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[0]=='email')][3]",
+      "pathLang": "jsonpath",
+      "method": "replacementValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registrant Name"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[0]=='fn')][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registrant Street"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[0]=='adr')][3][:3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registrant City"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[0]=='adr')][3][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registrant Postal Code"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[0]=='adr')][3][5]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registrant Phone"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registrant Phone Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registrant Fax"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registrant Fax Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registry Admin ID"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].handle",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Email"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='email')]",
+      "replacementPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='email')][3]",
+      "pathLang": "jsonpath",
+      "method": "replacementValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Name"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='fn')][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Street"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='adr')][3][:3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin City"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='adr')][3][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Postal Code"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='adr')][3][5]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Phone"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Phone Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Fax"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Fax Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registry Admin ID"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].handle",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Email"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='email')]",
+      "replacementPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='email')][3]",
+      "pathLang": "jsonpath",
+      "method": "replacementValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Name"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='fn')][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Street"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='adr')][3][:3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin City"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='adr')][3][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Postal Code"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[0]=='adr')][3][5]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Phone"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Phone Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Fax"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Admin Fax Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='administrative')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registry Tech ID"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].handle",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Email"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='email')]",
+      "replacementPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='email')][3]",
+      "pathLang": "jsonpath",
+      "method": "replacementValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Name"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='fn')][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Street"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='adr')][3][:3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech City"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='adr')][3][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Postal Code"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='adr')][3][5]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Phone"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Phone Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Fax"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Fax Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registry Tech ID"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].handle",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Email"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='email')]",
+      "replacementPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='email')][3]",
+      "pathLang": "jsonpath",
+      "method": "replacementValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Name"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='fn')][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Street"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='adr')][3][:3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech City"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='adr')][3][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Postal Code"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[0]=='adr')][3][5]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Phone"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Phone Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Fax"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Tech Fax Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='technical')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registry Billing ID"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].handle",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Email"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='email')]",
+      "replacementPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='email')][3]",
+      "pathLang": "jsonpath",
+      "method": "replacementValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Name"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='fn')][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Street"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='adr')][3][:3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing City"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='adr')][3][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Postal Code"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='adr')][3][5]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Phone"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Phone Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Fax"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Fax Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Registry Billing ID"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].handle",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Email"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='email')]",
+      "replacementPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='email')][3]",
+      "pathLang": "jsonpath",
+      "method": "replacementValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Name"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='fn')][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Street"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='adr')][3][:3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing City"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='adr')][3][3]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Postal Code"
+      },
+      "postPath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[0]=='adr')][3][5]",
+      "pathLang": "jsonpath",
+      "method": "emptyValue",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Phone"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Phone Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[1].type=='voice')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Fax"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    },
+    {
+      "name": {
+        "type": "Billing Fax Ext"
+      },
+      "prePath": "$.entities[?(@.roles[0]=='billing')].vcardArray[1][?(@[1].type=='fax')]",
+      "pathLang": "jsonpath",
+      "method": "removal",
+      "reason": {
+        "description": "Server Policy"
+      }
+    }
+  ],
+  "objectClassName": "domain",
+  "handle": "DO_3c0d821a7782fdcaa6f1f64f52340e63-NIXI",
+  "ldhName": "res.in",
+  "unicodeName": "res.in",
+  "nameservers": [
+    {
+      "objectClassName": "nameserver",
+      "handle": "HF86BE0DF437247E59B7191898691056A-IN",
+      "ldhName": "ns1.registry.in",
+      "unicodeName": "ns1.registry.in",
+      "ipAddresses": {
+        "v4": ["64.96.1.1"],
+        "v6": ["2620:57:4001::1"]
+      },
+      "status": [
+        "server delete prohibited",
+        "server update prohibited",
+        "associated"
+      ],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "objectClassName": "nameserver",
+      "handle": "H0C15B0E90E0D4316B799324FD3578D75-IN",
+      "ldhName": "ns2.registry.in",
+      "unicodeName": "ns2.registry.in",
+      "ipAddresses": {
+        "v4": ["64.96.2.1"],
+        "v6": ["2620:57:4002::1"]
+      },
+      "status": [
+        "server delete prohibited",
+        "server update prohibited",
+        "associated"
+      ],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "objectClassName": "nameserver",
+      "handle": "H17C6C5710C004027B36C718E7A5C621B-IN",
+      "ldhName": "ns3.registry.in",
+      "unicodeName": "ns3.registry.in",
+      "ipAddresses": {
+        "v4": ["64.78.204.1"],
+        "v6": ["2620:171:812:1534:8::1"]
+      },
+      "status": [
+        "server delete prohibited",
+        "server update prohibited",
+        "associated"
+      ],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "objectClassName": "nameserver",
+      "handle": "H71CA9581AD5C4A3C941010ABA2009ED0-IN",
+      "ldhName": "ns4.registry.in",
+      "unicodeName": "ns4.registry.in",
+      "ipAddresses": {
+        "v4": ["64.78.205.1"],
+        "v6": ["2620:171:813:1534:8::1"]
+      },
+      "status": [
+        "server delete prohibited",
+        "server update prohibited",
+        "associated"
+      ],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    }
+  ],
+  "secureDNS": {
+    "delegationSigned": true,
+    "dsData": [
+      {
+        "keyTag": 20705,
+        "algorithm": 13,
+        "digest": "96C81FC9F8F7257B5279B0A132A4E01FE81558FC6C480FBC63258655C9818DD9",
+        "digestType": 2
+      }
+    ]
+  },
+  "entities": [
+    {
+      "remarks": [
+        {
+          "title": "REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": ["Some of the data in this object has been removed"]
+        },
+        {
+          "title": "EMAIL REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": [
+            "Please query the RDDS service of the Registrar of Record identified in this output for information on how to contact the Registrant, Admin, or Tech contact of the queried domain name."
+          ]
+        }
+      ],
+      "objectClassName": "entity",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["org", {}, "text", "National Internet Exchange of India"],
+          [
+            "adr",
+            {
+              "cc": "IN"
+            },
+            "text",
+            ["", "", "", "", "National Capital Territory", "", ""]
+          ],
+          ["fn", {}, "text", ""]
+        ]
+      ],
+      "roles": ["registrant"],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "remarks": [
+        {
+          "title": "REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": ["Some of the data in this object has been removed"]
+        },
+        {
+          "title": "EMAIL REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": [
+            "Please query the RDDS service of the Registrar of Record identified in this output for information on how to contact the Registrant, Admin, or Tech contact of the queried domain name."
+          ]
+        }
+      ],
+      "objectClassName": "entity",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["adr", {}, "text", ["", "", "", "", "", "", ""]],
+          ["fn", {}, "text", ""]
+        ]
+      ],
+      "roles": ["administrative"],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "remarks": [
+        {
+          "title": "REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": ["Some of the data in this object has been removed"]
+        },
+        {
+          "title": "EMAIL REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": [
+            "Please query the RDDS service of the Registrar of Record identified in this output for information on how to contact the Registrant, Admin, or Tech contact of the queried domain name."
+          ]
+        }
+      ],
+      "objectClassName": "entity",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["adr", {}, "text", ["", "", "", "", "", "", ""]],
+          ["fn", {}, "text", ""]
+        ]
+      ],
+      "roles": ["administrative"],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "remarks": [
+        {
+          "title": "REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": ["Some of the data in this object has been removed"]
+        },
+        {
+          "title": "EMAIL REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": [
+            "Please query the RDDS service of the Registrar of Record identified in this output for information on how to contact the Registrant, Admin, or Tech contact of the queried domain name."
+          ]
+        }
+      ],
+      "objectClassName": "entity",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["adr", {}, "text", ["", "", "", "", "", "", ""]],
+          ["fn", {}, "text", ""]
+        ]
+      ],
+      "roles": ["technical"],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "remarks": [
+        {
+          "title": "REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": ["Some of the data in this object has been removed"]
+        },
+        {
+          "title": "EMAIL REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": [
+            "Please query the RDDS service of the Registrar of Record identified in this output for information on how to contact the Registrant, Admin, or Tech contact of the queried domain name."
+          ]
+        }
+      ],
+      "objectClassName": "entity",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["adr", {}, "text", ["", "", "", "", "", "", ""]],
+          ["fn", {}, "text", ""]
+        ]
+      ],
+      "roles": ["technical"],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "remarks": [
+        {
+          "title": "REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": ["Some of the data in this object has been removed"]
+        },
+        {
+          "title": "EMAIL REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": [
+            "Please query the RDDS service of the Registrar of Record identified in this output for information on how to contact the Registrant, Admin, or Tech contact of the queried domain name."
+          ]
+        }
+      ],
+      "objectClassName": "entity",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["adr", {}, "text", ["", "", "", "", "", "", ""]],
+          ["fn", {}, "text", ""]
+        ]
+      ],
+      "roles": ["billing"],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "remarks": [
+        {
+          "title": "REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": ["Some of the data in this object has been removed"]
+        },
+        {
+          "title": "EMAIL REDACTED FOR PRIVACY",
+          "type": "object redacted due to authorization",
+          "description": [
+            "Please query the RDDS service of the Registrar of Record identified in this output for information on how to contact the Registrant, Admin, or Tech contact of the queried domain name."
+          ]
+        }
+      ],
+      "objectClassName": "entity",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["adr", {}, "text", ["", "", "", "", "", "", ""]],
+          ["fn", {}, "text", ""]
+        ]
+      ],
+      "roles": ["billing"],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    },
+    {
+      "objectClassName": "entity",
+      "handle": "9999",
+      "vcardArray": [
+        "vcard",
+        [
+          ["version", {}, "text", "4.0"],
+          ["fn", {}, "text", "National Internet Exchange of India"],
+          [
+            "adr",
+            {
+              "cc": "IN"
+            },
+            "text",
+            [
+              "",
+              "",
+              "World Trade Center, 9th Floor Tower B, B-901",
+              "New Delhi",
+              "National Capital Territory",
+              "110029",
+              ""
+            ]
+          ],
+          [
+            "tel",
+            {
+              "type": "voice"
+            },
+            "uri",
+            "tel:+91.4049187688"
+          ],
+          [
+            "tel",
+            {
+              "type": "fax"
+            },
+            "uri",
+            "tel:+91.4049187688"
+          ],
+          ["email", {}, "text", "techsupport@registry.in"]
+        ]
+      ],
+      "roles": ["registrar"],
+      "publicIds": [
+        {
+          "type": "IANA Registrar ID",
+          "identifier": "9999"
+        }
+      ],
+      "entities": [
+        {
+          "objectClassName": "entity",
+          "vcardArray": [
+            "vcard",
+            [
+              ["version", {}, "text", "4.0"],
+              ["fn", {}, "text", ""],
+              [
+                "tel",
+                {
+                  "type": "voice"
+                },
+                "uri",
+                "tel:+91.4049187688"
+              ],
+              ["email", {}, "text", "techsupport@registry.in"]
+            ]
+          ],
+          "roles": ["abuse"],
+          "events": [
+            {
+              "eventAction": "last update of RDAP database",
+              "eventDate": "2026-11-22T20:23:28.201Z"
+            }
+          ]
+        }
+      ],
+      "links": [
+        {
+          "rel": "about",
+          "href": "https://rdap.nixiregistry.in/rdap/entity/9999",
+          "type": "application/rdap+json"
+        }
+      ],
+      "events": [
+        {
+          "eventAction": "last update of RDAP database",
+          "eventDate": "2026-11-22T20:23:28.201Z"
+        }
+      ]
+    }
+  ],
+  "status": [
+    "server delete prohibited",
+    "server update prohibited",
+    "server transfer prohibited"
+  ],
+  "links": [
+    {
+      "value": "https://rdap.nixiregistry.in/rdap/domain/res.in",
+      "rel": "self",
+      "href": "https://rdap.nixiregistry.in/rdap/domain/res.in",
+      "type": "application/rdap+json"
+    }
+  ],
+  "events": [
+    {
+      "eventAction": "registration",
+      "eventActor": "nixi",
+      "eventDate": "2025-05-28T12:24:03.742Z"
+    },
+    {
+      "eventAction": "expiration",
+      "eventDate": "2035-05-28T12:24:03.742Z"
+    },
+    {
+      "eventAction": "last changed",
+      "eventDate": "2026-08-10T12:12:38.029Z"
+    },
+    {
+      "eventAction": "last update of RDAP database",
+      "eventDate": "2026-11-22T20:23:28.201Z"
+    }
+  ]
+}

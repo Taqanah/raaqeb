@@ -8,6 +8,10 @@ FSL-1.1-ALv2
 
 Copyright 2026 Mohamed Khaled
 
+`src/server/checks/public-suffixes.ts` is a copy of the Public Suffix List,
+licensed under the Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/);
+its source is in the public repository, https://github.com/Taqanah/raaqeb.
+
 ## Terms and Conditions
 
 ### Licensor ("We")

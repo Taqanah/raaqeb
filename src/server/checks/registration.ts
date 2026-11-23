@@ -2,20 +2,18 @@
  * The registration reader (CONTEXT.md "Domain registration"): finds the
  * registration a host's domain is under and when it expires. A TLD with an
  * RDAP server in IANA's bootstrap file is asked over RDAP; any other is asked
- * over WHOIS, at the server IANA's WHOIS names for it. The names are asked
- * longest first, the host and then each parent down to two labels, and the
- * first a registry holds is the registration, so no public suffix list is
- * needed: a registry answers for what it registered and not for a name under
- * it. A registry that answers with no expiry date, or with one that does not
- * read, gives an unknown date, which never warns. It does no I/O beyond the
+ * over WHOIS, at the server IANA's WHOIS names for it. The registry is asked
+ * one name, the registered domain the Public Suffix List gives, so no name
+ * under it leaves the install. A registry that answers with no expiry date, or
+ * with one that does not read, gives an unknown date, which never warns. It does no I/O beyond the
  * injected `fetch` and `whois`; the bootstrap file and the WHOIS servers are
  * kept in memory, and each name's answer is kept for the rest of its UTC day,
  * so monitors under one domain ask its registry once a day.
  */
 import { z } from "zod";
-import { registrationCandidates } from "@/shared/domain/registrations.ts";
 import type { DomainRegistration } from "@/shared/schemas/registration.ts";
 import { readBody } from "./body.ts";
+import { publicSuffixRules } from "./public-suffixes.ts";
 import { whoisAnswerOf, whoisServerOf } from "./whois.ts";
 
 const dayMs = 86_400_000;
@@ -63,6 +61,26 @@ export function registrationReadDue(
     record === undefined ||
     Math.floor(record.readAt / dayMs) < Math.floor(now / dayMs)
   );
+}
+
+// A search of the text itself: a Set of the rules would hold some 800 kB of heap for the few lookups a day's reads make.
+const listed = (rule: string) => publicSuffixRules.includes(`\n${rule}\n`);
+
+/** The registered domain the host is under, the public suffix and one label more, by the Public Suffix List's algorithm; nothing for a host that is itself a public suffix. */
+export function registeredDomain(host: string): string | undefined {
+  const labels = host.split(".");
+  // Longest first, so the first rule that matches is the one that prevails; an exception rule names the registered domain itself.
+  for (let start = 0; start < labels.length; start += 1) {
+    const name = labels.slice(start).join(".");
+    if (listed(`!${name}`)) {
+      return name;
+    }
+    if (listed(name) || listed(`*.${labels.slice(start + 1).join(".")}`)) {
+      return start === 0 ? undefined : labels.slice(start - 1).join(".");
+    }
+  }
+  // No rule matches: the list's default rule takes the TLD alone as the public suffix.
+  return labels.length < 2 ? undefined : labels.slice(-2).join(".");
 }
 
 /** What a registry said of one name: that it holds no such name, or the registration it holds. */
@@ -153,7 +171,8 @@ export function createRegistrationReader(
     );
     const expiresAt = Date.parse(expiration?.eventDate ?? "");
     return {
-      domain: domain.ldhName?.toLowerCase() ?? name,
+      // A record that names no domain is no registration: .name answers so for a shared second level (smith.name).
+      domain: domain.ldhName?.toLowerCase(),
       expiresAt: Number.isNaN(expiresAt) ? undefined : expiresAt,
       held: true,
     };
@@ -214,28 +233,29 @@ export function createRegistrationReader(
 
   return {
     read: async (host) => {
+      const name = registeredDomain(host);
+      if (name === undefined) {
+        return unknown;
+      }
       const now = io.now();
       try {
         const ask = await askerOf(host.slice(host.lastIndexOf(".") + 1), now);
         if (!ask) {
           return unknown;
         }
-        for (const name of registrationCandidates(host)) {
-          // biome-ignore lint/performance/noAwaitInLoops: longest first, and the first name the registry holds ends the walk
-          const answer = await answerOf(name, ask, now);
-          // A record of another name, the domain above a name asked, is read when the walk reaches that name.
-          if (answer.held && answer.domain === name) {
-            const { domain, expiresAt } = answer;
-            return {
-              domain,
-              expiresAt:
-                expiresAt !== undefined && expiresAt < now - longGoneMs
-                  ? undefined
-                  : expiresAt,
-            };
-          }
+        const answer = await answerOf(name, ask, now);
+        // A record of another name is no registration of this one, and only the name asked is ever stored.
+        if (!answer.held || answer.domain !== name) {
+          return unknown;
         }
-        return unknown;
+        const { expiresAt } = answer;
+        return {
+          domain: name,
+          expiresAt:
+            expiresAt !== undefined && expiresAt < now - longGoneMs
+              ? undefined
+              : expiresAt,
+        };
       } catch {
         // A registry or IANA that could not be reached, or answered nonsense, is no answer; the next read asks again.
       }
