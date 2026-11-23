@@ -2,9 +2,9 @@
  * The probe API (ADR-0012), version 1: `GET /api/probe/v1/assignments` and
  * `POST /api/probe/v1/results`, behind a probe token. The token is judged
  * before anything is read but the one probe it names; an address that keeps
- * sending a wrong token is refused before any read at all, and a probe past
- * its own limit is refused too. A probe's contact is written at most every
- * 30 seconds.
+ * sending a wrong token is refused after that one lookup, so a valid token is
+ * still heard from it, and a probe past its own limit is refused too. A
+ * probe's contact is written at most every 30 seconds.
  */
 
 import { z } from "zod";
