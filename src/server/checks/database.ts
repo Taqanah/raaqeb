@@ -14,6 +14,7 @@ import { mongoPort, parseConnectionString } from "@/shared/domain/mongodb.ts";
 import type { CheckOutcome } from "@/shared/schemas/check.ts";
 import type { Credentials } from "@/shared/schemas/credentials.ts";
 import {
+  connectionUrlFits,
   type DatabaseCheckType,
   type DatabaseConfig,
   databasePorts,
@@ -60,6 +61,15 @@ export function runDatabaseCheck(
   return runAttempts(monitor, io, () => attemptOnce(monitor, io));
 }
 
+/** An attempt that reached nothing, and why. */
+const unreached = (error: string): Attempt => ({
+  error,
+  params: { reason: "unknown" },
+  reason: "unknown",
+  responseMs: 0,
+  succeeded: false,
+});
+
 /** One connection signed in, asked and closed, or the error it met. */
 async function attemptOnce(
   monitor: DatabaseMonitor,
@@ -67,15 +77,17 @@ async function attemptOnce(
 ): Promise<Attempt> {
   const { config, timeoutMs } = monitor;
   const url = monitor.credentials?.url;
+  // The install key could not open it (the scheduler logs which monitor); without a URL there is nothing to reach.
   if (url === undefined) {
-    // The install key could not open it (the scheduler logs which monitor); without a URL there is nothing to reach.
-    return {
-      error: "no connection URL: the install key cannot open the stored one",
-      params: { reason: "unknown" },
-      reason: "unknown",
-      responseMs: 0,
-      succeeded: false,
-    };
+    return unreached(
+      "no connection URL: the install key cannot open the stored one"
+    );
+  }
+  // A URL saved before the rule that now refuses it on save never reaches Bun's driver either; Raaqeb's own MongoDB client reads no file or socket.
+  if (config.type !== "mongodb" && !connectionUrlFits(config.type, url)) {
+    return unreached(
+      "a connection URL this check type cannot read: edit the monitor and save a URL that names no Unix socket, certificate file, or other host or port in its query"
+    );
   }
   const start = io.now();
   const elapsed = () => Math.min(io.now() - start, timeoutMs);

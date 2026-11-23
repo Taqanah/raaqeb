@@ -796,6 +796,42 @@ describe("a database monitor", () => {
     expect(connectionUrlFits("postgres", "not a url")).toBe(false);
   });
 
+  test("a Postgres or MySQL URL that names a socket or a file on the install's host, or another host or port, does not fit", () => {
+    const refused = [
+      ["postgres", "postgres://u@db.example.test/app?path=/run/postgresql"],
+      ["postgres", "postgres://u@db.example.test/app?Socket=/run/postgresql"],
+      ["postgres", "postgres://u@db.example.test/app?host=/run/postgresql"],
+      ["postgres", "postgres://u@db.example.test/app?host=10.0.0.9"],
+      ["postgres", "postgres://u@db.example.test/app?port=6432"],
+      ["postgres", "postgres://u@%2Frun%2Fpostgresql/app"],
+      ["postgres", "postgres://u@db.example.test/app?sslrootcert=/etc/ca.pem"],
+      ["postgres", "postgres://u@db.example.test/app?SSLCERT=/k&sslkey=/k"],
+      ["mysql", "mysql://u@db.example.test/app?path=/run/mysqld/mysqld.sock"],
+      ["mysql", "mysql://u@db.example.test/app?socket=/run/mysqld/mysqld.sock"],
+      ["mysql", "mysql://u@%2Frun%2Fmysqld%2Fmysqld.sock/app"],
+    ] as const;
+    for (const [type, url] of refused) {
+      expect({ fits: connectionUrlFits(type, url), url }).toEqual({
+        fits: false,
+        url,
+      });
+    }
+    // The system's own CAs, TLS and the server's own options name nothing on the host.
+    for (const url of [
+      "postgres://u@db.example.test/app?sslmode=verify-full&sslrootcert=system",
+      "postgres://u@db.example.test/app?sslmode=require&channel_binding=require",
+      "postgres://u@db.example.test/app?application_name=raaqeb",
+    ]) {
+      expect(connectionUrlFits("postgres", url)).toBe(true);
+    }
+    expect(
+      connectionUrlFits(
+        "mysql",
+        "mysql://u@db.example.test/app?sslmode=require"
+      )
+    ).toBe(true);
+  });
+
   test("a MongoDB URL fits by the connection string specification, a seed list and an SRV name included", () => {
     expect(
       connectionUrlFits(

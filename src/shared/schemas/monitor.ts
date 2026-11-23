@@ -368,16 +368,37 @@ export function connectionUrlFits(
     return false;
   }
   // A URL without a host would leave the driver to fill it from the environment, which names Raaqeb's own database.
-  const { hostname, pathname, protocol } = new URL(url);
+  const { hostname, pathname, protocol, searchParams } = new URL(url);
   return (
     connectionUrlSchemes[type].includes(protocol) &&
     hostname !== "" &&
+    // Bun's SQL driver reads a percent-escaped host as a Unix socket's path; a host reached over TCP has none.
+    !hostname.includes("%") &&
+    [...searchParams].every(
+      ([key, value]) =>
+        !hostKeys[type]?.includes(key.toLowerCase()) ||
+        (key.toLowerCase() === "sslrootcert" && value === "system")
+    ) &&
     // Bun's Redis client takes a database number or none, and refuses a name before connecting.
     (type !== "redis" || redisDatabase.test(pathname))
   );
 }
 
 const redisDatabase = /^\/?\d*$/;
+
+/** The query keys Bun's SQL driver (1.4.4) reads as a Unix socket or a file on the install's own host, or as another host or port than the URL's; `sslrootcert=system` names the system's CAs. */
+const hostKeys: Partial<Record<DatabaseCheckType, readonly string[]>> = {
+  mysql: ["path", "socket"],
+  postgres: [
+    "host",
+    "path",
+    "port",
+    "socket",
+    "sslcert",
+    "sslkey",
+    "sslrootcert",
+  ],
+};
 
 /**
  * A database monitor's config: the query and the expected value,

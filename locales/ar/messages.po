@@ -1516,11 +1516,11 @@ msgstr "ضع اسم المستخدم وكلمة المرور في قسم الا�
 
 #. js-lingui-explicit-id
 msgid "monitor_error_connection_url_postgres"
-msgstr "أدخل رابطًا كاملًا يبدأ بـ postgres أو postgresql ويسمّي المضيف."
+msgstr "أدخل رابطًا كاملًا يبدأ بـ postgres أو postgresql ويسمّي المضيف، ولا يسمّي مقبسًا ولا ملف شهادة ولا مضيفًا أو منفذًا آخر."
 
 #. js-lingui-explicit-id
 msgid "monitor_error_connection_url_mysql"
-msgstr "أدخل رابطًا كاملًا يبدأ بـ mysql أو mariadb ويسمّي المضيف."
+msgstr "أدخل رابطًا كاملًا يبدأ بـ mysql أو mariadb ويسمّي المضيف، ولا يسمّي مقبسًا."
 
 #. js-lingui-explicit-id
 msgid "monitor_error_connection_url_redis"

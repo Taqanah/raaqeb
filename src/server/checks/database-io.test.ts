@@ -367,6 +367,83 @@ describe("one query over Bun's drivers, with no server", () => {
   });
 });
 
+describe("a connection URL that names a place on the install's own host", () => {
+  const folder = `${Bun.env.TMPDIR ?? "/tmp"}/raaqeb-socket-${process.pid}`;
+  const opened: string[] = [];
+  const listeners: { stop: (force: boolean) => void }[] = [];
+  let port = 0;
+
+  beforeAll(async () => {
+    await Bun.$`mkdir -p ${folder}`;
+    for (const path of [`${folder}/.s.PGSQL.5432`, `${folder}/mysql.sock`]) {
+      listeners.push(
+        Bun.listen({
+          socket: {
+            data: () => undefined,
+            open: () => {
+              opened.push(path);
+            },
+          },
+          unix: path,
+        })
+      );
+    }
+    const tcp = Bun.listen({
+      hostname: "127.0.0.1",
+      port: 0,
+      socket: {
+        data: () => undefined,
+        open: () => {
+          opened.push("tcp");
+        },
+      },
+    });
+    listeners.push(tcp);
+    ({ port } = tcp);
+  });
+  afterAll(async () => {
+    for (const listener of listeners) {
+      listener.stop(true);
+    }
+    await Bun.$`rm -rf ${folder}`;
+  });
+
+  test("is down without opening its socket, reading its file or reaching any server", async () => {
+    const socket = `${folder}/mysql.sock`;
+    const urls = [
+      ["postgres", `postgres://u:watch-pw@db.example.test/app?path=${folder}`],
+      [
+        "postgres",
+        `postgres://u:watch-pw@db.example.test/app?SOCKET=${folder}`,
+      ],
+      ["postgres", `postgres://u:watch-pw@db.example.test/app?host=${folder}`],
+      ["postgres", `postgres://u:watch-pw@${encodeURIComponent(folder)}/app`],
+      [
+        "postgres",
+        `postgres://u:watch-pw@db.example.test/app?host=127.0.0.1&port=${port}`,
+      ],
+      [
+        "postgres",
+        `postgres://u:watch-pw@127.0.0.1:${port}/app?sslmode=require&sslrootcert=${socket}`,
+      ],
+      [
+        "postgres",
+        `postgres://u:watch-pw@127.0.0.1:${port}/app?sslmode=require&sslcert=${socket}&sslkey=${socket}`,
+      ],
+      ["mysql", `mysql://u:watch-pw@db.example.test/app?path=${socket}`],
+      ["mysql", `mysql://u:watch-pw@db.example.test/app?socket=${socket}`],
+      ["mysql", `mysql://u:watch-pw@${encodeURIComponent(socket)}/app`],
+    ] as const;
+    for (const [type, url] of urls) {
+      // biome-ignore lint/performance/noAwaitInLoops: one check at a time keeps each listener's count its own
+      const outcome = await check(type, url, {}, 1500);
+      expect({ opened, url }).toEqual({ opened: [], url });
+      expect(outcome.check.result).toBe("down");
+      expect(outcome.detail?.error).toContain("connection URL");
+    }
+  });
+});
+
 /** The compose servers, which `bun run test:postgres` names; the Postgres one is the run's own database, read and never written. */
 const servers: Record<DatabaseCheckType, string | undefined> = {
   mysql: process.env.RAAQEB_TEST_MYSQL_URL,

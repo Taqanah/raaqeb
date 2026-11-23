@@ -27,6 +27,8 @@ The connection URL must start with one of its type's schemes:
 
 A Redis URL's path may only be a database number, such as `/0`.
 
+A Postgres or MySQL URL may not name a place on the Raaqeb host itself: a Unix socket (`path` or `socket` in the query, or a host written as a path such as `%2Frun%2Fpostgresql`) and, for Postgres, a certificate file (`sslrootcert`, `sslcert`, `sslkey`) or another host or port than the URL's own (`host`, `port`). `sslrootcert=system`, which trusts the system's certificate authorities, is allowed. A monitor saved with one before this rule is down with "a connection URL this check type cannot read" until you save its URL again without it.
+
 The connection URL holds the password, so it is a credential: Raaqeb stores it encrypted with the install key and never shows it again. On edit, leave the field empty to keep the saved URL. **Duplicate** does not copy it. The monitors list shows only the URL's host and port.
 
 <Callout type="warn">
