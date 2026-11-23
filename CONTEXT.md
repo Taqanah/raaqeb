@@ -496,6 +496,11 @@ Arabic: بيانات اعتماد العميل
 How an HTTP monitor authenticates with the OAuth 2.0 client credentials grant: it asks a token endpoint for a token with its client ID and sealed client secret, and sends the token as a bearer. The token is a credential too, never stored, logged or captured.
 _Avoid_: OAuth login, API key, token auth (that is the bearer token field)
 
+**Credentials**:
+Arabic: بيانات الاستيثاق
+What Raaqeb stores encrypted with the install key and never shows again, so that it can sign in somewhere for the operator: a monitor's authentication, request headers, proxy sign-in, client certificate key and connection URL, a channel's credentials, the SMTP password, the Postgres URL. An HTTP check never carries a monitor's authentication or request headers to another origin: a redirect leaves them behind, and a hop back to the first origin does not bring them back; only the check's own `User-Agent` goes on.
+_Avoid_: secrets (the install key is the one secret, and it encrypts the credentials), sensitive headers (every request header of a monitor is a credential)
+
 **Data directory**:
 Arabic: مجلد البيانات
 The one folder Raaqeb owns on disk: the SQLite file, pre-upgrade snapshots and local state. Backing it up backs up an on-disk install.

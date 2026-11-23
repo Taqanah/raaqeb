@@ -172,7 +172,8 @@ async function attemptOnce(
       requestInit(config, signal, monitor.credentials, granted?.token),
       config.followRedirects,
       io.fetch,
-      hop
+      hop,
+      monitor.credentials?.headers.map(({ name }) => name) ?? []
     );
     statusCode = response.status;
     if (granted?.cached && statusCode === 401) {
@@ -427,7 +428,7 @@ function requestInit(
 }
 
 const redirectStatuses = new Set([301, 302, 303, 307, 308]);
-/** What fetch takes off a request when a redirect leaves the origin (probed on Bun 1.4.3). */
+/** What fetch takes off a request when a redirect leaves the origin (probed on Bun 1.4.3), and what the check takes off besides: every header the operator sealed. */
 const crossOriginHeaders = ["authorization", "cookie", "proxy-authorization"];
 /** The headers that describe a body, dropped with it (Fetch standard, HTTP-redirect fetch). */
 const bodyHeaders = [
@@ -444,6 +445,7 @@ async function send(
   followRedirects: boolean,
   fetchHop: typeof fetch,
   hop: { carriedCertificate: boolean; url: URL },
+  sealed: readonly string[],
   redirects = 0
 ): Promise<Response> {
   // Whether the request in flight presents the client certificate, and where it goes, for the reading of how it failed.
@@ -475,12 +477,19 @@ async function send(
       { code: "UnsupportedRedirectProtocol" }
     );
   }
+  const following = nextHop(
+    init,
+    response.status,
+    next.origin !== url.origin,
+    sealed
+  );
   return send(
     next,
-    nextHop(init, response.status, next.origin !== url.origin),
+    following,
     followRedirects,
     fetchHop,
     hop,
+    sealed,
     redirects + 1
   );
 }
@@ -494,16 +503,21 @@ function tlsAcrossOrigins(
     : undefined;
 }
 
-/** The request of the next hop: credentials left behind on another origin, and a GET with no body where the status asks for one. */
+/** The request of the next hop: credentials, with every header the operator sealed, left behind on another origin, and a GET with no body where the status asks for one. */
 function nextHop(
   from: BunFetchRequestInit,
   status: number,
-  crossOrigin: boolean
+  crossOrigin: boolean,
+  sealed: readonly string[]
 ): BunFetchRequestInit {
   const headers = new Headers(from.headers);
   if (crossOrigin) {
-    for (const name of crossOriginHeaders) {
+    for (const name of [...crossOriginHeaders, ...sealed]) {
       headers.delete(name);
+    }
+    // A sealed User-Agent goes too; the check's own stands in, as on the first request.
+    if (!headers.has("user-agent")) {
+      headers.set("user-agent", userAgent);
     }
   }
   const init = crossOrigin

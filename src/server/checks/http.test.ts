@@ -820,7 +820,7 @@ describe("following redirects", () => {
     expect(seen).toHaveLength(11);
   });
 
-  test("a hop to another origin drops Authorization, the Cookie and Proxy-Authorization as fetch does, and keeps the other custom headers", async () => {
+  test("a hop to another origin drops Authorization, the Cookie, Proxy-Authorization and every other sealed header", async () => {
     const { seen, server: other } = chainServer();
     using _other = other;
     using origin = Bun.serve({
@@ -850,7 +850,7 @@ describe("following redirects", () => {
     expect(hop?.headers.has("authorization")).toBe(false);
     expect(hop?.headers.has("cookie")).toBe(false);
     expect(hop?.headers.has("proxy-authorization")).toBe(false);
-    expect(hop?.headers.get("x-api-key")).toBe("k1");
+    expect(hop?.headers.has("x-api-key")).toBe(false);
   });
 
   test("a hop within the origin keeps Authorization", async () => {
@@ -875,6 +875,114 @@ describe("following redirects", () => {
   ): Answer => ({
     ms: 10,
     response: () => new Response(body, { headers: { location }, status: code }),
+  });
+
+  const sealedHeaders = {
+    auth: undefined,
+    headers: [{ name: "X-Api-Key", value: "key-secret" }],
+  };
+
+  /** The headers each request of a check carried, the check following redirects to `locations` in turn. */
+  async function carried(
+    url: string,
+    locations: string[],
+    credentials: HttpMonitor["credentials"] = sealedHeaders
+  ) {
+    const { io: checkIo, requests } = io([
+      ...locations.map((location) => redirect(302, location)),
+      ok(10),
+    ]);
+    await runHttpCheck(
+      monitor({ config: { url }, credentials, retries: 0 }),
+      checkIo
+    );
+    return requests.map(({ init }) => new Headers(init?.headers));
+  }
+
+  test("a hop to another origin over the wire drops every request header the operator sealed, and keeps the check's own User-Agent", async () => {
+    const { seen, server: other } = chainServer();
+    using _other = other;
+    using origin = Bun.serve({
+      fetch: () =>
+        new Response(null, {
+          headers: { location: `${other.url}hop/0` },
+          status: 302,
+        }),
+      hostname: "127.0.0.1",
+      port: 0,
+    });
+    const outcome = await runHttpCheck(
+      following(origin.url.href, { credentials: sealedHeaders }),
+      live
+    );
+    expect(outcome.check.result).toBe("up");
+    expect(seen[0]?.headers.has("x-api-key")).toBe(false);
+    expect(seen[0]?.headers.get("user-agent")).toMatch(versioned);
+  });
+
+  test("a hop to another host, port or scheme drops the sealed headers, and the first origin's own hops keep them", async () => {
+    const cases = await Promise.all(
+      [
+        "https://other.example.test/next",
+        "https://example.test:8443/next",
+        "http://example.test/next",
+      ].map((next) => carried("https://example.test/health", [next]))
+    );
+    for (const [first, second] of cases) {
+      expect(first?.get("x-api-key")).toBe("key-secret");
+      expect(second?.has("x-api-key")).toBe(false);
+      expect(second?.get("user-agent")).toMatch(versioned);
+    }
+    const [, within] = await carried("https://example.test/health", [
+      "https://example.test/next",
+    ]);
+    expect(within?.get("x-api-key")).toBe("key-secret");
+  });
+
+  test("a sealed User-Agent stays on the first origin, and the check's own stands in on another", async () => {
+    const [first, second] = await carried(
+      "https://example.test/health",
+      ["https://other.example.test/"],
+      { auth: undefined, headers: [{ name: "User-Agent", value: "mine/1" }] }
+    );
+    expect(first?.get("user-agent")).toBe("mine/1");
+    expect(second?.get("user-agent")).toMatch(versioned);
+  });
+
+  test("a later hop back to the first origin does not bring the dropped headers back", async () => {
+    const hops = await carried("https://example.test/health", [
+      "https://other.example.test/",
+      "https://example.test/back",
+    ]);
+    expect(hops.map((headers) => headers.get("x-api-key"))).toEqual([
+      "key-secret",
+      null,
+      null,
+    ]);
+  });
+
+  test("the final response repeating a dropped value never reaches the stored detail or the capture", async () => {
+    const { io: checkIo } = io([
+      redirect(302, "https://other.example.test/"),
+      ok(10, "welcome key-secret", { headers: { "x-echo": "key-secret" } }),
+    ]);
+    const outcome = await runHttpCheck(
+      monitor({
+        config: {
+          assertions: [{ kind: "body_contains", text: "nothing" }],
+          captureMode: "always",
+        },
+        credentials: sealedHeaders,
+        retries: 0,
+      }),
+      checkIo
+    );
+    const kept = JSON.stringify({
+      capture: outcome.capture,
+      detail: outcome.detail,
+    });
+    expect(kept).toContain("welcome");
+    expect(kept.includes("key-secret")).toBe(false);
   });
 
   /** The method, the body and the content type of the second request after a redirect with `code` of a `method` request. */
