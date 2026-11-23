@@ -104,6 +104,35 @@ describe("the memo in front of the public page", () => {
     expect(route.targets).toHaveLength(1);
   });
 
+  test("an escape or a second trailing slash in a view's address names no view: it renders nothing, and the page's not-found kept for its frame answers it", async () => {
+    const { s } = await withDefaultPage();
+    const memo = createPublicMemo({ now: () => now });
+    const route = renders();
+    const app = missingRenders();
+    const spellings = [
+      "/incidents/%30%31a2",
+      "/incidents/0%31a2",
+      "/en/incidents/%30%31a2",
+      "/status/main/incidents/%30%31a2",
+      "/en//",
+    ];
+    const bodies: string[] = [];
+    for (const path of spellings) {
+      // biome-ignore lint/performance/noAwaitInLoops: one request at a time, as a flood sends them
+      const answer = await memo.answer(request(path), s.storage, route.render);
+      expect(answer, path).toBeUndefined();
+      const missing = await memo.notFound(request(path), s.storage, app.render);
+      expect(missing?.status, path).toBe(404);
+      bodies.push((await missing?.text()) ?? "");
+    }
+    expect(route.targets).toHaveLength(0);
+    expect(app.asked.map((each) => each.path)).toEqual([
+      "/history/0000-00",
+      "/en/history/0000-00",
+    ]);
+    expect(bodies[0]).toContain("not found 1");
+  });
+
   test("the route renders with the page and locale the request resolved to", async () => {
     const { pageId, s } = await withDefaultPage();
     const memo = createPublicMemo({ now: () => now });
