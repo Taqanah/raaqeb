@@ -20,6 +20,7 @@ import {
   formatWhen,
   intlLocale,
   isoTimestamp,
+  joinNames,
   normalizeDigits,
   relativeTime,
   zoneLabel,
@@ -583,5 +584,16 @@ describe("a check's time in a zoomed list", () => {
       to: Date.parse("2026-09-11T21:00:00Z"),
     };
     expect(formatSpanTime("en", at, span, riyadh)).toBe("10:42:15 AM");
+  });
+});
+
+describe("a list of names an operator wrote", () => {
+  test('is joined by the locale\'s comma, never an Arabic "and" glued onto a Latin name', () => {
+    expect(joinNames("ar", ["الموقع", "API", "الدفع"])).toBe(
+      "الموقع، API، الدفع"
+    );
+    expect(joinNames("en", ["Site", "API", "Pay"])).toBe("Site, API, Pay");
+    expect(joinNames("ar", ["API"])).toBe("API");
+    expect(joinNames("ar", [])).toBe("");
   });
 });

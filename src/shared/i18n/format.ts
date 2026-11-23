@@ -44,6 +44,17 @@ export function intlLocale(locale: Locale): string {
   return `${locale}-u-nu-latn-ca-gregory`;
 }
 
+/** Between names an operator wrote in running text. */
+export const nameSeparator: Readonly<Record<Locale, string>> = {
+  ar: "، ",
+  en: ", ",
+};
+
+/** Names an operator wrote, in running text: the locale's comma, since Arabic's list format glues its "and" onto a Latin name. */
+export function joinNames(locale: Locale, names: readonly string[]): string {
+  return names.join(nameSeparator[locale]);
+}
+
 /** Replaces Arabic-Indic (٠ to ٩) and extended Arabic-Indic (۰ to ۹) digits with 0 to 9. */
 export function normalizeDigits(text: string): string {
   return text.replace(easternDigits, (digit) => {

@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createMessages } from "@/shared/i18n/messages.ts";
 import { MessagesProvider } from "@/shared/i18n/react.tsx";
+import { messages as ar } from "../../../locales/ar/messages.ts";
 import { messages as en } from "../../../locales/en/messages.ts";
-import { ContentField, ContentInputs } from "./content.tsx";
+import { ContentField, ContentInputs, ContentList } from "./content.tsx";
 
+const arabic = createMessages("ar", ar);
 const noop = () => undefined;
 const describedBy = /aria-describedby="([^"]*)"/g;
 const hintId = /id="([^"]+)"[^>]*>Visitors read it\.</;
@@ -121,5 +123,19 @@ describe("a content field's marks on its inputs", () => {
     expect(html).toContain('aria-label="Name · English · Required"');
     expect(html).toContain('placeholder="Name · English · Required"');
     expect(html).toContain('aria-label="Name · العربية · Optional"');
+  });
+});
+
+describe("a list of content", () => {
+  test('isolates each name and separates them with the locale\'s comma, so no Arabic "and" touches a Latin name', () => {
+    expect(
+      renderToStaticMarkup(
+        <MessagesProvider i18n={arabic}>
+          <ContentList
+            contents={[{ ar: "الموقع" }, { ar: "API" }, { ar: "الدفع" }]}
+          />
+        </MessagesProvider>
+      )
+    ).toBe("<bdi>الموقع</bdi>، <bdi>API</bdi>، <bdi>الدفع</bdi>");
   });
 });

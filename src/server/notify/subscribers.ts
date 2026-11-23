@@ -37,6 +37,7 @@ import type { StoredSubscription } from "@/server/storage/subscriptions.ts";
 import { affectedComponents } from "@/shared/domain/incidents.ts";
 import {
   formatDateTimeWithZone,
+  joinNames,
   type TimeOptions,
 } from "@/shared/i18n/format.ts";
 import { type Locale, locales } from "@/shared/i18n/locale.ts";
@@ -443,7 +444,7 @@ export async function subscriberMail(
   const names = incident.components.map((each) => each.name);
   const components = line(
     "subscription_line_components",
-    names.join(listSeparator[locale])
+    joinNames(locale, names)
   );
   const at = line("subscription_line_time", when(payload.timestamp));
   const footer = messages._("subscription_footer", { page });
@@ -485,12 +486,6 @@ export async function subscriberMail(
     ]),
   };
 }
-
-/** A list of names in running text: the locale's comma, since Arabic's list format glues its "and" onto a Latin name. */
-const listSeparator: Readonly<Record<Locale, string>> = {
-  ar: "، ",
-  en: ", ",
-};
 
 /** The body a subscriber's webhook receives: Raaqeb's confirmation, or Statuspage's body for an event. */
 export async function subscriberWebhookBody(
