@@ -21,9 +21,9 @@ describe("the install commands the landing page offers", () => {
 
 describe("the figures under the memory chart", () => {
   for (const [locale, copy] of Object.entries(copies)) {
-    test(`the ${locale} binary size is the one the benchmark measured`, () => {
+    test(`the ${locale} download size is the one measured`, () => {
       expect(copy.server.figures.map(([figure]) => figure)).toContain(
-        String(bench.binaryMb)
+        String(bench.downloadMb)
       );
     });
   }

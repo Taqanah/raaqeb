@@ -38,7 +38,7 @@ A monitor can be checked from more than one place by running Raaqeb itself as a 
 
 ## Size
 
-It runs on 1 vCPU and 240 MB of RAM as one binary, with no outside service. In the last benchmark it held 800 monitors checked every 20 seconds at a memory peak of 107 MB, and the Linux binary is about 115 MB.
+It runs on 1 vCPU and 240 MB of RAM as one binary, with no outside service. In the last benchmark it held 800 monitors checked every 20 seconds at a memory peak of 107 MB, and the Linux binary is about 115 MB on disk and a 42 MB download.
 
 ## More
 

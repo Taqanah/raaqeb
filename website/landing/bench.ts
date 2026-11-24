@@ -30,6 +30,6 @@ export const bench = {
   dayCpuShare: 0.31,
   /** From start to answering, in ms. */
   coldStartMs: 444,
-  /** The linux-x64 binary in MB, measured apart from the benchmark run: 114,866,352 bytes. */
-  binaryMb: 115,
+  /** The linux-x64 download in MB, as the installer fetches it where zstd is, measured apart from the benchmark run: 42,207,699 bytes (the .gz is 52,649,515; the binary on disk 114,817,200). */
+  downloadMb: 42,
 } as const;
