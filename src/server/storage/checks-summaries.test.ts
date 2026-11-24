@@ -10,7 +10,7 @@ import {
   type DayTally,
   type SummaryRead,
 } from "./checks.ts";
-import { closeConnection, executor } from "./connection.ts";
+import { closeConnection, type Executor, executor } from "./connection.ts";
 import { connectTo, runSql, scratchDatabase } from "./fixture.ts";
 import { migrateDatabase } from "./migrate.ts";
 import { type MonitorsRepository, monitorsRepository } from "./monitors.ts";
@@ -50,6 +50,7 @@ async function install(): Promise<{
   checks: ChecksRepository;
   location: DatabaseLocation;
   monitors: MonitorsRepository;
+  run: Executor;
 }> {
   const scratch = await scratchDatabase();
   const connection = await connectTo(scratch.location);
@@ -71,6 +72,7 @@ async function install(): Promise<{
         return `id-${String(next).padStart(4, "0")}`;
       }
     ),
+    run,
   };
 }
 
@@ -200,6 +202,128 @@ describe("a summary against the monitor's checks summed one by one", () => {
       }
     });
   }
+});
+
+/** Monitors with yesterday's last two hours and today's first ten, a check a minute, all still in the head. */
+async function twoDaysInTheHead(
+  checks: ChecksRepository,
+  monitors: MonitorsRepository,
+  count: number
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    // biome-ignore lint/performance/noAwaitInLoops: monitors one after another, as the form creates them
+    const monitor = await monitors.create({ ...site, name: `M${index}` });
+    ids.push(monitor.id);
+    for (
+      let at = d + dayMs - 120 * minuteMs;
+      at < d + dayMs + 600 * minuteMs;
+      at += minuteMs
+    ) {
+      // biome-ignore lint/performance/noAwaitInLoops: rows in order
+      await checks.record({
+        capture: undefined,
+        check: check(monitor.id, at, "up", 100),
+        detail: undefined,
+      });
+    }
+  }
+  return ids;
+}
+
+describe("a day sealed while a summary reads it", () => {
+  const read = { from: d, limitMs: 2 * minuteMs };
+  const to = d + dayMs + 600 * minuteMs;
+
+  test("is read from its sums again, never check by check, and counted once", async () => {
+    const { checks, monitors, run } = await install();
+    const ids = await twoDaysInTheHead(checks, monitors, 3);
+    let rowsRead = 0;
+    let sealed = false;
+    // The sealer's pass over yesterday lands right after the summary's first read.
+    const racing: Executor = {
+      ...run,
+      rows: async <T>(query: Parameters<Executor["rows"]>[0]) => {
+        const rows = await run.rows<T>(query);
+        rowsRead += rows.length;
+        if (!sealed) {
+          sealed = true;
+          for (const id of ids) {
+            // biome-ignore lint/performance/noAwaitInLoops: one monitor's seal after another, as the sealer runs
+            await checks.seal(id, d, 2 * minuteMs, []);
+          }
+        }
+        return rows;
+      },
+    };
+    const reads = new Map(ids.map((id) => [id, read]));
+    const got = await checksRepository(racing).summaries(reads, to);
+    expect(sealed).toBe(true);
+    for (const id of ids) {
+      // biome-ignore lint/performance/noAwaitInLoops: one monitor's oracle after another
+      const want = await summedFrom(checks, id, read, to);
+      expect(got.get(id)).toEqual(want);
+      expect(got.get(id)?.days.get(d)?.checks).toBe(120);
+    }
+    // Sums, gaps and sealed days are a few rows a monitor; its 720 checks one by one are what ran the install out of memory.
+    expect(rowsRead).toBeLessThan(100);
+  });
+
+  test("leaves a monitor that stays apart to its checks after one more pass", async () => {
+    const { checks, monitors, run } = await install();
+    const ids = await twoDaysInTheHead(checks, monitors, 2);
+    for (const id of ids) {
+      // biome-ignore lint/performance/noAwaitInLoops: one monitor's seal after another, as the sealer runs
+      await checks.seal(id, d, 2 * minuteMs, []);
+      // A check written into the sealed day, as a clock stepped back writes one: the day stays on both sides until the next pass.
+      await checks.record({
+        capture: undefined,
+        check: check(id, d + dayMs - 30 * minuteMs + 7000, "up", 100),
+        detail: undefined,
+      });
+    }
+    let statements = 0;
+    const counted: Executor = {
+      ...run,
+      rows: <T>(query: Parameters<Executor["rows"]>[0]) => {
+        statements += 1;
+        // A pass that never ends would hang the run; failing here names it.
+        if (statements > 20) {
+          throw new Error("the summary kept reading the same monitors again");
+        }
+        return run.rows<T>(query);
+      },
+    };
+    const reads = new Map(ids.map((id) => [id, read]));
+    const got = await checksRepository(counted).summaries(reads, to);
+    for (const id of ids) {
+      expect(got.get(id)?.days.get(d)?.checks).toBe(121);
+    }
+    // Two passes of three reads, then the head and the sealed days check by check.
+    expect(statements).toBe(8);
+  });
+
+  test("started in another turn of the event loop than the seal, never finds the day on neither side", async () => {
+    const { checks, monitors } = await install();
+    // Each way back to the event loop resumes in its own phase; a summary is started from each, one and two turns after the seal.
+    const turns: (() => Promise<unknown>)[] = [
+      () => Bun.sleep(0),
+      () => new Promise((resolve) => setTimeout(resolve, 0)),
+      () => new Promise((resolve) => setImmediate(resolve)),
+    ];
+    const ids = await twoDaysInTheHead(checks, monitors, 2 * turns.length);
+    for (const [index, id] of ids.entries()) {
+      const sealing = checks.seal(id, d, 2 * minuteMs, []);
+      // On SQLite a summary's reads share the seal's connection and see its open transaction: only a seal that never yields to the event loop keeps them out of it.
+      for (let turn = 0; turn <= index / turns.length; turn += 1) {
+        // biome-ignore lint/performance/noAwaitInLoops: one turn of the event loop after another
+        await turns[index % turns.length]?.();
+      }
+      const got = await checks.summaries(new Map([[id, read]]), to);
+      await sealing;
+      expect(got.get(id)?.days.get(d)?.checks).toBe(120);
+    }
+  });
 });
 
 describe("a head row this version cannot read", () => {

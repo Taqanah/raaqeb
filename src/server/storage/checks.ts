@@ -493,10 +493,11 @@ export function checksRepository(executor: Executor): ChecksRepository {
     );
   };
 
-  /** The summaries of a batch of monitors: the head rows summed in the database, the sealed days' few checks near the start summed here. */
+  /** The summaries of a batch of monitors: the head rows summed in the database, the sealed days' few checks near the start summed here. `before` is how many monitors the previous pass left apart. */
   const summarisedOf = async (
     batch: readonly (readonly [string, SummaryRead])[],
-    to: number
+    to: number,
+    before = Number.POSITIVE_INFINITY
   ): Promise<Map<string, CheckSummary>> => {
     // The head first, as in `mergedOf`.
     const head = await headSummariesOf(batch, to);
@@ -504,7 +505,7 @@ export function checksRepository(executor: Executor): ChecksRepository {
       batch.map(([id, read]) => [id, read.from - read.limitMs]),
       to
     );
-    // A monitor whose sealed days reach past its first head row (a closed day left unsealed while a later one was sealed, or a day sealed between the two reads) is read check by check: the head's sums can neither order nor dedupe them.
+    // A monitor whose sealed days reach past its first head row (a closed day left unsealed while a later one was sealed, or a day sealed between the two reads) is apart: the head's sums can neither order nor dedupe them.
     const apart = new Map<string, SummaryRead>();
     const summaries = new Map<string, CheckSummary>();
     for (const [id, read] of batch) {
@@ -519,11 +520,31 @@ export function checksRepository(executor: Executor): ChecksRepository {
         summaries.set(id, summary);
       }
     }
+    if (apart.size === 0) {
+      return summaries;
+    }
+    // A day sealed between the two reads has left the head by now: read those monitors again while each pass leaves fewer apart, and check by check only those it never settles.
+    const settled =
+      apart.size < before
+        ? await summarisedOf([...apart], to, apart.size)
+        : await checkedOf(apart, to);
+    for (const [id, summary] of settled) {
+      summaries.set(id, summary);
+    }
+    return summaries;
+  };
+
+  /** The summaries of a few monitors from their checks read one by one. */
+  const checkedOf = async (
+    reads: ReadonlyMap<string, SummaryRead>,
+    to: number
+  ): Promise<Map<string, CheckSummary>> => {
     const starts = new Map(
-      [...apart].map(([id, read]) => [id, read.from - read.limitMs])
+      [...reads].map(([id, read]) => [id, read.from - read.limitMs])
     );
+    const summaries = new Map<string, CheckSummary>();
     for (const [id, each] of await rangesOf(starts, to)) {
-      const read = apart.get(id);
+      const read = reads.get(id);
       if (read) {
         summaries.set(id, {
           coverage: coverageOf(
@@ -789,6 +810,7 @@ export function checksRepository(executor: Executor): ChecksRepository {
     rollupsOf: (monitorIds, span, from, to) =>
       rollupsOf(monitorIds, span, from, to),
     seal: (monitorId, day, gapLimitMs, excluded) =>
+      // Nothing in here may yield to the event loop: on SQLite a read outside it shares the connection and would find the day on neither side.
       executor.transaction(async (tx) => {
         const end = day + dayMs;
         // The head rows are taken out first and exactly these are sealed: a check written into the day meanwhile stays in the head for the next pass. One statement at a time: a transaction holds one connection.
