@@ -144,7 +144,7 @@ Traefik sends the header on an https request only, which every request through t
 
 ## Rate rules [#rate-rules]
 
-From 0.3.0, Raaqeb counts each request sent with a body, and each request under `/api/auth/`, by its client and its kind, before it reads the request. The client is the address behind your trusted proxies. An IPv6 address counts by its /64, and its /48 together has four times a /64's allowance.
+From 0.3, Raaqeb counts each request sent with a body, and each request under `/api/auth/`, by its client and its kind, before it reads the request. The client is the address behind your trusted proxies. An IPv6 address counts by its /64, and its /48 together has four times a /64's allowance.
 
 | Request | At once | Then one more every | Counted by |
 |---|---|---|---|
@@ -181,4 +181,4 @@ Every request comes from the proxy, so each rule is one count for everyone toget
 
 The setup check page says so when it sees forwarded headers from an address that is not trusted. Set the trusted proxies, and each visitor counts alone.
 
-**Before 0.3.0,** sign-in allowed three attempts in ten seconds from one client and subscribing five in ten minutes, and nothing else was counted.
+**Before 0.3,** sign-in allowed three attempts in ten seconds from one client and subscribing five in ten minutes, and nothing else was counted.

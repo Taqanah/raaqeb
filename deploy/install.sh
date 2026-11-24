@@ -323,7 +323,7 @@ fetch() {
 # checked: the .zst where zstd is, else the .gz where gzip is, each checked
 # against SHA256SUMS before it is unpacked; the raw binary where neither is,
 # or when SHA256SUMS lists no such file or the folder holds none, as a
-# release before 0.3.0 or a mirror of the raw binaries. The binary is then
+# release before 0.3 or a mirror of the raw binaries. The binary is then
 # checked against its own line.
 download() {
 	fetch "$1/SHA256SUMS" "$3/SHA256SUMS" "$4"

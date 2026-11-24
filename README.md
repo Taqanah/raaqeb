@@ -29,7 +29,7 @@ irm https://raaqeb.dev/install.ps1 | iex
 أو بـ Docker:
 
 ```sh
-docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.2
+docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.3.0
 ```
 
 ## ما يراقبه
@@ -40,7 +40,7 @@ docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data
 
 ## الحجم
 
-يعمل على نواة واحدة و240 ميغابايت من الذاكرة، في ملف تنفيذي واحد، ولا يحتاج إلى خدمة خارجية. في آخر قياس تحمّل 800 مراقبة تُفحص كل 20 ثانية وبلغت ذروة الذاكرة 107 ميغابايت، وحجم الملف التنفيذي لنظام Linux نحو 96 ميغابايت.
+يعمل على نواة واحدة و240 ميغابايت من الذاكرة، في ملف تنفيذي واحد، ولا يحتاج إلى خدمة خارجية. في آخر قياس تحمّل 800 مراقبة تُفحص كل 20 ثانية وبلغت ذروة الذاكرة 107 ميغابايت، وحجم الملف التنفيذي لنظام Linux نحو 115 ميغابايت.
 
 ## المزيد
 

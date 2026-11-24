@@ -27,7 +27,7 @@ irm https://raaqeb.dev/install.ps1 | iex
 Or with Docker:
 
 ```sh
-docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.2.2
+docker run -d --name raaqeb --restart unless-stopped -p 3000:3000 -v raaqeb-data:/data ghcr.io/taqanah/raaqeb:0.3.0
 ```
 
 ## What it watches
@@ -38,7 +38,7 @@ A monitor can be checked from more than one place by running Raaqeb itself as a 
 
 ## Size
 
-It runs on 1 vCPU and 240 MB of RAM as one binary, with no outside service. In the last benchmark it held 800 monitors checked every 20 seconds at a memory peak of 107 MB, and the Linux binary is about 96 MB.
+It runs on 1 vCPU and 240 MB of RAM as one binary, with no outside service. In the last benchmark it held 800 monitors checked every 20 seconds at a memory peak of 107 MB, and the Linux binary is about 115 MB.
 
 ## More
 

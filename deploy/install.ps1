@@ -158,7 +158,7 @@
 
   # Leaves the checked binary in the temporary folder: the .exe.gz, checked
   # before .NET unpacks it, or the raw binary when SHA256SUMS lists no
-  # .exe.gz or the folder holds none, as a release before 0.3.0. The binary
+  # .exe.gz or the folder holds none, as a release before 0.3. The binary
   # is then checked too.
   function Download {
     Fetch 'SHA256SUMS' | Out-Null

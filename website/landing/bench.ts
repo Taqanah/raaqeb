@@ -30,6 +30,6 @@ export const bench = {
   dayCpuShare: 0.31,
   /** From start to answering, in ms. */
   coldStartMs: 444,
-  /** The Linux binary, in MB. */
-  binaryMb: 96,
+  /** The linux-x64 binary in MB, measured apart from the benchmark run: 114,866,352 bytes. */
+  binaryMb: 115,
 } as const;

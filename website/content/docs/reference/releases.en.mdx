@@ -7,6 +7,75 @@ Releases are published at [github.com/Taqanah/raaqeb/releases](https://github.co
 
 This page lists each release, newest first, with its release notes.
 
+## 0.3.0
+
+2026-11-24. [Release page](https://github.com/Taqanah/raaqeb/releases/tag/v0.3.0)
+
+The security release for 0.2.x: every 0.2.x install should upgrade, because 0.2.x runs on Bun 1.4.3, which has two vulnerabilities rated high, and no 0.2.x release will follow. It also makes Raaqeb a team's tool, with roles, single sign-on, an audit log, a management API, private status pages and remote probes.
+
+### Before you upgrade
+
+- Back up first: there is no way back to 0.2.x. 0.3.0 migrates the database forward, and 0.2.x then refuses to open it. On SQLite, Raaqeb first copies the database into `snapshots/`; on Postgres it copies nothing, so take a `pg_dump` yourself. That copy is the only way back.
+- An export written by 0.3.0 is a new version that 0.2.x cannot import. It carries the accounts (without passwords) and the audit log, which records addresses: store it as you store a backup. Exports from 0.1 and 0.2 still import.
+- Every page now sends a content security policy. A status page's custom CSS may load fonts, images and stylesheets over `https:` or `data:` only: whatever it loads over `http:` stops applying, and nothing warns you. Search each page's custom CSS for `http://` and change it to `https://` before you upgrade.
+- Three eMudhra roots are no longer trusted, emSign Root CA - C1, emSign ECC Root CA - C3 and emSign ECC Root CA - G3, and a chain through the compromised emSign keys is refused. A site whose certificate chains only to one of them reads as an invalid certificate.
+- Three certificate verdicts change. An expired certificate from an issuer Raaqeb does not trust reads as expired, where it read as invalid. A root in a monitor's **Trusted CA certificates** whose extended key usage leaves out server authentication, or a root with a path length of 0 that signs through an intermediate certificate, now reads as an invalid certificate. If a monitor that trusts its own root reads down after the upgrade, look at that root first.
+- Rate rules replace 0.2.2's limit of 64 open requests from people who are not signed in, 16 per client. Past a rule the answer is `429` with `Retry-After`, and the form asks to wait. Sign-in takes six tries at once from one network, then one every 10 seconds, and one account takes ten wrong passwords in 15 minutes from browsers that have not signed in to it. A request body that has not arrived whole in 2 seconds is answered `408`.
+- A signed-in account can send the sign-in email test or change its email five times, then once every 2 minutes, and change its password or second step six times, then once every 10 seconds. An owner who presses the test six times in a row meets this.
+- Behind a reverse proxy, set **Trusted proxies** in the general settings, or `RAAQEB_TRUSTED_PROXIES`: without them every visitor reaches Raaqeb as the proxy and all of them share one count of each rule.
+- A browser that signs in gets a `raaqeb.known` cookie that keeps its own allowance under the rules. It grants no access. If you filter cookies, allow it.
+- Your account becomes the install's owner. If its name is still the default `operator`, the name is cleared for you to set.
+- Sign-in mail goes only through the email channel an owner chose. An upgrade records the oldest email channel as the choice. When the chosen channel is deleted, reset links, one-time codes, invitations and subscriber email stop until an owner chooses another, where 0.2.x fell back to the oldest email channel.
+- The domain registration warning is turned on for every existing HTTP, TCP and DNS monitor that sends notifications and whose host is a domain name. Once a day Raaqeb asks IANA's data site, then the registry's RDAP server or its WHOIS server on port 43, about the registered domain only. Allow them in your firewall, or turn the warning off on the monitor.
+- A heartbeat call to `/fail`, or with `status=fail`, `status=down` or a non-zero `exit=`, now takes its monitor down, where every call meant the job ran. Check cron scripts that pass a changing status.
+- No entry of a monitor's **Request headers** follows a redirect to another origin: another host, port or protocol, `http` to `https` included. A monitor that needs a header at the final address reads down until you point it there.
+- A Postgres or MySQL monitor whose address names a socket, a file or another host is refused: a `%` in the host, or `path`, `socket`, `host`, `port`, `sslrootcert`, `sslcert` or `sslkey` in its query. One already saved reads down until you edit it. `sslrootcert=system` is allowed.
+- A Postgres monitor reads 35 more array types as JSON: a `uuid[]`, range or `tsvector[]` column answers `["…"]` where it answered `{…}`. Rewrite an expected value written the old way; **Test now** shows the new answer.
+- A webhook receiver that checks against a fixed list must accept the new events `monitor.domain_expiring`, `probe.silent` and `probe.reporting`, the new reasons `heartbeat_failed`, `proxy_failed`, `client_certificate_expired`, `client_certificate_refused`, `oauth2_token_failed` and `tls_proxy_unsupported`, and the optional `failure` and `locations` on a down notice.
+- HTTP checks send `User-Agent: raaqeb/0.3.0` where they sent `raaqeb/0.2.2`: write a rule for `raaqeb/`.
+- Raaqeb refuses to start when `BUN_OPTIONS` carries `--preload`: remove it.
+- `raaqeb reset-password` and `raaqeb set-address` exit with a message in a folder that holds no install, where they left a new install key behind. On Postgres they need the install key, as `serve` does.
+
+### New features
+
+- A team: five roles (owner, admin, editor, responder and viewer), invitations that last seven days and a team page. Lowering a role signs that person out at once.
+- Single sign-on through one OpenID Connect provider, such as Keycloak, Authentik, Okta, Entra ID or Google Workspace: who may sign up, a role for each claim, and an option to leave passwords to owners alone.
+- An audit log of every change behind a permission, every sign-in and every refused one, filtered by account, kind and dates, and kept at least 90 days.
+- A management API under `/api/v1/` for monitors, groups, status pages, components, incidents, maintenance, channels and probes, with API keys that belong to one account and can take a lower role and an expiry.
+- Private status pages: behind a page password, behind sign-in to the install, or for allowed addresses only. A private page is never indexed or cached publicly.
+- Recurring maintenance windows, weekly or monthly, at a time on a chosen time zone's clock. The status page shows the next one.
+- A warning 30 days before a monitored domain's registration ends.
+- A heartbeat can report that its job failed, with an exit code and a message that reach the down notice. The monitor's page lists its last ten heartbeats.
+- Remote probes: `raaqeb probe` on another server checks the monitors you give it, so an outage can be confirmed from a second location before it opens. A silent probe reads unknown, never down.
+- Uptime reports for a monitor, group, component or status page over a month, a quarter or chosen days: uptime against a target, the error budget, downtime, outages and recovery time, as a page, a CSV file or a print.
+- HTTP monitors can present a client certificate, trust their own certificate authority, and get a bearer token by OAuth 2.0 client credentials.
+- An outbound proxy: the install's `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` route HTTP checks, channels, subscriber webhooks and the release check, and an HTTP monitor can name its own proxy. A refusing proxy reads as the proxy's failure.
+- A MongoDB monitor.
+- PagerDuty, Microsoft Teams and Google Chat channels.
+- A Prometheus metrics endpoint at `/metrics`, off until you turn it on in Settings, Metrics.
+- Importing a backup holds every notification until an owner or admin presses **Resume notifications**. Untick **Hold notifications** when you restore your own install.
+
+### Fixes
+
+- Raaqeb 0.2.x runs on Bun 1.4.3, which has two vulnerabilities rated high. A site you monitor, or one a check is redirected to, could send a crafted brotli answer that writes past a buffer in Raaqeb's memory (CVE-2026-111497). And someone in the network path could impersonate any server Raaqeb connects to, with certificates from eMudhra's emSign authority, whose keys were compromised and published: monitored sites, webhooks and other channels, your mail server and your sign-in provider. 0.3.0 runs on Bun 1.4.5, which fixes both.
+- A monitor's custom headers, such as `X-Api-Key`, followed a redirect to another origin.
+- A proxy sign-in written into `HTTP_PROXY` could appear in what a check stores, which every operator can read. It is hidden as a monitor's own proxy sign-in is.
+- A few addresses that held forms open could keep everyone else from signing in or subscribing for as long as they kept at it.
+- Guessing a password from many networks had no ceiling. Now it is ten wrong tries per account in 15 minutes, and five password checks a second for the whole install, from browsers not known to it.
+- A signed-in account could send sign-in test emails and run password checks without limit.
+- On Postgres, the monitor list or a status page with many components could run the install out of memory just after it started, and at 00:15 UTC each night.
+- An export of an install whose status pages hold more than about 6 MB of images could not be imported. Every export now imports.
+- A Postgres monitor's query that outlived its timeout ran on to its end on the monitored server, every interval. It is now stopped there, and Raaqeb's own Postgres statements that outlive the answer limit give their connection back.
+- Onboarding's connection test showed an untrusted Postgres certificate as an unexpected error. It names a TLS failure.
+- The reason for a MySQL 8 sign-in that needs an encrypted connection was not true while the server's password cache was warm. It now says the server asked for an encrypted connection to check the password.
+- A not-found under a status page's own language address read in the install's language when the two differed.
+- `/favicon.ico` and `/robots.txt` answered the not-found page.
+
+### Changes
+
+- Bun 1.4.5. Each binary is about 19 MB larger, and the installers download it compressed: 42 MB as `.zst` for Linux x64, or 53 MB as `.gz`. The raw binaries stay in each release for older installers and mirrors.
+- The monitor list shows a row's first tag and how many more beside the open sidebar, and the sidebar fits a screen 720 px tall.
+
 ## 0.2.2
 
 2026-11-23. [Release page](https://github.com/Taqanah/raaqeb/releases/tag/v0.2.2)
