@@ -156,7 +156,7 @@ From 0.3.0, Raaqeb counts each request sent with a body, and each request under 
 | Anything else, starting a sign-in through single sign-on included | 20 | 1 second | client |
 
 - **Past its rule,** a request is answered `429` with `Retry-After`, the seconds until it may be sent again. The sign-in form says "Too many attempts. Wait a moment and try again." The subscribe form says "Too many sign-ups from here. Try again in a few minutes."
-- **A signed-in operator's saves** are never counted. Signing in, reset emails, subscribing and a private page's password count for them as for anyone.
+- **A signed-in operator's saves** are never counted, but for two kinds counted for their account, from any address: those that send mail, the sign-in email test and changing the email address (5, then one every 2 minutes), and those that check their password, changing it and the second step's settings (6, then one every 10 seconds). Signing in, reset emails, subscribing and a private page's password count for them as for anyone.
 - **A body must arrive whole within two seconds,** or the request is answered `408` and its connection closed. When the requests of one kind already hold every place Raaqeb keeps for them (16), the oldest body still arriving gives its place to the newest request and gets the `408` at once. A real form's body arrives with its request, so only a body sent byte by byte waits.
 - **A browser's post from another site** is answered `403` and counts against nothing, so a page someone opens cannot spend their network's sign-ins. A heartbeat call is the exception, since a job may call from anywhere.
 - **A heartbeat call carrying a body** is let in by its token, before its body is read. A token no monitor has is answered `404` at once, and a job's first call after a restart also counts against its client's "anything else" allowance. A flood from elsewhere cannot spend a monitor's own allowance.
@@ -173,7 +173,7 @@ From 0.3.0, Raaqeb counts each request sent with a body, and each request under 
 
 Every request comes from the proxy, so each rule is one count for everyone together:
 
-- **A signed-in operator's saves** are never refused.
+- **A signed-in operator's saves** are never refused for others' requests: the two kinds above count for their own account.
 - **A visitor** meets "too many" once a few others have used the same form: six sign-ins, then one every ten seconds, for the whole world; five subscriptions, then one every two minutes.
 - **An operator signing in from a known browser** signs in.
 - **On any other browser,** they share those six sign-ins with every stranger, so anyone who keeps sending sign-ins keeps them out; the reset link above is their way in.

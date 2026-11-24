@@ -36,6 +36,7 @@ import {
   type Storage,
 } from "./server/storage/storage.ts";
 import {
+  accountSaves,
   type BodyGroup,
   cacheControl,
   eventLine,
@@ -304,8 +305,10 @@ function testPace(
     rateClients,
     rates: {
       heartbeat: plenty,
+      mail: plenty,
       others: plenty,
       pagePassword: plenty,
+      password: plenty,
       resetMail: plenty,
       signIn: plenty,
       subscribe: plenty,
@@ -2862,6 +2865,150 @@ describe("the raaqeb command", () => {
       );
     } finally {
       await result.stop();
+    }
+  });
+
+  test("a viewer's saves that send mail or check a password are counted for the account, from any network: five mails then one every two minutes, six password checks then one every ten seconds; another account has its own, and other saves go on uncounted", async () => {
+    const dataDir = await clientBuild({ "raaqeb.sqlite": "" });
+    const dir = await serverBuild({
+      "server/handler.js":
+        "export default { fetch: async (r) => new Response('read ' + (await r.text()).length) };",
+    });
+    const booted = await resolveBootSettings({}, { RAAQEB_DATA_DIR: dataDir });
+    const result = await main(
+      ["--port", "0", "--data-dir", dataDir, "--trusted-proxies", "127.0.0.1"],
+      {},
+      dir
+    );
+    if (typeof result === "number" || !result.storage || !booted.ok) {
+      throw new Error("expected a server over a database");
+    }
+    try {
+      const created = await createOperatorAccount(
+        {
+          email: "operator@example.com",
+          locale: "ar",
+          name: "Nadia",
+          password: "correct horse battery",
+          publicAddress: "http://raaqeb.test",
+        },
+        {
+          boot: booted.settings,
+          opener: databaseOpener(() => undefined),
+          storage: result.storage,
+        },
+        new Headers({ origin: "http://raaqeb.test" })
+      );
+      if (!created.ok) {
+        throw new Error("the account was not created");
+      }
+      const owner = created.setCookies
+        .map((each) => each.split(";")[0])
+        .join("; ");
+      const auth = await authFor(result.storage, booted.settings);
+      const body = {
+        email: "viewer@example.com",
+        password: "viewer password one",
+      };
+      await auth.api.signUpEmail({ body: { ...body, name: "Viewer" } });
+      expect(
+        (await result.storage.operatorAccounts.findByEmail(body.email))?.role
+      ).toBe("viewer");
+      const viewer = (
+        await auth.api.signInEmail({ body, returnHeaders: true })
+      ).headers
+        .getSetCookie()
+        .map((each) => each.split(";")[0])
+        .join("; ");
+      const send = async (
+        id: string,
+        count: number,
+        cookie: string,
+        from: string
+      ) => {
+        const statuses: number[] = [];
+        for (let each = 0; each < count; each += 1) {
+          // biome-ignore lint/performance/noAwaitInLoops: the bucket counts in order
+          const answer = await fetch(
+            `http://127.0.0.1:${result.server.port}/_serverFn/${id}`,
+            {
+              body: "body",
+              headers: { cookie, "x-forwarded-for": from },
+              method: "POST",
+            }
+          );
+          statuses.push(answer.status);
+        }
+        return statuses;
+      };
+      const settings = "routes.admin.settings";
+      // Three test messages from one network, then two more and a change of address from another: one account, one count.
+      expect(
+        await send(`${settings}.sign-in--test`, 3, viewer, "198.51.100.1")
+      ).toEqual([200, 200, 200]);
+      expect(
+        await send(`${settings}.sign-in--test`, 2, viewer, "203.0.113.1")
+      ).toEqual([200, 200]);
+      expect(
+        await send(`${settings}.account--changeEmail`, 1, viewer, "203.0.113.1")
+      ).toEqual([429]);
+      // Better Auth trims a cookie's name, spaces and a no-break space included, so each spelling is the same session and the same count.
+      for (const spelled of [
+        viewer.replace("raaqeb.session_token=", "raaqeb.session_token ="),
+        viewer.replace(
+          "raaqeb.session_token=",
+          "\u00a0raaqeb.session_token\t="
+        ),
+      ]) {
+        expect(
+          // biome-ignore lint/performance/noAwaitInLoops: one spelling after the other, the count spent
+          await send(`${settings}.sign-in--test`, 1, spelled, "203.0.113.50")
+        ).toEqual([429]);
+      }
+      expect(
+        await send(
+          `${settings}.account--changePassword`,
+          7,
+          viewer,
+          "203.0.113.2"
+        )
+      ).toEqual([200, 200, 200, 200, 200, 200, 429]);
+      for (const id of [
+        "sign-in--change",
+        "sign-in--setUp",
+        "sign-in--appOff",
+        "sign-in--newCodes",
+      ]) {
+        expect(
+          // biome-ignore lint/performance/noAwaitInLoops: each after the account's password checks are spent
+          await send(`${settings}.${id}`, 1, viewer, "198.51.100.9")
+        ).toEqual([429]);
+      }
+      // The owner's own count, from the viewer's network.
+      expect(
+        await send(`${settings}.sign-in--test`, 6, owner, "198.51.100.1")
+      ).toEqual([200, 200, 200, 200, 200, 429]);
+      expect(
+        await send(
+          `${settings}.account--changeName`,
+          30,
+          viewer,
+          "198.51.100.1"
+        )
+      ).toEqual(new Array(30).fill(200));
+    } finally {
+      await result.stop();
+    }
+  });
+
+  test("every save counted for an account names a server function the build gives that id, so a rename cannot drop its count", async () => {
+    for (const id of accountSaves.keys()) {
+      const [module = "", name = ""] = id.split("--");
+      // biome-ignore lint/performance/noAwaitInLoops: one file at a time
+      const source = await Bun.file(`src/${module.replaceAll(".", "/")}.tsx`)
+        .text()
+        .catch(() => "");
+      expect(source).toContain(`const ${name} = createServerFn(`);
     }
   });
 

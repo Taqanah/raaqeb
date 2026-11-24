@@ -19,7 +19,7 @@ import {
   expectPath,
 } from "./support/fixtures.ts";
 import { operatorEmail, operatorPassword } from "./support/servers.ts";
-import { type Install, spawnInstall } from "./support/spawn.ts";
+import { type Install, seedAccount, spawnInstall } from "./support/spawn.ts";
 
 const test = base.extend<{ install: Install; smtp: FakeSmtp }>({
   // biome-ignore lint/correctness/noEmptyPattern: Playwright reads the destructuring to order fixtures
@@ -341,4 +341,70 @@ test("a reset link from the mail sets a new password once, refuses a short one f
 
   await signIn(page, origin, "a password from the link");
   await expectPath(page, "/admin/monitors");
+});
+
+test("a viewer sends five sign-in email tests and is then told to wait, with no sixth message, and six password changes before the seventh waits too", async ({
+  page,
+  smtp,
+}) => {
+  const viewer = {
+    email: "viewer@example.com",
+    password: "a viewer's password",
+  };
+  const install = await spawnInstall({
+    account: true,
+    records: (storage) =>
+      seedAccount(storage, { ...viewer, name: "Viewer", role: "viewer" }),
+  });
+  try {
+    const { origin } = install;
+    await signIn(page, origin);
+    await expectPath(page, "/admin/monitors");
+    await addEmailChannel(page, origin, smtp);
+    await signOut(page, origin);
+    await page.goto(`${origin}/sign-in`);
+    await page.fill("input[name=email]", viewer.email);
+    await page.fill("input[name=password]", viewer.password);
+    await page.click(continueButton);
+    await expectPath(page, "/admin/monitors");
+
+    await page.goto(`${origin}/admin/settings/sign-in`);
+    const form = page.locator("[data-slot=auth-email-form]");
+    for (let each = 1; each <= 5; each += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: one test message after another, as an operator presses
+      await form.locator("[data-slot=auth-email-test]").click();
+      await expect.poll(() => smtp.messages.length).toBe(each);
+    }
+    await form.locator("[data-slot=auth-email-test]").click();
+    await expect(
+      form.locator("[data-slot=auth-email-test-limited]")
+    ).toBeVisible();
+    expect(smtp.messages).toHaveLength(5);
+
+    await page.goto(`${origin}/admin/settings/account`);
+    const passwords = [viewer.password, "a second password", viewer.password];
+    const change = async (from: string, to: string) => {
+      await page.fill(
+        "[data-slot=password-form] input[name=currentPassword]",
+        from
+      );
+      await page.fill("[data-slot=password-form] input[name=newPassword]", to);
+      await page.click("[data-slot=password-form] button[type=submit]");
+    };
+    for (let each = 0; each < 6; each += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: one change after another, each settled
+      await change(passwords[each % 2] ?? "", passwords[(each % 2) + 1] ?? "");
+      await expect(
+        page.locator("[data-slot=password-form] [data-slot=save-outcome]")
+      ).toHaveAttribute("data-state", "saved");
+    }
+    await change(viewer.password, "a second password");
+    await expect(
+      page.locator(
+        "[data-slot=password-form] [data-slot=save-outcome][data-reason=limited]"
+      )
+    ).toBeVisible();
+  } finally {
+    await install.stop();
+  }
 });

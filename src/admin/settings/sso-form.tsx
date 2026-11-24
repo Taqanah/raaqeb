@@ -49,9 +49,10 @@ import { Segmented, SegmentedItem } from "@/shared/ui/segmented.tsx";
 import { Switch } from "@/shared/ui/switch.tsx";
 import { Textarea } from "@/shared/ui/textarea.tsx";
 import { Token } from "@/shared/ui/token.tsx";
-import { type SaveCall, useDraftSave } from "./use-save.ts";
+import { type Rejection, type SaveCall, useDraftSave } from "./use-save.ts";
 
-const messages: Readonly<Record<SsoRefusal, MessageId>> = {
+const messages: Readonly<Record<SsoRefusal | Rejection, MessageId>> = {
+  limited: "auth_rate_limited",
   invalid: "setting_invalid",
   secret_required: "setting_sso_secret_required",
   unavailable: "setting_unavailable",

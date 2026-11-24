@@ -1,8 +1,9 @@
 /**
  * A settings form's save: pending while the server function runs, then
  * saved or a refusal the form words through the catalog. A rejected call
- * (the server unreachable) reads as unavailable, so the form never throws
- * into the router. `useDraftSave` runs it through the shared flow, so
+ * reads as limited when the entry refused it past a rate rule, else as
+ * unavailable (the server unreachable), so the form never throws into the
+ * router. `useDraftSave` runs it through the shared flow, so
  * Save rests until the form's values differ from what it loaded or last
  * saved; `useSave` is for a command, which has no values to compare
  * (Appearance's click, the second step's switch).
@@ -13,6 +14,7 @@ import {
   type SaveView,
   useSaveFlow,
 } from "@/admin/shell/save-flow.ts";
+import { rejectionOf } from "@/shared/schemas/subscription.ts";
 
 export type SaveCall<Input, Refusal extends string> = (
   input: Input
@@ -20,15 +22,18 @@ export type SaveCall<Input, Refusal extends string> = (
   { readonly ok: true } | { readonly ok: false; readonly reason: Refusal }
 >;
 
+/** Why a call that threw failed: refused past a rate rule, or the server unreachable. */
+export type Rejection = ReturnType<typeof rejectionOf>;
+
 export function useSave<Input, Refusal extends string>(
   save: SaveCall<Input, Refusal>,
   onSaved?: (input: Input) => void
 ): {
-  readonly state: SaveState<Refusal | "unavailable">;
+  readonly state: SaveState<Refusal | Rejection>;
   readonly fail: (reason: Refusal) => void;
   readonly submit: (input: Input) => void;
 } {
-  const [state, setState] = useState<SaveState<Refusal | "unavailable">>({
+  const [state, setState] = useState<SaveState<Refusal | Rejection>>({
     kind: "idle",
   });
   const fail = useCallback((reason: Refusal) => {
@@ -46,7 +51,8 @@ export function useSave<Input, Refusal extends string>(
             setState({ kind: "failed", reason: result.reason });
           }
         },
-        () => setState({ kind: "failed", reason: "unavailable" })
+        (thrown: unknown) =>
+          setState({ kind: "failed", reason: rejectionOf(thrown) })
       );
     },
     [onSaved, save]
@@ -67,11 +73,11 @@ export function useDraftSave<Input, Refusal extends string, Draft>(
     readonly onSaved?: (input: Input) => void;
     readonly start?: Draft;
   } = {}
-): SaveView<Refusal | "unavailable"> & {
+): SaveView<Refusal | Rejection> & {
   readonly fail: (reason: Refusal) => void;
   readonly submit: (input: Input) => void;
 } {
-  const flow = useSaveFlow<Draft, Refusal | "unavailable">(draft, start);
+  const flow = useSaveFlow<Draft, Refusal | Rejection>(draft, start);
   const { report } = flow;
   const fail = useCallback(
     (reason: Refusal) => report({ draft, kind: "failed", reason }),
@@ -91,7 +97,8 @@ export function useDraftSave<Input, Refusal extends string, Draft>(
             report({ draft, kind: "failed", reason: result.reason });
           }
         },
-        () => report({ draft, kind: "failed", reason: "unavailable" })
+        (thrown: unknown) =>
+          report({ draft, kind: "failed", reason: rejectionOf(thrown) })
       );
     },
     [draft, emptied, onSaved, report, save]

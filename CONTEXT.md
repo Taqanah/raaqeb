@@ -456,7 +456,7 @@ _Avoid_: draft, live, visible, private (that is a published page with page acces
 
 **Rate rule**:
 Arabic: قاعدة حدّ الطلبات
-How many requests of one kind (a sign-in, a subscription, a page password try, a heartbeat's failure report) one client network may send at once, and how soon it may send one more. A request past its rule is refused before Raaqeb reads it, and the client is told when to try again; a signed-in operator's save is never refused, while their sign-ins, reset emails and subscriptions count like anyone's.
+How many requests of one kind (a sign-in, a subscription, a page password try, a heartbeat's failure report) one client network may send at once, and how soon it may send one more. A request past its rule is refused before Raaqeb reads it, and the client is told when to try again. A signed-in operator's sign-ins, reset emails and subscriptions count like anyone's, and the few saves that send mail or check their password count for their account wherever they come from; their other saves are never refused.
 _Avoid_: rate limit (any service's cap, such as a platform's 429), throttle, quota
 
 **Render pace**:

@@ -27,9 +27,10 @@ import { Field, FieldGroup, FieldLabel } from "@/shared/ui/field.tsx";
 import { MonitorIcon, MoonIcon, SunIcon } from "@/shared/ui/icons.tsx";
 import { OptionCard, OptionCards } from "@/shared/ui/option-card.tsx";
 import { Segmented, SegmentedItem } from "@/shared/ui/segmented.tsx";
-import { type SaveCall, useSave } from "./use-save.ts";
+import { type Rejection, type SaveCall, useSave } from "./use-save.ts";
 
-const messages: Readonly<Record<SaveRefusal, MessageId>> = {
+const messages: Readonly<Record<SaveRefusal | Rejection, MessageId>> = {
+  limited: "auth_rate_limited",
   invalid: "setting_invalid",
   unavailable: "setting_unavailable",
 };

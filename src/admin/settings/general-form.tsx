@@ -56,11 +56,12 @@ import { ClockChoice } from "./clock-choice.tsx";
 import { LockedField } from "./locked-field.tsx";
 import { TimeNow } from "./time-now.tsx";
 import { TimeZonePicker } from "./time-zone-picker.tsx";
-import { type SaveCall, useDraftSave } from "./use-save.ts";
+import { type Rejection, type SaveCall, useDraftSave } from "./use-save.ts";
 import { zoneOption } from "./zones.ts";
 
 // A refusal about one field is worded beside it; the save line only says to check the values.
-const messages: Readonly<Record<GeneralSaveRefusal, MessageId>> = {
+const messages: Readonly<Record<GeneralSaveRefusal | Rejection, MessageId>> = {
+  limited: "auth_rate_limited",
   address_is_page_domain: "setting_invalid",
   invalid: "setting_invalid",
   not_allowed: "setting_owner_only",
@@ -70,7 +71,7 @@ const messages: Readonly<Record<GeneralSaveRefusal, MessageId>> = {
 
 /** The public address field's words for a refusal; nothing when the refusal is about another field. */
 function addressRefusalOf(
-  refusal: GeneralSaveRefusal | "unavailable" | undefined,
+  refusal: GeneralSaveRefusal | Rejection | undefined,
   address: string
 ): MessageId | undefined {
   if (refusal === "address_is_page_domain") {

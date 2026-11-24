@@ -6,6 +6,7 @@
  * turns the app off alone; the second step stays on with emailed codes when
  * a test message went through, and goes off with the app otherwise.
  */
+
 import { type ReactNode, type SubmitEvent, useCallback, useState } from "react";
 import { encode } from "uqr";
 import { FormFooter } from "@/admin/shell/page.tsx";
@@ -23,6 +24,7 @@ import type {
   SecondStepResult,
   SecondStepView,
 } from "@/shared/schemas/settings.ts";
+import { rejectionOf } from "@/shared/schemas/subscription.ts";
 import { Button, buttonVariants } from "@/shared/ui/button.tsx";
 import {
   Card,
@@ -39,6 +41,7 @@ import {
 } from "@/shared/ui/field.tsx";
 import { Input } from "@/shared/ui/input.tsx";
 import { Token } from "@/shared/ui/token.tsx";
+import type { Rejection } from "./use-save.ts";
 
 export interface AuthenticatorFormProps {
   readonly confirm: (input: AppConfirmInput) => Promise<AppConfirmResult>;
@@ -49,10 +52,15 @@ export interface AuthenticatorFormProps {
   readonly view: SecondStepView;
 }
 
-type Refusal = AppPasswordRefusal | AppConfirmRefusal | SecondStepRefusal;
+type Refusal =
+  | AppPasswordRefusal
+  | AppConfirmRefusal
+  | SecondStepRefusal
+  | Rejection;
 
 const refusalMessages: Readonly<Record<Refusal, MessageId>> = {
   invalid: "setting_invalid",
+  limited: "auth_rate_limited",
   not_tested: "setting_second_step_not_tested",
   unavailable: "setting_unavailable",
   wrong_code: "setting_authenticator_code_wrong",
@@ -83,7 +91,7 @@ export function AuthenticatorForm({
   const [stage, setStage] = useState<Stage>({ kind: "password" });
   const [pending, setPending] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | undefined>();
-  // Each call answers a result; a rejected one (the server unreachable) reads as unavailable.
+  // Each call answers a result; a rejected one reads as limited past a rate rule, else as unavailable (the server unreachable).
   const run = useCallback(
     <Result extends { ok: boolean }>(
       call: Promise<Result>,
@@ -96,9 +104,9 @@ export function AuthenticatorForm({
           setPending(false);
           done(result);
         },
-        () => {
+        (thrown: unknown) => {
           setPending(false);
-          setRefusal("unavailable");
+          setRefusal(rejectionOf(thrown));
         }
       );
     },

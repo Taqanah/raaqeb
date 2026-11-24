@@ -34,9 +34,10 @@ import {
   FieldLabel,
 } from "@/shared/ui/field.tsx";
 import { Input } from "@/shared/ui/input.tsx";
-import { type SaveCall, useDraftSave } from "./use-save.ts";
+import { type Rejection, type SaveCall, useDraftSave } from "./use-save.ts";
 
-const messages: Readonly<Record<SaveRefusal, MessageId>> = {
+const messages: Readonly<Record<SaveRefusal | Rejection, MessageId>> = {
+  limited: "auth_rate_limited",
   invalid: "setting_invalid",
   unavailable: "setting_unavailable",
 };

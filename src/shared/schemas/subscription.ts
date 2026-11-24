@@ -353,3 +353,10 @@ export type ConfirmationWebhook = z.infer<typeof confirmationWebhookSchema>;
 
 /** The text of the entry's 429 for a client past its rate rule, which a server function's caller receives as its error's message. */
 export const tooManyRequests = "Too Many Requests";
+
+/** Why a server function's call that threw was refused: past the entry's rate rule, whose 429 reaches the caller as its error's message, or anything else. */
+export function rejectionOf(thrown: unknown): "limited" | "unavailable" {
+  return thrown instanceof Error && thrown.message === tooManyRequests
+    ? "limited"
+    : "unavailable";
+}

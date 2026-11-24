@@ -55,14 +55,18 @@ import { CalendarChoice } from "./calendar-choice.tsx";
 import { ClockChoice } from "./clock-choice.tsx";
 import { TimeNow } from "./time-now.tsx";
 import { TimeZonePicker } from "./time-zone-picker.tsx";
-import { type SaveCall, useDraftSave } from "./use-save.ts";
+import { type Rejection, type SaveCall, useDraftSave } from "./use-save.ts";
 
-const saveMessages: Readonly<Record<SaveRefusal, MessageId>> = {
+const saveMessages: Readonly<Record<SaveRefusal | Rejection, MessageId>> = {
+  limited: "auth_rate_limited",
   invalid: "setting_invalid",
   unavailable: "setting_unavailable",
 };
 // A refusal about one field is worded beside it; the save line only says to check the values.
-const emailMessages: Readonly<Record<EmailChangeRefusal, MessageId>> = {
+const emailMessages: Readonly<
+  Record<EmailChangeRefusal | Rejection, MessageId>
+> = {
+  limited: "auth_rate_limited",
   invalid: "setting_invalid",
   same_email: "setting_invalid",
   unavailable: "setting_unavailable",
@@ -76,7 +80,10 @@ const fieldMessages: Readonly<
   invalid: "auth_email_invalid",
   same_email: "setting_email_same",
 };
-const passwordMessages: Readonly<Record<PasswordChangeRefusal, MessageId>> = {
+const passwordMessages: Readonly<
+  Record<PasswordChangeRefusal | Rejection, MessageId>
+> = {
+  limited: "auth_rate_limited",
   invalid: "setting_invalid",
   unavailable: "setting_unavailable",
   too_many_attempts: "setting_password_too_many",
@@ -404,7 +411,7 @@ export function EmailForm({
 
 /** The current password field's words for a refusal; nothing when the refusal is about another field. */
 function currentRefusalOf(
-  refusal: PasswordChangeRefusal | EmailChangeRefusal | undefined,
+  refusal: PasswordChangeRefusal | EmailChangeRefusal | Rejection | undefined,
   current: string
 ): MessageId | undefined {
   if (refusal === "wrong_password") {

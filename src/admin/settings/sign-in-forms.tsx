@@ -6,6 +6,7 @@
  * locks themselves out. Better Auth takes the current password for either
  * way of the switch. The authenticator app's card is authenticator-form.tsx.
  */
+
 import { Link } from "@tanstack/react-router";
 import {
   type ChangeEvent,
@@ -30,6 +31,7 @@ import type {
   SecondStepResult,
   SecondStepView,
 } from "@/shared/schemas/settings.ts";
+import { rejectionOf } from "@/shared/schemas/subscription.ts";
 import { Button } from "@/shared/ui/button.tsx";
 import {
   Card,
@@ -52,14 +54,23 @@ import {
 } from "@/shared/ui/native-select.tsx";
 import { Switch } from "@/shared/ui/switch.tsx";
 import { Token } from "@/shared/ui/token.tsx";
-import { type SaveCall, useDraftSave, useSave } from "./use-save.ts";
+import {
+  type Rejection,
+  type SaveCall,
+  useDraftSave,
+  useSave,
+} from "./use-save.ts";
 
-const channelMessages: Readonly<Record<SaveRefusal, MessageId>> = {
+const channelMessages: Readonly<Record<SaveRefusal | Rejection, MessageId>> = {
+  limited: "auth_rate_limited",
   invalid: "setting_invalid",
   unavailable: "setting_unavailable",
 };
 
-const switchMessages: Readonly<Record<SecondStepRefusal, MessageId>> = {
+const switchMessages: Readonly<
+  Record<SecondStepRefusal | Rejection, MessageId>
+> = {
+  limited: "auth_rate_limited",
   invalid: "setting_invalid",
   not_tested: "setting_second_step_not_tested",
   unavailable: "setting_unavailable",
@@ -77,7 +88,7 @@ export interface AuthEmailFormProps {
 }
 
 type TestState =
-  | { readonly kind: "idle" | "pending" | "sent" }
+  | { readonly kind: "idle" | "limited" | "pending" | "sent" }
   | {
       readonly kind: "failed";
       readonly result: Extract<AuthTestResult, { ok: false }>;
@@ -123,11 +134,12 @@ export function AuthEmailForm({
         setTest(result.ok ? { kind: "sent" } : { kind: "failed", result });
         onChanged();
       },
-      () =>
-        setTest({
-          kind: "failed",
-          result: { ok: false, reason: "unavailable" },
-        })
+      (thrown: unknown) =>
+        setTest(
+          rejectionOf(thrown) === "limited"
+            ? { kind: "limited" }
+            : { kind: "failed", result: { ok: false, reason: "unavailable" } }
+        )
     );
   }, [channelId, onChanged, sendTest]);
   const header = (
@@ -209,6 +221,11 @@ export function AuthEmailForm({
             </div>
             {test.kind === "failed" ? (
               <TestFailure result={test.result} />
+            ) : null}
+            {test.kind === "limited" ? (
+              <div data-slot="auth-email-test-limited">
+                <FieldError>{t("auth_rate_limited")}</FieldError>
+              </div>
             ) : null}
           </FieldGroup>
         </CardContent>

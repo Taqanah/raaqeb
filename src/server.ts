@@ -38,7 +38,11 @@ import {
   knownBrowsersOf,
 } from "./server/auth/known-browsers.ts";
 import { keepAuthEmailChannel } from "./server/auth/mail.ts";
-import { carriesSession, isOperator } from "./server/auth/session.ts";
+import {
+  carriesSession,
+  isOperator,
+  signedInAccount,
+} from "./server/auth/session.ts";
 import {
   type CommandLine,
   helpText,
@@ -487,11 +491,15 @@ export type RenderLane =
  * `heartbeat`, a heartbeat call carrying a body; `others`, every other
  * request carrying a body (the other functions, onboarding's before the
  * account exists, starting single sign-on) and every request under
- * /api/auth/ with none.
+ * /api/auth/ with none; `mail` and `password`, the saves that send mail
+ * through the install's channel or check the caller's password
+ * (`accountSaves`), counted for a live session's account.
  */
 export type RateRule =
   | "heartbeat"
+  | "mail"
   | "others"
+  | "password"
   | "pagePassword"
   | "resetMail"
   | "signIn"
@@ -502,8 +510,10 @@ export type BodyGroup = "forms" | "heartbeats" | "others" | "signIn";
 
 const groupOf: Readonly<Record<RateRule, BodyGroup>> = {
   heartbeat: "heartbeats",
+  mail: "forms",
   others: "others",
   pagePassword: "forms",
+  password: "forms",
   resetMail: "signIn",
   signIn: "signIn",
   subscribe: "forms",
@@ -545,8 +555,12 @@ export const strangerPace: StrangerPace = {
   rateClients: 10_000,
   rates: {
     heartbeat: { capacity: 30, everyMs: 2000 },
+    // A subscriber's allowance: each sends a message to an address its account chose.
+    mail: { capacity: 5, everyMs: 120_000 },
     others: { capacity: 20, everyMs: 1000 },
     pagePassword: { capacity: 10, everyMs: 6000 },
+    // Sign-in's: each spends one of the install's password hashes.
+    password: { capacity: 6, everyMs: 10_000 },
     resetMail: { capacity: 3, everyMs: 60_000 },
     signIn: { capacity: 6, everyMs: 10_000 },
     subscribe: { capacity: 5, everyMs: 120_000 },
@@ -634,6 +648,17 @@ const serverFunctions = "/_serverFn/";
 /** The subscribe function's id, which the build names after its file and function. */
 const subscribeId = "routes.-subscriptions--subscribeFn";
 
+/** The saves a live session goes on counted for, by their function's id: each sends mail through the install's channel to an address its account chose, or checks the caller's password with one of the install's hashes. Every other save is within its role's reach and goes on uncounted. */
+export const accountSaves: ReadonlyMap<string, "mail" | "password"> = new Map([
+  ["routes.admin.settings.account--changeEmail", "mail"],
+  ["routes.admin.settings.sign-in--test", "mail"],
+  ["routes.admin.settings.account--changePassword", "password"],
+  ["routes.admin.settings.sign-in--appOff", "password"],
+  ["routes.admin.settings.sign-in--change", "password"],
+  ["routes.admin.settings.sign-in--newCodes", "password"],
+  ["routes.admin.settings.sign-in--setUp", "password"],
+]);
+
 /** What no address Raaqeb takes a post at is written with, and what the router decodes into another address: an escape, a backslash, a doubled slash. */
 const unnamed = /%|\\|\/\//;
 
@@ -680,9 +705,10 @@ function ruleOf(request: Request, pathname: string): RateRule | undefined {
     return "heartbeat";
   }
   if (pathname.startsWith(serverFunctions)) {
-    return pathname.slice(serverFunctions.length).split("/")[0] === subscribeId
+    const id = pathname.slice(serverFunctions.length).split("/")[0] ?? "";
+    return id === subscribeId
       ? "subscribe"
-      : "others";
+      : (accountSaves.get(id) ?? "others");
   }
   return lower.startsWith("/api/") || lower.startsWith("/_serverfn/")
     ? "others"
@@ -700,6 +726,12 @@ interface Admission {
   readonly storage: () => Storage | undefined;
   /** Heartbeat tokens a lookup found, so a job's next report costs none. */
   readonly tokens: Set<string>;
+}
+
+/** Who sent a request, each read once and only when it names a session cookie: the live session's account, or none for a stranger. */
+interface Session {
+  readonly account: () => Promise<string | undefined>;
+  readonly stranger: () => Promise<boolean>;
 }
 
 /** What a request admitted carries on: its place, if it took one, and how much of its body must arrive by the deadline, if any. */
@@ -796,7 +828,7 @@ async function heartbeatClient(
 async function admit(
   request: Request,
   admission: Admission,
-  stranger: () => Promise<boolean>,
+  { account, stranger }: Session,
   keep: () => boolean
 ): Promise<Admitted | Response> {
   const { pathname } = new URL(request.url);
@@ -835,10 +867,18 @@ async function admit(
           request.headers.get("cookie")
         )
       : undefined;
+  // A save that sends mail or checks a password counts against its account wherever it comes from.
+  const owner =
+    rule === "mail" || rule === "password" ? await account() : undefined;
   const rate = admission.limits.rates[rule];
-  let wait = client
-    ? admission.issued.take(rule, rate, client)
-    : takeRate(admission, rule, address);
+  let wait: number;
+  if (client) {
+    wait = admission.issued.take(rule, rate, client);
+  } else if (owner) {
+    wait = admission.issued.take(rule, rate, `account ${owner}`);
+  } else {
+    wait = takeRate(admission, rule, address);
+  }
   // A known browser has its own allowance besides its network's, for when neighbours have spent that.
   if (wait > 0 && known) {
     wait = admission.issued.take(rule, rate, `known ${known.account}`);
@@ -896,13 +936,13 @@ async function enter(
   request: Request,
   resolved: Request,
   admission: Admission,
-  stranger: () => Promise<boolean>,
+  session: Session,
   keep: () => boolean
 ): Promise<{ leave: () => void; request: Request } | Response> {
-  if (await oversized(request, stranger)) {
+  if (await oversized(request, session.stranger)) {
     return refusedBody(resolved, keep);
   }
-  const admitted = await admit(resolved, admission, stranger, keep);
+  const admitted = await admit(resolved, admission, session, keep);
   if (admitted instanceof Response) {
     return admitted;
   }
@@ -1020,14 +1060,20 @@ export function serve(
       const resolved = withClientAddress(request, server, trusted);
       // A place in the body budget, held until answered or until a render or check of its own waits at the pace.
       let leaveBudget = (): void => undefined;
-      const { checked, paced, stranger } = gatesFor(
+      const { account, checked, paced, stranger } = gatesFor(
         resolved,
-        () => isOperator(holder.current, settings, resolved.headers),
+        () => signedInAccount(holder.current, settings, resolved.headers),
         renders,
         checks,
         () => leaveBudget()
       );
-      const entry = await enter(request, resolved, admission, stranger, keep);
+      const entry = await enter(
+        request,
+        resolved,
+        admission,
+        { account, stranger },
+        keep
+      );
       if (entry instanceof Response) {
         return logged(logging, resolved, entry, started);
       }
@@ -1213,18 +1259,20 @@ function viewRequest(request: Request, refresh: boolean): Request {
 /** A request's way through the render pace: whether it is a stranger's, read once and only when it names a session cookie, and its renders and checks paced if it is, leaving the body budget as they wait, since the pace bounds them; a session's run at once, and a render with no room is a 503. */
 function gatesFor(
   request: Request,
-  signedIn: () => Promise<boolean>,
+  signedIn: () => Promise<string | undefined>,
   renders: Pace<RenderLane>,
   checks: Pace<"checks">,
   leaveBudget: () => void
 ) {
-  let strangerRead: Promise<boolean> | undefined;
-  const stranger = (): Promise<boolean> => {
-    strangerRead ??= carriesSession(request.headers)
-      ? signedIn().then((live) => !live)
-      : Promise.resolve(true);
-    return strangerRead;
+  let accountRead: Promise<string | undefined> | undefined;
+  const account = (): Promise<string | undefined> => {
+    accountRead ??= carriesSession(request.headers)
+      ? signedIn()
+      : Promise.resolve(undefined);
+    return accountRead;
   };
+  const stranger = async (): Promise<boolean> =>
+    (await account()) === undefined;
   return {
     checked: async (
       read: () => Promise<boolean>
@@ -1245,6 +1293,7 @@ function gatesFor(
       leaveBudget();
       return (await renders.run(lane, render)) ?? busyAnswer();
     },
+    account,
     stranger,
   };
 }

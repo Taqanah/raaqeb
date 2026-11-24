@@ -24,8 +24,8 @@ export function carriesSession(headers: Headers): boolean {
   return sessionCookie.test(headers.get("cookie") ?? "");
 }
 
-/** Better Auth's session cookie under Raaqeb's prefix (auth.ts), plain or under the secure prefix it takes over https. */
-const sessionCookie = /(^|;\s*)(__Secure-)?raaqeb\.session_token=/;
+/** Better Auth's session cookie under Raaqeb's prefix (auth.ts), plain or under the secure prefix it takes over https, with the whitespace around its name that better-call's parseCookies trims away (`trim()`, the set `\s` matches). */
+const sessionCookie = /(?:^|;)\s*(?:__Secure-)?raaqeb\.session_token\s*=/;
 
 /** The signed-in operator: their account as the session read it, with the session's own id; or as an API key's call names it, with the key. */
 export interface Operator {
@@ -184,15 +184,42 @@ export async function operatorFor(
   return session && { ...session, auth, storage };
 }
 
+/** The live session a request carries, read without refreshing it (`disableRefresh`, Better Auth 1.7's getSession), so the row's expiry never moves past a cookie the response does not re-issue; nothing for a deactivated account, with no database, or when it cannot answer, as for the guard. */
+async function liveSession(
+  storage: Storage | undefined,
+  boot: AuthBoot,
+  headers: Headers,
+  answerMs: number
+) {
+  if (!storage) {
+    return;
+  }
+  try {
+    const auth = await authFor(storage, boot);
+    const session = await withinLimit(
+      auth.api.getSession({ headers, query: { disableRefresh: true } }),
+      answerMs
+    );
+    return session && !session.user.deactivatedAt ? session : undefined;
+  } catch {
+    // A database that cannot answer is no session, as for the guard.
+  }
+}
+
+/** The id of the account whose live session the request carries, for the entry, which counts some of its saves by account; nothing as `liveSession` says. */
+export async function signedInAccount(
+  storage: Storage | undefined,
+  boot: AuthBoot,
+  headers: Headers
+): Promise<string | undefined> {
+  return (await liveSession(storage, boot, headers, answerLimitMs))?.user.id;
+}
+
 /**
- * Whether the request carries the operator's session, read without
- * refreshing it (`disableRefresh`, Better Auth 1.7's getSession), so the
- * row's expiry never moves past a cookie the response does not re-issue:
- * for the entry's pace, which a signed-in operator skips, and for the
- * preview of an unpublished page and its images, which set no cookie. With
- * a `permission`, as for a preview, also whether the operator holds it now,
- * a required second step included, as every admin page asks. False for a
- * deactivated account, with no database, or when it cannot answer.
+ * Whether the request carries the operator's live session (`liveSession`):
+ * for the preview of an unpublished page and its images, which set no
+ * cookie. With a `permission`, as for a preview, also whether the operator
+ * holds it now, a required second step included, as every admin page asks.
  */
 export async function isOperator(
   storage: Storage | undefined,
@@ -201,25 +228,17 @@ export async function isOperator(
   answerMs: number = answerLimitMs,
   permission?: Permission
 ): Promise<boolean> {
-  if (!storage) {
+  const session = await liveSession(storage, boot, headers, answerMs);
+  if (!(session && storage)) {
     return false;
   }
+  if (permission === undefined) {
+    return true;
+  }
   try {
-    const auth = await authFor(storage, boot);
-    const session = await withinLimit(
-      auth.api.getSession({ headers, query: { disableRefresh: true } }),
-      answerMs
-    );
-    if (!session || session.user.deactivatedAt) {
-      return false;
-    }
-    if (permission === undefined) {
-      return true;
-    }
     const operator = operatorOf(session.user, session.session);
     return (await refusalOf(storage, operator, permission)) === undefined;
   } catch {
-    // A database that cannot answer is no session, as for the guard.
     return false;
   }
 }
