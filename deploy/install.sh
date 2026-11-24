@@ -3,13 +3,15 @@
 #
 #   curl -fsSL https://raaqeb.dev/install.sh | sudo sh
 #
-# It downloads the latest stable release's binary and SHA256SUMS from
+# It downloads the latest stable release's binary, compressed, and SHA256SUMS from
 # https://github.com/Taqanah/raaqeb/releases, both from one release. Two
 # variables change that: RAAQEB_VERSION, such as 1.2.3-beta.1, names the
 # release to install (a pre-release is never the latest), and
 # RAAQEB_DOWNLOAD_URL, which wins over it, is the folder or mirror holding
-# the binaries and SHA256SUMS. It picks the binary for this machine, checks
-# it against SHA256SUMS, installs it as /usr/local/bin/raaqeb, creates the
+# the binaries and SHA256SUMS. It picks the binary for this machine, takes
+# it as .zst where zstd is installed, as .gz where gzip is, raw otherwise,
+# checks the download and the binary it unpacks to against SHA256SUMS,
+# installs it as /usr/local/bin/raaqeb, creates the
 # service's user and data directory, writes the service, starts it on
 # 127.0.0.1:3000 and prints the next step.
 # On Linux: the raaqeb user, /var/lib/raaqeb, /etc/raaqeb/raaqeb.env, and a
@@ -300,16 +302,51 @@ env_text() {
 ENV
 }
 
-# Downloads a URL to a file with curl or wget, whichever is here; a failure
-# says what the optional third argument adds.
-fetch() {
+# Downloads a URL to a file with curl or wget, whichever is here, and
+# answers whether it could.
+try_fetch() {
 	if command -v curl >/dev/null 2>&1; then
-		curl -fsSL -o "$2" "$1" || fail "could not download $1${3:+ ($3)}"
+		curl -fsSL -o "$2" "$1"
 	elif command -v wget >/dev/null 2>&1; then
-		wget -q -O "$2" "$1" || fail "could not download $1${3:+ ($3)}"
+		wget -q -O "$2" "$1"
 	else
 		fail "neither curl nor wget is installed"
 	fi
+}
+
+# Downloads a URL to a file or fails, saying what the optional third argument adds.
+fetch() {
+	try_fetch "$1" "$2" || fail "could not download $1${3:+ ($3)}"
+}
+
+# Downloads the binary named from the folder into the temporary folder,
+# checked: the .zst where zstd is, else the .gz where gzip is, each checked
+# against SHA256SUMS before it is unpacked; the raw binary where neither is,
+# or when SHA256SUMS lists no such file or the folder holds none, as a
+# release before 0.3.0 or a mirror of the raw binaries. The binary is then
+# checked against its own line.
+download() {
+	fetch "$1/SHA256SUMS" "$3/SHA256SUMS" "$4"
+	if command -v zstd >/dev/null 2>&1; then
+		packed=$2.zst
+		unpack="zstd -dcq"
+	elif command -v gzip >/dev/null 2>&1; then
+		packed=$2.gz
+		unpack="gzip -dc"
+	else
+		packed=
+	fi
+	if [ -n "$packed" ] && grep -q " $packed\$" "$3/SHA256SUMS" && try_fetch "$1/$packed" "$3/$packed" 2>/dev/null; then
+		say "downloaded $packed from $1"
+		verify "$3" "$packed"
+		$unpack "$3/$packed" >"$3/$2" 2>/dev/null || fail "could not unpack $packed"
+		# Where /tmp is memory, the archive would sit beside the starting service.
+		rm -f "$3/$packed"
+	else
+		say "downloading $2 from $1"
+		fetch "$1/$2" "$3/$2" "$4"
+	fi
+	verify "$3" "$2"
 }
 
 # The raaqeb system user and group, made once.
@@ -449,14 +486,11 @@ main() {
 
 	tmp=$(mktemp -d)
 	trap 'rm -rf "$tmp"' EXIT
-	say "downloading $file from $url"
 	hint=
 	if [ -z "${RAAQEB_DOWNLOAD_URL:-}" ] && [ -n "${RAAQEB_VERSION:-}" ]; then
 		hint="is $RAAQEB_VERSION a release of Raaqeb?"
 	fi
-	fetch "$url/SHA256SUMS" "$tmp/SHA256SUMS" "$hint"
-	fetch "$url/$file" "$tmp/$file" "$hint"
-	verify "$tmp" "$file"
+	download "$url" "$file" "$tmp" "$hint"
 
 	if [ "$os" = Darwin ]; then
 		install_macos "$tmp/$file"

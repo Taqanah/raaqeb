@@ -1,8 +1,8 @@
 /**
  * The release artefacts. `bun run binaries`
  * compiles the Vite build into one `raaqeb` binary per target under `dist/bin/`,
- * each embedding the Bun runtime, the client assets and the migrations, and
- * writes their `SHA256SUMS`. `bun run image` builds the distroless image for
+ * each embedding the Bun runtime, the client assets and the migrations, writes
+ * each compressed beside it, and writes the `SHA256SUMS` of every file. `bun run image` builds the distroless image for
  * amd64 and arm64 from those binaries into an OCI archive under
  * `dist/image/` and loads the host's platform as `raaqeb-build:<version>`. The
  * version is package.json's; publishing belongs to the release workflow.
@@ -58,7 +58,7 @@ export const targets: readonly Target[] = [
 
 /** A file of the release and its bytes. */
 export interface Artefact {
-  readonly bytes: Uint8Array;
+  readonly bytes: Uint8Array<ArrayBuffer>;
   readonly name: string;
 }
 
@@ -71,6 +71,40 @@ export function checksums(files: readonly Artefact[]): string {
         `${new Bun.CryptoHasher("sha256").update(file.bytes).digest("hex")}  ${file.name}\n`
     )
     .join("");
+}
+
+/**
+ * Every file of the release for its binaries: each raw, as `.zst` (level 19,
+ * the default window, so unpacking takes about 14 MB beside a running
+ * service) for an installer that finds zstd, as `.gz` (level 9) for one that
+ * does not and for Windows, and the `SHA256SUMS` listing them all. The raw
+ * files stay while an installer that asks for them may still be served.
+ */
+export async function releaseFiles(
+  built: readonly Artefact[]
+): Promise<Artefact[]> {
+  const files = (
+    await Promise.all(
+      built.map(async (binary) => [
+        binary,
+        {
+          // A copy: Bun types the result over ArrayBufferLike, and gzipSync takes only an ArrayBuffer's bytes.
+          bytes: new Uint8Array(
+            await Bun.zstdCompress(binary.bytes, { level: 19 })
+          ),
+          name: `${binary.name}.zst`,
+        },
+        {
+          bytes: Bun.gzipSync(binary.bytes, { level: 9 }),
+          name: `${binary.name}.gz`,
+        },
+      ])
+    )
+  ).flat();
+  return [
+    ...files,
+    { bytes: new TextEncoder().encode(checksums(files)), name: "SHA256SUMS" },
+  ];
 }
 
 /** Where a build came from: the version, the commit, whether the tree held changes, and when. */
@@ -171,7 +205,7 @@ async function e2eBinary(): Promise<void> {
   process.stdout.write("compiled dist/bin/raaqeb-e2e\n");
 }
 
-/** Compiles every target from the Vite build in dist/ and writes their checksums. */
+/** Compiles every target from the Vite build in dist/, then writes each compressed and the checksums of all. */
 async function binaries(): Promise<void> {
   releaseVersion(await Bun.file(`${repo}/package.json`).json());
   await Bun.$`rm -rf ${binDir}`;
@@ -182,14 +216,19 @@ async function binaries(): Promise<void> {
       .quiet();
     process.stdout.write(`compiled dist/bin/${target.file}\n`);
   }
-  const files = await Promise.all(
-    targets.map(async (target) => ({
-      bytes: await Bun.file(`${binDir}/${target.file}`).bytes(),
-      name: target.file,
-    }))
+  const files = await releaseFiles(
+    await Promise.all(
+      targets.map(async (target) => ({
+        bytes: await Bun.file(`${binDir}/${target.file}`).bytes(),
+        name: target.file,
+      }))
+    )
   );
-  await Bun.write(`${binDir}/SHA256SUMS`, checksums(files));
-  process.stdout.write("wrote dist/bin/SHA256SUMS\n");
+  for (const file of files) {
+    // biome-ignore lint/performance/noAwaitInLoops: one file at a time; a binary is written again with its own bytes
+    await Bun.write(`${binDir}/${file.name}`, file.bytes);
+    process.stdout.write(`wrote dist/bin/${file.name}\n`);
+  }
 }
 
 /** The image's labels as `--label key=value` arguments, for the package's version. */

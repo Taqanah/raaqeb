@@ -3,13 +3,14 @@
 #
 #   irm https://raaqeb.dev/install.ps1 | iex
 #
-# It downloads the latest stable release's binary and SHA256SUMS from
+# It downloads the latest stable release's binary, as .exe.gz, and SHA256SUMS from
 # https://github.com/Taqanah/raaqeb/releases, both from one release. Two
 # variables change that: RAAQEB_VERSION, such as 1.2.3-beta.1, names the
 # release to install (a pre-release is never the latest), and
 # RAAQEB_DOWNLOAD_URL, which wins over it, is the folder holding the
 # binaries and SHA256SUMS, a URL or a local folder. It picks the binary for
-# this machine, checks it against SHA256SUMS, installs it as
+# this machine, checks the .exe.gz and the binary it unpacks to against
+# SHA256SUMS, or the raw binary where the folder holds no .exe.gz, installs it as
 # C:\Program Files\Raaqeb\raaqeb.exe,
 # creates C:\ProgramData\Raaqeb, owned by the Administrators and open to
 # them and SYSTEM, with Local Service reading it and writing only in its data
@@ -107,46 +108,88 @@
     $url = "$releases/download/$tag"
   }
 
-  # A URL is downloaded; a local folder is copied from.
-  function Fetch([string] $name, [string] $to) {
-    if ($url -match '^https?://') {
-      # Windows PowerShell 5.1 may offer TLS 1.0 alone, which GitHub refuses.
-      [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-      try {
+  # A URL is downloaded; a local folder is copied from. An optional file
+  # answers whether it came; any other fails the install when it does not.
+  function Fetch([string] $name, [switch] $Optional) {
+    $to = Join-Path $tmp $name
+    try {
+      if ($url -match '^https?://') {
+        # Windows PowerShell 5.1 may offer TLS 1.0 alone, which GitHub refuses.
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -UseBasicParsing -Uri "$url/$name" -OutFile $to
-      } catch {
+      } else {
+        Copy-Item -LiteralPath (Join-Path $url $name) -Destination $to
+      }
+      return $true
+    } catch {
+      if ($Optional) {
+        return $false
+      }
+      if ($url -match '^https?://') {
         Fail "could not download $url/$name$hint"
       }
-    } else {
-      try {
-        Copy-Item -LiteralPath (Join-Path $url $name) -Destination $to
-      } catch {
-        Fail "could not copy $(Join-Path $url $name)"
+      Fail "could not copy $(Join-Path $url $name)"
+    }
+  }
+
+  # The sum on the SHA256SUMS line naming the whole file, so no file passes
+  # on another's sum, or $null where no line names it.
+  function SumOf([string] $name) {
+    $sum = $null
+    foreach ($line in Get-Content -LiteralPath (Join-Path $tmp 'SHA256SUMS')) {
+      if ($line -match "^([0-9a-f]{64})  $([regex]::Escape($name))$") {
+        $sum = $Matches[1]
       }
     }
+    return $sum
+  }
+
+  # Checks a file in the temporary folder against its SHA256SUMS line.
+  function Check([string] $name) {
+    $want = SumOf $name
+    if ($null -eq $want) {
+      Fail "SHA256SUMS lists no $name"
+    }
+    $got = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $tmp $name)).Hash.ToLowerInvariant()
+    if ($got -ne $want) {
+      Fail "$name does not match its checksum in SHA256SUMS"
+    }
+  }
+
+  # Leaves the checked binary in the temporary folder: the .exe.gz, checked
+  # before .NET unpacks it, or the raw binary when SHA256SUMS lists no
+  # .exe.gz or the folder holds none, as a release before 0.3.0. The binary
+  # is then checked too.
+  function Download {
+    Fetch 'SHA256SUMS' | Out-Null
+    $packed = "$file.gz"
+    if ($null -ne (SumOf $packed) -and (Fetch $packed -Optional)) {
+      Say "downloaded $packed from $url"
+      Check $packed
+      $in = $null
+      $out = $null
+      try {
+        $in = New-Object IO.Compression.GZipStream([IO.File]::OpenRead((Join-Path $tmp $packed)), [IO.Compression.CompressionMode]::Decompress)
+        $out = [IO.File]::Create((Join-Path $tmp $file))
+        $in.CopyTo($out)
+      } catch {
+        Fail "could not unpack $packed"
+      } finally {
+        if ($out) { $out.Close() }
+        if ($in) { $in.Close() }
+      }
+      Remove-Item -LiteralPath (Join-Path $tmp $packed)
+    } else {
+      Say "downloading $file from $url"
+      Fetch $file | Out-Null
+    }
+    Check $file
   }
 
   $tmp = Join-Path ([IO.Path]::GetTempPath()) ("raaqeb-" + [Guid]::NewGuid())
   New-Item -ItemType Directory -Path $tmp | Out-Null
   try {
-    Say "downloading $file from $url"
-    Fetch 'SHA256SUMS' (Join-Path $tmp 'SHA256SUMS')
-    Fetch $file (Join-Path $tmp $file)
-
-    # The line naming the whole file, so no binary passes on another's sum.
-    $want = $null
-    foreach ($line in Get-Content -LiteralPath (Join-Path $tmp 'SHA256SUMS')) {
-      if ($line -match "^([0-9a-f]{64})  $([regex]::Escape($file))$") {
-        $want = $Matches[1]
-      }
-    }
-    if ($null -eq $want) {
-      Fail "SHA256SUMS lists no $file"
-    }
-    $got = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $tmp $file)).Hash.ToLowerInvariant()
-    if ($got -ne $want) {
-      Fail "$file does not match its checksum in SHA256SUMS"
-    }
+    Download
 
     # A running binary cannot be replaced: the task is held off and stopped first.
     $held = [bool] (Get-ScheduledTask -TaskName $task -ErrorAction SilentlyContinue)

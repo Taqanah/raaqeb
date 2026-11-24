@@ -6,9 +6,12 @@
  * answers /health, the data directory and the env file have their owners and
  * modes, a command runs as the raaqeb user with the env file, a killed server
  * is started again, and a second run keeps the env file and serves on the
- * port it sets. The binaries and the script are served from a container on
+ * port it sets. Neither has zstd for the first run, which takes the .gz; zstd
+ * is added before the second, an upgrade beside the running service, which
+ * takes the .zst. The binaries and the script are served from a container on
  * the run's own network. Needs Docker and `bun run binaries`, so it stays out
- * of the gate. arm64 is not run: this machine has no emulation.
+ * of the gate. The Debian machine is privileged, so it runs only on a GitHub
+ * runner (`refusal`). arm64 is not run: this machine has no emulation.
  */
 import { standInImage } from "../bench/floor/container.ts";
 
@@ -17,6 +20,10 @@ const bin = `${repo}/dist/bin`;
 const tag = `p33-${Date.now().toString(36)}`;
 
 interface Machine {
+  /** Installs zstd, between the first run and the second. */
+  readonly addZstd: string;
+  /** The binary the installer picks here. */
+  readonly binary: string;
   /** The image the container is built from: a pinned base, its init system and curl. */
   readonly dockerfile: string;
   readonly name: string;
@@ -28,10 +35,34 @@ interface Machine {
   readonly serverPid: string;
 }
 
-const machines: readonly Machine[] = [
+/**
+ * Why a machine may not run here: a privileged container gets the host's
+ * devices and terminals, so its init system can take a desktop's console.
+ * GitHub sets GITHUB_ACTIONS=true on its runners, which have no desktop;
+ * act sets it too on a desktop, and ACT=true beside it.
+ */
+export function refusal(
+  machine: Machine,
+  env: Record<string, string | undefined>
+): string | undefined {
+  if (
+    machine.runFlags.includes("--privileged") &&
+    (env.GITHUB_ACTIONS !== "true" || env.ACT === "true")
+  ) {
+    return `${machine.name} boots its init system in a privileged container, which gets the host's devices and terminals and can take a desktop's console; it runs only on a GitHub runner, where GITHUB_ACTIONS=true`;
+  }
+  return undefined;
+}
+
+export const machines: readonly Machine[] = [
   {
+    addZstd:
+      "apt-get update -qq && apt-get install -y -qq --no-install-recommends zstd",
+    binary: "raaqeb-linux-x64",
     dockerfile: `FROM debian:13@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c
 RUN apt-get update && apt-get install -y --no-install-recommends systemd systemd-sysv curl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Privileged, the container sees the host's terminals, devices and kernel settings: no unit may touch them.
+RUN systemctl mask getty.target getty@.service getty@tty1.service autovt@.service serial-getty@.service console-getty.service getty-static.service systemd-logind.service systemd-udevd.service systemd-udevd-control.socket systemd-udevd-kernel.socket systemd-udev-trigger.service systemd-vconsole-setup.service systemd-sysctl.service systemd-modules-load.service modprobe@.service systemd-binfmt.service proc-sys-fs-binfmt_misc.automount systemd-tmpfiles-setup-dev.service systemd-tmpfiles-setup-dev-early.service
 STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]`,
     name: "debian",
@@ -51,6 +82,8 @@ CMD ["/sbin/init"]`,
     serverPid: "systemctl show -p MainPID --value raaqeb",
   },
   {
+    addZstd: "apk add --no-cache -q zstd",
+    binary: "raaqeb-linux-x64-musl",
     dockerfile: `FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
 RUN apk add --no-cache openrc curl && sed -i 's/^#rc_sys=""/rc_sys="docker"/' /etc/rc.conf && sed -i '/getty/d' /etc/inittab
 CMD ["/sbin/init"]`,
@@ -166,8 +199,14 @@ async function checkMachine(machine: Machine): Promise<void> {
 
   // pipefail, so a download that fails fails the step rather than piping nothing into sh.
   const install = `set -o pipefail; curl -fsSL ${release}/install.sh | RAAQEB_DOWNLOAD_URL=${release} sh`;
-  process.stdout.write(`${await exec(install)}\n`);
-  step(machine.name, "the installer exited 0");
+  const first = await exec(install);
+  process.stdout.write(`${first}\n`);
+  if (!first.includes(`downloaded ${machine.binary}.gz `)) {
+    throw new Error(
+      `the first run took another file than ${machine.binary}.gz`
+    );
+  }
+  step(machine.name, "the installer exited 0, having taken the .gz");
 
   const health = await exec("curl -fsS http://127.0.0.1:3000/health");
   if (!health.includes('"ok":true')) {
@@ -221,49 +260,64 @@ async function checkMachine(machine: Machine): Promise<void> {
   step(machine.name, "a killed server is started again");
 
   await exec("echo RAAQEB_PORT=3001 >> /etc/raaqeb/raaqeb.env");
-  process.stdout.write(`${await exec(install)}\n`);
+  await exec(machine.addZstd);
+  const second = await exec(install);
+  process.stdout.write(`${second}\n`);
+  if (!second.includes(`downloaded ${machine.binary}.zst `)) {
+    throw new Error(
+      `the second run took another file than ${machine.binary}.zst`
+    );
+  }
   await exec("curl -fsS http://127.0.0.1:3001/health");
   await exec("grep -qx RAAQEB_PORT=3001 /etc/raaqeb/raaqeb.env");
   step(
     machine.name,
-    "a second run keeps the env file and serves on the port it sets"
+    "a second run, with zstd added, takes the .zst, keeps the env file and serves on the port it sets"
   );
 }
 
-let failed = false;
-try {
-  await startRelease();
-  for (const machine of machines) {
-    try {
-      // biome-ignore lint/performance/noAwaitInLoops: one machine at a time, each owns port 3000 inside its container
-      await checkMachine(machine);
-    } catch (error) {
-      failed = true;
-      process.stderr.write(
-        `install:check: ${machine.name} failed: ${String(error)}\n`
-      );
-      // The container's own output, for an init system that never came up.
-      const boot = await run(["docker", "logs", `${tag}-${machine.name}`]);
-      process.stderr.write(boot.output);
-      const logs = await run([
-        "docker",
-        "exec",
-        `${tag}-${machine.name}`,
-        "sh",
-        "-c",
-        "journalctl -u raaqeb --no-pager 2>/dev/null || cat /var/log/raaqeb/raaqeb.log",
-      ]);
-      process.stderr.write(logs.output);
-    } finally {
-      await run(["docker", "rm", "-f", `${tag}-${machine.name}`]);
-      await run(["docker", "rmi", `${tag}-${machine.name}`]);
+if (import.meta.main) {
+  let failed = false;
+  try {
+    await startRelease();
+    for (const machine of machines) {
+      const refused = refusal(machine, process.env);
+      if (refused) {
+        failed = true;
+        process.stderr.write(`install:check: ${refused}\n`);
+        continue;
+      }
+      try {
+        // biome-ignore lint/performance/noAwaitInLoops: one machine at a time, each owns port 3000 inside its container
+        await checkMachine(machine);
+      } catch (error) {
+        failed = true;
+        process.stderr.write(
+          `install:check: ${machine.name} failed: ${String(error)}\n`
+        );
+        // The container's own output, for an init system that never came up.
+        const boot = await run(["docker", "logs", `${tag}-${machine.name}`]);
+        process.stderr.write(boot.output);
+        const logs = await run([
+          "docker",
+          "exec",
+          `${tag}-${machine.name}`,
+          "sh",
+          "-c",
+          "journalctl -u raaqeb --no-pager 2>/dev/null || cat /var/log/raaqeb/raaqeb.log",
+        ]);
+        process.stderr.write(logs.output);
+      } finally {
+        await run(["docker", "rm", "-f", `${tag}-${machine.name}`]);
+        await run(["docker", "rmi", `${tag}-${machine.name}`]);
+      }
     }
+  } catch (error) {
+    failed = true;
+    process.stderr.write(`install:check failed: ${String(error)}\n`);
+  } finally {
+    await run(["docker", "rm", "-f", files]);
+    await run(["docker", "network", "rm", network]);
   }
-} catch (error) {
-  failed = true;
-  process.stderr.write(`install:check failed: ${String(error)}\n`);
-} finally {
-  await run(["docker", "rm", "-f", files]);
-  await run(["docker", "network", "rm", network]);
+  process.exit(failed ? 1 : 0);
 }
-process.exit(failed ? 1 : 0);

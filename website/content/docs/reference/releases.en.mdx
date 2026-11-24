@@ -119,8 +119,8 @@ The first stable release: what the docs describe, installed by the installer or 
 
 A release's download folder, `https://github.com/Taqanah/raaqeb/releases/download/<tag>/`, is where the installer downloads from, and the address it takes in `RAAQEB_DOWNLOAD_URL` if you mirror it. It holds:
 
-- One binary per platform.
-- `SHA256SUMS`, which the installer checks the binary against before installing it.
+- One binary per platform, and each compressed as `.zst` and `.gz`, which the installers download.
+- `SHA256SUMS`, listing every file: the installer checks the compressed file against it before unpacking it, and the binary after.
 - The two installers, `install.sh` and `install.ps1`.
 
 The Docker image is `ghcr.io/taqanah/raaqeb`, tagged with the version, such as `ghcr.io/taqanah/raaqeb:0.1.0`.

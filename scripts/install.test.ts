@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { checksums, targets } from "./package.ts";
+import { checksums, releaseFiles, targets } from "./package.ts";
 
 // deploy/install.sh, its parts called one
 // at a time from sh with the last line, `main "$@"`, left off; the whole
@@ -533,6 +533,150 @@ describe("the Windows installer", () => {
   });
 });
 
+// The Windows installer's functions run under pwsh, PowerShell 7 on .NET;
+// Windows PowerShell 5.1 on .NET Framework is the release's smoke job's.
+describe.skipIf(Bun.which("pwsh") === null)("the Windows download", () => {
+  const binary = new TextEncoder().encode("the windows binary ".repeat(1000));
+  const tampered = new TextEncoder().encode("another binary ".repeat(1000));
+  const file = "raaqeb-windows-x64.exe";
+
+  /** The installer's functions, each a `function` at the script block's indent. */
+  async function functions(): Promise<string> {
+    const text = await Bun.file(
+      `${import.meta.dir}/../deploy/install.ps1`
+    ).text();
+    return [...text.matchAll(/\n {2}function \w+[\s\S]*?\n {2}\}\n/g)]
+      .map((match) => match[0])
+      .join("");
+  }
+
+  /** A release folder as `bun run binaries` writes it, for the x64 binary. */
+  async function releaseFolder(): Promise<string> {
+    const dir = await scratchDir();
+    for (const each of await releaseFiles([{ bytes: binary, name: file }])) {
+      // biome-ignore lint/performance/noAwaitInLoops: a few files, one after another
+      await Bun.write(`${dir}/${each.name}`, each.bytes);
+    }
+    return dir;
+  }
+
+  /** The installer's download of the x64 binary from the folder; answers the binary it left and every file the folder kept. */
+  async function download(release: string) {
+    const tmp = await scratchDir();
+    const answer = await ran(
+      [
+        "pwsh",
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        `Set-StrictMode -Version 3; $ErrorActionPreference = 'Stop'; $url = '${release}'; $tmp = '${tmp}'; $file = '${file}'; $hint = ''\n${await functions()}\nDownload`,
+      ],
+      { HOME: tmp }
+    );
+    const left = Bun.file(`${tmp}/${file}`);
+    return {
+      ...answer,
+      kept: [...new Bun.Glob("*").scanSync(tmp)].toSorted(),
+      left: (await left.exists()) ? await left.bytes() : null,
+    };
+  }
+
+  test("takes the .exe.gz and leaves the binary it unpacks to", async () => {
+    const release = await releaseFolder();
+    await Bun.write(`${release}/${file}`, "broken");
+    const answer = await download(release);
+    expect(answer.stderr).toBe("");
+    expect(answer.code).toBe(0);
+    expect(answer.left).toEqual(binary);
+  });
+
+  test("a release or folder holding no .exe.gz, as 0.2.2's, installs its raw binary", async () => {
+    const release = await scratchDir();
+    await Bun.write(`${release}/${file}`, binary);
+    await Bun.write(
+      `${release}/SHA256SUMS`,
+      checksums([{ bytes: binary, name: file }])
+    );
+    const answer = await download(release);
+    expect(answer.stderr).toBe("");
+    expect(answer.code).toBe(0);
+    expect(answer.left).toEqual(binary);
+  });
+
+  test("a tampered .exe.gz is refused, and the good raw binary beside it is not taken instead", async () => {
+    const release = await releaseFolder();
+    await Bun.write(`${release}/${file}.gz`, Bun.gzipSync(tampered));
+    const answer = await download(release);
+    expect(answer.code).toBe(1);
+    expect(answer.stderr).toContain(`${file}.gz does not match its checksum`);
+    expect(answer.left).toBeNull();
+  });
+
+  test("an archive that matches its line but unpacks to another binary is refused at the binary's own line", async () => {
+    const release = await releaseFolder();
+    const forged = Bun.gzipSync(tampered);
+    await Bun.write(`${release}/${file}.gz`, forged);
+    await Bun.write(
+      `${release}/SHA256SUMS`,
+      checksums([
+        { bytes: binary, name: file },
+        { bytes: forged, name: `${file}.gz` },
+      ])
+    );
+    const answer = await download(release);
+    expect(answer.code).toBe(1);
+    expect(answer.stderr).toContain(`${file} does not match its checksum`);
+  });
+
+  test("an archive that matches its line but does not unpack is refused", async () => {
+    const release = await releaseFolder();
+    const broken = new TextEncoder().encode("not gzip at all");
+    await Bun.write(`${release}/${file}.gz`, broken);
+    await Bun.write(
+      `${release}/SHA256SUMS`,
+      checksums([
+        { bytes: binary, name: file },
+        { bytes: broken, name: `${file}.gz` },
+      ])
+    );
+    const answer = await download(release);
+    expect(answer.code).toBe(1);
+    expect(answer.stderr).toContain(`could not unpack ${file}.gz`);
+  });
+
+  test("the .exe.gz is gone once the binary is checked, so it is not held through the restart", async () => {
+    const answer = await download(await releaseFolder());
+    expect(answer.code).toBe(0);
+    expect(answer.kept).toEqual(["SHA256SUMS", file]);
+  });
+
+  test("a folder answering for an .exe.gz its SHA256SUMS does not list, as a mirror of 0.2.2, gives the raw binary", async () => {
+    const release = await scratchDir();
+    await Bun.write(`${release}/${file}`, binary);
+    await Bun.write(`${release}/${file}.gz`, "a page, not an archive");
+    await Bun.write(
+      `${release}/SHA256SUMS`,
+      checksums([{ bytes: binary, name: file }])
+    );
+    const answer = await download(release);
+    expect(answer.stderr).toBe("");
+    expect(answer.code).toBe(0);
+    expect(answer.left).toEqual(binary);
+  });
+
+  test("a raw binary taken in fallback is still checked", async () => {
+    const release = await scratchDir();
+    await Bun.write(`${release}/${file}`, tampered);
+    await Bun.write(
+      `${release}/SHA256SUMS`,
+      checksums([{ bytes: binary, name: file }])
+    );
+    const answer = await download(release);
+    expect(answer.code).toBe(1);
+    expect(answer.stderr).toContain(`${file} does not match its checksum`);
+  });
+});
+
 /** A shell or PowerShell comment at the end of a line. */
 const trailingComment = /\s+#.*$/;
 
@@ -622,6 +766,219 @@ const redirectTo = (tag: string) => (): Response =>
     headers: { location: `/releases/tag/${tag}` },
     status: 302,
   });
+
+describe("the download", () => {
+  const binary = new TextEncoder().encode("the x64 binary ".repeat(1000));
+  const tampered = new TextEncoder().encode("another binary ".repeat(1000));
+
+  /** A release folder laid out as `bun run binaries` writes it, for the x64 binary. */
+  async function releaseFolder(): Promise<string> {
+    const dir = await scratchDir();
+    for (const file of await releaseFiles([
+      { bytes: binary, name: "raaqeb-linux-x64" },
+    ])) {
+      // biome-ignore lint/performance/noAwaitInLoops: a few files, one after another
+      await Bun.write(`${dir}/${file.name}`, file.bytes);
+    }
+    return dir;
+  }
+
+  /** A PATH holding only the tools named, so the machine has zstd, gzip, both or neither. */
+  async function toolsOnly(tools: string[]): Promise<string> {
+    const bin = await scratchDir();
+    for (const tool of ["curl", "grep", "rm", "sha256sum", ...tools]) {
+      // biome-ignore lint/performance/noAwaitInLoops: a few links, one after another
+      await Bun.$`ln -s ${Bun.which(tool) ?? ""} ${bin}/${tool}`;
+    }
+    return bin;
+  }
+
+  /** The installer's download of the x64 binary from the folder, with the tools given; answers the binary it left and every file the folder kept. */
+  async function download(release: string, tools: string[]) {
+    const tmp = await scratchDir();
+    const answer = await ran(
+      [
+        "/bin/sh",
+        "-c",
+        `${library}\ndownload file://${release} raaqeb-linux-x64 ${tmp} ''`,
+      ],
+      { PATH: await toolsOnly(tools) }
+    );
+    const left = Bun.file(`${tmp}/raaqeb-linux-x64`);
+    return {
+      ...answer,
+      kept: [...new Bun.Glob("*").scanSync(tmp)].toSorted(),
+      left: (await left.exists()) ? await left.bytes() : null,
+    };
+  }
+
+  const hasZstd = Bun.which("zstd") !== null;
+
+  test.skipIf(!hasZstd)(
+    "with zstd on the machine it takes the .zst and leaves the binary it unpacks to",
+    async () => {
+      const release = await releaseFolder();
+      // Only the .zst is good, so only taking it can succeed.
+      await Bun.write(`${release}/raaqeb-linux-x64.gz`, "broken");
+      await Bun.write(`${release}/raaqeb-linux-x64`, "broken");
+      const answer = await download(release, ["zstd", "gzip"]);
+      expect(answer.stderr).toBe("");
+      expect(answer.code).toBe(0);
+      expect(answer.left).toEqual(binary);
+    }
+  );
+
+  test("without zstd it takes the .gz and leaves the binary it unpacks to", async () => {
+    const release = await releaseFolder();
+    await Bun.write(`${release}/raaqeb-linux-x64.zst`, "broken");
+    await Bun.write(`${release}/raaqeb-linux-x64`, "broken");
+    const answer = await download(release, ["gzip"]);
+    expect(answer.stderr).toBe("");
+    expect(answer.code).toBe(0);
+    expect(answer.left).toEqual(binary);
+  });
+
+  test("with neither zstd nor gzip it takes the raw binary, never asking for a tool", async () => {
+    const release = await releaseFolder();
+    await Bun.write(`${release}/raaqeb-linux-x64.zst`, "broken");
+    await Bun.write(`${release}/raaqeb-linux-x64.gz`, "broken");
+    const answer = await download(release, []);
+    expect(answer.stderr).toBe("");
+    expect(answer.code).toBe(0);
+    expect(answer.left).toEqual(binary);
+  });
+
+  test.skipIf(!hasZstd)(
+    "a release or mirror holding no compressed file, as 0.2.2's, installs its raw binary",
+    async () => {
+      const release = await scratchDir();
+      await Bun.write(`${release}/raaqeb-linux-x64`, binary);
+      await Bun.write(
+        `${release}/SHA256SUMS`,
+        checksums([{ bytes: binary, name: "raaqeb-linux-x64" }])
+      );
+      const answer = await download(release, ["zstd", "gzip"]);
+      expect(answer.stderr).toBe("");
+      expect(answer.code).toBe(0);
+      expect(answer.left).toEqual(binary);
+    }
+  );
+
+  test.skipIf(!hasZstd)(
+    "a tampered .zst is refused, and the good raw binary beside it is not taken instead",
+    async () => {
+      const release = await releaseFolder();
+      await Bun.write(
+        `${release}/raaqeb-linux-x64.zst`,
+        Bun.zstdCompressSync(tampered)
+      );
+      const answer = await download(release, ["zstd", "gzip"]);
+      expect(answer.code).toBe(1);
+      expect(answer.stderr).toContain(
+        "raaqeb-linux-x64.zst does not match its checksum"
+      );
+      expect(answer.left).toBeNull();
+    }
+  );
+
+  test("a tampered .gz is refused, and the good raw binary beside it is not taken instead", async () => {
+    const release = await releaseFolder();
+    await Bun.write(`${release}/raaqeb-linux-x64.gz`, Bun.gzipSync(tampered));
+    const answer = await download(release, ["gzip"]);
+    expect(answer.code).toBe(1);
+    expect(answer.stderr).toContain(
+      "raaqeb-linux-x64.gz does not match its checksum"
+    );
+    expect(answer.left).toBeNull();
+  });
+
+  test("an archive that matches its line but unpacks to another binary is refused at the binary's own line", async () => {
+    const release = await releaseFolder();
+    const forged = Bun.gzipSync(tampered);
+    await Bun.write(`${release}/raaqeb-linux-x64.gz`, forged);
+    await Bun.write(
+      `${release}/SHA256SUMS`,
+      checksums([
+        { bytes: binary, name: "raaqeb-linux-x64" },
+        { bytes: forged, name: "raaqeb-linux-x64.gz" },
+      ])
+    );
+    const answer = await download(release, ["gzip"]);
+    expect(answer.code).toBe(1);
+    expect(answer.stderr).toContain(
+      "raaqeb-linux-x64 does not match its checksum"
+    );
+  });
+
+  test("an archive that matches its line but does not unpack is refused", async () => {
+    const release = await releaseFolder();
+    const broken = new TextEncoder().encode("not gzip at all");
+    await Bun.write(`${release}/raaqeb-linux-x64.gz`, broken);
+    await Bun.write(
+      `${release}/SHA256SUMS`,
+      checksums([
+        { bytes: binary, name: "raaqeb-linux-x64" },
+        { bytes: broken, name: "raaqeb-linux-x64.gz" },
+      ])
+    );
+    const answer = await download(release, ["gzip"]);
+    expect(answer.code).toBe(1);
+    expect(answer.stderr).toContain("could not unpack raaqeb-linux-x64.gz");
+  });
+
+  test.skipIf(!hasZstd)(
+    "the archive is gone once the binary is checked, so it is not held in a memory-backed /tmp through the restart",
+    async () => {
+      for (const tools of [["zstd", "gzip"], ["gzip"]]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one machine at a time
+        const answer = await download(await releaseFolder(), tools);
+        expect(answer.code).toBe(0);
+        expect(answer.kept).toEqual(["SHA256SUMS", "raaqeb-linux-x64"]);
+      }
+    }
+  );
+
+  test.skipIf(!hasZstd)(
+    "a mirror answering for archives its SHA256SUMS does not list, as one holding 0.2.2's files, gives the raw binary",
+    async () => {
+      const release = await scratchDir();
+      await Bun.write(`${release}/raaqeb-linux-x64`, binary);
+      await Bun.write(
+        `${release}/raaqeb-linux-x64.zst`,
+        "a page, not an archive"
+      );
+      await Bun.write(
+        `${release}/raaqeb-linux-x64.gz`,
+        "a page, not an archive"
+      );
+      await Bun.write(
+        `${release}/SHA256SUMS`,
+        checksums([{ bytes: binary, name: "raaqeb-linux-x64" }])
+      );
+      for (const tools of [["zstd", "gzip"], ["gzip"]]) {
+        // biome-ignore lint/performance/noAwaitInLoops: one machine at a time
+        const answer = await download(release, tools);
+        expect(answer.stderr).toBe("");
+        expect(answer.code).toBe(0);
+        expect(answer.left).toEqual(binary);
+      }
+    }
+  );
+
+  test("a raw binary taken in fallback is still checked", async () => {
+    const release = await scratchDir();
+    await Bun.write(`${release}/raaqeb-linux-x64`, tampered);
+    await Bun.write(
+      `${release}/SHA256SUMS`,
+      checksums([{ bytes: binary, name: "raaqeb-linux-x64" }])
+    );
+    const answer = await download(release, ["gzip"]);
+    expect(answer.code).toBe(1);
+    expect(answer.stderr).toContain(
+      "raaqeb-linux-x64 does not match its checksum"
+    );
+  });
+});
 
 describe("where the install downloads from", () => {
   let stands: { stop: () => void }[] = [];

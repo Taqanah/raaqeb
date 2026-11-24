@@ -3,7 +3,7 @@ title: Install
 description: Install Raaqeb with the installer script on Linux, macOS or Windows, with Docker or Docker Compose, on Fly.io, or as a bare binary.
 ---
 
-Raaqeb ships as seven binaries and a Docker image. The binaries sit beside a `SHA256SUMS` file:
+Raaqeb ships as seven binaries and a Docker image. Each binary also comes compressed, as `.zst` and as `.gz`, each less than half the binary's size, which the installers download. A `SHA256SUMS` file lists every one of them:
 
 - `raaqeb-linux-x64`, `raaqeb-linux-arm64`: glibc, for Debian, Ubuntu, Fedora and their kind;
 - `raaqeb-linux-x64-musl`, `raaqeb-linux-arm64-musl`: musl, for Alpine, which needs `apk add libstdc++ libgcc` first;
@@ -11,6 +11,8 @@ Raaqeb ships as seven binaries and a Docker image. The binaries sit beside a `SH
 - `raaqeb-windows-x64.exe`, `raaqeb-windows-arm64.exe`: Windows 10 version 1809 or later, Windows 11, and Windows Server 2019 or later.
 
 These are Bun's minimums, macOS 13 and Windows 10 version 1809 (`docs/installation.mdx` in Bun's docs); Windows Server 2019 is the server release of 1809.
+
+To unpack one by hand: `zstd -d raaqeb-linux-x64.zst` or `gunzip raaqeb-linux-x64.gz`, and on Windows 7-Zip opens the `.exe.gz`.
 
 Each binary holds everything it serves: the pages, the migrations and the email client. Nothing else is installed beside it. None is signed by a publisher: the macOS binary carries the ad-hoc signature Apple Silicon needs to run it, and the Windows binaries carry none, so the first run of a browser download asks once (below).
 
@@ -29,14 +31,14 @@ curl -fsSL https://raaqeb.dev/install.sh | sudo sh
 The script installs the latest stable release. It asks `https://github.com/Taqanah/raaqeb/releases/latest` for the release it redirects to, not the GitHub API, so no rate limit applies, and downloads the binary and `SHA256SUMS` from that one release. Two variables change that:
 
 - `RAAQEB_VERSION` names the release to install, such as a pre-release, which is never the latest: `curl -fsSL https://raaqeb.dev/install.sh | sudo RAAQEB_VERSION=0.3.0-beta.1 sh`. It is also how you install an older version. The script stops if no such release exists.
-- `RAAQEB_DOWNLOAD_URL` is the folder holding the binaries, `SHA256SUMS` and `install.sh`, a mirror or a folder on the server, and wins over both. For a server with no route to GitHub, copy `dist/bin` and `deploy/install.sh` over and run `sudo RAAQEB_DOWNLOAD_URL=file:///root/bin sh install.sh` (a `file://` address needs curl).
+- `RAAQEB_DOWNLOAD_URL` is the folder holding the binaries, compressed or not, `SHA256SUMS` and `install.sh`, a mirror or a folder on the server, and wins over both. For a server with no route to GitHub, copy `dist/bin` and `deploy/install.sh` over and run `sudo RAAQEB_DOWNLOAD_URL=file:///root/bin sh install.sh` (a `file://` address needs curl).
 
 The script stops with a message when the network is down, when the repository has no release yet, and when `RAAQEB_VERSION` names none. Finding the latest release needs curl.
 
 The script:
 
 1. picks the binary for the machine: `x86_64` or `aarch64` from `uname -m`, musl when the system's own `ldd` says so;
-2. downloads it and `SHA256SUMS`, and refuses a binary whose checksum does not match;
+2. downloads `SHA256SUMS` and the binary compressed: the `.zst` where `zstd` is installed, the `.gz` otherwise. It checks the download against `SHA256SUMS` before unpacking it and the binary after, and refuses either if it does not match. It never asks you to install a tool: where neither `zstd` nor `gzip` is, or the release lists or holds no compressed file, as one before 0.3.0, it downloads the raw binary and checks that;
 3. on Alpine, adds `libstdc++` and `libgcc`;
 4. installs `/usr/local/bin/raaqeb`;
 5. creates the `raaqeb` system user and group, and the data directory `/var/lib/raaqeb`, mode 0700, owned by that user;
@@ -61,7 +63,7 @@ curl -fsSL https://raaqeb.dev/install.sh | sudo sh
 `RAAQEB_VERSION` and `RAAQEB_DOWNLOAD_URL` work as above. On a Mac the script:
 
 1. refuses a Mac without Apple Silicon (a shell under Rosetta, which reads as `x86_64`, still gets the arm64 binary);
-2. downloads `raaqeb-darwin-arm64` and `SHA256SUMS`, and checks it with `shasum -a 256`;
+2. downloads `raaqeb-darwin-arm64.gz` and `SHA256SUMS` (the `.zst` where Homebrew's `zstd` is installed), and checks the download and the binary with `shasum -a 256`;
 3. creates `_raaqeb`, a hidden user and group with no shell and no home, with the first id from 300 that is free, as macOS names its own daemons' accounts;
 4. creates the data directory `/usr/local/var/raaqeb`, mode 0700, owned by `_raaqeb`, and writes `/usr/local/etc/raaqeb/raaqeb.env` the first time only;
 5. installs `/usr/local/bin/raaqeb`, with any quarantine flag taken off;
@@ -70,7 +72,7 @@ curl -fsSL https://raaqeb.dev/install.sh | sudo sh
 
 Raaqeb listens on `127.0.0.1:3000`. The daemon's log is `/usr/local/var/log/raaqeb/raaqeb.log`. To restart it after editing the env file: `sudo launchctl kickstart -k system/raaqeb`.
 
-**Gatekeeper.** A file curl downloads carries no quarantine flag, so the installer and a binary fetched with `curl -fLO https://github.com/Taqanah/raaqeb/releases/latest/download/raaqeb-darwin-arm64` run without a prompt. A binary downloaded through a browser carries the flag, and macOS refuses to open it from an unidentified developer. Take the flag off before the first run:
+**Gatekeeper.** A file curl downloads carries no quarantine flag, so the installer and a binary fetched with `curl -fLO https://github.com/Taqanah/raaqeb/releases/latest/download/raaqeb-darwin-arm64.gz` and unpacked with `gunzip raaqeb-darwin-arm64.gz` run without a prompt. A binary downloaded through a browser carries the flag, and macOS refuses to open it from an unidentified developer. Take the flag off before the first run:
 
 ```sh
 xattr -d com.apple.quarantine raaqeb-darwin-arm64
@@ -87,10 +89,10 @@ In PowerShell run as Administrator, the Windows installer does the whole install
 irm https://raaqeb.dev/install.ps1 | iex
 ```
 
-It installs the latest stable release. `$env:RAAQEB_VERSION = '0.3.0-beta.1'; irm https://raaqeb.dev/install.ps1 | iex` installs the release you name, a pre-release for one. `RAAQEB_DOWNLOAD_URL` wins over both and may be a URL or a local folder holding the binaries, `SHA256SUMS` and `install.ps1`: `$env:RAAQEB_DOWNLOAD_URL = 'C:\raaqeb'; iex (Get-Content -Raw C:\raaqeb\install.ps1)`. The script:
+It installs the latest stable release. `$env:RAAQEB_VERSION = '0.3.0-beta.1'; irm https://raaqeb.dev/install.ps1 | iex` installs the release you name, a pre-release for one. `RAAQEB_DOWNLOAD_URL` wins over both and may be a URL or a local folder holding the binaries, compressed or not, `SHA256SUMS` and `install.ps1`: `$env:RAAQEB_DOWNLOAD_URL = 'C:\raaqeb'; iex (Get-Content -Raw C:\raaqeb\install.ps1)`. The script:
 
 1. picks `raaqeb-windows-x64.exe` or `raaqeb-windows-arm64.exe` by the machine's own architecture, which an emulated PowerShell does not change;
-2. downloads it and `SHA256SUMS`, and refuses a binary whose checksum does not match;
+2. downloads `SHA256SUMS` and the binary as `.exe.gz`, which PowerShell unpacks itself. It checks the download against `SHA256SUMS` before unpacking it and the binary after, and refuses either if it does not match. A release that lists or holds no `.exe.gz`, as one before 0.3.0, gives the raw binary, checked the same way;
 3. installs `C:\Program Files\Raaqeb\raaqeb.exe`;
 4. creates `C:\ProgramData\Raaqeb`, owned by the Administrators. Only they and SYSTEM have full access, and the folder inherits no permissions. Local Service may read the folder and the env file `.env` in it, and write only in the data directory, `data`. The installer writes `.env` the first time only. A folder of that name that another account made first is refused, since a planted `.env` or install key cannot be trusted: look inside it, remove it, and run the installer again;
 5. registers the task `Raaqeb` in Task Scheduler: the binary itself, run as Local Service from that folder, started at boot and again within a minute whenever it is not running, with no time limit;

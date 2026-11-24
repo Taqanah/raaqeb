@@ -8,6 +8,7 @@ import {
   compileArgs,
   imageLabels,
   imageTag,
+  releaseFiles,
   releaseVersion,
   targets,
 } from "./package.ts";
@@ -104,6 +105,59 @@ describe("the checksums file", () => {
       ].join("\n")
     );
   });
+});
+
+describe("the release's files", () => {
+  const binaries = [
+    { bytes: bytes("the x64 binary ".repeat(1000)), name: "raaqeb-linux-x64" },
+    {
+      bytes: bytes("the windows binary ".repeat(1000)),
+      name: "raaqeb-windows-x64.exe",
+    },
+  ];
+
+  test("each binary ships raw, as .zst and as .gz, and SHA256SUMS lists every one of them", async () => {
+    const files = await releaseFiles(binaries);
+    expect(
+      files.map((file) => file.name).toSorted((a, b) => a.localeCompare(b))
+    ).toEqual([
+      "raaqeb-linux-x64",
+      "raaqeb-linux-x64.gz",
+      "raaqeb-linux-x64.zst",
+      "raaqeb-windows-x64.exe",
+      "raaqeb-windows-x64.exe.gz",
+      "raaqeb-windows-x64.exe.zst",
+      "SHA256SUMS",
+    ]);
+    const sums = new TextDecoder().decode(
+      files.find((file) => file.name === "SHA256SUMS")?.bytes
+    );
+    expect(sums).toBe(
+      checksums(files.filter((file) => file.name !== "SHA256SUMS"))
+    );
+  });
+
+  test.skipIf(Bun.which("zstd") === null)(
+    "each .zst and .gz unpacks with the zstd and gzip an installer runs to its binary, byte for byte",
+    async () => {
+      const files = await releaseFiles(binaries);
+      for (const binary of binaries) {
+        for (const [suffix, tool] of [
+          [".zst", "zstd"],
+          [".gz", "gzip"],
+        ] as const) {
+          const archive = files.find(
+            (file) => file.name === `${binary.name}${suffix}`
+          );
+          expect(archive?.bytes.length).toBeLessThan(binary.bytes.length);
+          const unpacked =
+            // biome-ignore lint/performance/noAwaitInLoops: a few small files, one after another
+            await Bun.$`${tool} -dc < ${new Response(archive?.bytes)}`.arrayBuffer();
+          expect(new Uint8Array(unpacked)).toEqual(binary.bytes);
+        }
+      }
+    }
+  );
 });
 
 describe("the image labels", () => {

@@ -1,6 +1,6 @@
 # Raaqeb's smoke test on Windows, run by hand on a real Windows
 # machine in PowerShell. From the folder holding raaqeb-windows-x64.exe or
-# raaqeb-windows-arm64.exe, SHA256SUMS and install.ps1:
+# raaqeb-windows-arm64.exe, its .exe.gz, SHA256SUMS and install.ps1:
 #
 #   powershell -ExecutionPolicy Bypass -File .\smoke-windows.ps1
 #       the binary alone
@@ -167,10 +167,12 @@ if ($Install) {
     $env:RAAQEB_DOWNLOAD_URL = $PSScriptRoot
     $installer = Join-Path $PSScriptRoot 'install.ps1'
     # As an operator runs it: the script's text through iex.
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (Get-Content -Raw -LiteralPath '$installer')"
+    $log = powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (Get-Content -Raw -LiteralPath '$installer')" 2>&1 | Out-String
     $installed = $LASTEXITCODE -eq 0
+    Write-Host $log
     Remove-Item env:RAAQEB_DOWNLOAD_URL
     Check 'install.ps1 installs and starts the task' { $installed }
+    Check 'install.ps1 took the .exe.gz and unpacked it itself' { $log -match "downloaded $([regex]::Escape($file)).gz" }
     Check 'the task is running' { (Get-ScheduledTask -TaskName Raaqeb).State -eq 'Running' }
     Check 'the installed Raaqeb answers /health' { WaitHealth 3000 60 }
     Push-Location $root

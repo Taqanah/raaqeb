@@ -1,7 +1,7 @@
 #!/bin/sh
 # Raaqeb's smoke test on a Mac with Apple Silicon, run by hand on a
-# real Mac. From the folder holding raaqeb-darwin-arm64, SHA256SUMS and
-# install.sh:
+# real Mac. From the folder holding raaqeb-darwin-arm64, its .gz and .zst,
+# SHA256SUMS and install.sh:
 #
 #   sh smoke-mac.sh            the binary alone, no sudo
 #   sh smoke-mac.sh --install  then the installer, its launchd daemon and
@@ -109,7 +109,10 @@ if [ "${1:-}" = --install ]; then
 		fail "port 3000 is free for the installed daemon"
 	else
 		printf 'INFO installing with sudo; the uninstall at the end removes everything\n'
-		check "install.sh installs and starts the daemon" sudo env RAAQEB_DOWNLOAD_URL="file://$here" sh "$here/install.sh"
+		# macOS's own PATH, which has gzip and no zstd, as a Mac without Homebrew.
+		sudo env PATH=/usr/bin:/bin:/usr/sbin:/sbin RAAQEB_DOWNLOAD_URL="file://$here" sh "$here/install.sh" >"$here/install.log" 2>&1
+		check "install.sh installs and starts the daemon" test $? = 0
+		check "install.sh took the .gz on a Mac without zstd" grep -q 'downloaded raaqeb-darwin-arm64.gz' "$here/install.log"
 		check "launchd runs the daemon" sh -c "sudo launchctl print system/raaqeb | grep -q 'state = running'"
 		check "raaqeb health exits 0" /usr/local/bin/raaqeb health
 		check "the data directory is the _raaqeb user's, mode 700" test "$(stat -f '%Su %Lp' /usr/local/var/raaqeb)" = "_raaqeb 700"
@@ -122,6 +125,14 @@ if [ "${1:-}" = --install ]; then
 		check "launchd starts the daemon again after it is killed" wait_health 3000 60
 		check "the new process is another one" test "$(pgrep -x raaqeb | head -n 1)" != "$old"
 		check "the log has lines" sudo test -s /usr/local/var/log/raaqeb/raaqeb.log
+		if command -v zstd >/dev/null 2>&1; then
+			sudo env PATH="$PATH" RAAQEB_DOWNLOAD_URL="file://$here" sh "$here/install.sh" >"$here/upgrade.log" 2>&1
+			check "install.sh upgrades the running daemon in place" test $? = 0
+			check "install.sh took the .zst where zstd is installed" grep -q 'downloaded raaqeb-darwin-arm64.zst' "$here/upgrade.log"
+			check "the upgraded daemon answers /health" wait_health 3000 60
+		else
+			printf 'INFO no zstd here, so the upgrade through the .zst is not run\n'
+		fi
 
 		# The uninstall, line for line as website/content/docs/operate/uninstall.en.mdx gives it (scripts/install.test.ts holds them equal).
 		sudo sh -c 'launchctl bootout system/raaqeb && rm /Library/LaunchDaemons/raaqeb.plist /usr/local/bin/raaqeb'
