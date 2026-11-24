@@ -34,6 +34,7 @@ import {
   type SubscriptionView,
   subscribeInputSchema,
   subscriptionPath,
+  tooManyRequests,
 } from "@/shared/schemas/subscription.ts";
 import { Button, buttonVariants } from "@/shared/ui/button.tsx";
 import { Card } from "@/shared/ui/card.tsx";
@@ -92,6 +93,13 @@ const refusalWords: Readonly<
   unavailable: "public_subscribe_unavailable",
   unreachable: "public_subscribe_unreachable",
 };
+
+/** Why a post that failed was refused: past the entry's rate rule, whose 429 reaches the caller as its error's message, or anything else. */
+export function refusalOf(thrown: unknown): "limited" | "unavailable" {
+  return thrown instanceof Error && thrown.message === tooManyRequests
+    ? "limited"
+    : "unavailable";
+}
 
 const invalidWords: Readonly<Record<SubscriptionChannel, MessageId>> = {
   email: "public_subscribe_invalid_email",
@@ -283,8 +291,8 @@ function AddressForm({
             setAddress("");
           }
         })
-        .catch(() => {
-          setState({ channel, kind: "refused", reason: "unavailable" });
+        .catch((thrown: unknown) => {
+          setState({ channel, kind: "refused", reason: refusalOf(thrown) });
         });
     },
     [address, channel, locale, pageId, subscribe]

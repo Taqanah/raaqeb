@@ -108,6 +108,7 @@ async function ssoAuth(s: Scratch, sso: SsoProvider = ssoOf()): Promise<Auth> {
     audit: (event) => record(s.storage, { ...event, now: Date.now() }),
     baseURL: testOrigin,
     database: s.storage.authDatabase,
+    installKey: s.boot.installKey,
     invitations: invitationGate(s.storage),
     log: () => undefined,
     mail: silentMail,
@@ -378,6 +379,12 @@ describe("signing in through the provider", () => {
     );
     expect(session?.operator).toMatchObject({ id: before?.id, role: "owner" });
     expect(await s.storage.operatorAccounts.list()).toHaveLength(1);
+    // A sign-in through the provider makes the browser known, as any sign-in does.
+    expect(
+      response.headers
+        .getSetCookie()
+        .some((each) => each.startsWith("raaqeb.known="))
+    ).toBe(true);
   });
 
   test("of an address that has an account is refused when the provider does not say the address is verified", async () => {
@@ -588,16 +595,6 @@ describe("starting a sign-in through the provider", () => {
       statuses.push((await start(auth, "203.0.113.40")).status);
     }
     expect(statuses).toEqual(new Array(8).fill(200));
-  });
-
-  test("is still limited per address: past a hundred in ten seconds the next is a 429", async () => {
-    const auth = await ssoAuth(await scratch());
-    for (let started = 0; started < 100; started += 1) {
-      // biome-ignore lint/performance/noAwaitInLoops: the limiter counts requests in order
-      await start(auth, "203.0.113.41");
-    }
-    expect((await start(auth, "203.0.113.41")).status).toBe(429);
-    expect((await start(auth, "203.0.113.42")).status).toBe(200);
   });
 });
 

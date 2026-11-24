@@ -16,7 +16,6 @@ import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import { admits } from "@/server/pages/access.ts";
 import { readViewFrame } from "@/server/pages/views.ts";
 import {
-  createSignUpLimiter,
   readSubscription,
   subscribe,
   subscriptionFrame,
@@ -28,9 +27,7 @@ import {
 } from "@/shared/schemas/subscription.ts";
 import type { ViewFrame } from "@/shared/schemas/views.ts";
 
-/** Every sign-up of this process, counted per client. */
-const signUps = createSignUpLimiter();
-
+// The entry counts posts to its address by the rate rule for subscribing (`subscribeId` in server.ts).
 export const subscribeFn = createServerFn({ method: "POST" })
   .validator(subscribeInputSchema)
   .handler(({ context, data }): Promise<SubscribeResult> => {
@@ -56,12 +53,10 @@ export const subscribeFn = createServerFn({ method: "POST" })
           boot.installKey,
           now
         ),
-      client,
       confirm: (id) =>
         scheduler
           ? scheduler.subscribers.confirm(id, now)
           : Promise.resolve(false),
-      limiter: signUps,
       now,
     });
   });

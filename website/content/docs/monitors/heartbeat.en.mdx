@@ -35,6 +35,8 @@ The token is 22 characters of letters, digits, `-` and `_`. It is the only key: 
 | `GET`, `HEAD` or `POST` with a known token | `200` with the text `OK`. The heartbeat is stored. |
 | An unknown or malformed token | `404` with the text `Not Found`. Nothing is stored. |
 | The database did not answer | `503` with the text `Service Unavailable`. |
+| A call carrying a body, past its monitor's [rate rule](/en/docs/operate/reverse-proxy#rate-rules): 30 at once, then one every 2 seconds, counted by the token wherever the calls come from | `429` with `Retry-After`. Nothing is stored. `curl --retry` waits as it says and tries again. |
+| A call whose body has not arrived whole within 2 seconds | `408`, and the connection is closed. Nothing is stored. |
 
 A `HEAD` answer has no body, and no answer is cached. Raaqeb keeps each heartbeat's arrival time and source address, and for a failure its exit code and message; never any other part of the request. The source address is the caller's address behind your [trusted proxies](/en/docs/operate/reverse-proxy). Each monitor keeps its latest 100 heartbeats. A paused monitor still stores them.
 

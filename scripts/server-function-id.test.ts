@@ -18,6 +18,13 @@ describe("a server function's id", () => {
         functionName: handler("testMonitorFn"),
       })
     ).toBe("routes.-monitors--testMonitorFn");
+    // The entry's rate rule for subscribing names this address.
+    expect(
+      id({
+        filename: "src/routes/-subscriptions.ts",
+        functionName: handler("subscribeFn"),
+      })
+    ).toBe("routes.-subscriptions--subscribeFn");
   });
 
   test("is the same on every build and in each of the build's environments", () => {

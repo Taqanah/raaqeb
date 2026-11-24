@@ -2,8 +2,8 @@
  * Client addresses behind the trusted proxies: the one
  * place that decides which address a request comes from. The Bun.serve entry
  * asks with the socket peer and the forwarded chain, then writes the answer
- * into one header that Better Auth's rate limit reads (`clientAddressHeader`),
- * overwriting anything a client sent. Better Auth would otherwise believe a
+ * into one header that the rate rules and Better Auth read
+ * (`clientAddressHeader`), overwriting anything a client sent. Better Auth would otherwise believe a
  * bare `x-forwarded-for`, and it drops an invalid trusted-proxy entry with a
  * warning that prints it; here an invalid entry refuses the boot by variable
  * name, and the save of the general page by a reason code.

@@ -111,6 +111,10 @@ describe("a call to a heartbeat monitor's URL", () => {
     let asked = false;
     const watching: Pick<Storage, "heartbeats"> = {
       heartbeats: {
+        knows: () => {
+          asked = true;
+          return Promise.resolve(false);
+        },
         latest: () => Promise.resolve(new Map()),
         prune: () => Promise.resolve(),
         lastFailures: () => Promise.resolve(new Map()),

@@ -64,7 +64,10 @@ test.describe("single sign-on", () => {
       "ok"
     );
     await page.click("[data-slot=save-sso]");
-    await expect(page.locator("[data-slot=save-sso]")).toBeDisabled();
+    // Settled, not only pending: a disabled button is also a save still on its way.
+    await expect(
+      page.locator("[data-slot=save-outcome][data-state=saved]")
+    ).toBeVisible();
 
     await page.context().clearCookies();
     provider?.signInAs({
@@ -136,7 +139,9 @@ test.describe("required single sign-on", () => {
     await page.click("label[for=enabled]");
     await page.click("label[for=requireSso]");
     await page.click("[data-slot=save-sso]");
-    await expect(page.locator("[data-slot=save-sso]")).toBeDisabled();
+    await expect(
+      page.locator("[data-slot=save-outcome][data-state=saved]")
+    ).toBeVisible();
 
     await page.goto(`${origin}/admin/team`);
     const heir = page.locator("[data-slot=team-member][data-role=admin]");

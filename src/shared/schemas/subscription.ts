@@ -350,3 +350,6 @@ export const confirmationWebhookSchema = z.object({
   type: z.literal("subscription.confirmation").describe("The body's type."),
 });
 export type ConfirmationWebhook = z.infer<typeof confirmationWebhookSchema>;
+
+/** The text of the entry's 429 for a client past its rate rule, which a server function's caller receives as its error's message. */
+export const tooManyRequests = "Too Many Requests";

@@ -42,15 +42,19 @@ const failedWords: ReadonlySet<string> = new Set(["down", "fail"]);
 /** ASCII digits only, so a number written in other digits is refused. */
 const exitCodePattern = /^\d{1,3}$/;
 
-/** At most `bytes` of the request's body, cut chunk by chunk so a chunk larger than the limit is never kept whole; the stream is cancelled there, so the rest is never pulled. Nothing for a request with no body. */
+/** At most `bytes` of the request's body, cut chunk by chunk so a chunk larger than the limit is never kept whole; the stream is cancelled there, or when `stop` fires, so the rest is never pulled. Nothing for a request with no body. */
 export async function readBodyHead(
   request: Request,
-  bytes: number
-): Promise<Uint8Array> {
+  bytes: number,
+  stop?: AbortSignal
+): Promise<Uint8Array<ArrayBuffer>> {
   const reader = request.body?.getReader();
   if (!reader) {
     return new Uint8Array(0);
   }
+  stop?.addEventListener("abort", () => {
+    reader.cancel().catch(() => undefined);
+  });
   const chunks: Uint8Array[] = [];
   let size = 0;
   try {

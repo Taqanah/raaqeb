@@ -166,40 +166,50 @@ export function busyAnswer(): Response {
   });
 }
 
-/** How many of a stranger's requests carrying a body may be in flight at once: in all, and from one client network, so one client's flood leaves the others room. */
-export interface BodyLimits {
-  readonly perClient: number;
-  readonly total: number;
+/** One place in the body budget: `arrived` once its body is in, `leave` gives it back once, and `evicted` fires when a newcomer takes it while the body is still arriving, which gives it back too. */
+export interface Place {
+  readonly arrived: () => void;
+  readonly evicted: AbortSignal;
+  readonly leave: () => void;
 }
 
-/** A place for one more request from `client`, with the function that gives it back, once; nothing when there is no room. */
-export type BodyBudget = (client: string) => (() => void) | undefined;
+/** A place for one more request carrying a body; when every place is taken, the oldest whose body is still arriving gives its place up, and nothing when every body has arrived. */
+export type BodyBudget = () => Place | undefined;
 
-/** The body budget over its limits. */
-export function createBodyBudget(limits: BodyLimits): BodyBudget {
-  let total = 0;
-  // Only clients holding a place, so the table never outgrows the total.
-  const held = new Map<string, number>();
-  return (client) => {
-    const mine = held.get(client) ?? 0;
-    if (total >= limits.total || mine >= limits.perClient) {
-      return;
-    }
-    total += 1;
-    held.set(client, mine + 1);
-    let given = false;
-    return () => {
-      if (given) {
+/** A body budget of `total` places. */
+export function createBodyBudget(total: number): BodyBudget {
+  let taken = 0;
+  // The places whose body is still arriving, oldest first: a real form arrives with its request, so only a trickle waits here long.
+  const arriving = new Set<() => void>();
+  return () => {
+    if (taken >= total) {
+      const [oldest] = arriving;
+      if (!oldest) {
         return;
       }
-      given = true;
-      total -= 1;
-      const left = (held.get(client) ?? 1) - 1;
-      if (left === 0) {
-        held.delete(client);
-      } else {
-        held.set(client, left);
+      oldest();
+    }
+    taken += 1;
+    const controller = new AbortController();
+    let given = false;
+    const leave = () => {
+      if (!given) {
+        given = true;
+        taken -= 1;
+        arriving.delete(evict);
       }
+    };
+    const evict = () => {
+      leave();
+      controller.abort();
+    };
+    arriving.add(evict);
+    return {
+      arrived: () => {
+        arriving.delete(evict);
+      },
+      evicted: controller.signal,
+      leave,
     };
   };
 }

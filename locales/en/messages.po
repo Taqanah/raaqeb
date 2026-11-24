@@ -4882,7 +4882,7 @@ msgstr "This request came through a trusted proxy:"
 
 #. js-lingui-explicit-id
 msgid "setting_setup_forwarded_untrusted"
-msgstr "This request carries forwarded headers from an address that is not a trusted proxy, so Raaqeb ignores them: it takes every visitor to be this address, and the scheme and host from the connection rather than from the proxy."
+msgstr "This request carries forwarded headers from an address that is not a trusted proxy, so Raaqeb ignores them: it takes every visitor to be this address, and the scheme and host from the connection rather than from the proxy. Every visitor then shares one count of each rate rule, so a few strangers' tries can keep the sign-in and subscribe forms refusing everyone, an operator on a new browser included."
 
 #. js-lingui-explicit-id
 msgid "setting_setup_forwarded_headers"

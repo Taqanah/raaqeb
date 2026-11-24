@@ -101,6 +101,14 @@ describe("the heartbeats repository", () => {
     expect(await rowCount(location)).toBe(0);
   });
 
+  test("knows a heartbeat monitor's token and no other, and writes nothing", async () => {
+    const { heartbeats, location, monitors } = await repositories();
+    await monitors.create(beat);
+    expect(await heartbeats.knows(tokenNumber(1))).toBe(true);
+    expect(await heartbeats.knows(tokenNumber(9))).toBe(false);
+    expect(await rowCount(location)).toBe(0);
+  });
+
   test("a heartbeat with no source address keeps none", async () => {
     const { heartbeats, monitors } = await repositories();
     const { id } = await monitors.create(beat);

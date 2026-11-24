@@ -409,6 +409,11 @@ Arabic: ارتباط
 The many-to-many relationship that lets monitors drive a component's status.
 _Avoid_: binding, mapping, attachment
 
+**Known browser**:
+Arabic: متصفح معروف
+A browser where someone signed in to an operator account, or opened a valid reset link, remembered for that account. The account's known browsers share one rate rule allowance besides their networks' and are let in when sign-in is busy; ten wrong passwords from them in a quarter of an hour and they are strangers' again. It skips nothing: the password and the second step are still asked.
+_Avoid_: trusted browser (that one skips the second step), remembered device, device cookie, mark
+
 **Maintenance series**:
 Arabic: وقت صيانة متكرر. Its recurrence: التكرار (أسبوعيًا، شهريًا).
 A maintenance window that repeats by a recurrence, weekly on chosen days or monthly on a day of the month or an nth weekday, at a start time on the clock of its time zone, for a duration. It schedules its occurrences ahead of time; editing or ending it changes the ones still scheduled.
@@ -449,10 +454,15 @@ Arabic: منشورة
 Whether a status page is shown at all, a switch the operator sets. Visitors cannot find an unpublished page, though the signed-in operator still sees it. Not a private page: no visitor can be let in.
 _Avoid_: draft, live, visible, private (that is a published page with page access)
 
+**Rate rule**:
+Arabic: قاعدة حدّ الطلبات
+How many requests of one kind (a sign-in, a subscription, a page password try, a heartbeat's failure report) one client network may send at once, and how soon it may send one more. A request past its rule is refused before Raaqeb reads it, and the client is told when to try again; a signed-in operator's save is never refused, while their sign-ins, reset emails and subscriptions count like anyone's.
+_Avoid_: rate limit (any service's cap, such as a platform's 429), throttle, quota
+
 **Render pace**:
 Arabic: وتيرة العرض
-How often the app may start a full render for strangers: one at a time, spaced apart, each kind of page with a short queue of its own. It also bounds how many of a stranger's requests that carry a body may be in flight at once, fewer from one client network than in all. Past it a stranger is asked to try again.
-_Avoid_: rate limit (that is Better Auth's count of sign-ins per address), throttle
+How often the app may start a full render for strangers: one at a time, spaced apart, each kind of page with a short queue of its own. It also bounds how many of a stranger's requests that carry a body may be in flight at once for each kind of action, and how long such a body may take to arrive. Past it a stranger is asked to try again.
+_Avoid_: rate limit (that is a rate rule), throttle
 
 **Status level**:
 Arabic: مستوى الحالة. Levels: يعمل، قيد الصيانة، متعثّر، انقطاع جزئي، انقطاع كلي.

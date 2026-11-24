@@ -10,6 +10,9 @@ import { normalizeDigits } from "@/shared/i18n/format.ts";
 export const passwordMinLength = 8;
 export const passwordMaxLength = 128;
 
+/** The longest email address, RFC 5321's path limit. */
+export const emailMaxLength = 254;
+
 export const signInSchema = z.object({
   email: z.email(),
   password: z.string().min(passwordMinLength).max(passwordMaxLength),

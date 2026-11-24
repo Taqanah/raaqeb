@@ -50,15 +50,23 @@ async function signOut(page: Page): Promise<void> {
   await expectPath(page, "/sign-in");
 }
 
-/** Enters the code the last message carried, trusting the browser or not, and lands in the admin area. */
+// Codes already typed, so a sign-in waits for its own code's mail rather than read the one before it.
+const typedCodes = new Set<string>();
+
+/** Enters the code the newest message carries once it is a code not typed before, trusting the browser or not, and lands in the admin area. */
 async function enterCode(
   page: Page,
   messages: readonly string[],
   trust: boolean
 ): Promise<void> {
   await expect(page.locator("[data-slot=code-form]")).toBeVisible();
-  await expect.poll(() => messages.length).toBeGreaterThan(0);
-  const code = sixDigits.exec(lastMail(messages))?.[0] ?? "";
+  const newCode = () => {
+    const found = sixDigits.exec(lastMail(messages))?.[0];
+    return found && !typedCodes.has(found) ? found : "";
+  };
+  await expect.poll(newCode).not.toBe("");
+  const code = newCode();
+  typedCodes.add(code);
   await page.fill("input[name=code]", code);
   if (trust) {
     await page.click("[data-slot=trust-browser]");

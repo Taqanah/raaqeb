@@ -24,7 +24,7 @@
  * Every HTML response leaves with the security headers.
  */
 import type { ServerEntry } from "@tanstack/react-start/server-entry";
-import { authFor, mailSettled, resetLinkOpen } from "./server/auth/auth.ts";
+import { authFor, mailSettled, resetLinkAccount } from "./server/auth/auth.ts";
 import {
   needsTerminal,
   processTerminal,
@@ -33,6 +33,10 @@ import {
   type Terminal,
 } from "./server/auth/command.ts";
 import { readInvitation } from "./server/auth/invitation.ts";
+import {
+  type KnownBrowser,
+  knownBrowsersOf,
+} from "./server/auth/known-browsers.ts";
 import { keepAuthEmailChannel } from "./server/auth/mail.ts";
 import { carriesSession, isOperator } from "./server/auth/session.ts";
 import {
@@ -57,18 +61,23 @@ import {
 import { liveIo } from "./server/checks/io.ts";
 import { error as logError, info as logInfo, reasonOf } from "./server/log.ts";
 import { createPublicMemo, type RenderMissing } from "./server/memo/public.ts";
+import {
+  heartbeatBodyReadBytes,
+  readBodyHead,
+} from "./server/monitors/heartbeat.ts";
 import { onboardingStep } from "./server/onboarding/onboarding.ts";
 import {
   type BodyBudget,
-  type BodyLimits,
   busyAnswer,
   createBodyBudget,
   createPace,
   type Pace,
   type PaceLimits,
+  type Place,
 } from "./server/pace.ts";
 import { type PublicTarget, rendersDocument } from "./server/pages/public.ts";
 import { probeCommand } from "./server/probes/command.ts";
+import { createRates, type Rate, type Rates } from "./server/rates.ts";
 import { currentVersion } from "./server/release/release.ts";
 import { closed, type MemoAnswer, requestLine } from "./server/request-log.ts";
 import { healthCommand, healthUrl } from "./server/scheduler/health.ts";
@@ -90,14 +99,20 @@ import {
 } from "./server/storage/storage.ts";
 import { subscriptionView } from "./server/subscriptions/subscriptions.ts";
 import { importPath } from "./shared/schemas/export-page.ts";
-import { heartbeatPathPrefix } from "./shared/schemas/heartbeat.ts";
+import {
+  heartbeatPathPrefix,
+  heartbeatTokenSchema,
+} from "./shared/schemas/heartbeat.ts";
 import type {
   MaintenanceStage,
   MaintenanceWindow,
 } from "./shared/schemas/maintenance.ts";
 import { statusPageHeader } from "./shared/schemas/page.ts";
 import { reasonName } from "./shared/schemas/reason.ts";
-import { subscriptionTokenSchema } from "./shared/schemas/subscription.ts";
+import {
+  subscriptionTokenSchema,
+  tooManyRequests,
+} from "./shared/schemas/subscription.ts";
 
 /**
  * The build this entry serves. Compiled, the entry sits at the root of the
@@ -463,10 +478,45 @@ export type RenderLane =
   | "reset"
   | "subscriptions";
 
-/** The render pace's settings: the reads that check a made-up item before its not-found, one at a time with no gap, the renders, taking turns between their lanes, and how many of a stranger's requests carrying a body may be in flight before the next is answered 503 unread. */
+/**
+ * What the rate rules count a stranger's request as (CONTEXT.md "Rate
+ * rule"): `signIn`, a POST under /api/auth/ (sign-in, its second step, a
+ * reset, accepting an invitation); `resetMail`, asking for a reset email,
+ * which sends one; `subscribe`, the subscribe function; `pagePassword`, a
+ * POST to a status page's address, a private page's password try;
+ * `heartbeat`, a heartbeat call carrying a body; `others`, every other
+ * request carrying a body (the other functions, onboarding's before the
+ * account exists, starting single sign-on) and every request under
+ * /api/auth/ with none.
+ */
+export type RateRule =
+  | "heartbeat"
+  | "others"
+  | "pagePassword"
+  | "resetMail"
+  | "signIn"
+  | "subscribe";
+
+/** The groups a stranger's requests carrying a body take their places in, so a flood of one action leaves the others theirs. */
+export type BodyGroup = "forms" | "heartbeats" | "others" | "signIn";
+
+const groupOf: Readonly<Record<RateRule, BodyGroup>> = {
+  heartbeat: "heartbeats",
+  others: "others",
+  pagePassword: "forms",
+  resetMail: "signIn",
+  signIn: "signIn",
+  subscribe: "forms",
+};
+
+/** The render pace's settings: the reads that check a made-up item before its not-found, one at a time with no gap, the renders, taking turns between their lanes, the rate rules each client's requests meet, how many of a stranger's requests carrying a body may be in flight in each group before the next is answered 503 unread, and how long such a body may take to arrive whole. */
 export interface StrangerPace {
-  readonly bodies: BodyLimits;
+  readonly bodies: Readonly<Record<BodyGroup, number>>;
+  readonly bodyDeadlineMs: number;
   readonly checks: PaceLimits<"checks">;
+  /** How many clients' buckets the rate rules hold before newcomers share one. */
+  readonly rateClients: number;
+  readonly rates: Readonly<Record<RateRule, Rate>>;
   readonly renders: PaceLimits<RenderLane>;
 }
 
@@ -477,18 +527,29 @@ export interface StrangerPace {
  * a second held it near 75 MB. A render there takes well under a second, so
  * five seconds is a wedged one, and two may run on past it.
  * A stranger's request carrying a body holds it, and the handler's state of
- * 15 to 20 KB beside it, until it is answered: 64 in flight, 16 from one
- * client network, held a 240 MB install against 4,000 slow bodies and 4,000
- * HTTP/2 streams, and a flood from one network leaves the others room.
+ * 15 to 20 KB beside it, until it is answered: 64 in flight held a 240 MB
+ * install against 4,000 slow bodies and 4,000 HTTP/2 streams. A client holds
+ * about its rule's refill times the deadline, so four networks no longer
+ * fill a group, and a flood of one action leaves the other groups theirs.
  */
 export const strangerPace: StrangerPace = {
-  bodies: { perClient: 16, total: 64 },
+  bodies: { forms: 16, heartbeats: 16, others: 16, signIn: 16 },
+  bodyDeadlineMs: 2000,
   checks: {
     burst: 1,
     gapMs: 0,
     overrun: 2,
     turnMs: 5000,
     waiting: { checks: 32 },
+  },
+  rateClients: 10_000,
+  rates: {
+    heartbeat: { capacity: 30, everyMs: 2000 },
+    others: { capacity: 20, everyMs: 1000 },
+    pagePassword: { capacity: 10, everyMs: 6000 },
+    resetMail: { capacity: 3, everyMs: 60_000 },
+    signIn: { capacity: 6, everyMs: 10_000 },
+    subscribe: { capacity: 5, everyMs: 120_000 },
   },
   renders: {
     burst: 60,
@@ -526,7 +587,7 @@ const keyedApi = /^\/api\/(v1|probe)\//;
 /** The largest export an import takes. */
 const uploadLimitBytes = 4 * 1024 ** 3;
 
-/** Whether a request's body is refused before anything reads it: over its limit, or streamed with no length to judge; an import's upload streams in whole, and a heartbeat's streams too, since the route reads a short head of it and cancels the rest. Only a body past a stranger's limit asks `stranger`, so a stranger's small one costs no session read, and a forged cookie fails its signature before any. A body is judged by itself, not by transfer-encoding, which HTTP/2 never sends. */
+/** Whether a request's body is refused before anything reads it: over its limit, or streamed with no length to judge; an import's upload streams in whole, and a heartbeat's streams too, since the route reads a short head of it and cancels the rest. A body past a stranger's limit is a live session's save's alone, the one row a session meets uncounted; only it asks `stranger`, so a stranger's small one costs no session read, and a forged cookie fails its signature before any. A body is judged by itself, not by transfer-encoding, which HTTP/2 never sends. */
 async function oversized(
   request: Request,
   stranger: () => Promise<boolean>
@@ -547,8 +608,13 @@ async function oversized(
     bytes > strangerBodyLimitBytes &&
     !keyedApi.test(pathname) &&
     !pathname.startsWith(heartbeatPathPrefix) &&
-    (await stranger())
+    (!isSave(ruleOf(request, pathname), pathname) || (await stranger()))
   );
+}
+
+/** A save: a post counted as "anything else" outside Better Auth's addresses, the one row a live session goes on uncounted. */
+function isSave(rule: RateRule | undefined, pathname: string): boolean {
+  return rule === "others" && !pathname.toLowerCase().startsWith("/api/auth/");
 }
 
 /** The 413 for a body refused unread, its connection kept when `keep` has room and the body has a length worth reading. */
@@ -562,28 +628,311 @@ function refusedBody(request: Request, keep: () => boolean): Response {
   });
 }
 
-/** How a request leaves the body budget: at once when it carries no body a stranger may send, read before anything asks who sent it (the import, the management API and the probe API read theirs only after a live session or key), or when it is a session's past the budget; a stranger's past the budget or its client's share is answered 503 unread. */
-async function placeIn(
-  bodies: BodyBudget,
-  request: Request,
-  stranger: () => Promise<boolean>
-): Promise<(() => void) | Response> {
-  const none = () => undefined;
-  const { pathname } = new URL(request.url);
+// Start runs the server function a path's first segment after this names, whatever follows it.
+const serverFunctions = "/_serverFn/";
+
+/** The subscribe function's id, which the build names after its file and function. */
+const subscribeId = "routes.-subscriptions--subscribeFn";
+
+/** What no address Raaqeb takes a post at is written with, and what the router decodes into another address: an escape, a backslash, a doubled slash. */
+const unnamed = /%|\\|\/\//;
+
+// Better Auth's router drops them before it matches an endpoint.
+const trailingSlashes = /\/+$/;
+
+/**
+ * The rule a request is counted by, naming its action as the code that
+ * serves it does: a server function by the first segment Start reads, Better
+ * Auth's and the heartbeat's addresses in any letter case, as the router
+ * matches them. A body posted to an address the entry cannot name as the
+ * server would counts against the strictest rule a stranger has, the reset
+ * email's. None for a request the rules never see: one with no body outside
+ * /api/auth/, the import, and the management and probe APIs, which read
+ * their body only after a live session or key.
+ */
+function ruleOf(request: Request, pathname: string): RateRule | undefined {
+  if (request.body !== null && unnamed.test(pathname)) {
+    return "resetMail";
+  }
+  const lower = pathname.toLowerCase();
+  // Better Auth's posts are named by their address, with a body or without: asking for an emailed code takes none and still sends mail.
+  if (lower.startsWith("/api/auth/")) {
+    if (
+      request.method === "GET" ||
+      request.method === "HEAD" ||
+      lower === "/api/auth/sign-in/social"
+    ) {
+      return "others";
+    }
+    return lower.replace(trailingSlashes, "") ===
+      "/api/auth/request-password-reset"
+      ? "resetMail"
+      : "signIn";
+  }
   if (
     request.body === null ||
     pathname === importPath ||
     keyedApi.test(pathname)
   ) {
-    return none;
+    return;
   }
-  const place = bodies(
-    clientNetwork(request.headers.get(clientAddressHeader) ?? "")
+  if (lower.startsWith(heartbeatPathPrefix)) {
+    return "heartbeat";
+  }
+  if (pathname.startsWith(serverFunctions)) {
+    return pathname.slice(serverFunctions.length).split("/")[0] === subscribeId
+      ? "subscribe"
+      : "others";
+  }
+  return lower.startsWith("/api/") || lower.startsWith("/_serverfn/")
+    ? "others"
+    : "pagePassword";
+}
+
+/** What the entry meets a request with: the rate rules' buckets, those of what the install itself issued, the body budget's groups, the heartbeat tokens it has seen, the open storage and the install key. */
+interface Admission {
+  /** The buckets of known browsers and of real heartbeat tokens, apart from strangers' capped table, so a stranger filling that never reaches these: bounded by the cookies and tokens the install issued. */
+  readonly issued: Rates;
+  readonly key: InstallKey;
+  readonly limits: StrangerPace;
+  readonly places: Readonly<Record<BodyGroup, BodyBudget>>;
+  readonly rates: Rates;
+  readonly storage: () => Storage | undefined;
+  /** Heartbeat tokens a lookup found, so a job's next report costs none. */
+  readonly tokens: Set<string>;
+}
+
+/** What a request admitted carries on: its place, if it took one, and how much of its body must arrive by the deadline, if any. */
+interface Admitted {
+  readonly place?: Place;
+  readonly read?: number;
+}
+
+/** How many times a /64's allowance an IPv6 /48 has together: a site holds a few networks, and 65,536 /64s from one site share four networks' worth. */
+const siteShare = 4;
+
+/** Takes a token from the client's buckets, its site's (for IPv6) before its network's, so a refused request spends nothing and adds no client to the table: the seconds to wait when either is spent. */
+function takeRate(
+  admission: Admission,
+  rule: RateRule,
+  address: string
+): number {
+  const rate = admission.limits.rates[rule];
+  const network = clientNetwork(address);
+  const own = admission.rates.waits(rule, rate, network);
+  if (own > 0) {
+    return own;
+  }
+  const site = clientNetwork(address, 48);
+  if (site !== network) {
+    const wait = admission.rates.take(
+      rule,
+      {
+        capacity: rate.capacity * siteShare,
+        everyMs: rate.everyMs / siteShare,
+      },
+      site
+    );
+    if (wait > 0) {
+      return wait;
+    }
+  }
+  return admission.rates.take(rule, rate, network);
+}
+
+/** What a heartbeat call's token earns before its body is read: its own bucket when a monitor has it; 404 for text that is no token or a token no monitor has, the lookup paid for with the network's ordinary allowance; 503 with no database to ask or one that fails. */
+async function heartbeatClient(
+  admission: Admission,
+  pathname: string,
+  address: string,
+  keep: () => boolean
+): Promise<string | Response> {
+  const token = pathname.slice(heartbeatPathPrefix.length).split("/")[0] ?? "";
+  if (admission.tokens.has(token)) {
+    return `token ${token}`;
+  }
+  const notFound = plainAnswer("Not Found", 404);
+  if (!heartbeatTokenSchema.safeParse(token).success) {
+    return notFound;
+  }
+  const wait = takeRate(admission, "others", address);
+  if (wait > 0) {
+    return tooMany(wait, keep);
+  }
+  const storage = admission.storage();
+  if (!storage) {
+    return plainAnswer("Service Unavailable", 503);
+  }
+  // A lookup that fails is the database's fault, not the job's: 503, as the route answers then.
+  const known = await storage.heartbeats.knows(token).catch(() => undefined);
+  if (known === undefined) {
+    return plainAnswer("Service Unavailable", 503);
+  }
+  if (!known) {
+    return notFound;
+  }
+  // Only tokens a monitor had: a few hundred at the floor; past 10,000, the next report asks again.
+  if (admission.tokens.size >= 10_000) {
+    admission.tokens.clear();
+  }
+  admission.tokens.add(token);
+  return `token ${token}`;
+}
+
+/**
+ * How a request meets the rate rules, then the body budget, before anything
+ * reads its body. A browser's post from another site is refused before it
+ * spends a token, so a page anyone opens cannot spend their network's; the
+ * heartbeat takes one from wherever its job runs. A live session's request
+ * is the session's (no rule counts it, no deadline cuts it and no newcomer
+ * takes its place) but at Better Auth's rows, which spend a password check
+ * or send mail. A heartbeat call carrying a body is counted by its token,
+ * any other by its client's site and network, and a sign-in from a known
+ * browser by the browser too once its network's is spent. Past its rule's
+ * bucket a stranger's request is answered 429, and past its group's places,
+ * once no body there is still arriving to give way, 503; a known browser's
+ * sign-in passes the places uncounted.
+ */
+async function admit(
+  request: Request,
+  admission: Admission,
+  stranger: () => Promise<boolean>,
+  keep: () => boolean
+): Promise<Admitted | Response> {
+  const { pathname } = new URL(request.url);
+  const rule = ruleOf(request, pathname);
+  if (rule === undefined) {
+    return {};
+  }
+  if (
+    request.body !== null &&
+    rule !== "heartbeat" &&
+    request.headers.get("sec-fetch-site") === "cross-site"
+  ) {
+    return plainAnswer("Forbidden", 403);
+  }
+  // A live session's save goes on uncounted; every other row spends a hash, sends mail or stores a record, so a session meets it like anyone. Only a request naming a session cookie is asked, so a stranger's costs no session read.
+  if (
+    isSave(rule, pathname) &&
+    carriesSession(request.headers) &&
+    !(await stranger())
+  ) {
+    return {};
+  }
+  const address = request.headers.get(clientAddressHeader) ?? "";
+  const client =
+    rule === "heartbeat"
+      ? await heartbeatClient(admission, pathname, address, keep)
+      : undefined;
+  if (client instanceof Response) {
+    return client;
+  }
+  const storage = admission.storage();
+  const known =
+    rule === "signIn" && storage
+      ? await knownBrowsersOf(storage).read(
+          admission.key,
+          request.headers.get("cookie")
+        )
+      : undefined;
+  const rate = admission.limits.rates[rule];
+  let wait = client
+    ? admission.issued.take(rule, rate, client)
+    : takeRate(admission, rule, address);
+  // A known browser has its own allowance besides its network's, for when neighbours have spent that.
+  if (wait > 0 && known) {
+    wait = admission.issued.take(rule, rate, `known ${known.account}`);
+  }
+  if (wait > 0) {
+    return tooMany(wait, keep);
+  }
+  if (request.body === null) {
+    return {};
+  }
+  return placeFor(admission.places[groupOf[rule]], rule, known);
+}
+
+/** A place in the request's group, and how much of its body must arrive by the deadline: the heartbeat's head, else the whole body, which `oversized` holds to a stranger's limit. Past the places a known browser's sign-in passes uncounted, held to the deadline still, and a stranger's is answered 503. */
+function placeFor(
+  places: BodyBudget,
+  rule: RateRule,
+  known: KnownBrowser | undefined
+): Admitted | Response {
+  const read =
+    rule === "heartbeat" ? heartbeatBodyReadBytes : strangerBodyLimitBytes;
+  const place = places();
+  if (!place) {
+    return known ? { read } : busyAnswer();
+  }
+  return { place, read };
+}
+
+/** A plain refusal no cache keeps. */
+function plainAnswer(
+  text: string,
+  status: number,
+  headers: Record<string, string> = {}
+): Response {
+  return new Response(text, {
+    headers: {
+      "cache-control": "no-store",
+      "content-type": "text/plain; charset=utf-8",
+      ...headers,
+    },
+    status,
+  });
+}
+
+/** The 429 for a client past its rule's bucket, with the seconds until its next token; its connection kept on the terms of a refused body's. */
+function tooMany(seconds: number, keep: () => boolean): Response {
+  return plainAnswer(tooManyRequests, 429, {
+    ...(keep() ? {} : { connection: "close" }),
+    "retry-after": String(seconds),
+  });
+}
+
+/** How a request enters: its body judged by its size, then by the rate rules and the body budget, then by whether it arrives by the deadline; a body that has not arrived whole gives its place back unread, answered 408 on a connection that closes, so a trickle holds nothing. What enters carries its place and the request with its body read. */
+async function enter(
+  request: Request,
+  resolved: Request,
+  admission: Admission,
+  stranger: () => Promise<boolean>,
+  keep: () => boolean
+): Promise<{ leave: () => void; request: Request } | Response> {
+  if (await oversized(request, stranger)) {
+    return refusedBody(resolved, keep);
+  }
+  const admitted = await admit(resolved, admission, stranger, keep);
+  if (admitted instanceof Response) {
+    return admitted;
+  }
+  const { place, read } = admitted;
+  const leave = place?.leave ?? (() => undefined);
+  if (read === undefined) {
+    return { leave, request: resolved };
+  }
+  const deadline = AbortSignal.timeout(admission.limits.bodyDeadlineMs);
+  const arrived = await arrivedWithin(
+    resolved,
+    read,
+    place ? AbortSignal.any([deadline, place.evicted]) : deadline
   );
-  if (place) {
-    return place;
+  if (arrived) {
+    place?.arrived();
+    return { leave, request: arrived };
   }
-  return (await stranger()) ? busyAnswer() : none;
+  leave();
+  return plainAnswer("Request Timeout", 408, { connection: "close" });
+}
+
+/** The request with its body read, at most `bytes` of it, when that arrived before `stop` fired (its deadline, or a newcomer taking its place); nothing after, its stream cancelled. */
+async function arrivedWithin(
+  request: Request,
+  bytes: number,
+  stop: AbortSignal
+): Promise<Request | undefined> {
+  const body = await readBodyHead(request, bytes, stop);
+  return stop.aborted ? undefined : new Request(request, { body });
 }
 
 /**
@@ -624,7 +973,20 @@ export function serve(
     kept += 1;
     return kept <= keptRefusalsPerSecond;
   };
-  const bodies = createBodyBudget(paceLimits.bodies);
+  const admission: Admission = {
+    key: settings.installKey,
+    limits: paceLimits,
+    places: {
+      forms: createBodyBudget(paceLimits.bodies.forms),
+      heartbeats: createBodyBudget(paceLimits.bodies.heartbeats),
+      others: createBodyBudget(paceLimits.bodies.others),
+      signIn: createBodyBudget(paceLimits.bodies.signIn),
+    },
+    issued: createRates(paceLimits.rateClients),
+    rates: createRates(paceLimits.rateClients),
+    storage: () => holder.current,
+    tokens: new Set(),
+  };
   // An unpublished page shows its views to the signed-in operator alone.
   const memo = createPublicMemo({
     key: settings.installKey,
@@ -665,13 +1027,12 @@ export function serve(
         checks,
         () => leaveBudget()
       );
-      const entry = (await oversized(request, stranger))
-        ? refusedBody(resolved, keep)
-        : await placeIn(bodies, resolved, stranger);
+      const entry = await enter(request, resolved, admission, stranger, keep);
       if (entry instanceof Response) {
         return logged(logging, resolved, entry, started);
       }
-      leaveBudget = entry;
+      leaveBudget = entry.leave;
+      const arrived = entry.request;
       // One render: a nonce of its own, named by its answer's policy, so a body the memo keeps is answered under the policy it was rendered for.
       const render = async (
         address: Request,
@@ -694,7 +1055,7 @@ export function serve(
         boot: settings,
         // The entry's own request: the one Bun's idle timer belongs to.
         holdOpen: (seconds: number) => server.timeout(request, seconds),
-        missingView: () => memo.missing(resolved),
+        missingView: () => memo.missing(arrived),
         nonce,
         opener,
         // Read only by the page that asks (the setup checks), so a request pays nothing for it.
@@ -707,7 +1068,7 @@ export function serve(
         publicTarget,
         scheduler: holder.scheduler,
         storage,
-        unpublished: () => memo.unpublished(resolved),
+        unpublished: () => memo.unpublished(arrived),
       });
       // Whether a status page's answer was rendered for this request rather than served from the memo.
       let rendered = false;
@@ -723,14 +1084,14 @@ export function serve(
       try {
         // A try at a private page's password, posted to one of its views, is the memo's to judge.
         memoised =
-          (await memo.attempt(resolved, storage, renderMissing, checked)) ??
+          (await memo.attempt(arrived, storage, renderMissing, checked)) ??
           (await memo.answer(
-            resolved,
+            arrived,
             storage,
             (target, refresh) =>
               paced(visitorLane(refresh, target), async () => {
                 rendered = true;
-                return await render(viewRequest(resolved, refresh), target);
+                return await render(viewRequest(arrived, refresh), target);
               }),
             counter,
             renderMissing,
@@ -739,28 +1100,28 @@ export function serve(
         response =
           memoised ??
           (await memo.notFound(
-            resolved,
+            arrived,
             storage,
             renderMissing,
             counter,
             (pathname) => goneAt(storage, request.method, pathname)
           )) ??
-          (await adminForStranger(resolved, storage, stranger)) ??
+          (await adminForStranger(arrived, storage, stranger)) ??
           (await memo.anonymous(
-            resolved,
+            arrived,
             storage,
             (address) =>
               paced("pages", async () => await render(address, undefined)),
             counter
           )) ??
           (await documentFor(
-            resolved,
+            arrived,
             { checked, paced, settings, storage },
-            async () => await render(resolved, undefined)
+            async () => await render(arrived, undefined)
           ));
       } catch (thrown) {
         if (logging) {
-          logRequest(resolved, 500, started, undefined);
+          logRequest(arrived, 500, started, undefined);
         }
         throw thrown;
       } finally {
@@ -770,7 +1131,7 @@ export function serve(
       }
       if (logging) {
         logRequest(
-          resolved,
+          arrived,
           response.status,
           started,
           memoAnswer(memoised, rendered)
@@ -904,34 +1265,42 @@ interface DocumentGates {
   readonly storage: Storage | undefined;
 }
 
-/** The lane a stranger's document renders in: a subscription's page, an onboarding screen, a reset link or an invitation that is open, every other one; the check tells an open link from one that is not. */
-async function laneOf(url: URL, gates: DocumentGates): Promise<RenderLane> {
+/** The lane a stranger's document renders in: a subscription's page, an onboarding screen, a reset link or an invitation that is open, every other one; the check tells an open link from one that is not, and names the account an open reset link is for. */
+async function laneOf(
+  url: URL,
+  gates: DocumentGates
+): Promise<{ readonly lane: RenderLane; readonly opens?: string }> {
   if (subscriptionPage.test(url.pathname)) {
-    return "subscriptions";
+    return { lane: "subscriptions" };
   }
   if (onboardingScreen.test(url.pathname)) {
-    return "onboarding";
+    return { lane: "onboarding" };
   }
   const token = url.searchParams.get("token");
+  let opens: string | undefined;
+  const open = (email: string | undefined) => {
+    opens = email;
+    return email !== undefined;
+  };
   if (resetPage.test(url.pathname) && token) {
-    const open = await gates.checked(() =>
-      resetOpen(gates.storage, gates.settings, token)
+    const checked = await gates.checked(async () =>
+      open(await resetAccount(gates.storage, gates.settings, token))
     );
-    return open ? "reset" : "others";
+    return checked ? { lane: "reset", opens } : { lane: "others" };
   }
-  // An open invitation shares the open reset link's lane: both are one person's link, rare and short-lived.
+  // An open invitation shares the open reset link's lane: both are one person's link, rare and short-lived. It makes no browser known: the sign-in that accepting it makes does.
   if (invitationPage.test(url.pathname) && token) {
-    const open = await gates.checked(
+    const checked = await gates.checked(
       async () =>
         (await readInvitation(gates.storage, token.slice(0, 200), Date.now()))
           .ok
     );
-    return open ? "reset" : "others";
+    return { lane: checked ? "reset" : "others" };
   }
-  return "others";
+  return { lane: "others" };
 }
 
-/** The app's answer to any other request: a document renders at its lane's pace, anything else at once. */
+/** The app's answer to any other request: a document renders at its lane's pace, anything else at once. An open reset link makes the browser known for its account, so a way in a flood cannot reach ends in a sign-in it cannot refuse either. */
 async function documentFor(
   request: Request,
   gates: DocumentGates,
@@ -946,27 +1315,33 @@ async function documentFor(
   ) {
     return await render();
   }
-  return await gates.paced(await laneOf(url, gates), render);
+  const { lane, opens } = await laneOf(url, gates);
+  const response = await gates.paced(lane, render);
+  if (opens !== undefined && gates.storage && response.ok) {
+    response.headers.append(
+      "set-cookie",
+      await knownBrowsersOf(gates.storage).cookie(
+        gates.settings.installKey,
+        opens,
+        request.headers.get(requestOriginHeader)?.startsWith("https:") ?? false
+      )
+    );
+  }
+  return response;
 }
 
-/** Whether a reset link is one the install would honour now; a read that fails says no, and the page renders as any other. */
-async function resetOpen(
+/** The id of the account an open reset link is for; a read that fails says none, and the page renders as any other. */
+async function resetAccount(
   storage: Storage | undefined,
   settings: BootSettings,
   token: string
-): Promise<boolean> {
+): Promise<string | undefined> {
   if (!storage) {
-    return false;
+    return;
   }
-  try {
-    return await resetLinkOpen(
-      await authFor(storage, settings),
-      token,
-      Date.now()
-    );
-  } catch {
-    return false;
-  }
+  return await authFor(storage, settings)
+    .then((auth) => resetLinkAccount(auth, token, Date.now()))
+    .catch(() => undefined);
 }
 
 /** An admin page, as the guard reads it; its import upload and history download are server routes with answers of their own. */

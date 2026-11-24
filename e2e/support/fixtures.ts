@@ -9,6 +9,7 @@ import {
 } from "@playwright/test";
 import type { MessageId } from "@/shared/i18n/messages.ts";
 import { messages as englishCatalog } from "../../locales/en/messages.ts";
+import { englishOrigin, knownBrowserFile } from "./servers.ts";
 
 declare global {
   interface Window {
@@ -19,9 +20,9 @@ declare global {
 
 /**
  * A client address no other test in the run shares: the English e2e server
- * trusts 127.0.0.1 as a proxy, so this forwarded address is the one Better
- * Auth's rate limit keys on, and a spec's sign-in attempts never spend
- * another spec's budget. The Arabic server trusts no proxy and ignores it.
+ * trusts 127.0.0.1 as a proxy, so this forwarded address is the one the rate
+ * rules key on, and a spec's sign-in attempts never spend another spec's
+ * budget. The Arabic server trusts no proxy and ignores it.
  */
 export function clientAddress(parallelIndex: number): string {
   const low = Math.floor(Math.random() * 254) + 1;
@@ -47,13 +48,52 @@ function hydrated(page: Page): Promise<unknown> {
   );
 }
 
-export const test = base.extend<{ address: string }>({
+/**
+ * The operator's browser on the English install is a known browser, as a real
+ * operator's is after their first sign-in: the install signs in once as it
+ * starts (serve-en.ts) and every context carries that cookie, so the suite's
+ * sign-ins to one account from fresh contexts are not a stranger's tries at
+ * it. A spec that measures a stranger's sign-in uses `request`, which carries
+ * no cookie.
+ */
+export const test = base.extend<
+  { address: string },
+  { knownBrowser: string | undefined }
+>({
+  knownBrowser: [
+    // biome-ignore lint/correctness/noEmptyPattern: Playwright reads the destructuring to order fixtures
+    async ({}, use) => {
+      const file = Bun.file(knownBrowserFile);
+      // The install writes it a moment after it listens.
+      for (let wait = 0; wait < 100; wait += 1) {
+        // biome-ignore lint/performance/noAwaitInLoops: each look waits for the one before
+        if (await file.exists()) {
+          break;
+        }
+        await Bun.sleep(100);
+      }
+      await use((await file.exists()) ? await file.text() : undefined);
+    },
+    { scope: "worker" },
+  ],
   // biome-ignore lint/correctness/noEmptyPattern: Playwright reads the destructuring to order fixtures
   address: async ({}, use, testInfo) => {
     await use(clientAddress(testInfo.parallelIndex));
   },
-  page: async ({ address, context, page }, use) => {
+  page: async ({ address, context, knownBrowser, page }, use) => {
     await context.setExtraHTTPHeaders({ "x-forwarded-for": address });
+    if (knownBrowser) {
+      await context.addCookies([
+        {
+          domain: new URL(englishOrigin).hostname,
+          httpOnly: true,
+          name: "raaqeb.known",
+          path: "/api/auth",
+          sameSite: "Lax",
+          value: knownBrowser,
+        },
+      ]);
+    }
     await context.addInitScript(() => {
       const noop = () => undefined;
       window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {

@@ -40,7 +40,7 @@ The URL is stored encrypted with the install key. One URL is one subscription pe
 
 ## Rate limit
 
-Each client may sign up 5 times in 10 minutes. The client is the visitor's address as seen behind your [trusted proxies](/en/docs/operate/reverse-proxy); an IPv6 /64 counts as one client. The count is kept in memory, so a restart clears it. Past the limit, the form says "Too many sign-ups from here. Try again in a few minutes."
+Each client may sign up 5 times at once, then once every 2 minutes, by the [rate rule](/en/docs/operate/reverse-proxy#rate-rules) for subscribing. The client is the visitor's address as seen behind your [trusted proxies](/en/docs/operate/reverse-proxy); an IPv6 /64 counts as one client. Every attempt counts, one with a mistyped address too. The count is kept in memory, so a restart clears it. Past the rule, the form says "Too many sign-ups from here. Try again in a few minutes." Before 0.3.0 the limit was 5 sign-ups in 10 minutes.
 
 ## Confirm
 

@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { SubscriptionChannel } from "@/shared/schemas/page.ts";
+import { tooManyRequests } from "@/shared/schemas/subscription.ts";
 import { render } from "./fixture.tsx";
-import { SubscribeForm } from "./subscribe.tsx";
+import { refusalOf, SubscribeForm } from "./subscribe.tsx";
 
 const feed = "https://status.example.test/en/feed.atom";
 
@@ -62,5 +63,13 @@ describe("the feed as a way to follow a status page", () => {
   test("without JavaScript a page that offers channels still links the feed", () => {
     const noscript = card(["email"]).match(noscriptPart)?.[1];
     expect(noscript).toContain(`href="${feed}"`);
+  });
+});
+
+describe("a post the server refused", () => {
+  test("past the rate rule for subscribing says too many sign-ups from here; any other failure says it could not be saved", () => {
+    expect(refusalOf(new Error(tooManyRequests))).toBe("limited");
+    expect(refusalOf(new Error("Service Unavailable"))).toBe("unavailable");
+    expect(refusalOf(new TypeError("Failed to fetch"))).toBe("unavailable");
   });
 });

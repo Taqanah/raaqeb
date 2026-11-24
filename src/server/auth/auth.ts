@@ -2,11 +2,12 @@
  * The auth module's interface: one Better Auth instance
  * per open storage, built from `better-auth/minimal` over the storage's
  * adapter, the versioned secret, the public address and the trusted proxies.
- * Sign-in and sign-out go over HTTP through `handleAuth` so Better Auth's own
- * rate limit, origin check and disabled-paths check apply (they run only in
- * its router, never on `auth.api`); the rate limit keys on the client address
- * the entry resolved behind the trusted proxies (server/boot/proxies.ts). The
- * admin guard reads the session on the server through `readOperator`.
+ * Sign-in and sign-out go over HTTP through `handleAuth` so Better Auth's
+ * origin check and disabled-paths check apply (they run only in its router,
+ * never on `auth.api`); the entry's rate rules count each request first,
+ * keyed on the client address it resolved behind the trusted proxies
+ * (server/boot/proxies.ts). The admin guard reads the session on the server
+ * through `readOperator`.
  */
 
 import type { BetterAuthPlugin } from "better-auth";
@@ -20,6 +21,7 @@ import { generateRandomString } from "better-auth/crypto";
 import { betterAuth } from "better-auth/minimal";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { record } from "@/server/audit/audit.ts";
+import type { InstallKey } from "@/server/boot/installkey.ts";
 import { clientAddressHeader } from "@/server/boot/proxies.ts";
 import type { BootSettings } from "@/server/boot/settings.ts";
 import { error as logError, info as logInfo, reasonOf } from "@/server/log.ts";
@@ -27,12 +29,20 @@ import { readPublicAddress } from "@/server/settings/address.ts";
 import type { AuthDatabase } from "@/server/storage/auth.ts";
 import type { Storage } from "@/server/storage/storage.ts";
 import type { Role } from "@/shared/domain/roles.ts";
+import { emailMaxLength } from "@/shared/schemas/auth.ts";
 import {
   closedGate,
   type InvitationGate,
   invitationAccept,
   invitationGate,
 } from "./invitation.ts";
+import {
+  createKnownBrowsers,
+  type KnownBrowsers,
+  knownBrowserCookieName,
+  knownBrowserCookieOptions,
+  knownBrowsersOf,
+} from "./known-browsers.ts";
 import { authMailOver } from "./mail.ts";
 import { hashPassword, verifyPassword } from "./password.ts";
 import { disabledPaths, unblockablePaths } from "./paths.ts";
@@ -92,14 +102,27 @@ export async function resetLinkOpen(
   token: string,
   now: number
 ): Promise<boolean> {
+  return (await resetLinkAccount(auth, token, now)) !== undefined;
+}
+
+/** The id of the account an open reset link resets; nothing for a link the install would not honour now. */
+export async function resetLinkAccount(
+  auth: Auth,
+  token: string,
+  now: number
+): Promise<string | undefined> {
   if (token === "") {
-    return false;
+    return;
   }
-  // The row Better Auth's request writes and its reset deletes (api/routes/password.mjs).
-  const row = await (await auth.$context).internalAdapter.findVerificationValue(
+  const { internalAdapter } = await auth.$context;
+  // The row Better Auth's request writes and its reset deletes (api/routes/password.mjs), its value the account's id.
+  const row = await internalAdapter.findVerificationValue(
     `reset-password:${token}`
   );
-  return row !== null && row !== undefined && row.expiresAt.getTime() > now;
+  if (!row || row.expiresAt.getTime() <= now) {
+    return;
+  }
+  return (await internalAdapter.findUserById(row.value))?.id;
 }
 
 /** Deletes every trusted browser: Better Auth's rows are `trust-device-<random>`, one per browser. */
@@ -124,8 +147,12 @@ export interface CreateAuthInput {
   /** The public address as an origin, Better Auth's base URL and its one trusted origin; nothing before onboarding stores one, and then Better Auth infers it from the request. */
   readonly baseURL: string | undefined;
   readonly database: AuthDatabase;
+  /** The install key a known browser's cookie is sealed with; without it no browser becomes known and no password try is held back. */
+  readonly installKey?: InstallKey;
   /** The invitations the accept endpoint takes; none is open by default. */
   readonly invitations?: InvitationGate;
+  /** The counts of known browsers and password tries, which the entry shares; fresh ones by default. */
+  readonly knownBrowsers?: KnownBrowsers;
   /** Better Auth's own log lines, already prefixed; routed to stderr by default. */
   readonly log?: (line: string) => void;
   readonly mail: AuthMail;
@@ -451,12 +478,99 @@ export type AuthAudit = (event: {
   readonly input: unknown;
 }) => Promise<void>;
 
-/** The Better Auth instance for these inputs: minimal build, Argon2id, UUIDv7 ids, 7-day sessions refreshed daily, the disabled-paths list, the in-memory rate limit keyed on the address the entry resolved. */
+/** The Better Auth instance for these inputs: minimal build, Argon2id, UUIDv7 ids, 7-day sessions refreshed daily, the disabled-paths list, no rate limit of its own: the entry counts these requests. */
 export function createAuth(input: CreateAuthInput) {
   const log = input.log ?? logError;
   const invitations = input.invitations ?? closedGate;
   const { sso } = input;
   const ssoRequired = input.ssoRequired === true;
+  const browsers = input.knownBrowsers ?? createKnownBrowsers();
+  const secure = input.baseURL?.startsWith("https://") ?? false;
+  /** The known browser a password sign-in comes from, when it is known for the account typed. */
+  const knownFor = async (ctx: HookContext) => {
+    if (ctx.path !== "/sign-in/email" || !(ctx.request && input.installKey)) {
+      return { checked: false, known: undefined } as const;
+    }
+    const known = await browsers.read(
+      input.installKey,
+      ctx.request.headers.get("cookie")
+    );
+    const typed = String(ctx.body?.email ?? "").toLowerCase();
+    // Known for the account typed: the cookie names an id, so an address a new account took again is not the old account's.
+    const account = known
+      ? (await ctx.context.internalAdapter.findUserByEmail(typed))?.user.id
+      : undefined;
+    return {
+      checked: true,
+      known: known && account === known.account ? known : undefined,
+      typed,
+    } as const;
+  };
+  /** A password try from a browser not known for the account typed is held to that account's tries and the install's password checks, before any hash. */
+  const guardGuess = async (ctx: HookContext) => {
+    // No account has a longer address, and counting one would let each typed address hold memory of its own size.
+    if (
+      ctx.path === "/sign-in/email" &&
+      String(ctx.body?.email ?? "").length > emailMaxLength
+    ) {
+      throw new APIError("BAD_REQUEST", {
+        code: "INVALID_EMAIL",
+        message: "Invalid email",
+      });
+    }
+    const sign = await knownFor(ctx);
+    const wait =
+      sign.checked && !sign.known ? browsers.guessWait(sign.typed) : 0;
+    if (wait > 0) {
+      throw new APIError(
+        "TOO_MANY_REQUESTS",
+        {
+          code: tooManyPasswordsCode,
+          message: "too many password tries lately",
+        },
+        { "retry-after": String(wait) }
+      );
+    }
+  };
+  /** A known browser's wrong password for its own account counts against it; ten and it is a stranger's again. */
+  const countKnownWrong = async (ctx: HookContext) => {
+    const { known } = await knownFor(ctx);
+    if (known) {
+      browsers.countWrong(known);
+    }
+  };
+  /**
+   * What a sign-in that made a session leaves: the account's last sign-in, and
+   * over HTTP a browser known for the account, renewed at each sign-in. A
+   * plugin, so it runs after the two-factor plugin's hook has decided whether
+   * a code is due and taken back the session a password alone would open.
+   */
+  const signedIn: BetterAuthPlugin = {
+    hooks: {
+      after: [
+        {
+          handler: createAuthMiddleware(async (ctx) => {
+            const user = ctx.context.newSession?.user;
+            if (!user || refused(ctx.context.returned)) {
+              return;
+            }
+            await ctx.context.internalAdapter.updateUser(user.id, {
+              lastSignInAt: new Date(),
+            });
+            if (ctx.request && input.installKey) {
+              ctx.setCookie(
+                knownBrowserCookieName,
+                await browsers.seal(input.installKey, user.id),
+                { ...knownBrowserCookieOptions, secure }
+              );
+            }
+          }),
+          matcher: (ctx) => signingInPaths.has(ctx.path ?? ""),
+        },
+      ],
+    },
+    id: "raaqeb-signed-in",
+  };
   // The role each address signing up through the provider was admitted with, from the admission check to the account's creation a moment later in the same callback.
   const admitted = new Map<string, Role>();
   // The address the provider gave in a callback, for the audit entry of a sign-in it refuses.
@@ -622,6 +736,9 @@ export function createAuth(input: CreateAuthInput) {
           ) {
             await countWrongPassword(ctx);
           }
+          if (returned.body?.code === "INVALID_EMAIL_OR_PASSWORD") {
+            await countKnownWrong(ctx);
+          }
           return;
         }
         if (ctx.path === "/reset-password") {
@@ -630,11 +747,6 @@ export function createAuth(input: CreateAuthInput) {
         }
         const user = ctx.context.newSession?.user;
         // A sign-in that made a session is the account's last one; a password change re-issuing one is none.
-        if (user && signingInPaths.has(ctx.path)) {
-          await ctx.context.internalAdapter.updateUser(user.id, {
-            lastSignInAt: new Date(),
-          });
-        }
         // An app code that signed in is spent until its window has passed (RFC 6238, 5.2); Better Auth keeps no record.
         // Only a sign-in over HTTP spends it: the setup's first code may sign in next.
         if (
@@ -662,6 +774,7 @@ export function createAuth(input: CreateAuthInput) {
       }),
       // A password change ends every other session; the caller cannot opt out.
       before: createAuthMiddleware(async (ctx) => {
+        await guardGuess(ctx);
         if (secondStepPaths.has(ctx.path) || backupCodePaths.has(ctx.path)) {
           await guardCodes(ctx);
         }
@@ -708,21 +821,12 @@ export function createAuth(input: CreateAuthInput) {
       invitationAccept(invitations, (role) =>
         passwordRefused(ssoRequired, role)
       ),
+      signedIn,
       signInLog(log, input.audit, providerEmails),
       ...(sso ? [ssoPlugin(sso)] : []),
     ],
-    rateLimit: {
-      // A reset request sends an email, so it keeps Better Auth's 3 a minute; the reset itself and accepting an invitation get sign-in's 3 in 10 seconds.
-      // Starting single sign-on checks no secret (the provider guards its own sign-in), so it gets Better Auth's general 100 in 10 seconds, not the password's 3: a team behind one NAT would meet those.
-      customRules: {
-        "/invitation/accept": { max: 3, window: 10 },
-        "/request-password-reset": { max: 3, window: 60 },
-        "/reset-password": { max: 3, window: 10 },
-        "/sign-in/social": { max: 100, window: 10 },
-      },
-      enabled: true,
-      storage: "memory",
-    },
+    // The entry's rate rules count every request under /api/auth/ before its body is read (server.ts, `ruleOf`), so Better Auth's own, which counts after, is off.
+    rateLimit: { enabled: false },
     secrets: parseSecrets(input.secrets),
     session: {
       // How the session signed in, which the second step an owner requires reads.
@@ -839,7 +943,9 @@ export async function buildAuth(
   return createAuth({
     baseURL: address,
     database: storage.authDatabase,
+    installKey: boot.installKey,
     invitations: invitationGate(storage),
+    knownBrowsers: knownBrowsersOf(storage),
     mail,
     secrets: resolved.secrets,
   });
@@ -893,7 +999,9 @@ async function buildFor(storage: Storage, boot: AuthBoot): Promise<Auth> {
     audit: (event) => record(storage, { ...event, now: Date.now() }),
     baseURL: address,
     database: storage.authDatabase,
+    installKey: boot.installKey,
     invitations: invitationGate(storage),
+    knownBrowsers: knownBrowsersOf(storage),
     mail: authMailOver(
       storage,
       boot.installKey,

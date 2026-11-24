@@ -19,15 +19,11 @@ import {
 import {
   actionResponse,
   confirmSubscription,
-  createSignUpLimiter,
   listSubscribers,
   offeredChannels,
   readSubscription,
   removeSubscriber,
-  type SignUpLimiter,
   type SignUpOptions,
-  signUpPeriodMs,
-  signUpsPerClient,
   subscribe,
   subscriptionFrame,
   subscriptionView,
@@ -118,13 +114,11 @@ function options(
 ): SignUpOptions & { readonly confirmations: string[] } {
   const confirmations: string[] = [];
   return {
-    client: "203.0.113.5",
     confirm: (id) => {
       confirmations.push(id);
       return Promise.resolve(true);
     },
     confirmations,
-    limiter: createSignUpLimiter(Number.POSITIVE_INFINITY),
     lookup: internet,
     now,
     ...overrides,
@@ -269,65 +263,6 @@ describe("signing up", () => {
       ).toEqual({ ok: false, reason: "unreachable" });
     }
     expect(await s.storage.subscriptions.list(main)).toEqual([]);
-  });
-
-  test("a client gets five sign-ups in ten minutes: the sixth is limited and stores nothing, another client is not, and the period's end frees it", async () => {
-    const { main, s } = await world();
-    await emailChannel(s);
-    const limiter = createSignUpLimiter();
-    const at = (client: string, offset: number, address: string) =>
-      subscribe(
-        s.storage,
-        key,
-        email(main, address),
-        options({ client, limiter, now: now + offset })
-      );
-    for (let n = 0; n < signUpsPerClient; n += 1) {
-      // biome-ignore lint/performance/noAwaitInLoops: the limiter counts in order
-      expect(await at("203.0.113.5", n, `r${n}@example.test`)).toEqual({
-        ok: true,
-      });
-    }
-    expect(await at("203.0.113.5", 10, "late@example.test")).toEqual({
-      ok: false,
-      reason: "limited",
-    });
-    expect(
-      (await s.storage.subscriptions.list(main)).map((each) => each.address)
-    ).not.toContain("late@example.test");
-    expect(await at("198.51.100.8", 10, "other@example.test")).toEqual({
-      ok: true,
-    });
-    expect(
-      await at("203.0.113.5", signUpPeriodMs, "later@example.test")
-    ).toEqual({
-      ok: true,
-    });
-  });
-
-  test("addresses of one IPv6 /64 share one allowance, as one client", () => {
-    const limiter = createSignUpLimiter(2, 1000);
-    expect(limiter.take("2001:db8:1:2::1", 0)).toBe(true);
-    expect(limiter.take("2001:db8:1:2:ffff::9", 1)).toBe(true);
-    expect(limiter.take("2001:0db8:0001:0002:abcd::1", 2)).toBe(false);
-    expect(limiter.take("2001:db8:1:3::1", 2)).toBe(true);
-    expect(limiter.take("203.0.113.5", 2)).toBe(true);
-  });
-
-  test("an IPv4 address written in IPv6 counts as that IPv4 address, apart from any other and from ::1", () => {
-    const limiter = createSignUpLimiter(1, 1000);
-    expect(limiter.take("::ffff:10.0.0.1", 0)).toBe(true);
-    expect(limiter.take("::ffff:10.0.0.2", 0)).toBe(true);
-    expect(limiter.take("10.0.0.1", 0)).toBe(false);
-    expect(limiter.take("::1", 0)).toBe(true);
-  });
-
-  test("the limiter counts sign-ups with no known client together", () => {
-    const limiter: SignUpLimiter = createSignUpLimiter(2, 1000);
-    expect(limiter.take(undefined, 0)).toBe(true);
-    expect(limiter.take(undefined, 1)).toBe(true);
-    expect(limiter.take(undefined, 2)).toBe(false);
-    expect(limiter.take("a", 2)).toBe(true);
   });
 
   test("a confirmation that could not be queued, or a database that fails, answers unavailable", async () => {
@@ -708,37 +643,19 @@ describe("what a confirm or unsubscribe POST answers", () => {
 });
 
 describe("edges of signing up", () => {
-  test("a client past its share is limited before any read, so a flood costs no query", async () => {
+  test("a webhook refused as written, not https or on a private address, is unreachable before any read", async () => {
     const { main, s } = await world();
-    const limiter = createSignUpLimiter(1);
-    await subscribe(s.storage, key, webhook(main), options({ limiter }));
     await s.storage.close();
-    expect(
-      await subscribe(s.storage, key, webhook(main), options({ limiter }))
-    ).toEqual({ ok: false, reason: "limited" });
-  });
-
-  test("a webhook refused as written, not https or on a private address, costs the client no sign-up", async () => {
-    const { main, s } = await world();
-    const limiter = createSignUpLimiter(1);
     for (const address of [
       "http://hooks.example.com/raaqeb",
       "https://10.0.0.4/raaqeb",
       "not a url",
     ]) {
       expect(
-        // biome-ignore lint/performance/noAwaitInLoops: the limiter counts in order
-        await subscribe(
-          s.storage,
-          key,
-          webhook(main, address),
-          options({ limiter })
-        )
+        // biome-ignore lint/performance/noAwaitInLoops: one sign-up after another
+        await subscribe(s.storage, key, webhook(main, address), options())
       ).toEqual({ ok: false, reason: "unreachable" });
     }
-    expect(
-      await subscribe(s.storage, key, webhook(main), options({ limiter }))
-    ).toEqual({ ok: true });
   });
 
   test("an unsubscribed address that signs up again gets a new confirmation", async () => {

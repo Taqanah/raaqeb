@@ -7,8 +7,8 @@
  * already confirmed, so the form never tells who is subscribed: a new or
  * unsubscribed address becomes pending and gets its confirmation, a pending
  * one gets another no sooner than ten minutes after the last, a confirmed
- * one gets nothing. Each client may sign up five times in ten minutes. A
- * webhook's URL must be https on the public internet; it is sealed with the
+ * one gets nothing. How often a client may sign up is the entry's rate
+ * rule for subscribing. A webhook's URL must be https on the public internet; it is sealed with the
  * install key and kept apart from the others by its SHA-256. A link that is
  * 48 hours old no longer confirms, and the nightly job deletes it. Results
  * never throw.
@@ -16,7 +16,6 @@
 
 import { authEmailChannelOf } from "@/server/auth/mail.ts";
 import { decrypt, encrypt, type InstallKey } from "@/server/boot/installkey.ts";
-import { clientNetwork } from "@/server/boot/proxies.ts";
 import {
   type HostLookup,
   lookupHost,
@@ -50,48 +49,6 @@ export type SubscriptionStorage = Pick<
   "channels" | "notifications" | "pages" | "settings" | "subscriptions"
 >;
 
-/** Sign-ups a client may make in one period, and the period. */
-export const signUpsPerClient = 5;
-export const signUpPeriodMs = 10 * 60 * 1000;
-
-/** Counts each client's sign-ups in memory, one process; a restart forgets them. */
-export interface SignUpLimiter {
-  /** Takes one sign-up for the client at `now`; false once it has had its share of the period. A request with no known client shares one allowance. */
-  readonly take: (client: string | undefined, now: number) => boolean;
-}
-
-export function createSignUpLimiter(
-  limit: number = signUpsPerClient,
-  periodMs: number = signUpPeriodMs
-): SignUpLimiter {
-  /** Each client's sign-ups inside the period, oldest first. */
-  const taken = new Map<string, number[]>();
-  /** When the map last dropped the clients quiet for a period. */
-  let swept = 0;
-  return {
-    take: (client, now) => {
-      // One host holds a whole IPv6 /64, so the /64 is the client.
-      const key = client === undefined ? "" : clientNetwork(client);
-      const recent = (taken.get(key) ?? []).filter((at) => now - at < periodMs);
-      if (recent.length >= limit) {
-        taken.set(key, recent);
-        return false;
-      }
-      taken.set(key, [...recent, now]);
-      // Once a period, the clients quiet for a whole one are forgotten, so the map holds the clients of about two periods and a sign-up rarely walks it.
-      if (now - swept >= periodMs) {
-        swept = now;
-        for (const [other, times] of taken) {
-          if (times.every((at) => now - at >= periodMs)) {
-            taken.delete(other);
-          }
-        }
-      }
-      return true;
-    },
-  };
-}
-
 /** The channels a page offers: those its customization shows, email only while sign-in mail has its channel, which sends subscriber email. */
 export function offeredChannels(
   page: Pick<StatusPage, "customization">,
@@ -105,11 +62,8 @@ export function offeredChannels(
 export interface SignUpOptions {
   /** Whether the visitor may see the page, as its page access judges them; without it a private page takes no sign-up. */
   readonly admits?: (page: GuardedPage) => Promise<boolean>;
-  /** The client's address behind the trusted proxies, which the limiter counts by. */
-  readonly client: string | undefined;
   /** Queues the confirmation of the subscription; false when it could not be queued. */
   readonly confirm: (subscriptionId: string) => Promise<boolean>;
-  readonly limiter: SignUpLimiter;
   /** Resolves a webhook's host; the system's resolver when absent. */
   readonly lookup?: HostLookup;
   readonly now: number;
@@ -125,13 +79,9 @@ export async function subscribe(
   input: SubscribeInput,
   options: SignUpOptions
 ): Promise<SubscribeResult> {
-  // An address refused on sight costs no sign-up: the visitor fixes a typo without using up the allowance.
+  // An address refused on sight costs no query.
   if (input.channel === "webhook" && webhookRefusedAsWritten(input.address)) {
     return { ok: false, reason: "unreachable" };
-  }
-  // Counted before any read, so a flood from one client costs no query.
-  if (!options.limiter.take(options.client, options.now)) {
-    return { ok: false, reason: "limited" };
   }
   try {
     const [page, mail] = await Promise.all([

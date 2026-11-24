@@ -204,7 +204,7 @@ test("a locale the install does not ship is ignored: the page renders in the ins
   await expect(page.locator(emailField)).toHaveCount(1);
 });
 
-test("over the wire: a disabled endpoint is Not Found, a foreign origin is refused, the fourth attempt is rate limited", async ({
+test("over the wire: a disabled endpoint is Not Found, a foreign origin is refused, the seventh attempt is rate limited", async ({
   request,
 }, testInfo) => {
   const address = clientAddress(testInfo.parallelIndex);
@@ -214,37 +214,41 @@ test("over the wire: a disabled endpoint is Not Found, a foreign origin is refus
   expect(session.status()).toBe(404);
   expect(await session.text()).toBe("Not Found");
 
-  // Its own address: the limiter runs before the origin check, so a refused origin spends budget too.
-  const foreign = await request.post(
-    `${englishOrigin}/api/auth/sign-in/email`,
-    {
-      data: { email: operatorEmail, password: operatorPassword },
-      headers: {
-        origin: "https://evil.example",
-        "x-forwarded-for": clientAddress(testInfo.parallelIndex),
-      },
-    }
+  const signIn = (
+    data: Record<string, string>,
+    headers: Record<string, string>
+  ) =>
+    request.post(`${englishOrigin}/api/auth/sign-in/email`, {
+      data,
+      headers: { "x-forwarded-for": address, ...headers },
+    });
+  // A browser's post from another site is refused before it spends anything.
+  const crossSite = await signIn(
+    { email: operatorEmail, password: operatorPassword },
+    { origin: "https://evil.example", "sec-fetch-site": "cross-site" }
+  );
+  expect(crossSite.status()).toBe(403);
+  // Any other client may name any origin, so its refused one spends a token.
+  const foreign = await signIn(
+    { email: operatorEmail, password: operatorPassword },
+    { origin: "https://evil.example" }
   );
   expect(foreign.status()).toBe(403);
 
-  // One address for all four: the limit is per client, and this client spends its own budget.
-  const bad = { email: operatorEmail, password: "not the password" };
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    // biome-ignore lint/performance/noAwaitInLoops: the limiter counts requests in order
-    const response = await request.post(
-      `${englishOrigin}/api/auth/sign-in/email`,
-      {
-        data: bad,
-        headers: { origin: englishOrigin, "x-forwarded-for": address },
-      }
-    );
+  // One address for all: the rule is per client, and this client spends its own six. An address with no account, a fifth of a second apart, so neither the account's ten tries nor the install's five checks a second, which the run's other specs share, decide it.
+  const bad = { email: "seventh@example.com", password: "not the password" };
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    // biome-ignore lint/performance/noAwaitInLoops: the bucket counts requests in order
+    const response = await signIn(bad, { origin: englishOrigin });
     expect(response.status(), `attempt ${attempt}`).toBe(401);
+    await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  const fourth = await request.post(`${englishOrigin}/api/auth/sign-in/email`, {
-    data: bad,
-    headers: { origin: englishOrigin, "x-forwarded-for": address },
-  });
-  expect(fourth.status()).toBe(429);
+  const seventh = await signIn(bad, { origin: englishOrigin });
+  expect(seventh.status()).toBe(429);
+  // The seconds until the next try, at most the rule's ten; the spacing above has already earned part of one.
+  const wait = Number(seventh.headers()["retry-after"]);
+  expect(wait).toBeGreaterThanOrEqual(1);
+  expect(wait).toBeLessThanOrEqual(10);
 });
 
 test("on the install with no database yet, the auth endpoints answer 503 before Better Auth runs", async ({

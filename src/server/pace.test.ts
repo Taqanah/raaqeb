@@ -258,27 +258,41 @@ describe("the answer to a render with no room", () => {
 });
 
 describe("the body budget", () => {
-  test("gives a place while the client is under its share and the total under its own, and each place back once", () => {
-    const take = createBodyBudget({ perClient: 2, total: 4 });
-    const first = take("a");
-    const second = take("a");
+  test("gives a place while any is free, and each place back once", () => {
+    const take = createBodyBudget(2);
+    const first = take();
+    const second = take();
+    first?.arrived();
+    second?.arrived();
     expect(first && second).toBeDefined();
-    expect(take("a")).toBeUndefined();
-    const other = take("b");
-    expect(other).toBeDefined();
-    first?.();
-    first?.();
-    // One place back, once: the client has room for exactly one more.
-    const third = take("a");
+    expect(take()).toBeUndefined();
+    first?.leave();
+    first?.leave();
+    // One place back, once: room for exactly one more.
+    const third = take();
+    third?.arrived();
     expect(third).toBeDefined();
-    expect(take("a")).toBeUndefined();
-    expect(take("c")).toBeDefined();
-    expect(take("d")).toBeUndefined();
-    second?.();
-    third?.();
-    other?.();
-    expect(take("a") && take("a")).toBeDefined();
-    expect(take("d")).toBeDefined();
-    expect(take("e")).toBeUndefined();
+    expect(take()).toBeUndefined();
+    second?.leave();
+    third?.leave();
+    expect(take() && take()).toBeDefined();
+  });
+
+  test("when full, a newcomer takes the place of the oldest body still arriving, which is told and whose own giving back gives nothing; a body that arrived keeps its place", () => {
+    const take = createBodyBudget(2);
+    const oldest = take();
+    const next = take();
+    const newcomer = take();
+    expect(newcomer).toBeDefined();
+    expect(oldest?.evicted.aborted).toBe(true);
+    expect(next?.evicted.aborted).toBe(false);
+    oldest?.leave();
+    next?.arrived();
+    newcomer?.arrived();
+    // Every body has arrived: nothing to give way.
+    expect(take()).toBeUndefined();
+    expect(next?.evicted.aborted).toBe(false);
+    next?.leave();
+    expect(take()).toBeDefined();
   });
 });

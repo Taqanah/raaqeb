@@ -14,11 +14,17 @@ import {
   handleAuth,
   mailSettled,
   operatorName,
+  resetLinkAccount,
+  resetLinkOpen,
 } from "./auth.ts";
+import {
+  createKnownBrowsers,
+  knownBrowserCookieName,
+} from "./known-browsers.ts";
 import { disabledPaths } from "./paths.ts";
 import { betterAuthSecrets } from "./secret.ts";
 
-// Sign-in, sign-out, sessions and the rate limit over Better Auth's own HTTP
+// Sign-in, sign-out, sessions, known browsers and password tries over Better Auth's own HTTP
 // handler, on both backends. The handler is called directly
 // with a Request; the Bun.serve entry adds nothing but the client address
 // header, which these requests set themselves.
@@ -40,9 +46,7 @@ const silentMail: AuthMail = {
   resetLink: () => Promise.resolve(),
 };
 
-// Better Auth keeps its in-memory rate-limit store once per process, not per
-// instance, so every call that does not measure the limit gets an address of
-// its own; a test that measures it names one address on purpose.
+// Every call comes from an address of its own, as different visitors would.
 let addresses = 0;
 function nextAddress(): string {
   addresses += 1;
@@ -267,48 +271,215 @@ describe("the session cookie before onboarding stores a public address", () => {
   });
 });
 
-describe("the rate limit", () => {
-  test("is on, in memory, and the fourth sign-in attempt from one address inside ten seconds is a 429", async () => {
+describe("known browsers and password tries", () => {
+  /** The known-browser cookie a response set, as a Cookie header value, and its attributes. */
+  const knownOf = (response: Response) => {
+    const set = response.headers
+      .getSetCookie()
+      .find((each) => each.startsWith(`${knownBrowserCookieName}=`));
+    return { cookie: set?.split(";")[0], set };
+  };
+  /** An install whose counts run on a clock the test moves, a second a try unless told. */
+  const install = async () => {
+    let now = 1_000_000;
+    const browsers = createKnownBrowsers(() => now);
+    const auth = await authWithOperator({
+      installKey: boot.installKey,
+      knownBrowsers: browsers,
+    });
+    const tick = (ms = 1000) => {
+      now += ms;
+    };
+    return { auth, browsers, tick };
+  };
+  const wrong = { email, password: "not the password" };
+
+  test("a sign-in makes the browser known for its account, renewed at each sign-in, HttpOnly, SameSite=Lax and sent only to Better Auth's addresses; a refused one does not", async () => {
+    const { auth, browsers, tick } = await install();
+    const first = knownOf(await signIn(auth));
+    expect(first.set).toContain("Path=/api/auth");
+    expect(first.set).toContain("HttpOnly");
+    expect(first.set).toContain("SameSite=Lax");
+    expect(first.set).toContain(`Max-Age=${400 * 24 * 60 * 60}`);
+    const { internalAdapter } = await auth.$context;
+    expect(await browsers.read(boot.installKey, first.cookie ?? null)).toEqual({
+      account: (await internalAdapter.findUserByEmail(email))?.user.id ?? "",
+    });
+    tick();
+    const renewed = knownOf(await signIn(auth, { cookie: first.cookie }));
+    expect(renewed.cookie).toBeDefined();
+    expect(renewed.cookie).not.toBe(first.cookie);
+    tick();
+    expect(knownOf(await signIn(auth, { body: wrong })).set).toBeUndefined();
+  });
+
+  test("an account takes ten tries in a quarter of an hour from browsers not known for it, then each is refused before any hash, as a made-up address is, while a browser known for it signs in", async () => {
+    const { auth, tick } = await install();
+    const { cookie } = knownOf(await signIn(auth));
+    const hashed = spyOn(Bun.password, "verify");
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      tick();
+      // biome-ignore lint/performance/noAwaitInLoops: one try after another, as a guesser sends them
+      statuses.push((await signIn(auth, { body: wrong })).status);
+    }
+    // The first sign-in was a try from a browser not yet known: nine more were left.
+    expect(statuses).toEqual([...new Array(9).fill(401), 429]);
+    const hashes = hashed.mock.calls.length;
+    tick();
+    const refused = await signIn(auth, { body: wrong });
+    const unknown = { email: "nobody@example.com", password: "x".repeat(12) };
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      tick();
+      // biome-ignore lint/performance/noAwaitInLoops: one try after another
+      await signIn(auth, { body: unknown });
+    }
+    tick();
+    const made = await signIn(auth, { body: unknown });
+    expect([made.status, await made.json()]).toEqual([
+      refused.status,
+      await refused.json(),
+    ]);
+    expect(refused.status).toBe(429);
+    hashed.mockClear();
+    tick();
+    await signIn(auth, { body: wrong });
+    expect(hashed).not.toHaveBeenCalled();
+    expect(hashes).toBeGreaterThan(0);
+    hashed.mockRestore();
+    tick();
+    expect((await signIn(auth, { cookie })).status).toBe(200);
+    // A quarter of an hour later the account takes tries again.
+    tick(15 * 60 * 1000);
+    expect((await signIn(auth, { body: wrong })).status).toBe(401);
+  });
+
+  test("past the install's five password checks a second, a try from a browser not known for the account is refused; a known browser's is not", async () => {
+    const { auth, tick } = await install();
+    const { cookie } = knownOf(await signIn(auth));
+    tick();
+    const statuses: number[] = [];
+    for (let each = 0; each < 6; each += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: within one second, as a flood sends them
+      const answer = await signIn(auth, {
+        body: { email: `guess${each}@example.com`, password: "x".repeat(12) },
+      });
+      statuses.push(answer.status);
+    }
+    expect(statuses).toEqual([401, 401, 401, 401, 401, 429]);
+    expect((await signIn(auth, { cookie })).status).toBe(200);
+  });
+
+  test("the install's instance keeps the account's tries when it is rebuilt for a new public address", async () => {
+    const store = await storage();
+    const auth = await authFor(store, boot);
+    await auth.api.signUpEmail({
+      body: { email, name: operatorName, password },
+    });
+    const through = (body: unknown) =>
+      handleAuth(
+        store,
+        boot,
+        new Request(`${origin}/api/auth/sign-in/email`, {
+          body: JSON.stringify(body),
+          headers: {
+            "content-type": "application/json",
+            origin,
+            [clientAddressHeader]: nextAddress(),
+          },
+          method: "POST",
+        })
+      );
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: one try after another; the install checks five a second
+      await through(wrong);
+      await Bun.sleep(210);
+    }
+    expect((await through({ email, password })).status).toBe(429);
+    await store.settings.set(publicAddress, origin);
+    expect(await authFor(store, boot)).not.toBe(auth);
+    expect((await through({ email, password })).status).toBe(429);
+  }, 15_000);
+
+  test("a known browser's cookie ends on the millisecond its 400 days do, and is Secure only on an https address", async () => {
+    const { auth, browsers, tick } = await install();
+    const { cookie, set } = knownOf(await signIn(auth));
+    expect(set).not.toContain("Secure");
+    tick(400 * 24 * 60 * 60 * 1000 - 1);
+    expect(await browsers.read(boot.installKey, cookie ?? null)).toBeDefined();
+    tick(1);
+    expect(
+      await browsers.read(boot.installKey, cookie ?? null)
+    ).toBeUndefined();
+    const secure = await authWithOperator({
+      baseURL: "https://raaqeb.test",
+      installKey: boot.installKey,
+    });
+    const answer = await call(secure, "/sign-in/email", {
+      body: { email, password },
+      origin: "https://raaqeb.test",
+    });
+    expect(knownOf(answer).set).toContain("Secure");
+    const unaddressed = await authWithOperator({
+      baseURL: undefined,
+      installKey: boot.installKey,
+    });
+    expect(knownOf(await signIn(unaddressed)).set).not.toContain("Secure");
+  });
+
+  test("an open reset link names its account and opens; a link no reset wrote, or one past its hour, does neither", async () => {
     const auth = await authWithOperator();
-    expect(auth.options.rateLimit?.enabled).toBe(true);
-    expect(auth.options.rateLimit?.storage ?? "memory").toBe("memory");
+    const { internalAdapter } = await auth.$context;
+    const account = await internalAdapter.findUserByEmail(email);
+    const now = Date.now();
+    await internalAdapter.createVerificationValue({
+      expiresAt: new Date(now + 60_000),
+      identifier: "reset-password:open-link",
+      value: account?.user.id ?? "",
+    });
+    expect(await resetLinkAccount(auth, "open-link", now)).toBe(
+      account?.user.id
+    );
+    expect(await resetLinkOpen(auth, "open-link", now)).toBe(true);
+    expect(await resetLinkAccount(auth, "no-such-link", now)).toBeUndefined();
+    expect(await resetLinkOpen(auth, "no-such-link", now)).toBe(false);
+    expect(await resetLinkOpen(auth, "open-link", now + 60_000)).toBe(false);
+    expect(await resetLinkOpen(auth, "open-link", now + 59_999)).toBe(true);
+  });
+
+  test("ten wrong passwords from a known browser for its own account make it a stranger's again, and its tries at another account count as a stranger's", async () => {
+    const { auth, browsers, tick } = await install();
+    const { cookie } = knownOf(await signIn(auth));
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      tick();
+      // biome-ignore lint/performance/noAwaitInLoops: one try after another
+      await signIn(auth, { body: wrong, cookie });
+    }
+    expect(await browsers.read(boot.installKey, cookie ?? null)).toBeDefined();
+    tick();
+    await signIn(auth, { body: wrong, cookie });
+    expect(
+      await browsers.read(boot.installKey, cookie ?? null)
+    ).toBeUndefined();
+    // Its wrong tries counted against the browser, not the account's ten from strangers.
+    tick();
+    expect((await signIn(auth, { body: wrong })).status).toBe(401);
+  });
+});
+
+describe("the rate limit", () => {
+  test("is off in Better Auth, since the entry's rate rules count every request under /api/auth/ before its body is read: a seventh wrong sign-in from one address inside ten seconds still reaches the password check", async () => {
+    const auth = await authWithOperator();
+    expect(auth.options.rateLimit?.enabled).toBe(false);
     const bad = { email, password: "wrong password" };
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      // biome-ignore lint/performance/noAwaitInLoops: the limiter counts requests in order
+    for (let attempt = 1; attempt <= 7; attempt += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: one attempt after another, as a person types them
       const response = await signIn(auth, {
         address: "203.0.113.7",
         body: bad,
       });
       expect(response.status, `attempt ${attempt}`).toBe(401);
     }
-    const fourth = await signIn(auth, { address: "203.0.113.7", body: bad });
-    expect(fourth.status).toBe(429);
-    expect(fourth.headers.get("x-retry-after")).toBeTruthy();
-  });
-
-  test("counts per client address, the one the entry resolved, never a header the client sent", async () => {
-    const auth = await authWithOperator();
-    const bad = { email, password: "wrong password" };
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      // biome-ignore lint/performance/noAwaitInLoops: the limiter counts requests in order
-      await signIn(auth, { address: "203.0.113.8", body: bad });
-    }
-    const other = await signIn(auth, { address: "203.0.113.9", body: bad });
-    expect(other.status).toBe(401);
-    // A forwarded header alone moves nothing: the entry's header is the key.
-    const forged = await auth.handler(
-      new Request(`${origin}/api/auth/sign-in/email`, {
-        body: JSON.stringify(bad),
-        headers: {
-          "content-type": "application/json",
-          origin,
-          "x-forwarded-for": "198.51.100.1",
-          [clientAddressHeader]: "203.0.113.8",
-        },
-        method: "POST",
-      })
-    );
-    expect(forged.status).toBe(429);
   });
 });
 

@@ -21,6 +21,9 @@ export const freshOrigin = `http://127.0.0.1:${freshPort}`;
 export const sinkOrigin = `http://127.0.0.1:${sinkPort}`;
 export const emptyOrigin = `http://127.0.0.1:${emptyPort}`;
 
+/** Where the English install writes the known-browser cookie of its one sign-in as it starts (serve-en.ts), which every context carries (fixtures.ts). */
+export const knownBrowserFile = "test-results/data-en/known-browser";
+
 /** The operator account the English install is seeded with (e2e/support/serve-en.ts). */
 export const operatorEmail = "operator@example.com";
 export const operatorPassword = "correct horse battery";

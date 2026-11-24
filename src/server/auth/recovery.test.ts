@@ -196,26 +196,6 @@ describe("forgot password", () => {
     await call(auth, "/reset-password", { body: { newPassword, token } });
     expect(await rows()).toEqual([]);
   });
-
-  test("the fourth request in a minute from one address is refused until the minute is out, Better Auth's own limit", async () => {
-    const { storage } = await scratch();
-    const auth = await authWithOperator(storage);
-    const address = "198.51.200.1";
-    const body = { email: "nobody@example.org" };
-    for (let i = 0; i < 3; i += 1) {
-      expect(
-        // biome-ignore lint/performance/noAwaitInLoops: each request counts against the limit after the one before it
-        (await call(auth, "/request-password-reset", { address, body })).status
-      ).toBe(200);
-    }
-    const fourth = await call(auth, "/request-password-reset", {
-      address,
-      body,
-    });
-    expect(fourth.status).toBe(429);
-    // Seconds left in the window: a ten-second window would answer ten at most.
-    expect(Number(fourth.headers.get("x-retry-after"))).toBeGreaterThan(50);
-  });
 });
 
 describe("a reset link that could not go", () => {

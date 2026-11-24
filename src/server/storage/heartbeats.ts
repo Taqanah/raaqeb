@@ -13,6 +13,8 @@ import type {
 import type { Executor } from "./connection.ts";
 
 export interface HeartbeatsRepository {
+  /** Whether a heartbeat monitor has this token: one seek of its unique index. */
+  knows: (token: string) => Promise<boolean>;
   /** The newest heartbeat of each of these monitors that reported failure, even when a heartbeat that says the job ran came after it; with `before`, the newest that arrived before that time. */
   lastFailures: (
     monitorIds: readonly string[],
@@ -68,6 +70,12 @@ export function heartbeatsRepository(executor: Executor): HeartbeatsRepository {
   const fields = sql`${heartbeats.monitorId} AS monitor_id, ${heartbeats.arrivedAt} AS arrived_at, ${heartbeats.sourceIp} AS source_ip, ${heartbeats.failed} AS failed, ${heartbeats.exitCode} AS exit_code, ${heartbeats.message} AS message`;
 
   return {
+    knows: async (token) =>
+      (
+        await executor.rows<{ one: number }>(
+          sql`SELECT 1 AS one FROM ${monitors} WHERE ${monitors.heartbeatToken} = ${token} LIMIT 1`
+        )
+      ).length > 0,
     latest: async (monitorIds, before) => {
       if (monitorIds.length === 0) {
         return new Map();

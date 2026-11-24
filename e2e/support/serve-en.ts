@@ -291,6 +291,24 @@ async function serve(
   if (typeof running === "number") {
     process.exit(running);
   }
+  // One sign-in, so the suite's browsers are known browsers, as a real operator's is after its first (fixtures.ts).
+  const origin = `http://127.0.0.1:${port}`;
+  const signedIn = await fetch(`${origin}/api/auth/sign-in/email`, {
+    body: JSON.stringify({ email: operatorEmail, password: operatorPassword }),
+    headers: { "content-type": "application/json", origin },
+    method: "POST",
+  });
+  const known = signedIn.headers
+    .getSetCookie()
+    .find((each) => each.startsWith("raaqeb.known="))
+    ?.split(";")[0]
+    ?.slice("raaqeb.known=".length);
+  if (!known) {
+    throw new Error(
+      `the English install's sign-in made no known browser: ${signedIn.status}`
+    );
+  }
+  await Bun.write(`${dataDir}/known-browser`, known);
 }
 
 if (import.meta.main) {

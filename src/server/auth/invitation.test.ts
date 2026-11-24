@@ -259,22 +259,6 @@ describe("accepting an invitation", () => {
     expect(await scratch.storage.invitations.list()).toHaveLength(1);
   });
 
-  test("is held to the sign-in's rate limit: the fourth attempt from one address in ten seconds is a 429", async () => {
-    const { auth } = await invited();
-    const address = nextAddress();
-    const statuses: number[] = [];
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      // biome-ignore lint/performance/noAwaitInLoops: the limit counts attempts in order
-      const answer = await accept(
-        auth,
-        { name: "Huda", password, token: newInvitationToken() },
-        { address }
-      );
-      statuses.push(answer.status);
-    }
-    expect(statuses).toEqual([400, 400, 400, 429]);
-  });
-
   test("from another origin is refused by the origin check and spends nothing", async () => {
     const { auth, scratch, token } = await invited();
     const answer = await auth.handler(
