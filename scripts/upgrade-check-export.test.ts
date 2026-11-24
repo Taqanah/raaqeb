@@ -607,6 +607,161 @@ describe("what an upgrade may change in the export", () => {
     });
   });
 
+  const window: Configuration["maintenanceWindows"][number] = {
+    createdAt: exportedAt - hour,
+    endsAt: exportedAt + 24 * hour,
+    id: "w1",
+    message: '{"ar":"ترقية","en":"Upgrade"}',
+    seriesId: null,
+    seriesStartsAt: null,
+    stage: "scheduled",
+    startsAt: exportedAt + hour / 2,
+    title: '{"ar":"ترقية","en":"Upgrade"}',
+    updatedAt: exportedAt - hour,
+  };
+
+  test("a window whose start came between the two exports may be in progress since the moment the new version moved it, and nothing else of it may differ", () => {
+    const before = written(
+      { ...configuration, maintenanceWindows: [window] },
+      exportedAt
+    );
+    const moved: typeof window = {
+      ...window,
+      stage: "in_progress",
+      updatedAt: exportedAt + hour / 2 + 1,
+    };
+    expect(
+      upgradeDifferences(
+        before,
+        written({ ...configuration, maintenanceWindows: [moved] })
+      )
+    ).toEqual({
+      allowed: [
+        "maintenanceWindows w1 changed: stage, updatedAt: its start or end came between the two exports",
+      ],
+      found: [],
+    });
+    expect(
+      upgradeDifferences(
+        before,
+        written({
+          ...configuration,
+          maintenanceWindows: [{ ...moved, title: '{"ar":"أ","en":"A"}' }],
+        })
+      ).found
+    ).toEqual(["maintenanceWindows w1 changed: stage, title, updatedAt"]);
+  });
+
+  test("a window that moved on before its start, or after the new export, is found", () => {
+    const before = written(
+      { ...configuration, maintenanceWindows: [window] },
+      exportedAt
+    );
+    for (const updatedAt of [exportedAt + hour / 4, exportedAt + 2 * hour]) {
+      const after = written({
+        ...configuration,
+        maintenanceWindows: [{ ...window, stage: "in_progress", updatedAt }],
+      });
+      expect(upgradeDifferences(before, after).found).toEqual([
+        "maintenanceWindows w1 changed: stage, updatedAt",
+      ]);
+    }
+  });
+
+  test("each moment counts to the millisecond: an end or a start reached at the move, a move at the new export, a link that ran out at it, and never a move at the old export", () => {
+    const foundFor = (was: typeof window, is: Partial<typeof window>) =>
+      upgradeDifferences(
+        written({ ...configuration, maintenanceWindows: [was] }, exportedAt),
+        written({
+          ...configuration,
+          maintenanceWindows: [{ ...was, ...is }],
+        })
+      ).found;
+    const ended: typeof window = {
+      ...window,
+      endsAt: exportedAt + hour / 2,
+      stage: "in_progress",
+      startsAt: exportedAt - 2 * hour,
+    };
+    expect(
+      foundFor(ended, {
+        stage: "completed",
+        updatedAt: exportedAt + hour / 2,
+      })
+    ).toEqual([]);
+    expect(
+      foundFor(window, { stage: "in_progress", updatedAt: window.startsAt })
+    ).toEqual([]);
+    expect(
+      foundFor(window, { stage: "in_progress", updatedAt: exportedAt + hour })
+    ).toEqual([]);
+    expect(
+      foundFor(
+        { ...window, startsAt: exportedAt - 60_000 },
+        { stage: "in_progress", updatedAt: exportedAt }
+      )
+    ).toEqual(["maintenanceWindows w1 changed: stage, updatedAt"]);
+    const pending = {
+      address: "visitor@example.test",
+      channel: "email" as const,
+      confirmedAt: null,
+      createdAt: exportedAt + hour - 48 * hour,
+      credentials: null,
+      id: "s1",
+      locale: "en" as const,
+      pageId: "p1",
+      requestedAt: exportedAt + hour - 48 * hour,
+      status: "pending" as const,
+      token: "token-s1",
+    };
+    expect(
+      upgradeDifferences(
+        written({ ...configuration, subscriptions: [pending] }, exportedAt),
+        written(configuration)
+      ).found
+    ).toEqual([]);
+  });
+
+  test("a pending subscription whose link ran out between the two exports may be gone; a confirmed one, or one whose link still runs, may not", () => {
+    const subscription = (
+      id: string,
+      status: "confirmed" | "pending",
+      requestedAt: number
+    ) => ({
+      address: `${id}@example.test`,
+      channel: "email" as const,
+      confirmedAt: status === "confirmed" ? requestedAt : null,
+      createdAt: requestedAt,
+      credentials: null,
+      id,
+      locale: "en" as const,
+      pageId: "p1",
+      requestedAt,
+      status,
+      token: `token-${id}`,
+    });
+    const before = written(
+      {
+        ...configuration,
+        subscriptions: [
+          subscription("ran-out", "pending", exportedAt - 47.5 * hour),
+          subscription("running", "pending", exportedAt - hour),
+          subscription("confirmed", "confirmed", exportedAt - 72 * hour),
+        ],
+      },
+      exportedAt
+    );
+    expect(upgradeDifferences(before, written(configuration))).toEqual({
+      allowed: [
+        "subscriptions ran-out is missing: its confirmation link ran out between the two exports",
+      ],
+      found: [
+        "subscriptions running is missing after the upgrade",
+        "subscriptions confirmed is missing after the upgrade",
+      ],
+    });
+  });
+
   test("an old export the new version cannot read stops the check", () => {
     const [first, ...history] = version1();
     expect(() =>

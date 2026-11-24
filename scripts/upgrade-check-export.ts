@@ -10,6 +10,7 @@ import {
   headerSchema,
   recordSchema,
 } from "@/shared/schemas/export.ts";
+import { confirmationLifetimeMs } from "@/shared/schemas/subscription.ts";
 
 /** One line of an export file, parsed. */
 export type ExportLine = Record<string, unknown>;
@@ -204,9 +205,11 @@ export interface UpgradeDifferences {
  * What differs between the old version's export and the new version's of the
  * same install, once the old one is read as the new version imports it. What
  * reading adds to the old file and the format's named rewrites are allowed,
- * and so are the rows of a table the old file does not carry and the audit
- * entries made after the old export (the check's own sign-ins); each is named
- * with its reason, as is the time the new version recorded a row reading adds.
+ * and so are the rows of a table the old file does not carry, the audit
+ * entries made after the old export (the check's own sign-ins), and what the
+ * clock did between the two exports (a window's start or end, a pending
+ * subscription's expired link); each is named with its reason, as is the time
+ * the new version recorded a row reading adds.
  * What reading loses of the old file, and anything else, is found. `read` is
  * the old file as the new version reads it, given only by a test.
  */
@@ -223,6 +226,7 @@ export function upgradeDifferences(
   const given = tablesOf(read);
   const [first, ...history] = after;
   const header = objectSchema.catch({}).parse(first);
+  const exportedAfter = Date.parse(String(header.exportedAt));
   const configuration = Object.fromEntries(
     Object.entries(objectSchema.catch({}).parse(header.configuration)).map(
       ([table, rows]) => [
@@ -251,6 +255,16 @@ export function upgradeDifferences(
           .map((row) => {
             const name = rowName(row);
             const stand = given.get(table)?.get(name);
+            if (
+              table === "maintenanceWindows" &&
+              stand !== undefined &&
+              advancedBetween(stand, row, exportedAt, exportedAfter)
+            ) {
+              into.allowed.push(
+                `${table} ${name} changed: stage, updatedAt: its start or end came between the two exports`
+              );
+              return { ...row, stage: stand.stage, updatedAt: stand.updatedAt };
+            }
             return stand === undefined || was.get(table)?.has(name)
               ? row
               : restamped(into, `${table} ${name}`, row, stand, exportedAt);
@@ -258,13 +272,77 @@ export function upgradeDifferences(
       ]
     )
   );
+  const kept = new Set(
+    rowsSchema.catch([]).parse(configuration.subscriptions).map(rowName)
+  );
   return {
     allowed: into.allowed,
     found: [
       ...into.found,
-      ...differences(read, [{ ...header, configuration }, ...history]),
+      ...differences(withoutExpired(read, kept, exportedAfter, into), [
+        { ...header, configuration },
+        ...history,
+      ]),
     ],
   };
+}
+
+/** Whether the new version moved the window on as the scheduler does at the time it wrote, between the two exports, and changed nothing else of it. */
+function advancedBetween(
+  was: Record<string, unknown>,
+  is: Record<string, unknown>,
+  oldAt: number,
+  newAt: number
+): boolean {
+  const at = Date.parse(String(is.updatedAt));
+  if (!(at > oldAt && at <= newAt)) {
+    return false;
+  }
+  // The scheduler's advance: a window past its end completes, a scheduled one past its start begins.
+  const { endsAt, stage: from, startsAt } = was;
+  let stage = from;
+  if (from !== "completed" && Date.parse(String(endsAt)) <= at) {
+    stage = "completed";
+  } else if (from === "scheduled" && Date.parse(String(startsAt)) <= at) {
+    stage = "in_progress";
+  }
+  return (
+    stage !== from &&
+    is.stage === stage &&
+    changedFields(was, is).join() === "stage,updatedAt"
+  );
+}
+
+/** The old file without the pending subscriptions the new version no longer holds because their confirmation link ran out before its export, each allowed with its reason. */
+function withoutExpired(
+  lines: readonly ExportLine[],
+  kept: ReadonlySet<string>,
+  newAt: number,
+  into: UpgradeDifferences
+): ExportLine[] {
+  const [first, ...history] = lines;
+  const header = objectSchema.catch({}).parse(first);
+  const configuration = objectSchema.catch({}).parse(header.configuration);
+  const subscriptions = rowsSchema
+    .catch([])
+    .parse(configuration.subscriptions)
+    .filter((row) => {
+      const name = rowName(row);
+      const ranOut =
+        row.status === "pending" &&
+        Date.parse(String(row.requestedAt)) + confirmationLifetimeMs <= newAt;
+      if (ranOut && !kept.has(name)) {
+        into.allowed.push(
+          `subscriptions ${name} is missing: its confirmation link ran out between the two exports`
+        );
+        return false;
+      }
+      return true;
+    });
+  return [
+    { ...header, configuration: { ...configuration, subscriptions } },
+    ...history,
+  ];
 }
 
 /** A row reading adds holds the time the conversion gives it, which the new version cannot match: it records the row when it upgrades, after the old export. That time alone is allowed to differ. */
