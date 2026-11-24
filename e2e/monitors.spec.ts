@@ -9,7 +9,7 @@
 
 import type { Page } from "@playwright/test";
 import { gettingStartedClosed } from "@/server/settings/getting-started.ts";
-import { expect, expectPath, test } from "./support/fixtures.ts";
+import { expect, expectPath, hydrated, test } from "./support/fixtures.ts";
 import { seedLongMonitor, seedMonitors } from "./support/monitors.ts";
 import {
   englishOrigin,
@@ -516,7 +516,7 @@ test.describe("the seeded list and the Health monitor, changed in order", () => 
     );
     const other = await context.newPage();
     await other.goto(page.url());
-    await other.waitForFunction(() => window.__reactCommitted === true);
+    await hydrated(other);
     const unread = await newestCheck(other);
     await other.click("[data-slot=check-now]");
     await expect.poll(() => newestCheck(other)).not.toBe(unread);

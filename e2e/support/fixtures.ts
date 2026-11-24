@@ -14,7 +14,7 @@ import { englishOrigin, knownBrowserFile } from "./servers.ts";
 declare global {
   interface Window {
     __REACT_DEVTOOLS_GLOBAL_HOOK__?: Record<string, unknown>;
-    __reactCommitted?: boolean;
+    __reactHydrated?: boolean;
   }
 }
 
@@ -31,18 +31,22 @@ export function clientAddress(parallelIndex: number): string {
 }
 
 /**
- * `test` with `page.goto` and `page.reload` blocking until React's first commit (or, on a still not-found, until the document is parsed), so a click never
- * lands before hydration. A click on server-rendered markup before hydration
- * does nothing, and Playwright's auto-wait cannot tell. React reports the
- * hydration commit to the devtools hook, so an init script installs a minimal
- * hook that records it; no product code is involved. Every request of the
- * context carries the test's own client address.
+ * `test` with `page.goto` and `page.reload` blocking until React has hydrated
+ * the whole document (or, on a still not-found, until it is parsed), so a
+ * click or a key never lands before hydration. Server-rendered markup that has
+ * not hydrated does nothing, and Playwright's auto-wait cannot tell. React
+ * reports each commit to the devtools hook, so an init script installs a
+ * minimal hook that records the first commit to leave no Suspense boundary
+ * dehydrated, and the page as hydrated once that commit's effects have run:
+ * React hydrates the router's boundaries in commits after its first, and a
+ * listener or a timer a page sets in an effect comes after its commit. No
+ * product code is involved. Every request of the context carries the test's own client address.
  */
-/** Waits for React's first commit, or for a parsed document that carries no app script: a not-found is served still and never hydrates. */
-function hydrated(page: Page): Promise<unknown> {
+/** Waits for React to hydrate the whole document, or for a parsed document that carries no app script: a not-found is served still and never hydrates. */
+export function hydrated(page: Page): Promise<unknown> {
   return page.waitForFunction(
     () =>
-      window.__reactCommitted === true ||
+      window.__reactHydrated === true ||
       (document.readyState !== "loading" &&
         document.querySelector("script[type=module]") === null)
   );
@@ -95,16 +99,32 @@ export const test = base.extend<
       ]);
     }
     await context.addInitScript(() => {
+      /** The fields of React's fiber this hook reads; a Suspense boundary is tag 13 and holds its server markup while dehydrated. */
+      interface Fiber {
+        readonly child: Fiber | null;
+        readonly memoizedState: { readonly dehydrated?: unknown } | null;
+        readonly sibling: Fiber | null;
+        readonly tag: number;
+      }
+      const dehydrated = (fiber: Fiber | null): boolean =>
+        fiber !== null &&
+        ((fiber.tag === 13 && Boolean(fiber.memoizedState?.dehydrated)) ||
+          dehydrated(fiber.child) ||
+          dehydrated(fiber.sibling));
       const noop = () => undefined;
+      let whole = false;
       window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
         checkDCE: noop,
         inject: () => 1,
         isDisabled: false,
-        onCommitFiberRoot: () => {
-          window.__reactCommitted = true;
+        onCommitFiberRoot: (_renderer: number, root: { current: Fiber }) => {
+          whole ||= !dehydrated(root.current);
         },
         onCommitFiberUnmount: noop,
-        onPostCommitFiberRoot: noop,
+        // Called once a commit's effects have run.
+        onPostCommitFiberRoot: () => {
+          window.__reactHydrated ||= whole;
+        },
         renderers: new Map(),
         setStrictMode: noop,
         supportsFiber: true,
@@ -116,7 +136,7 @@ export const test = base.extend<
       await hydrated(page);
       return response;
     };
-    // A reload is a fresh document too; the init script runs again and the flag is set on hydration.
+    // A reload is a fresh document too; the init script runs again and the flag is set once it has hydrated.
     const reload = page.reload.bind(page);
     page.reload = async (options) => {
       const response = await reload(options);

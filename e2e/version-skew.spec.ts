@@ -5,7 +5,7 @@
 // for by rewriting that header, and the failure by rewriting the status.
 
 import type { Page } from "@playwright/test";
-import { expect, expectPath, test } from "./support/fixtures.ts";
+import { expect, expectPath, hydrated, test } from "./support/fixtures.ts";
 import {
   englishOrigin,
   operatorEmail,
@@ -67,7 +67,7 @@ test("a server function answer that failed on another build reloads the page onc
   const reloaded = page.waitForEvent("load");
   await testConnection(page);
   await reloaded;
-  await page.waitForFunction(() => window.__reactCommitted === true);
+  await hydrated(page);
   expect(await page.evaluate(() => window.__sameDocument)).toBeUndefined();
 
   // The reload brought back the same build, so the next such answer reaches the page instead of looping.
