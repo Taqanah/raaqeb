@@ -262,7 +262,7 @@ describe("the reason of a resolver error", () => {
 
 describe("the reason of a database driver's error", () => {
   const server = { host: "db.example.test", port: 5432, timeoutMs: 10_000 };
-  /** A driver error as Bun 1.4.4 throws one: its own code, and the server's in `errno`. */
+  /** A driver error as Bun 1.4.5 throws one: its own code, and the server's in `errno`. */
   const driver = (code: string, errno?: string | number, message = code) =>
     Object.assign(new Error(message), { code, errno });
 
@@ -615,7 +615,7 @@ describe("the reason of a fetch error on a request that carried a client certifi
 });
 
 describe("the reason of a fetch error on a request that went through a proxy", () => {
-  /** Bun 1.4.3's error for a CONNECT the proxy answered with anything but 200. */
+  /** Bun 1.4.5's error for a CONNECT the proxy answered with anything but 200. */
   function tunnelRefused(status: number, text: string): Error {
     return Object.assign(
       new Error(`Proxy refused to open a tunnel: ${status} ${text}`),

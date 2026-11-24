@@ -132,7 +132,7 @@ function open(
       }
       return firstValue(await ask(firstRowOf(query.query)));
     },
-    // Postgres stops a cancelled statement on the server; MySQL runs one already sent to its end (Bun 1.4.4).
+    // Postgres stops a cancelled statement on the server; MySQL runs one already sent to its end (Bun 1.4.5).
     close: () => {
       running?.cancel();
       sql.close({ timeout: 0 }).catch(() => undefined);

@@ -388,7 +388,7 @@ export function connectionUrlFits(
 
 const redisDatabase = /^\/?\d*$/;
 
-/** The query keys Bun's SQL driver (1.4.4) reads as a Unix socket or a file on the install's own host, or as another host or port than the URL's; `sslrootcert=system` names the system's CAs. */
+/** The query keys Bun's SQL driver (1.4.5) reads as a Unix socket or a file on the install's own host, or as another host or port than the URL's; `sslrootcert=system` names the system's CAs. */
 const hostKeys: Partial<Record<DatabaseCheckType, readonly string[]>> = {
   mysql: ["path", "socket"],
   postgres: [

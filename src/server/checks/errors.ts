@@ -6,7 +6,7 @@
  * check's own redirect loop with Bun's code and text), a proxy that refused
  * the request or could not be reached. An unmapped error
  * becomes "unknown" with its raw text beside it. The codes were read from
- * Bun 1.4.3.
+ * Bun 1.4.5.
  */
 import { errorMaxLength } from "@/shared/schemas/check.ts";
 import { isSocketPath } from "@/shared/schemas/monitor.ts";
@@ -127,13 +127,13 @@ export function reasonForError(
   return mapped("unknown", { reason: "unknown" });
 }
 
-/** Bun's advice to whoever calls fetch(), appended to several of its errors (read from Bun 1.4.3). */
+/** Bun's advice to whoever calls fetch(), appended to several of its errors (read from Bun 1.4.5). */
 const verboseHint =
   " For more information, pass `verbose: true` in the second argument to fetch()";
 
 function messageOf(error: unknown): string {
   if (error instanceof Error) {
-    // Bun 1.4.4's fetch writes its code before the sentence; the reason names the code already.
+    // Bun 1.4.5's fetch writes its code before the sentence; the reason names the code already.
     const code = codeOf(error);
     const message =
       code && error.message.startsWith(`${code}: `)
@@ -304,7 +304,7 @@ const databaseTimeoutCodes = new Set([
   "ERR_POSTGRES_CONNECTION_TIMEOUT",
   "ERR_REDIS_CONNECTION_TIMEOUT",
 ]);
-/** A refused connection; Bun 1.4.4 still reports a name that does not resolve the same way. */
+/** A refused connection; Bun 1.4.5 still reports a name that does not resolve the same way. */
 const databaseRefusedCodes = new Set([
   "ERR_MYSQL_CONNECTION_REFUSED",
   "ERR_POSTGRES_CONNECTION_REFUSED",

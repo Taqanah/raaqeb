@@ -161,7 +161,7 @@ export function readPeerCertificate(
       error: (_socket, error) => {
         reject(error);
       },
-      // A leaf that arrived is the answer whatever the verification said (a name mismatch fails it with a readable leaf); no leaf means the handshake did not happen, as on a port that speaks no TLS (probed on Bun 1.4.3).
+      // A leaf that arrived is the answer whatever the verification said (a name mismatch fails it with a readable leaf); no leaf means the handshake did not happen, as on a port that speaks no TLS (probed on Bun 1.4.5).
       handshake: (opened, _success, authorizationError) => {
         const peer: PeerCertificate | undefined = opened.getPeerCertificate();
         const settled = peer?.fingerprint256

@@ -896,7 +896,7 @@ describe("a database monitor", () => {
     expect(connectionUrlFits("redis", "redis://cache.example.test/")).toBe(
       true
     );
-    // Bun refuses a name before it connects (Bun 1.4.3: "Invalid database number").
+    // Bun refuses a name before it connects (Bun 1.4.5: "Invalid database number").
     expect(connectionUrlFits("redis", "redis://cache.example.test/app")).toBe(
       false
     );

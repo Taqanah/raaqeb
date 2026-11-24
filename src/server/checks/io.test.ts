@@ -78,7 +78,7 @@ function opener(
     setTimeout(() => {
       handlers.open?.(socket);
       if (script.peer) {
-        // With verification off the platform reports success and still names the authorization error (probed on Bun 1.4.3).
+        // With verification off the platform reports success and still names the authorization error (probed on Bun 1.4.5).
         handlers.handshake?.(socket, true, new Error("self signed"));
       }
     }, script.afterMs ?? 0);

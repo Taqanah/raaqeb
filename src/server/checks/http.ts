@@ -260,7 +260,7 @@ const wildcardPrefix = /^\*?\./;
 const entryPort = /^(.*[^:]):(\d+)$/;
 const brackets = /^\[|\]$/g;
 
-/** Whether `NO_PROXY` exempts the URL as Bun 1.4.4 reads it: `*`; an address range; or the host, or a domain it is under (a leading `.` or `*.` optional), in any case, at the entry's port when it names one. */
+/** Whether `NO_PROXY` exempts the URL as Bun 1.4.5 reads it: `*`; an address range; or the host, or a domain it is under (a leading `.` or `*.` optional), in any case, at the entry's port when it names one. */
 function exempt(url: URL, noProxy: string | undefined): boolean {
   const host = url.hostname.replace(brackets, "");
   const port = url.port || (url.protocol === "https:" ? "443" : "80");
@@ -312,7 +312,7 @@ const proxyVariables = [
   "all_proxy",
 ];
 
-/** The sign-in each proxy of the environment sends, as Bun 1.4.4 sends it: the Basic pair of the percent-decoded user and password, the decoded password, and the password as written. Empty values are left out. */
+/** The sign-in each proxy of the environment sends, as Bun 1.4.5 sends it: the Basic pair of the percent-decoded user and password, the decoded password, and the password as written. Empty values are left out. */
 export function environmentProxySecrets(
   env: Readonly<Record<string, string | undefined>>
 ): string[] {
@@ -428,7 +428,7 @@ function requestInit(
 }
 
 const redirectStatuses = new Set([301, 302, 303, 307, 308]);
-/** What fetch takes off a request when a redirect leaves the origin (probed on Bun 1.4.3), and what the check takes off besides: every header the operator sealed. */
+/** What fetch takes off a request when a redirect leaves the origin (probed on Bun 1.4.5), and what the check takes off besides: every header the operator sealed. */
 const crossOriginHeaders = ["authorization", "cookie", "proxy-authorization"];
 /** The headers that describe a body, dropped with it (Fetch standard, HTTP-redirect fetch). */
 const bodyHeaders = [

@@ -212,7 +212,7 @@ function tlsOf(options: MongoOptions): TlsChoice | undefined {
 
 /**
  * Whether a TLS handshake's outcome is one the URL accepts. Without
- * rejectUnauthorized, Bun 1.4.4 reports success for a chain that does not
+ * rejectUnauthorized, Bun 1.4.5 reports success for a chain that does not
  * verify and fails only a name mismatch, so `success` alone decides only a
  * verified connection; allowing invalid host names reads the error itself.
  */
@@ -329,7 +329,7 @@ function connectTo(
             drain: flush,
             error: (_socket, error) => fail(error),
             handshake: (handshaken, success, authorizationError) => {
-              // No certificate means no handshake took place, as on a port that speaks no TLS (Bun 1.4.4 still calls this).
+              // No certificate means no handshake took place, as on a port that speaks no TLS (Bun 1.4.5 still calls this).
               const presented = Boolean(
                 handshaken.getPeerCertificate()?.fingerprint256
               );

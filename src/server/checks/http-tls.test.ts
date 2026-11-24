@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { reasons } from "@/shared/schemas/reason.ts";
 import { type HttpMonitor, runHttpCheck } from "./http.ts";
 
 let dir: string;
@@ -23,8 +24,11 @@ async function selfSigned(
   };
 }
 
-/** One check, trusting the server's own certificate as the monitor's CA, against an https server on a free loopback port. */
-async function checkAgainst(pair: { cert: string; key: string }) {
+/** One check against an https server on a free loopback port, trusting the server's own certificate as the monitor's CA unless told to trust only the bundled roots. */
+async function checkAgainst(
+  pair: { cert: string; key: string },
+  trust: "own" | "bundled" = "own"
+) {
   const server = Bun.serve({
     fetch: () => new Response("ok"),
     port: 0,
@@ -33,7 +37,7 @@ async function checkAgainst(pair: { cert: string; key: string }) {
   const monitor: HttpMonitor = {
     config: {
       assertions: [{ codes: ["2xx"], kind: "status" }],
-      caCertificates: pair.cert,
+      ...(trust === "own" && { caCertificates: pair.cert }),
       captureMode: "always",
       followRedirects: true,
       ignoreTlsErrors: false,
@@ -82,5 +86,17 @@ describe("an HTTP check over TLS", () => {
       ])
     );
     expect(outcome.check.result).toBe("up");
+  });
+
+  test("reads an expired certificate from an issuer it does not know as expired, not as untrusted", async () => {
+    const fixtures = `${import.meta.dir}/fixtures`;
+    const outcome = await checkAgainst(
+      {
+        cert: await Bun.file(`${fixtures}/tls-expired-cert.pem`).text(),
+        key: await Bun.file(`${fixtures}/tls-expired-key.pem`).text(),
+      },
+      "bundled"
+    );
+    expect(outcome.check.reason).toBe(reasons.certificate_expired);
   });
 });
